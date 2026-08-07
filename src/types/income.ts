@@ -60,3 +60,48 @@ export type Income = CreateIncomeInput & {
 export type IncomeService = {
   create: (input: CreateIncomeInput) => Promise<Income>;
 };
+
+export type IncomeStatus = "active" | "voided";
+export type IncomeKind = "service" | "products" | "combined";
+
+export type IncomeListProduct = {
+  id: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+};
+
+export type IncomeListItem = {
+  id: string;
+  createdAt: string;
+  employee: Employee;
+  customer: Customer | null;
+  service: Service | null;
+  products: IncomeListProduct[];
+  paymentMethod: PaymentMethod;
+  total: number;
+  status: IncomeStatus;
+};
+
+export type IncomeListFilters = {
+  query: string;
+  dateFrom: string;
+  dateTo: string;
+  employeeId: string;
+  paymentMethod: PaymentMethod | "all";
+  kind: IncomeKind | "all";
+};
+
+export type IncomeListMetrics = {
+  total: number;
+  count: number;
+  average: number;
+  cashTotal: number;
+  transferTotal: number;
+};
+
+export type IncomeListData = {
+  currentUser: CurrentUser;
+  employees: Employee[];
+  incomes: IncomeListItem[];
+};

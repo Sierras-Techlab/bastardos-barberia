@@ -1,7 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
 import {
   BarChart3,
-  CircleDollarSign,
   CreditCard,
   LayoutDashboard,
   Package,
@@ -27,16 +27,18 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import type { CurrentUser } from "@/types/income";
 
-const currentUser = {
-  name: "Lautaro",
-  initials: "LB",
-  role: "owner" as const,
+const defaultUser: CurrentUser = {
+  id: "employee-lautaro",
+  firstName: "Lautaro",
+  lastName: "Bastardos",
+  role: "owner",
 };
 
 const operationNavigation = [
-  { label: "Inicio", icon: LayoutDashboard, active: true },
-  { label: "Cargar ingreso", icon: CircleDollarSign },
+  { label: "Inicio", icon: LayoutDashboard, href: "/" },
+  { label: "Ingresos", icon: ReceiptText, href: "/incomes" },
   { label: "Clientes", icon: Users },
   { label: "Servicios", icon: Scissors },
   { label: "Productos", icon: Package },
@@ -51,7 +53,17 @@ const administrationNavigation = [
   { label: "Negocio", icon: Store },
 ];
 
-export const AppSidebar = () => {
+type AppSidebarProps = {
+  activeItem?: string;
+  user?: CurrentUser;
+};
+
+export const AppSidebar = ({
+  activeItem = "Inicio",
+  user = defaultUser,
+}: AppSidebarProps) => {
+  const initials = `${user.firstName[0]}${user.lastName[0]}`;
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 pt-6">
@@ -81,21 +93,32 @@ export const AppSidebar = () => {
             <SidebarMenu>
               {operationNavigation.map((item) => (
                 <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton
-                    isActive={item.active}
-                    tooltip={item.label}
-                    className="h-10 rounded-xl px-3 data-active:bg-primary data-active:text-primary-foreground"
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
+                  {item.href ? (
+                    <SidebarMenuButton
+                      render={<Link href={item.href} />}
+                      isActive={activeItem === item.label}
+                      tooltip={item.label}
+                      className="h-10 rounded-xl px-3 data-active:bg-primary data-active:text-primary-foreground"
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton
+                      tooltip={item.label}
+                      className="h-10 rounded-xl px-3"
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {currentUser.role === "owner" && (
+        {user.role === "owner" && (
           <SidebarGroup className="px-3 py-2">
             <SidebarGroupLabel className="text-sidebar-foreground/40">
               Administración
@@ -124,18 +147,18 @@ export const AppSidebar = () => {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip={currentUser.name}
+              tooltip={user.firstName}
               className="rounded-2xl bg-sidebar-accent px-3"
             >
               <Avatar size="sm">
                 <AvatarFallback className="bg-primary font-semibold text-primary-foreground">
-                  {currentUser.initials}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               <span className="flex min-w-0 flex-col gap-0.5 leading-none">
-                <span className="truncate font-medium">{currentUser.name}</span>
+                <span className="truncate font-medium">{user.firstName}</span>
                 <span className="truncate text-xs font-normal text-sidebar-foreground/45">
-                  Dueño
+                  {user.role === "owner" ? "Dueño" : "Empleado"}
                 </span>
               </span>
             </SidebarMenuButton>
