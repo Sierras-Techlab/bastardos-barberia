@@ -63,7 +63,7 @@ const activityIcons = {
   cash: Lock,
 };
 
-export default function Home() {
+const Home = () => {
   const { summary, revenue, topServices, paymentMethods, recentActivity } =
     dashboard;
   const currentDate = dateFormatter.format(new Date());
@@ -345,4 +345,6 @@ export default function Home() {
       </SidebarProvider>
     </TooltipProvider>
   );
-}
+};
+
+export default Home;

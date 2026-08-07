@@ -51,7 +51,7 @@ const administrationNavigation = [
   { label: "Negocio", icon: Store },
 ];
 
-export function AppSidebar() {
+export const AppSidebar = () => {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 pt-6">
@@ -145,4 +145,4 @@ export function AppSidebar() {
       <SidebarRail />
     </Sidebar>
   );
-}
+};
