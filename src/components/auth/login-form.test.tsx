@@ -34,7 +34,7 @@ describe("LoginForm", () => {
 
   it("shows the safe API error and keeps the user on the form", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
-      error: { code: "INVALID_CREDENTIALS", message: "Usuario o contraseÃ±a incorrectos." },
+      error: { code: "INVALID_CREDENTIALS", message: "Usuario o contrase\u00f1a incorrectos." },
     }), { status: 401 }));
     const user = userEvent.setup();
     render(<LoginForm />);

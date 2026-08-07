@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toCredentialUser, toSafeUser } from "./repository";
+import { toCredentialUser, toSafeUser, userMutationFailure } from "./repository";
 import type { UserWithRoleRow } from "@/lib/supabase/database.types";
 
 const row = {
@@ -34,6 +34,16 @@ describe("user repository mappers", () => {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     });
+  });
+
+  it("maps authoritative username normalization failures to a safe 400", () => {
+    expect(() => userMutationFailure("create user", {
+      code: "22023",
+      message: "INVALID_USERNAME_COMPONENT",
+    })).toThrowError(expect.objectContaining({
+      code: "INVALID_USERNAME_COMPONENT",
+      status: 400,
+    }));
   });
 
   it("adds credential state only to the internal mapper", () => {

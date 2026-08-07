@@ -1,12 +1,12 @@
 import type { SessionRepository } from "@/lib/auth/repository-contracts";
 import type { SessionWithUser } from "@/lib/auth/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import type { SessionRow, UserWithRoleRow } from "@/lib/supabase/database.types";
-import { toSafeUser } from "@/lib/users/repository";
+import type { SessionRow } from "@/lib/supabase/database.types";
+import { toSafeUser, type SafeUserRow } from "@/lib/users/repository";
 
-type SessionJoinRow = SessionRow & { user: UserWithRoleRow };
+type SessionJoinRow = SessionRow & { user: SafeUserRow };
 
-const SESSION_SELECT = "id,user_id,token_hash,expires_at,revoked_at,last_seen_at,created_at,user:users!sessions_user_id_fkey(id,first_name,last_name,username,password_hash,role_id,is_active,failed_login_attempts,locked_until,last_login_at,password_changed_at,created_by,created_at,updated_at,role:roles!users_role_id_fkey(id,name))";
+const SESSION_SELECT = "id,user_id,expires_at,revoked_at,last_seen_at,created_at,user:users!sessions_user_id_fkey(id,first_name,last_name,username,is_active,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name))";
 
 const fail = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";

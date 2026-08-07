@@ -31,4 +31,4 @@ const result = await bootstrapOwner(parseBootstrapOwnerEnv(process.env), {
   },
 });
 
-console.log(`Owner creado correctamente. Usuario: ${result.username}`);
+console.log(result.username);

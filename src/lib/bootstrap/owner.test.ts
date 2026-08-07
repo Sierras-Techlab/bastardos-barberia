@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { bootstrapOwner, parseBootstrapOwnerEnv } from "./owner";
 
 describe("owner bootstrap", () => {
+  it("rejects missing bootstrap environment values", () => {
+    expect(() => parseBootstrapOwnerEnv({})).toThrow();
+  });
+
   it("reads and validates the dedicated environment values", () => {
     expect(parseBootstrapOwnerEnv({
       BOOTSTRAP_OWNER_FIRST_NAME: "Ada",

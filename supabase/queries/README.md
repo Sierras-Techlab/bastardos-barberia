@@ -9,6 +9,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 3. `003_sessions.sql`
 4. `004_functions_and_triggers.sql`
 5. `005_security.sql`
+6. `006_atomic_auth_guards.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 

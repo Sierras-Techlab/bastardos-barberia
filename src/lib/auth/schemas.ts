@@ -1,11 +1,15 @@
 import { z } from "zod";
 
 export const roleIdSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
-const nameSchema = z.string().trim().min(1).max(80);
+const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u;
+const nameSchema = z.string().trim().min(1).max(80).refine(
+  (value) => LETTER_OR_NUMBER.test(value),
+  "El nombre debe contener letras o n\u00fameros.",
+);
 const newPasswordSchema = z.string().min(10).max(128);
 
 export const loginSchema = z.object({
-  username: z.string().trim().min(3).max(120).transform((value) => value.toLowerCase()),
+  username: z.string().trim().min(3).max(255).transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(128),
 });
 

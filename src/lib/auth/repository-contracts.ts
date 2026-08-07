@@ -32,7 +32,7 @@ export interface UserRepository {
   list(query: UserListQuery): Promise<PaginatedUsers>;
   create(input: NewUserRecord): Promise<SafeUser>;
   update(id: string, changes: UserRecordChanges): Promise<SafeUser | null>;
-  recordFailedLogin(id: string, attempts: number, lockedUntil: string | null): Promise<void>;
+  recordFailedLogin(id: string, maxAttempts: number, attemptedAt: string, lockedUntil: string): Promise<void>;
   recordSuccessfulLogin(id: string, at: string): Promise<void>;
   countActiveOwners(): Promise<number>;
   countUsers(): Promise<number>;

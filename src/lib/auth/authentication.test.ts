@@ -63,6 +63,7 @@ describe("login", () => {
     expect(deps.users.recordFailedLogin).toHaveBeenCalledWith(
       user.id,
       5,
+      "2026-08-07T12:00:00.000Z",
       "2026-08-07T12:15:00.000Z",
     );
   });

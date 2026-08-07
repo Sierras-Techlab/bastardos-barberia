@@ -34,7 +34,7 @@ begin
   last_component := public.normalize_username_component(new.last_name);
 
   if first_component = '' or last_component = '' then
-    raise exception using message = 'Names cannot produce an empty username';
+    raise exception using errcode = '22023', message = 'INVALID_USERNAME_COMPONENT';
   end if;
 
   base_username := first_component || '.' || last_component;

@@ -45,11 +45,12 @@ export const login = async (
   }
 
   if (!passwordMatches) {
-    const attempts = user.failedLoginAttempts + 1;
-    const lockedUntil = attempts >= MAX_FAILED_LOGIN_ATTEMPTS
-      ? new Date(now.getTime() + LOGIN_LOCK_DURATION_MS).toISOString()
-      : null;
-    await dependencies.users.recordFailedLogin(user.id, attempts, lockedUntil);
+    await dependencies.users.recordFailedLogin(
+      user.id,
+      MAX_FAILED_LOGIN_ATTEMPTS,
+      now.toISOString(),
+      new Date(now.getTime() + LOGIN_LOCK_DURATION_MS).toISOString(),
+    );
     throw invalidCredentialsError();
   }
 

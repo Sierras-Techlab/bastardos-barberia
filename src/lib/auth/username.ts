@@ -1,7 +1,7 @@
 const COMBINING_MARKS = /[\u0300-\u036f]/g;
 const NON_ALPHANUMERIC = /[^a-z0-9]+/g;
 
-const normalizeComponent = (value: string) =>
+export const normalizeUsernameComponent = (value: string) =>
   value
     .trim()
     .normalize("NFD")
@@ -10,8 +10,8 @@ const normalizeComponent = (value: string) =>
     .replace(NON_ALPHANUMERIC, "");
 
 export const normalizeUsername = (firstName: string, lastName: string) => {
-  const first = normalizeComponent(firstName);
-  const last = normalizeComponent(lastName);
+  const first = normalizeUsernameComponent(firstName);
+  const last = normalizeUsernameComponent(lastName);
 
   if (!first || !last) {
     throw new Error("El nombre y el apellido deben contener letras o números.");

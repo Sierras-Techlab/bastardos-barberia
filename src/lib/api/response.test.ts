@@ -25,6 +25,23 @@ describe("API responses", () => {
     expect((await response.json()).error.fields.name).toBeDefined();
   });
 
+  it("keeps object-level validation details", async () => {
+    const issue = z.object({ name: z.string().optional() }).refine((value) => value.name, {
+      message: "Debe indicar al menos un cambio.",
+    }).safeParse({});
+    if (issue.success) throw new Error("Expected invalid fixture");
+    const response = errorResponse(issue.error);
+    expect((await response.json()).error.fields._form).toEqual(["Debe indicar al menos un cambio."]);
+  });
+
+  it("maps malformed JSON to a safe 400 response", async () => {
+    const response = errorResponse(new SyntaxError("Unexpected token"));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: "INVALID_JSON", message: "El cuerpo de la solicitud no contiene JSON v\u00e1lido." },
+    });
+  });
+
   it("sanitizes unexpected failures", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const response = errorResponse(new Error("database secret"));
