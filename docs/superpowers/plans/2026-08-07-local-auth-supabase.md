@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 16.3, React 19.2, TypeScript 5, Supabase PostgreSQL/PostgREST, Supabase JS, node-rs Argon2, Zod 4, Vitest 4.
 
+**Delivery status (2026-08-07):** All repository implementation tasks below are complete. Manual execution against the target Supabase project remains an external operator step; the original checklist is retained as the implementation record.
+
 ## Global Constraints
 
 - No Supabase Auth or browser access to the Supabase secret.
@@ -21,7 +23,7 @@
 
 ### Task 1: Dependencies, environment, and SQL
 
-**Files:** Modify package manifests and `.gitignore`; create `.env.example` and `supabase/queries/001` through `005` plus README.
+**Files:** Modify package manifests and `.gitignore`; create `.env.example` and `supabase/queries/001` through `006` plus README.
 
 **Interfaces:** Produces roles, users, sessions, triggers, stable role IDs, and environment contract.
 
@@ -29,7 +31,7 @@
 - [ ] Read complete local Next.js guides for Route Handlers, cookies, auth, Proxy, and async params.
 - [ ] Add empty Supabase URL/secret, app URL, and three bootstrap owner values to `.env.example`; allow it through `.gitignore`.
 
-- [ ] Write SQL enabling pgcrypto/unaccent; exact approved tables/indexes; normalized username trigger with advisory lock and suffix loop; timestamp trigger; RLS/revokes/service-role grants.
+- [ ] Write SQL enabling pgcrypto/unaccent; exact approved tables/indexes; normalized username trigger with advisory lock and suffix loop; timestamp trigger; atomic lockout/final-owner functions; RLS/revokes/service-role grants.
 - [ ] Document execution order and verification queries for role seeds and `pg_tables.rowsecurity`.
 - [ ] Run `npm test` and `git diff --check`; commit `feat(database): add local auth schema scripts`.
 

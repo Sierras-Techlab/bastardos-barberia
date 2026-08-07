@@ -55,6 +55,8 @@ Administrative invariants are:
 
 The database generates usernames; administrators never choose them. It trims names, lowercases them, removes accents with PostgreSQL `unaccent`, removes remaining non-ASCII alphanumeric characters from each part, and joins the parts with a period.
 
+The application rejects values without any Unicode letter or number as an early usability check. PostgreSQL remains authoritative for transliteration; a value that still normalizes to an empty component is returned as a safe 400 validation error.
+
 - `Juan` + `Pérez` becomes `juan.perez`.
 - `María` + `De la Cruz` becomes `maria.delacruz`.
 - A second `Juan Pérez` becomes `juan.perez2`, then `juan.perez3`.
@@ -105,6 +107,8 @@ Stable IDs are owner `1`, admin `2`, and employee `3`.
 | `created_at` | `timestamptz` | Defaults to `now()` |
 
 Indexes support username lookup, user filtering, token lookup, and expired-session cleanup. RLS is enabled on all tables; `anon` and `authenticated` receive no table privileges or policies. Trigger functions use an empty search path and schema-qualified objects.
+
+Failed-login increments and final-owner profile transitions run in locked database functions. This keeps the five-attempt lockout and the requirement for one active owner correct even when concurrent requests pass application-level checks at the same time.
 
 ## API Contract
 
