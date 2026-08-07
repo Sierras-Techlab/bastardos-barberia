@@ -1,0 +1,153 @@
+{
+  "currentUser": {
+    "id": "employee-lautaro",
+    "firstName": "Lautaro",
+    "lastName": "Bastardos",
+    "role": "owner"
+  },
+  "employees": [
+    {
+      "id": "employee-lautaro",
+      "firstName": "Lautaro",
+      "lastName": "Bastardos"
+    },
+    {
+      "id": "employee-fer",
+      "firstName": "Fernanda",
+      "lastName": "Pérez"
+    }
+  ],
+  "customers": [
+    {
+      "id": "customer-tomas-pereyra",
+      "firstName": "Tomás",
+      "lastName": "Pereyra"
+    },
+    {
+      "id": "customer-juan-cruz",
+      "firstName": "Juan Cruz",
+      "lastName": "Gómez"
+    },
+    {
+      "id": "customer-martin-suarez",
+      "firstName": "Martín",
+      "lastName": "Suárez"
+    },
+    {
+      "id": "customer-lucas-romero",
+      "firstName": "Lucas",
+      "lastName": "Romero"
+    },
+    {
+      "id": "customer-nicolas-arias",
+      "firstName": "Nicolás",
+      "lastName": "Arias"
+    },
+    {
+      "id": "customer-franco-luna",
+      "firstName": "Franco",
+      "lastName": "Luna"
+    },
+    {
+      "id": "customer-agustin-ramos",
+      "firstName": "Agustín",
+      "lastName": "Ramos"
+    },
+    {
+      "id": "customer-mateo-ferreyra",
+      "firstName": "Mateo",
+      "lastName": "Ferreyra"
+    }
+  ],
+  "services": [
+    {
+      "id": "service-haircut-eyebrows",
+      "name": "Corte de pelo y perfilado de cejas",
+      "price": 16000
+    },
+    {
+      "id": "service-beard",
+      "name": "Barba",
+      "price": 13000
+    },
+    {
+      "id": "service-complete",
+      "name": "Corte, perfilado y barba",
+      "price": 19000
+    }
+  ],
+  "products": [
+    {
+      "id": "product-hunter-cream",
+      "name": "Hunter Cream",
+      "price": 30000,
+      "stock": 8
+    },
+    {
+      "id": "product-skala-cream",
+      "name": "Skala Cream",
+      "price": 7500,
+      "stock": 14
+    },
+    {
+      "id": "product-shampoo-acondicionador",
+      "name": "Shampoo + acondicionador",
+      "price": 5900,
+      "stock": 11
+    },
+    {
+      "id": "product-acondicionador",
+      "name": "Acondicionador",
+      "price": 3900,
+      "stock": 9
+    },
+    {
+      "id": "product-mascara-capilar",
+      "name": "Máscara capilar",
+      "price": 3900,
+      "stock": 6
+    },
+    {
+      "id": "product-mousse",
+      "name": "Mousse",
+      "price": 16900,
+      "stock": 5
+    },
+    {
+      "id": "product-perfume",
+      "name": "Perfume",
+      "price": 10900,
+      "stock": 7
+    },
+    {
+      "id": "product-beard-oil",
+      "name": "Aceite para barba",
+      "price": 8900,
+      "stock": 10
+    },
+    {
+      "id": "product-matizador",
+      "name": "Matizador",
+      "price": 7900,
+      "stock": 4
+    },
+    {
+      "id": "product-cream-beauty",
+      "name": "Crema Beauty",
+      "price": 4900,
+      "stock": 12
+    },
+    {
+      "id": "product-hair-wax",
+      "name": "Cera para pelo",
+      "price": 11900,
+      "stock": 16
+    },
+    {
+      "id": "product-gel",
+      "name": "Gel",
+      "price": 9900,
+      "stock": 13
+    }
+  ]
+}

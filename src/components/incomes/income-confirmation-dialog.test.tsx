@@ -1,0 +1,60 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+
+import incomeFormMock from "@/data/income-form.mock.json";
+import type { IncomeFormValues } from "@/lib/incomes/income-schema";
+import type { IncomeFormData } from "@/types/income";
+import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
+
+const data = incomeFormMock as IncomeFormData;
+const values: IncomeFormValues = {
+  employeeId: "employee-lautaro",
+  customerId: null,
+  serviceId: "service-haircut-eyebrows",
+  products: [{ productId: "product-hair-wax", quantity: 2 }],
+  paymentMethod: "cash",
+};
+
+it("reviews the exact draft before allowing confirmation", async () => {
+  const onBack = vi.fn();
+  const onConfirm = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <IncomeConfirmationDialog
+      open
+      values={values}
+      data={data}
+      pending={false}
+      onBack={onBack}
+      onConfirm={onConfirm}
+    />,
+  );
+
+  expect(screen.getByRole("dialog", { name: /confirmar ingreso/i })).toBeVisible();
+  expect(screen.getByText("Corte de pelo y perfilado de cejas")).toBeVisible();
+  expect(screen.getByText("Cera para pelo × 2")).toBeVisible();
+  expect(screen.getByText(/39\.800/)).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: /volver y editar/i }));
+  expect(onBack).toHaveBeenCalledOnce();
+
+  await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
+  expect(onConfirm).toHaveBeenCalledOnce();
+});
+
+it("locks confirmation actions while the income is pending", () => {
+  render(
+    <IncomeConfirmationDialog
+      open
+      values={values}
+      data={data}
+      pending
+      onBack={vi.fn()}
+      onConfirm={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: /volver y editar/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /registrando ingreso/i })).toBeDisabled();
+});

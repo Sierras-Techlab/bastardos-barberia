@@ -1,0 +1,36 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+
+import type { Income } from "@/types/income";
+import { IncomeSuccessState } from "./income-success-state";
+
+const income: Income = {
+  id: "income-1",
+  employeeId: "employee-1",
+  customerId: null,
+  serviceId: "service-1",
+  products: [],
+  paymentMethod: "cash",
+  total: 16000,
+  createdAt: "2026-08-07T12:00:00.000Z",
+};
+
+it("shows the created amount and both next actions", async () => {
+  const onReset = vi.fn();
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  const user = userEvent.setup();
+  render(<IncomeSuccessState income={income} onReset={onReset} />);
+
+  expect(screen.getByRole("heading", { name: /ingreso registrado/i })).toBeVisible();
+  expect(screen.getByText(/16\.000/)).toBeVisible();
+  expect(screen.getByRole("link", { name: /volver al dashboard/i })).toHaveAttribute(
+    "href",
+    "/",
+  );
+
+  await user.click(screen.getByRole("button", { name: /cargar otro ingreso/i }));
+  expect(onReset).toHaveBeenCalledOnce();
+  expect(consoleError).not.toHaveBeenCalled();
+  consoleError.mockRestore();
+});
