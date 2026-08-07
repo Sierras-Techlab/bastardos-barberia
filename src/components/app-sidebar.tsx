@@ -1,9 +1,14 @@
+"use client";
+
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   CircleDollarSign,
   CreditCard,
   LayoutDashboard,
+  LogOut,
   Package,
   ReceiptText,
   Scissors,
@@ -12,6 +17,8 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+
+import type { SafeUser } from "@/lib/auth/types";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -27,12 +34,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-
-const currentUser = {
-  name: "Lautaro",
-  initials: "LB",
-  role: "owner" as const,
-};
 
 const operationNavigation = [
   { label: "Inicio", icon: LayoutDashboard, active: true },
@@ -51,7 +52,25 @@ const administrationNavigation = [
   { label: "Negocio", icon: Store },
 ];
 
-export const AppSidebar = () => {
+const roleLabels = { owner: "Due\u00f1o", admin: "Administrador", employee: "Empleado" } as const;
+
+export const AppSidebar = ({ user }: { user: SafeUser }) => {
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const name = `${user.firstName} ${user.lastName}`;
+  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
+  const canManage = user.role.name === "owner" || user.role.name === "admin";
+
+  const logOut = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 pt-6">
@@ -95,7 +114,7 @@ export const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {currentUser.role === "owner" && (
+        {canManage && (
           <SidebarGroup className="px-3 py-2">
             <SidebarGroupLabel className="text-sidebar-foreground/40">
               Administración
@@ -124,20 +143,31 @@ export const AppSidebar = () => {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              tooltip={currentUser.name}
+              tooltip={name}
               className="rounded-2xl bg-sidebar-accent px-3"
             >
               <Avatar size="sm">
                 <AvatarFallback className="bg-primary font-semibold text-primary-foreground">
-                  {currentUser.initials}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               <span className="flex min-w-0 flex-col gap-0.5 leading-none">
-                <span className="truncate font-medium">{currentUser.name}</span>
+                <span className="truncate font-medium">{name}</span>
                 <span className="truncate text-xs font-normal text-sidebar-foreground/45">
-                  Dueño
+                  {roleLabels[user.role.name]}
                 </span>
               </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip={"Cerrar sesi\u00f3n"}
+              onClick={logOut}
+              disabled={isLoggingOut}
+              className="rounded-xl px-3 text-sidebar-foreground/65"
+            >
+              <LogOut />
+              <span>{isLoggingOut ? "Saliendo..." : "Cerrar sesi\u00f3n"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -9,7 +9,8 @@ type SessionJoinRow = SessionRow & { user: UserWithRoleRow };
 const SESSION_SELECT = "id,user_id,token_hash,expires_at,revoked_at,last_seen_at,created_at,user:users!sessions_user_id_fkey(id,first_name,last_name,username,password_hash,role_id,is_active,failed_login_attempts,locked_until,last_login_at,password_changed_at,created_by,created_at,updated_at,role:roles!users_role_id_fkey(id,name))";
 
 const fail = (operation: string, error: unknown): never => {
-  console.error(`Database operation failed: ${operation}`, error);
+  const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
+  console.error(`Database operation failed: ${operation} (${code})`);
   throw new Error("No se pudo completar la operación en la base de datos.");
 };
 

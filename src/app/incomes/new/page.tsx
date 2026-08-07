@@ -14,6 +14,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import incomeFormMock from "@/data/income-form.mock.json";
 import type { IncomeFormData } from "@/types/income";
+import { requirePageUser } from "@/lib/auth/authorization";
 
 export const metadata: Metadata = {
   title: "Cargar ingreso",
@@ -22,10 +23,13 @@ export const metadata: Metadata = {
 
 const incomeFormData = incomeFormMock as IncomeFormData;
 
-const NewIncomePage = () => (
+const NewIncomePage = async () => {
+  const { user } = await requirePageUser();
+
+  return (
   <TooltipProvider>
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar user={user} />
       <SidebarInset className="min-h-svh bg-[#f1f0ed] xl:my-3 xl:mr-3 xl:min-h-[calc(100svh-1.5rem)] xl:rounded-[2rem]">
         <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]">
           <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-4 px-5 md:px-7 xl:px-8">
@@ -74,6 +78,7 @@ const NewIncomePage = () => (
       </SidebarInset>
     </SidebarProvider>
   </TooltipProvider>
-);
+  );
+};
 
 export default NewIncomePage;

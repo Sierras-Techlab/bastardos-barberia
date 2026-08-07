@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "bootstrap:owner": "tsx --env-file=.env scripts/bootstrap-owner.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
