@@ -161,7 +161,7 @@ Each script is ordered, documented, schema-qualified, and idempotent where Postg
 - `src/lib/users/service.ts`: user lifecycle rules.
 - `src/app/api/**/route.ts`: thin HTTP adapters.
 - `src/proxy.ts`: optimistic redirects only.
-- `scripts/bootstrap-owner.mjs`: controlled first-owner creation.
+- `scripts/bootstrap-owner.ts`: controlled first-owner creation that reuses the application password service.
 
 No unit combines HTTP parsing, password handling, persistence, and authorization.
 
