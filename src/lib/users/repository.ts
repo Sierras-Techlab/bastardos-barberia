@@ -164,6 +164,7 @@ export const userRepository: UserRepository = {
       .from("users")
       .update(values)
       .eq("id", id)
+      .is("deleted_at", null)
       .select(SAFE_USER_SELECT)
       .maybeSingle();
     if (error) databaseFailure("update user", error);

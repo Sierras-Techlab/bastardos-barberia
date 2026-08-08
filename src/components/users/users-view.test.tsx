@@ -6,7 +6,7 @@ import type { PaginatedUsers, Role, SafeUser } from "@/lib/auth/types";
 import { AdminApiError } from "@/lib/users/client";
 
 const {
-  replace,
+  router,
   listAdminRoles,
   listAdminUsers,
   createAdminUser,
@@ -15,7 +15,7 @@ const {
   setAdminUserActive,
   deleteAdminUser,
 } = vi.hoisted(() => ({
-  replace: vi.fn(),
+  router: { replace: vi.fn() },
   listAdminRoles: vi.fn(),
   listAdminUsers: vi.fn(),
   createAdminUser: vi.fn(),
@@ -26,7 +26,7 @@ const {
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => router,
 }));
 
 vi.mock("@/lib/users/client", async (importOriginal) => {
@@ -83,6 +83,15 @@ const page: PaginatedUsers = {
   totalPages: 1,
 };
 
+const openActions = async (
+  browser: ReturnType<typeof userEvent.setup>,
+  name: RegExp,
+) => {
+  const trigger = screen.getByRole("button", { name });
+  trigger.focus();
+  await browser.keyboard("{ArrowDown}");
+};
+
 describe("UsersView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -122,6 +131,29 @@ describe("UsersView", () => {
     expect(screen.getByRole("button", { name: "Restablecer filtros" })).toBeVisible();
   });
 
+  it("blocks user forms and retries when the role catalog fails", async () => {
+    const browser = userEvent.setup();
+    listAdminRoles
+      .mockRejectedValueOnce(new AdminApiError(
+        500,
+        "INTERNAL_ERROR",
+        "No pudimos cargar los roles.",
+      ))
+      .mockResolvedValueOnce(roles);
+
+    render(<UsersView currentUser={owner} />);
+
+    expect(await screen.findByText("No pudimos cargar los roles.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Nuevo usuario" })).toBeDisabled();
+
+    await browser.click(screen.getByRole("button", { name: "Reintentar roles" }));
+
+    await waitFor(() => {
+      expect(listAdminRoles).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: "Nuevo usuario" })).toBeEnabled();
+    });
+  });
+
   it("creates a user and reveals the generated username", async () => {
     const browser = userEvent.setup();
     createAdminUser.mockResolvedValue({
@@ -156,10 +188,11 @@ describe("UsersView", () => {
     updateAdminUser.mockResolvedValue({ ...employee, firstName: "Luz" });
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@lucia.ferreyra");
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Nuevo usuario" })).toBeEnabled();
+    });
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Lucía Ferreyra" }),
-    );
+    await openActions(browser, /Acciones de Luc/);
     await browser.click(screen.getByRole("menuitem", { name: "Editar datos" }));
 
     expect(screen.getByLabelText("Usuario")).toHaveValue("lucia.ferreyra");
@@ -181,9 +214,7 @@ describe("UsersView", () => {
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@lucia.ferreyra");
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Lucía Ferreyra" }),
-    );
+    await openActions(browser, /Acciones de Luc/);
     await browser.click(
       screen.getByRole("menuitem", { name: "Cambiar contraseña" }),
     );
@@ -225,9 +256,7 @@ describe("UsersView", () => {
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@lucia.ferreyra");
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Lucía Ferreyra" }),
-    );
+    await openActions(browser, /Acciones de Luc/);
     await browser.click(
       screen.getByRole("menuitem", { name: "Desactivar usuario" }),
     );
@@ -241,6 +270,9 @@ describe("UsersView", () => {
     await waitFor(() => {
       expect(setAdminUserActive).toHaveBeenCalledWith(employee.id, false);
     });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Usuario desactivado.",
+    );
   });
 
   it("reactivates an inactive user", async () => {
@@ -251,9 +283,7 @@ describe("UsersView", () => {
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@lucia.ferreyra");
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Lucía Ferreyra" }),
-    );
+    await openActions(browser, /Acciones de Luc/);
     await browser.click(
       screen.getByRole("menuitem", { name: "Activar usuario" }),
     );
@@ -272,9 +302,7 @@ describe("UsersView", () => {
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@lucia.ferreyra");
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Lucía Ferreyra" }),
-    );
+    await openActions(browser, /Acciones de Luc/);
     await browser.click(
       screen.getByRole("menuitem", { name: "Eliminar usuario" }),
     );
@@ -291,21 +319,154 @@ describe("UsersView", () => {
     });
   });
 
-  it("disables destructive controls for the current manager", async () => {
+  it("returns to the nearest valid page after deleting its final row", async () => {
+    const browser = userEvent.setup();
+    let deleted = false;
+    deleteAdminUser.mockImplementation(async () => {
+      deleted = true;
+      return { id: employee.id };
+    });
+    listAdminUsers.mockImplementation(async ({ page: requestedPage }) => {
+      if (requestedPage === 2 && !deleted) {
+        return {
+          items: [employee],
+          page: 2,
+          pageSize: 20,
+          total: 21,
+          totalPages: 2,
+        };
+      }
+      if (requestedPage === 2) {
+        return {
+          items: [],
+          page: 2,
+          pageSize: 20,
+          total: 20,
+          totalPages: 1,
+        };
+      }
+      return {
+        items: [owner],
+        page: 1,
+        pageSize: 20,
+        total: deleted ? 20 : 21,
+        totalPages: deleted ? 1 : 2,
+      };
+    });
+
+    render(<UsersView currentUser={owner} />);
+    await screen.findByText("@ana.garcia");
+    await browser.click(screen.getByRole("button", { name: "Siguiente" }));
+    await screen.findByText("@lucia.ferreyra");
+
+    await openActions(browser, /Acciones de Luc/);
+    await browser.click(
+      screen.getByRole("menuitem", { name: "Eliminar usuario" }),
+    );
+    await browser.click(
+      screen.getByRole("button", { name: "Eliminar usuario" }),
+    );
+
+    expect(await screen.findByText("@ana.garcia")).toBeVisible();
+    expect(listAdminUsers).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1 }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("returns to the nearest valid page after a filtered status mutation", async () => {
+    const browser = userEvent.setup();
+    let deactivated = false;
+    setAdminUserActive.mockImplementation(async () => {
+      deactivated = true;
+      return { ...employee, isActive: false };
+    });
+    listAdminUsers.mockImplementation(async ({ page: requestedPage, status }) => {
+      if (status !== "active") return page;
+      if (requestedPage === 2 && !deactivated) {
+        return {
+          items: [employee],
+          page: 2,
+          pageSize: 20,
+          total: 21,
+          totalPages: 2,
+        };
+      }
+      if (requestedPage === 2) {
+        return {
+          items: [],
+          page: 2,
+          pageSize: 20,
+          total: 20,
+          totalPages: 1,
+        };
+      }
+      return {
+        items: [owner],
+        page: 1,
+        pageSize: 20,
+        total: deactivated ? 20 : 21,
+        totalPages: deactivated ? 1 : 2,
+      };
+    });
+
+    render(<UsersView currentUser={owner} />);
+    await screen.findByText("@lucia.ferreyra");
+    await browser.selectOptions(screen.getByLabelText("Estado"), "active");
+    await waitFor(() => {
+      expect(listAdminUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, status: "active" }),
+        expect.any(AbortSignal),
+      );
+    });
+    await browser.click(screen.getByRole("button", { name: "Siguiente" }));
+    await screen.findByText("@lucia.ferreyra");
+    await openActions(browser, /Acciones de Luc/);
+    await browser.click(
+      screen.getByRole("menuitem", { name: "Desactivar usuario" }),
+    );
+    await browser.click(
+      screen.getByRole("button", { name: "Desactivar usuario" }),
+    );
+
+    expect(await screen.findByText("@ana.garcia")).toBeVisible();
+    expect(listAdminUsers).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, status: "active" }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("closes the action menu with Escape and restores trigger focus", async () => {
+    const browser = userEvent.setup();
+    render(<UsersView currentUser={owner} />);
+    await screen.findByText("@lucia.ferreyra");
+
+    const trigger = screen.getByRole("button", { name: /Acciones de Luc/ });
+    trigger.focus();
+    await browser.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "Editar datos" })).toBeVisible();
+
+    await browser.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menuitem", { name: "Editar datos" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("keeps self restrictions focusable and explains them accessibly", async () => {
     const browser = userEvent.setup();
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@ana.garcia");
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Ana García" }),
-    );
+    await openActions(browser, /Acciones de Ana/);
 
-    expect(
-      screen.getByRole("menuitem", { name: "Desactivar usuario" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("menuitem", { name: "Eliminar usuario" }),
-    ).toBeDisabled();
+    const deactivate = screen.getByRole("menuitem", { name: "Desactivar usuario" });
+    const remove = screen.getByRole("menuitem", { name: "Eliminar usuario" });
+    expect(deactivate).toHaveAttribute("aria-disabled", "true");
+    expect(deactivate).not.toBeDisabled();
+    expect(deactivate).toHaveAccessibleDescription(/propia cuenta/);
+    expect(remove).toHaveAttribute("aria-disabled", "true");
+    expect(remove).not.toBeDisabled();
+    expect(remove).toHaveAccessibleDescription(/propia cuenta/);
   });
 
   it("keeps final-owner errors visible in the confirmation", async () => {
@@ -320,9 +481,7 @@ describe("UsersView", () => {
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@lucia.ferreyra");
 
-    await browser.click(
-      screen.getByRole("button", { name: "Acciones de Lucía Ferreyra" }),
-    );
+    await openActions(browser, /Acciones de Luc/);
     await browser.click(
       screen.getByRole("menuitem", { name: "Eliminar usuario" }),
     );

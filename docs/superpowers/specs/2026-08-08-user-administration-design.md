@@ -172,7 +172,7 @@ New endpoint:
 
 Successful deletion returns HTTP `200` with `{ data: { id: string } }`. Stable errors include:
 
-- `401 UNAUTHORIZED`
+- `401 UNAUTHENTICATED`
 - `403 FORBIDDEN`
 - `404 USER_NOT_FOUND`
 - `409 CANNOT_DELETE_SELF`

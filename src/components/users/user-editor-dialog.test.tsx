@@ -1,0 +1,44 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import type { Role } from "@/lib/auth/types";
+import { UserEditorDialog } from "./user-editor-dialog";
+
+const roles: Role[] = [
+  { id: 1, name: "owner" },
+  { id: 2, name: "admin" },
+  { id: 3, name: "employee" },
+];
+
+describe("UserEditorDialog", () => {
+  it("clears the plaintext password as soon as creation succeeds", async () => {
+    const browser = userEvent.setup();
+    const onCreate = vi.fn(async () => true);
+
+    render(
+      <UserEditorDialog
+        mode="create"
+        user={null}
+        roles={roles}
+        createdUser={null}
+        pending={false}
+        error={null}
+        onClose={vi.fn()}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    await browser.type(screen.getByLabelText("Nombre"), "Lucia");
+    await browser.type(screen.getByLabelText("Apellido"), "Ferreyra");
+    await browser.type(
+      screen.getByLabelText(/Contrase.a inicial/),
+      "Bastardos-2026",
+    );
+    await browser.click(screen.getByRole("button", { name: "Crear usuario" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
+    expect(screen.getByLabelText(/Contrase.a inicial/)).toHaveValue("");
+  });
+});

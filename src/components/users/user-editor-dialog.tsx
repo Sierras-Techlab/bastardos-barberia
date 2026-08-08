@@ -25,7 +25,7 @@ type UserEditorDialogProps = {
   pending: boolean;
   error: string | null;
   onClose: () => void;
-  onCreate: (input: CreateUserInput) => Promise<void>;
+  onCreate: (input: CreateUserInput) => Promise<boolean>;
   onUpdate: (changes: UpdateUserInput) => Promise<void>;
 };
 
@@ -64,12 +64,13 @@ export const UserEditorDialog = ({
         setValidationError("La contraseña debe tener al menos 10 caracteres.");
         return;
       }
-      await onCreate({
+      const created = await onCreate({
         firstName: cleanFirstName,
         lastName: cleanLastName,
         roleId,
         password,
       });
+      if (created) setPassword("");
       return;
     }
 
@@ -165,6 +166,7 @@ export const UserEditorDialog = ({
               <label className="space-y-1.5 text-sm font-medium sm:col-span-2">
                 Rol del usuario
                 <select
+                  disabled={roles.length === 0}
                   value={String(roleId)}
                   onChange={(event) => setRoleId(Number(event.target.value) as 1 | 2 | 3)}
                   className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
@@ -205,7 +207,7 @@ export const UserEditorDialog = ({
               <Button type="button" variant="outline" disabled={pending} onClick={onClose} className="h-10 rounded-xl">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={pending} className="h-10 rounded-xl">
+              <Button type="submit" disabled={pending || roles.length === 0} className="h-10 rounded-xl">
                 {pending && <LoaderCircle className="animate-spin" />}
                 {pending
                   ? "Guardando..."

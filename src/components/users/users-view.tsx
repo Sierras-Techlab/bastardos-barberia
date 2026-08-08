@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  CheckCircle2,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -69,6 +70,9 @@ const LoadingList = () => (
 export const UsersView = ({ currentUser }: UsersViewProps) => {
   const router = useRouter();
   const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  const [rolesReloadKey, setRolesReloadKey] = useState(0);
   const [filters, setFilters] = useState(initialFilters);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
@@ -84,6 +88,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   const [confirmUser, setConfirmUser] = useState<SafeUser | null>(null);
   const [mutationPending, setMutationPending] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(
@@ -94,16 +99,36 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   }, [filters.search]);
 
   useEffect(() => {
+    let active = true;
     listAdminRoles()
-      .then(setRoles)
+      .then((result) => {
+        if (!active) return;
+        setRoles(result);
+        setRolesError(null);
+      })
       .catch((error: unknown) => {
+        if (!active) return;
         if (error instanceof AdminApiError && error.status === 401) {
           router.replace("/login");
         } else if (error instanceof AdminApiError && error.status === 403) {
           router.replace("/");
+        } else {
+          setRoles([]);
+          setRolesError(
+            error instanceof Error
+              ? error.message
+              : "No pudimos cargar los roles.",
+          );
         }
+      })
+      .finally(() => {
+        if (active) setRolesLoading(false);
       });
-  }, [router]);
+
+    return () => {
+      active = false;
+    };
+  }, [rolesReloadKey, router]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,6 +143,12 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
       status: filters.status,
     }, controller.signal)
       .then((result) => {
+        const nearestPage = Math.max(result.totalPages, 1);
+        if (result.page > nearestPage) {
+          setPageNumber(nearestPage);
+          setLoading(true);
+          return;
+        }
         setPage(result);
         setLoading(false);
       })
@@ -175,6 +206,12 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     setReloadKey((value) => value + 1);
   };
 
+  const reloadRoles = () => {
+    setRolesLoading(true);
+    setRolesError(null);
+    setRolesReloadKey((value) => value + 1);
+  };
+
   const handleMutationError = (error: unknown) => {
     if (error instanceof AdminApiError && error.status === 401) {
       router.replace("/login");
@@ -192,6 +229,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   };
 
   const openCreate = () => {
+    setSuccessNotice(null);
     setEditorUser(null);
     setCreatedUser(null);
     setMutationError(null);
@@ -208,12 +246,15 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   const createUser = async (input: CreateUserInput) => {
     setMutationPending(true);
     setMutationError(null);
+    setSuccessNotice(null);
     try {
       const result = await createAdminUser(input);
       setCreatedUser(result);
       reloadList();
+      return true;
     } catch (error) {
       handleMutationError(error);
+      return false;
     } finally {
       setMutationPending(false);
     }
@@ -226,6 +267,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     try {
       await updateAdminUser(editorUser.id, changes);
       closeEditor();
+      setSuccessNotice("Datos del usuario actualizados.");
       reloadList();
     } catch (error) {
       handleMutationError(error);
@@ -241,6 +283,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     try {
       await resetAdminUserPassword(passwordUser.id, password);
       setPasswordUser(null);
+      setSuccessNotice("Contraseña actualizada.");
       reloadList();
     } catch (error) {
       handleMutationError(error);
@@ -250,6 +293,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   };
 
   const chooseAction = (action: UserAction, user: SafeUser) => {
+    setSuccessNotice(null);
     setMutationError(null);
     if (action === "edit") {
       setEditorUser(user);
@@ -286,6 +330,13 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
           confirmAction === "activate",
         );
       }
+      setSuccessNotice(
+        confirmAction === "delete"
+          ? "Usuario eliminado."
+          : confirmAction === "activate"
+            ? "Usuario activado."
+            : "Usuario desactivado.",
+      );
       closeConfirmation();
       reloadList();
     } catch (error) {
@@ -322,6 +373,8 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
           <Button
             type="button"
             size="lg"
+            disabled={rolesLoading || roles.length === 0}
+            aria-describedby={rolesError ? "roles-load-error" : undefined}
             onClick={openCreate}
             className="h-11 rounded-xl px-4 shadow-lg shadow-red-950/20"
           >
@@ -330,6 +383,40 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
           </Button>
         </div>
       </header>
+
+      {rolesError && (
+        <section
+          id="roles-load-error"
+          role="alert"
+          className="flex flex-col gap-3 rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p>
+            <span className="font-medium">{rolesError}</span>{" "}
+            No se pueden crear ni editar usuarios hasta recuperarlos.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={rolesLoading}
+            onClick={reloadRoles}
+            className="shrink-0 rounded-xl bg-white"
+          >
+            <RefreshCw className={rolesLoading ? "animate-spin" : ""} />
+            Reintentar roles
+          </Button>
+        </section>
+      )}
+
+      {successNotice && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 rounded-[1.2rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900"
+        >
+          <CheckCircle2 className="size-4" />
+          {successNotice}
+        </p>
+      )}
 
       <section aria-label="Resumen de la página" className="grid gap-3 sm:grid-cols-3">
         <div className="flex items-center gap-4 rounded-[1.3rem] border border-black/5 bg-white p-4">

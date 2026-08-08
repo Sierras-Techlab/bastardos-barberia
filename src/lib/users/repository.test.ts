@@ -159,6 +159,28 @@ describe("user repository mappers", () => {
     expect(query.is).toHaveBeenCalledWith("deleted_at", null);
   });
 
+  it("does not update credentials after an account is logically deleted", async () => {
+    const query = {
+      update: vi.fn(),
+      eq: vi.fn(),
+      is: vi.fn(),
+      select: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    query.update.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.select.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await expect(userRepository.update(row.id, {
+      passwordHash: "$argon2id$v=19$new-hash",
+      passwordChangedAt: "2026-08-08T12:00:00.000Z",
+    })).resolves.toBeNull();
+
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
   it("calls the atomic logical-deletion RPC", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: "00000000-0000-4000-8000-000000000002",

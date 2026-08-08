@@ -20,6 +20,7 @@ vi.mock("@/lib/users/service", () => ({
 }));
 
 import { DELETE } from "./route";
+import { unauthenticatedError } from "@/lib/auth/errors";
 
 const targetId = "00000000-0000-4000-8000-000000000002";
 
@@ -42,5 +43,25 @@ describe("/api/admin/users/:id", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ data: { id: targetId } });
     expect(deleteUser).toHaveBeenCalledWith({ id: "manager-id" }, targetId);
+  });
+
+  it("returns the stable authentication error when no manager session exists", async () => {
+    requireManager.mockRejectedValue(unauthenticatedError());
+
+    const response = await DELETE(
+      new Request(`http://localhost/api/admin/users/${targetId}`, {
+        method: "DELETE",
+      }),
+      { params: Promise.resolve({ id: targetId }) },
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "UNAUTHENTICATED",
+        message: "Debés iniciar sesión.",
+      },
+    });
+    expect(deleteUser).not.toHaveBeenCalled();
   });
 });
