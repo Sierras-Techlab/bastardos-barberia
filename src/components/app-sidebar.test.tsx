@@ -1,28 +1,62 @@
 import { render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+
+const { replace, refresh } = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace, refresh }),
+}));
 
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "./app-sidebar";
 
+const employee = {
+  id: "00000000-0000-4000-8000-000000000003",
+  firstName: "Fernanda",
+  lastName: "P\u00e9rez",
+  username: "fernanda.perez",
+  role: { id: 3 as const, name: "employee" as const },
+  isActive: true,
+  lastLoginAt: null,
+  createdAt: "2026-08-07T00:00:00.000Z",
+  updatedAt: "2026-08-07T00:00:00.000Z",
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+});
+
 it("uses the session identity and hides owner navigation from employees", () => {
   render(
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar
-          user={{
-            id: "employee-fer",
-            firstName: "Fernanda",
-            lastName: "Pérez",
-            role: "employee",
-          }}
-        />
+        <AppSidebar user={employee} />
       </SidebarProvider>
     </TooltipProvider>,
   );
 
-  expect(screen.getByText("Fernanda")).toBeVisible();
+  expect(screen.getByText("Fernanda P\u00e9rez")).toBeVisible();
   expect(screen.getByText("Empleado")).toBeVisible();
   expect(screen.queryByText("Administración")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Caja" })).not.toBeInTheDocument();
+});
+
+it("closes the database session and returns to login", async () => {
+  const browser = userEvent.setup();
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={employee} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  await browser.click(screen.getByRole("button", { name: /cerrar sesi/i }));
+
+  expect(fetch).toHaveBeenCalledWith("/api/auth/logout", { method: "POST" });
+  expect(replace).toHaveBeenCalledWith("/login");
+  expect(refresh).toHaveBeenCalledOnce();
 });

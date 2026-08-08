@@ -3,24 +3,23 @@ import type { ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import incomeFormMock from "@/data/income-form.mock.json";
-import type { IncomeFormData } from "@/types/income";
+import { requirePageUser } from "@/lib/auth/authorization";
 
 type IncomesLayoutProps = {
   children: ReactNode;
 };
 
-const currentUser = (incomeFormMock as IncomeFormData).currentUser;
+const IncomesLayout = async ({ children }: IncomesLayoutProps) => {
+  const { user } = await requirePageUser();
 
-const IncomesLayout = ({ children }: IncomesLayoutProps) => (
-  <TooltipProvider>
+  return <TooltipProvider>
     <SidebarProvider>
-      <AppSidebar activeItem="Ingresos" user={currentUser} />
+      <AppSidebar activeItem="Ingresos" user={user} />
       <SidebarInset className="min-h-svh bg-[#f1f0ed] xl:my-3 xl:mr-3 xl:min-h-[calc(100svh-1.5rem)] xl:rounded-[2rem]">
         {children}
       </SidebarInset>
     </SidebarProvider>
-  </TooltipProvider>
-);
+  </TooltipProvider>;
+};
 
 export default IncomesLayout;

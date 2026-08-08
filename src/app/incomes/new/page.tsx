@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import incomeFormMock from "@/data/income-form.mock.json";
 import type { IncomeFormData } from "@/types/income";
+import { requirePageUser } from "@/lib/auth/authorization";
 
 export const metadata: Metadata = {
   title: "Cargar ingreso",
@@ -16,7 +17,10 @@ export const metadata: Metadata = {
 
 const incomeFormData = incomeFormMock as IncomeFormData;
 
-const NewIncomePage = () => (
+const NewIncomePage = async () => {
+  await requirePageUser();
+
+  return (
   <>
     <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]">
           <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-4 px-5 md:px-7 xl:px-8">
@@ -63,6 +67,7 @@ const NewIncomePage = () => (
           <IncomeForm data={incomeFormData} />
     </main>
   </>
-);
+  );
+};
 
 export default NewIncomePage;

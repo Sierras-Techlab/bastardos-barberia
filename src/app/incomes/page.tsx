@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import incomesMock from "@/data/incomes.mock.json";
 import { authorizeIncomeListData } from "@/lib/incomes/income-list";
+import { requirePageUser } from "@/lib/auth/authorization";
 import type { IncomeListData } from "@/types/income";
 
 export const metadata: Metadata = {
@@ -17,7 +18,10 @@ export const metadata: Metadata = {
 
 const incomesData = authorizeIncomeListData(incomesMock as IncomeListData);
 
-const IncomesPage = () => (
+const IncomesPage = async () => {
+  await requirePageUser();
+
+  return (
   <>
     <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]">
           <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-3 px-5 md:px-7 xl:px-8">
@@ -64,6 +68,7 @@ const IncomesPage = () => (
           <IncomesView data={incomesData} />
     </main>
   </>
-);
+  );
+};
 
 export default IncomesPage;
