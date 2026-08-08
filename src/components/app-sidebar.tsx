@@ -43,7 +43,7 @@ const operationNavigation = [
 ];
 
 const administrationNavigation = [
-  { label: "Empleados", icon: UserCog },
+  { label: "Usuarios", icon: UserCog, href: "/users" },
   { label: "Caja", icon: WalletCards },
   { label: "Gastos", icon: ReceiptText },
   { label: "Reportes", icon: BarChart3 },
@@ -140,13 +140,25 @@ export const AppSidebar = ({
               <SidebarMenu>
                 {administrationNavigation.map((item) => (
                   <SidebarMenuItem key={item.label}>
-                    <SidebarMenuButton
-                      tooltip={item.label}
-                      className="h-9 rounded-xl px-3"
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
+                    {item.href ? (
+                      <SidebarMenuButton
+                        render={<Link href={item.href} />}
+                        isActive={activeItem === item.label}
+                        tooltip={item.label}
+                        className="h-9 rounded-xl px-3 data-active:bg-primary data-active:text-primary-foreground"
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton
+                        tooltip={item.label}
+                        className="h-9 rounded-xl px-3"
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

@@ -24,6 +24,15 @@ const employee = {
   updatedAt: "2026-08-07T00:00:00.000Z",
 };
 
+const owner = {
+  ...employee,
+  id: "00000000-0000-4000-8000-000000000001",
+  firstName: "Ana",
+  lastName: "García",
+  username: "ana.garcia",
+  role: { id: 1 as const, name: "owner" as const },
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
@@ -59,4 +68,18 @@ it("closes the database session and returns to login", async () => {
   expect(fetch).toHaveBeenCalledWith("/api/auth/logout", { method: "POST" });
   expect(replace).toHaveBeenCalledWith("/login");
   expect(refresh).toHaveBeenCalledOnce();
+});
+
+it("links managers to the active user administration page", () => {
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={owner} activeItem="Usuarios" />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  const link = screen.getByRole("link", { name: "Usuarios" });
+  expect(link).toHaveAttribute("href", "/users");
+  expect(link).toHaveAttribute("data-active");
 });
