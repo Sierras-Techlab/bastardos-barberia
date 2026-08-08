@@ -4,11 +4,10 @@ Captured: 2026-08-08
 
 ## Repository state
 
-- Current branch: `feat/user-administration` in the isolated `.worktrees/user-administration` worktree.
-- Local branches: 3 (`dev`, `feat/user-administration`, `main`).
+- Current branch: `dev` in the main worktree.
+- Local branches: 2 (`dev`, `main`).
 - Remote branches: 3 real branches (`origin/dev`, `origin/feat/dashboard-ui`, `origin/main`) plus the `origin/HEAD` alias
-- The feature branch starts from local `dev` after the authentication integration and adds the complete user administration module.
-- The feature will be merged back into `dev` only after complete verification and review.
+- User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
 
 ## Current implementation
 
@@ -28,18 +27,18 @@ Captured: 2026-08-08
 - The `/incomes` layout supplies the authenticated user to one persistent sidebar, while both list and new-income leaf pages independently revalidate the live session during client navigation.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy and bootstrap policy.
+- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy and the complete user-management UI lifecycle, including pagination and keyboard access.
 
-## External action still required
+## Database integration state
 
-The repository cannot apply schema changes automatically by design. Existing installations that already ran `001` through `006` must run `007_user_soft_deletion.sql` in Supabase SQL Editor before using delete or the updated user queries. Fresh installations must run all seven ordered scripts documented in `supabase/queries/README.md`.
+The configured Supabase project has migrations `001` through `007` installed. The `deleted_at` and `deleted_by` columns were verified through the server connection and the application session flow is working. No authentication or user-schema action remains for this environment. Fresh installations must still run all seven ordered scripts documented in `supabase/queries/README.md`.
 
 ## Known boundaries
 
 - Employee-specific permissions are intentionally deferred.
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
 - Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
-- End-to-end database verification depends on the manual SQL installation in the target Supabase project.
+- Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
 
 ## Recommended next task
 

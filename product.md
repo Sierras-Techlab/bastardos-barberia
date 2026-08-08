@@ -30,7 +30,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Apply and validate the ordered authentication/user migrations through `007` in the selected Supabase project. Then define the persistent sales and cash domain before replacing dashboard demonstration data.
+Define the persistent sales and cash domain before replacing dashboard demonstration data. Authentication and user administration are implemented, and migrations through `007` are installed and validated in the configured Supabase project.
 
 ## Accepted authentication decisions
 
