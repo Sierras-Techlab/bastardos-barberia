@@ -6,7 +6,7 @@ import { toSafeUser, type SafeUserRow } from "@/lib/users/repository";
 
 type SessionJoinRow = SessionRow & { user: SafeUserRow };
 
-const SESSION_SELECT = "id,user_id,expires_at,revoked_at,last_seen_at,created_at,user:users!sessions_user_id_fkey(id,first_name,last_name,username,is_active,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name))";
+const SESSION_SELECT = "id,user_id,expires_at,revoked_at,last_seen_at,created_at,user:users!sessions_user_id_fkey!inner(id,first_name,last_name,username,is_active,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name))";
 
 const fail = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
@@ -31,6 +31,7 @@ export const sessionRepository: SessionRepository = {
       .from("sessions")
       .select(SESSION_SELECT)
       .eq("token_hash", tokenHash)
+      .is("user.deleted_at", null)
       .maybeSingle();
     if (error) fail("find session", error);
     if (!data) return null;

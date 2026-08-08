@@ -69,8 +69,8 @@ describe("user lifecycle", () => {
   it("logically deletes through the atomic repository operation", async () => {
     const deps = dependencies();
     const target = { ...owner, id: "00000000-0000-4000-8000-000000000002" };
-    deps.users.findById.mockResolvedValue(target);
-    deps.users.softDelete.mockResolvedValue(target.id);
+    vi.mocked(deps.users.findById).mockResolvedValue(target);
+    vi.mocked(deps.users.softDelete).mockResolvedValue(target.id);
 
     await expect(deleteUser(
       owner,
@@ -88,7 +88,7 @@ describe("user lifecycle", () => {
 
   it("reports a missing or already deleted target", async () => {
     const deps = dependencies();
-    deps.users.findById.mockResolvedValue(null);
+    vi.mocked(deps.users.findById).mockResolvedValue(null);
 
     await expect(deleteUser(
       owner,

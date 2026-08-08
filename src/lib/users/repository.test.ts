@@ -1,6 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { toCredentialUser, toSafeUser, userMutationFailure } from "./repository";
+const { getSupabaseAdmin } = vi.hoisted(() => ({
+  getSupabaseAdmin: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin }));
+
+import {
+  toCredentialUser,
+  toSafeUser,
+  userMutationFailure,
+  userRepository,
+} from "./repository";
 import type { UserWithRoleRow } from "@/lib/supabase/database.types";
 
 const row = {
@@ -17,11 +28,17 @@ const row = {
   last_login_at: null,
   password_changed_at: "2026-08-07T00:00:00.000Z",
   created_by: null,
+  deleted_at: null,
+  deleted_by: null,
   created_at: "2026-08-07T00:00:00.000Z",
   updated_at: "2026-08-07T00:00:00.000Z",
 } satisfies UserWithRoleRow;
 
 describe("user repository mappers", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("maps a row to a safe camel-case user", () => {
     expect(toSafeUser(row)).toEqual({
       id: row.id,
@@ -46,6 +63,16 @@ describe("user repository mappers", () => {
     }));
   });
 
+  it("maps authoritative self-deletion failures to a safe conflict", () => {
+    expect(() => userMutationFailure("delete user", {
+      code: "P0001",
+      message: "CANNOT_DELETE_SELF",
+    })).toThrowError(expect.objectContaining({
+      code: "CANNOT_DELETE_SELF",
+      status: 409,
+    }));
+  });
+
   it("adds credential state only to the internal mapper", () => {
     expect(toCredentialUser(row)).toMatchObject({
       passwordHash: row.password_hash,
@@ -53,5 +80,102 @@ describe("user repository mappers", () => {
       lockedUntil: null,
     });
     expect(toSafeUser(row)).not.toHaveProperty("passwordHash");
+  });
+
+  it("excludes logically deleted accounts from credential lookup", async () => {
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      is: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await userRepository.findCredentialsByUsername("juan.perez");
+
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("excludes logically deleted accounts from detail lookup", async () => {
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      is: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await userRepository.findById(row.id);
+
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("excludes logically deleted accounts from paginated lists", async () => {
+    const query = {
+      data: [],
+      error: null,
+      count: 0,
+      select: vi.fn(),
+      is: vi.fn(),
+      order: vi.fn(),
+      range: vi.fn(),
+    };
+    query.select.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    query.range.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await userRepository.list({
+      page: 1,
+      pageSize: 20,
+      status: "all",
+    });
+
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("counts only active owners that have not been deleted", async () => {
+    const query = {
+      count: 1,
+      error: null,
+      select: vi.fn(),
+      eq: vi.fn(),
+      is: vi.fn(),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await expect(userRepository.countActiveOwners()).resolves.toBe(1);
+
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("calls the atomic logical-deletion RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: "00000000-0000-4000-8000-000000000002",
+      error: null,
+    });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+
+    await expect(userRepository.softDelete(
+      "00000000-0000-4000-8000-000000000002",
+      row.id,
+      "2026-08-08T12:00:00.000Z",
+    )).resolves.toBe("00000000-0000-4000-8000-000000000002");
+
+    expect(rpc).toHaveBeenCalledWith("soft_delete_user", {
+      target_user_id: "00000000-0000-4000-8000-000000000002",
+      actor_user_id: row.id,
+      deletion_time: "2026-08-08T12:00:00.000Z",
+    });
   });
 });

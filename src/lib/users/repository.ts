@@ -29,6 +29,13 @@ export const userMutationFailure = (operation: string, error: { code?: string; m
   if (error.code === "P0001" && error.message === "LAST_OWNER_REQUIRED") {
     throw new AppError("LAST_OWNER_REQUIRED", "Debe quedar al menos un owner activo.", 409);
   }
+  if (error.code === "P0001" && error.message === "CANNOT_DELETE_SELF") {
+    throw new AppError(
+      "CANNOT_DELETE_SELF",
+      "No podés eliminar tu propia cuenta.",
+      409,
+    );
+  }
   return databaseFailure(operation, error);
 };
 
@@ -59,6 +66,7 @@ const findSafeUserById = async (id: string) => {
     .from("users")
     .select(SAFE_USER_SELECT)
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) databaseFailure("find user", error);
   return data ? toSafeUser(asSafeUserRow(data)) : null;
@@ -70,6 +78,7 @@ export const userRepository: UserRepository = {
       .from("users")
       .select(CREDENTIAL_USER_SELECT)
       .eq("username", username)
+      .is("deleted_at", null)
       .maybeSingle();
     if (error) databaseFailure("find user credentials", error);
     return data ? toCredentialUser(asUserRow(data)) : null;
@@ -84,6 +93,7 @@ export const userRepository: UserRepository = {
     let query = getSupabaseAdmin()
       .from("users")
       .select(SAFE_USER_SELECT, { count: "exact" })
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(from, from + queryInput.pageSize - 1);
 
@@ -160,6 +170,19 @@ export const userRepository: UserRepository = {
     return data ? toSafeUser(asSafeUserRow(data)) : null;
   },
 
+  async softDelete(id, actorId, at) {
+    const { data, error } = await getSupabaseAdmin().rpc(
+      "soft_delete_user",
+      {
+        target_user_id: id,
+        actor_user_id: actorId,
+        deletion_time: at,
+      },
+    );
+    if (error) userMutationFailure("delete user", error);
+    return typeof data === "string" ? data : null;
+  },
+
   async recordFailedLogin(id, maxAttempts, attemptedAt, lockedUntil) {
     const { error } = await getSupabaseAdmin().rpc("record_failed_login", {
       target_user_id: id,
@@ -184,7 +207,8 @@ export const userRepository: UserRepository = {
       .from("users")
       .select("id", { count: "exact", head: true })
       .eq("role_id", 1)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .is("deleted_at", null);
     if (error) databaseFailure("count active owners", error);
     return count ?? 0;
   },

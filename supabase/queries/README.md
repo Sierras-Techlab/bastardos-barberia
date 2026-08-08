@@ -10,6 +10,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 4. `004_functions_and_triggers.sql`
 5. `005_security.sql`
 6. `006_atomic_auth_guards.sql`
+7. `007_user_soft_deletion.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -26,5 +27,18 @@ order by tablename;
 ```
 
 The roles must be `owner`, `admin`, and `employee`; all three tables must report `rowsecurity = true`.
+
+Verify the logical-deletion columns:
+
+```sql
+select column_name
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'users'
+  and column_name in ('deleted_at', 'deleted_by')
+order by column_name;
+```
+
+The result must contain both `deleted_at` and `deleted_by`.
 
 Then configure `.env`, temporarily add the three `BOOTSTRAP_OWNER_*` values, and run `npm run bootstrap:owner`. Remove the temporary password value immediately afterward.

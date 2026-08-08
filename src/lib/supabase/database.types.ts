@@ -15,6 +15,8 @@ export type UserRow = {
   last_login_at: string | null;
   password_changed_at: string;
   created_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
   created_at: string;
   updated_at: string;
 };
