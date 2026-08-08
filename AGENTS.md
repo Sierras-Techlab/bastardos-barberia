@@ -39,8 +39,9 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Usernames are database-generated from normalized `first_name.last_name`; collisions add `2`, `3`, and so on.
 - Login accepts username and password only. Inactive, locked, unknown and incorrect-password cases return the same public credential error.
 - Five failed attempts lock an account for 15 minutes. Sessions last 12 hours.
-- Deactivating a user or resetting a password revokes all of that user's sessions.
-- A manager cannot deactivate their own account, and the last active owner cannot be deactivated or demoted.
+- Deactivating, deleting or resetting a user password revokes all of that user's sessions.
+- User deletion is logical: `deleted_at` and `deleted_by` preserve audit history, normal reads exclude deleted accounts, and deletion plus session revocation is one database transaction.
+- A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
 - Database tables have RLS enabled with no browser policies. Only the server secret role can access them.
 - SQL in `supabase/queries` is the source of truth and is designed for manual execution in the Supabase SQL Editor.
 
@@ -48,6 +49,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 
 - `src/app/api/auth`: login, logout and current-session Route Handlers.
 - `src/app/api/admin`: manager-only users and roles Route Handlers.
+- `src/app/users`, `src/components/users`: manager-only user administration route and interactive lifecycle workspace.
 - `src/lib/auth`: schemas, hashing, session, authentication and authorization rules.
 - `src/lib/users`, `src/lib/sessions`: persistence repositories and user lifecycle service.
 - `src/lib/supabase`: server-only Supabase client and database row types.

@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-07
+Last updated: 2026-08-08
 
 ## Vision
 
@@ -18,11 +18,11 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Module | State | Current result / objective |
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
-| User administration API | Implemented | Create, list, inspect, update, activate/deactivate and reset passwords; owner safety rules. |
+| User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
 | Dashboard UI | Prototype | Responsive dashboard based on demonstration data, now protected by real authentication. |
 | Income entry UI | Prototype | Multi-step sales form based on demonstration data, now protected by real authentication. |
 | Income history UI | Prototype | Filterable responsive income list and detail views based on demonstration data, protected by the authenticated incomes layout. |
-| Employee administration UI | Planned | Manager-facing screens consuming the implemented user and role endpoints. |
+| User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Planned | Define persistent sales, line items, payment methods, expenses and register closures. |
 | Services and products | Planned | Define catalog, price, stock and availability models. |
 | Customers | Planned | Define customer identity, contact and visit history. |
@@ -30,7 +30,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Deploy and validate the authentication foundation against the selected Supabase project, create the first owner, and then build the employee administration UI. After that, define the sales domain before replacing dashboard demonstration data.
+Apply and validate the ordered authentication/user migrations through `007` in the selected Supabase project. Then define the persistent sales and cash domain before replacing dashboard demonstration data.
 
 ## Accepted authentication decisions
 
@@ -39,6 +39,7 @@ Deploy and validate the authentication foundation against the selected Supabase 
 - Username format is normalized `first.last`; collisions receive a numeric suffix and PostgreSQL is authoritative for Unicode transliteration.
 - Passwords use Argon2id; sessions are opaque, hashed and revocable.
 - Owner/admin authorization is enforced in server handlers and services, not trusted to middleware/proxy alone.
+- Logical user deletion preserves audit identity, hides deleted accounts from normal reads and atomically revokes their sessions.
 - The SQL installation stays manual and copy/paste friendly under `supabase/queries`.
 
 ## Definition of a safe product increment
