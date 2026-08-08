@@ -78,6 +78,35 @@ export const updateUser = async (
   return updated;
 };
 
+export const deleteUser = async (
+  actor: SafeUser,
+  id: string,
+  dependencies = defaultDependencies,
+  now = new Date(),
+) => {
+  assertManager(actor);
+  await requireTarget(id, dependencies);
+
+  if (actor.id === id) {
+    throw new AppError(
+      "CANNOT_DELETE_SELF",
+      "No podés eliminar tu propia cuenta.",
+      409,
+    );
+  }
+
+  const deletedId = await dependencies.users.softDelete(
+    id,
+    actor.id,
+    now.toISOString(),
+  );
+  if (!deletedId) {
+    throw new AppError("USER_NOT_FOUND", "Usuario no encontrado.", 404);
+  }
+
+  return { id: deletedId };
+};
+
 export const resetUserPassword = async (
   actor: SafeUser,
   id: string,

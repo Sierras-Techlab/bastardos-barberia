@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createUser, resetUserPassword, updateUser, type UserServiceDependencies } from "./service";
+import {
+  createUser,
+  deleteUser,
+  resetUserPassword,
+  updateUser,
+  type UserServiceDependencies,
+} from "./service";
 import type { SafeUser } from "@/lib/auth/types";
 
 const owner: SafeUser = {
@@ -14,6 +20,7 @@ const dependencies = () => ({
     findById: vi.fn().mockResolvedValue(owner),
     create: vi.fn().mockResolvedValue(owner),
     update: vi.fn().mockResolvedValue(owner),
+    softDelete: vi.fn().mockResolvedValue(owner.id),
     countActiveOwners: vi.fn().mockResolvedValue(1),
   },
   sessions: { revokeAllForUser: vi.fn().mockResolvedValue(undefined) },
@@ -48,5 +55,47 @@ describe("user lifecycle", () => {
       passwordHash: "$argon2id$v=19$hash", failedLoginAttempts: 0, lockedUntil: null,
     }));
     expect(deps.sessions.revokeAllForUser).toHaveBeenCalledWith(owner.id, "2026-08-07T12:00:00.000Z");
+  });
+
+  it("prevents self-deletion before touching persistence", async () => {
+    const deps = dependencies();
+
+    await expect(deleteUser(owner, owner.id, deps))
+      .rejects.toMatchObject({ code: "CANNOT_DELETE_SELF", status: 409 });
+
+    expect(deps.users.softDelete).not.toHaveBeenCalled();
+  });
+
+  it("logically deletes through the atomic repository operation", async () => {
+    const deps = dependencies();
+    const target = { ...owner, id: "00000000-0000-4000-8000-000000000002" };
+    deps.users.findById.mockResolvedValue(target);
+    deps.users.softDelete.mockResolvedValue(target.id);
+
+    await expect(deleteUser(
+      owner,
+      target.id,
+      deps,
+      new Date("2026-08-08T12:00:00.000Z"),
+    )).resolves.toEqual({ id: target.id });
+
+    expect(deps.users.softDelete).toHaveBeenCalledWith(
+      target.id,
+      owner.id,
+      "2026-08-08T12:00:00.000Z",
+    );
+  });
+
+  it("reports a missing or already deleted target", async () => {
+    const deps = dependencies();
+    deps.users.findById.mockResolvedValue(null);
+
+    await expect(deleteUser(
+      owner,
+      "00000000-0000-4000-8000-000000000099",
+      deps,
+    )).rejects.toMatchObject({ code: "USER_NOT_FOUND", status: 404 });
+
+    expect(deps.users.softDelete).not.toHaveBeenCalled();
   });
 });
