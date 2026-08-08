@@ -31,3 +31,13 @@ export const requirePageUser = async () => {
     throw error;
   }
 };
+
+export const requireManagerPage = async () => {
+  try {
+    return await requireManager();
+  } catch (error) {
+    if (error instanceof AppError && error.status === 401) redirect("/login");
+    if (error instanceof AppError && error.status === 403) redirect("/");
+    throw error;
+  }
+};
