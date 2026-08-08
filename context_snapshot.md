@@ -5,7 +5,7 @@ Captured: 2026-08-07
 ## Repository state
 
 - Current branch: `dev`
-- Local branches: 3 (`dev`, `feat/database`, `main`)
+- Local branches: 2 (`dev`, `main`); the merged `feat/database` branch was removed locally.
 - Remote branches: 3 real branches (`origin/dev`, `origin/feat/dashboard-ui`, `origin/main`) plus the `origin/HEAD` alias
 - Authentication was integrated from `feat/database` into the latest `origin/dev` after preserving the new incomes navigation and persistent layout.
 - Working tree should be clean after the merge commit and final verification.
