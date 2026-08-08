@@ -141,10 +141,16 @@ export const UserList = ({
             </div>
 
             <div role="cell" className="relative justify-self-end">
+              {isSelf && (
+                <span id={selfRestrictionId} className="sr-only">
+                  Tu propia cuenta no se puede desactivar ni eliminar.
+                </span>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger
                   type="button"
                   aria-label={"Acciones de " + fullName}
+                  aria-describedby={isSelf ? selfRestrictionId : undefined}
                   className={buttonVariants({
                     variant: "ghost",
                     size: "icon",
@@ -204,7 +210,6 @@ export const UserList = ({
                   </DropdownMenuItem>
                   {isSelf && (
                     <p
-                      id={selfRestrictionId}
                       className="mx-2 mt-1 border-t border-zinc-100 pt-2 pb-1 text-xs leading-snug text-zinc-500"
                     >
                       Tu propia cuenta no se puede desactivar ni eliminar.

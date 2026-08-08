@@ -457,10 +457,22 @@ describe("UsersView", () => {
     render(<UsersView currentUser={owner} />);
     await screen.findByText("@ana.garcia");
 
-    await openActions(browser, /Acciones de Ana/);
+    const trigger = screen.getByRole("button", { name: /Acciones de Ana/ });
+    expect(trigger).toHaveAccessibleDescription(/propia cuenta/);
+    trigger.focus();
+    await browser.keyboard("{ArrowDown}");
 
+    const edit = screen.getByRole("menuitem", { name: "Editar datos" });
+    const password = screen.getByRole("menuitem", { name: "Cambiar contraseña" });
     const deactivate = screen.getByRole("menuitem", { name: "Desactivar usuario" });
     const remove = screen.getByRole("menuitem", { name: "Eliminar usuario" });
+    expect(edit).toHaveFocus();
+    await browser.keyboard("{ArrowDown}");
+    expect(password).toHaveFocus();
+    await browser.keyboard("{ArrowDown}");
+    expect(deactivate).toHaveFocus();
+    await browser.keyboard("{ArrowDown}");
+    expect(remove).toHaveFocus();
     expect(deactivate).toHaveAttribute("aria-disabled", "true");
     expect(deactivate).not.toBeDisabled();
     expect(deactivate).toHaveAccessibleDescription(/propia cuenta/);
