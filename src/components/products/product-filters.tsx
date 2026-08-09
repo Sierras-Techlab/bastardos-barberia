@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import type {
   ProductCatalogFilters as ProductFiltersValue,
   ProductCategory,
+  ProductSort,
   ProductStockStatus,
 } from "@/types/product";
 
@@ -13,6 +14,9 @@ type ProductFiltersProps = {
   onChange: (value: ProductFiltersValue) => void;
   onClear: () => void;
   canClear: boolean;
+  canManage: boolean;
+  sort: ProductSort;
+  onSortChange: (sort: ProductSort) => void;
 };
 
 const selectClassName =
@@ -23,12 +27,15 @@ export const ProductFilters = ({
   onChange,
   onClear,
   canClear,
+  canManage,
+  sort,
+  onSortChange,
 }: ProductFiltersProps) => (
   <section
     aria-label="Filtros de productos"
     className="rounded-[1.4rem] bg-white p-3 shadow-sm sm:p-4"
   >
-    <div className="grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_13rem_13rem_auto]">
+    <div className="grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_12rem_12rem_12rem_auto]">
       <div className="relative min-w-0">
         <Search className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" />
         <Input
@@ -57,6 +64,37 @@ export const ProductFilters = ({
         <option value="styling">Peinado y fijación</option>
         <option value="beard-care">Cuidado de barba</option>
         <option value="fragrance">Fragancias</option>
+      </select>
+
+      {canManage && (
+        <select
+          aria-label="Estado del producto"
+          value={value.activeState}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              activeState: event.target.value as ProductFiltersValue["activeState"],
+            })
+          }
+          className={selectClassName}
+        >
+          <option value="all">Activos e inactivos</option>
+          <option value="active">Activos</option>
+          <option value="inactive">Inactivos</option>
+        </select>
+      )}
+
+      <select
+        aria-label="Ordenar por"
+        value={sort}
+        onChange={(event) => onSortChange(event.target.value as ProductSort)}
+        className={`${selectClassName} lg:hidden`}
+      >
+        <option value="original">Orden original</option>
+        <option value="stock-asc">Menor stock</option>
+        <option value="stock-desc">Mayor stock</option>
+        <option value="price-asc">Menor precio</option>
+        <option value="price-desc">Mayor precio</option>
       </select>
 
       <select

@@ -21,7 +21,14 @@ export const ProductMobileList = ({ products }: ProductMobileListProps) => (
         className="flex min-h-24 items-center justify-between gap-4 rounded-[1.35rem] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
       >
         <div className="min-w-0">
-          <p className="truncate font-semibold">{product.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate font-semibold">{product.name}</p>
+            {!product.isActive && (
+              <Badge className="rounded-full bg-black/5 text-muted-foreground hover:bg-black/5">
+                Inactivo
+              </Badge>
+            )}
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {formatProductCategory(product.category)}
           </p>

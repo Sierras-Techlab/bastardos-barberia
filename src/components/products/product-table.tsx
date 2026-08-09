@@ -4,13 +4,35 @@ import {
   formatProductCategory,
   getProductStockStatus,
 } from "@/lib/products/product-catalog";
-import type { CatalogProduct } from "@/types/product";
+import type { CatalogProduct, ProductSort } from "@/types/product";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 type ProductTableProps = {
   products: CatalogProduct[];
+  sort: ProductSort;
+  onSortChange: (sort: ProductSort) => void;
 };
 
-export const ProductTable = ({ products }: ProductTableProps) => (
+const nextSort = (
+  current: ProductSort,
+  field: "stock" | "price",
+): ProductSort => {
+  if (current === `${field}-asc`) return `${field}-desc`;
+  if (current === `${field}-desc`) return "original";
+  return `${field}-asc`;
+};
+
+const SortIcon = ({ sort, field }: { sort: ProductSort; field: "stock" | "price" }) => {
+  if (sort === `${field}-asc`) return <ArrowUp className="size-3.5" />;
+  if (sort === `${field}-desc`) return <ArrowDown className="size-3.5" />;
+  return <ArrowUpDown className="size-3.5 opacity-50" />;
+};
+
+export const ProductTable = ({
+  products,
+  sort,
+  onSortChange,
+}: ProductTableProps) => (
   <div className="overflow-hidden rounded-[1.6rem] bg-white shadow-sm">
     <div className="overflow-x-auto">
       <table aria-label="Catálogo de productos" className="w-full text-sm">
@@ -18,8 +40,32 @@ export const ProductTable = ({ products }: ProductTableProps) => (
           <tr>
             <th className="px-5 py-3.5 font-medium">Producto</th>
             <th className="px-5 py-3.5 font-medium">Categoría</th>
-            <th className="px-5 py-3.5 font-medium">Stock</th>
-            <th className="px-5 py-3.5 text-right font-medium">Precio</th>
+            <th
+              className="px-5 py-3.5 font-medium"
+              aria-sort={sort === "stock-asc" ? "ascending" : sort === "stock-desc" ? "descending" : "none"}
+            >
+              <button
+                type="button"
+                aria-label="Ordenar por stock"
+                className="inline-flex items-center gap-1.5 hover:text-foreground"
+                onClick={() => onSortChange(nextSort(sort, "stock"))}
+              >
+                Stock <SortIcon sort={sort} field="stock" />
+              </button>
+            </th>
+            <th
+              className="px-5 py-3.5 text-right font-medium"
+              aria-sort={sort === "price-asc" ? "ascending" : sort === "price-desc" ? "descending" : "none"}
+            >
+              <button
+                type="button"
+                aria-label="Ordenar por precio"
+                className="ml-auto inline-flex items-center gap-1.5 hover:text-foreground"
+                onClick={() => onSortChange(nextSort(sort, "price"))}
+              >
+                Precio <SortIcon sort={sort} field="price" />
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -31,7 +77,16 @@ export const ProductTable = ({ products }: ProductTableProps) => (
               key={product.id}
               className="border-b border-black/5 transition-colors last:border-0 hover:bg-[#f6f5f2]"
             >
-              <td className="px-5 py-4 font-medium">{product.name}</td>
+              <td className="px-5 py-4 font-medium">
+                <div className="flex items-center gap-2">
+                  {product.name}
+                  {!product.isActive && (
+                    <Badge className="rounded-full bg-black/5 text-muted-foreground hover:bg-black/5">
+                      Inactivo
+                    </Badge>
+                  )}
+                </div>
+              </td>
               <td className="px-5 py-4 text-muted-foreground">
                 {formatProductCategory(product.category)}
               </td>

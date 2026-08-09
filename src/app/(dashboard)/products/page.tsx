@@ -15,7 +15,8 @@ export const metadata: Metadata = {
 const productsData = authorizeProductCatalogData(productsMock);
 
 const ProductsPage = async () => {
-  await requirePageUser();
+  const { user } = await requirePageUser();
+  const canManage = user.role.name === "owner" || user.role.name === "admin";
 
   return (
     <>
@@ -52,7 +53,7 @@ const ProductsPage = async () => {
           </p>
         </div>
 
-        <ProductsView data={productsData} />
+        <ProductsView data={productsData} canManage={canManage} />
       </main>
     </>
   );

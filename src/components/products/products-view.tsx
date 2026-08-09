@@ -12,35 +12,49 @@ import {
   calculateProductMetrics,
   filterProducts,
 } from "@/lib/products/product-catalog";
+import { sortProducts } from "@/lib/products/product-management";
 import type {
   ProductCatalogData,
   ProductCatalogFilters,
+  ProductSort,
 } from "@/types/product";
 
 type ProductsViewProps = {
   data: ProductCatalogData;
+  canManage: boolean;
 };
 
 const initialFilters: ProductCatalogFilters = {
   query: "",
   category: "all",
   stockStatus: "all",
+  activeState: "all",
 };
 
-export const ProductsView = ({ data }: ProductsViewProps) => {
+export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
+  const [catalogProducts] = useState(() => data.products);
   const [filters, setFilters] = useState(initialFilters);
+  const [sort, setSort] = useState<ProductSort>("original");
+  const visibleProducts = useMemo(
+    () =>
+      canManage
+        ? catalogProducts
+        : catalogProducts.filter((product) => product.isActive),
+    [canManage, catalogProducts],
+  );
   const products = useMemo(
-    () => filterProducts(data.products, filters),
-    [data.products, filters],
+    () => sortProducts(filterProducts(visibleProducts, filters), sort),
+    [filters, sort, visibleProducts],
   );
   const metrics = useMemo(
-    () => calculateProductMetrics(data.products),
-    [data.products],
+    () => calculateProductMetrics(visibleProducts),
+    [visibleProducts],
   );
   const canClear =
     filters.query !== "" ||
     filters.category !== "all" ||
-    filters.stockStatus !== "all";
+    filters.stockStatus !== "all" ||
+    filters.activeState !== "all";
 
   const clearFilters = () => setFilters(initialFilters);
 
@@ -52,6 +66,9 @@ export const ProductsView = ({ data }: ProductsViewProps) => {
         onChange={setFilters}
         onClear={clearFilters}
         canClear={canClear}
+        canManage={canManage}
+        sort={sort}
+        onSortChange={setSort}
       />
 
       <section aria-labelledby="products-list-title">
@@ -72,7 +89,11 @@ export const ProductsView = ({ data }: ProductsViewProps) => {
         {products.length > 0 ? (
           <>
             <div className="hidden md:block">
-              <ProductTable products={products} />
+              <ProductTable
+                products={products}
+                sort={sort}
+                onSortChange={setSort}
+              />
             </div>
             <div className="md:hidden">
               <ProductMobileList products={products} />

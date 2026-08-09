@@ -38,6 +38,7 @@ it("composes the authenticated product catalog route", async () => {
     "/products",
   );
   expect(metadata.title).toBe("Productos");
+  expect(screen.getByLabelText("Estado del producto")).toBeVisible();
 });
 
 it("revalidates the session at the product catalog boundary", async () => {
@@ -52,4 +53,25 @@ it("does not render products after session revocation", async () => {
   requirePageUser.mockRejectedValueOnce(new Error("revoked session"));
 
   await expect(ProductsPage()).rejects.toThrow("revoked session");
+});
+
+it("renders an employee catalog without management filters", async () => {
+  requirePageUser.mockResolvedValueOnce({
+    user: {
+      id: "00000000-0000-4000-8000-000000000003",
+      firstName: "Fer",
+      lastName: "Bastardos",
+      username: "fer.bastardos",
+      role: { id: 3, name: "employee" },
+      isActive: true,
+      lastLoginAt: null,
+      createdAt: "2026-08-07T00:00:00.000Z",
+      updatedAt: "2026-08-07T00:00:00.000Z",
+    },
+  });
+
+  render(await DashboardLayout({ children: await ProductsPage() }));
+
+  expect(screen.queryByLabelText("Estado del producto")).not.toBeInTheDocument();
+  expect(screen.queryByText("Perfume")).not.toBeInTheDocument();
 });
