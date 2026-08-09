@@ -2,9 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
-const { replace, refresh } = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
+const { replace, refresh, pathname } = vi.hoisted(() => ({
+  replace: vi.fn(),
+  refresh: vi.fn(),
+  pathname: { value: "/" },
+}));
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => pathname.value,
   useRouter: () => ({ replace, refresh }),
 }));
 
@@ -35,6 +40,7 @@ const owner = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  pathname.value = "/";
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
 });
 
@@ -71,10 +77,11 @@ it("closes the database session and returns to login", async () => {
 });
 
 it("links managers to the active user administration page", () => {
+  pathname.value = "/users";
   render(
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar user={owner} activeItem="Usuarios" />
+        <AppSidebar user={owner} />
       </SidebarProvider>
     </TooltipProvider>,
   );
@@ -82,4 +89,22 @@ it("links managers to the active user administration page", () => {
   const link = screen.getByRole("link", { name: "Usuarios" });
   expect(link).toHaveAttribute("href", "/users");
   expect(link).toHaveAttribute("data-active");
+});
+
+it("keeps incomes active on nested income routes", () => {
+  pathname.value = "/incomes/new";
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={owner} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  expect(screen.getByRole("link", { name: "Ingresos" })).toHaveAttribute(
+    "data-active",
+  );
+  expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveAttribute(
+    "data-active",
+  );
 });

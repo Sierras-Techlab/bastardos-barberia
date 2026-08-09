@@ -11,7 +11,6 @@ import {
 
 import dashboardMock from "@/data/dashboard.mock.json";
 import type { DashboardData } from "@/types/dashboard";
-import { AppSidebar } from "@/components/app-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,12 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePageUser } from "@/lib/auth/authorization";
 
 const dashboard = dashboardMock as DashboardData;
@@ -65,7 +59,7 @@ const activityIcons = {
 };
 
 const Home = async () => {
-  const { user } = await requirePageUser();
+  await requirePageUser();
   const { summary, revenue, topServices, paymentMethods, recentActivity } =
     dashboard;
   const currentDate = dateFormatter.format(new Date());
@@ -107,10 +101,7 @@ const Home = async () => {
   ];
 
   return (
-    <TooltipProvider>
-      <SidebarProvider className="xl:h-svh xl:overflow-hidden">
-        <AppSidebar user={user} />
-        <SidebarInset className="bg-[#f1f0ed] xl:my-3 xl:mr-3 xl:h-[calc(100svh-1.5rem)] xl:overflow-hidden xl:rounded-[2rem]">
+    <>
           <header className="mx-auto flex h-16 w-full max-w-[1600px] shrink-0 items-center justify-between px-5 md:px-7 xl:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <SidebarTrigger className="-ml-1" />
@@ -343,9 +334,7 @@ const Home = async () => {
               </div>
             </section>
           </main>
-        </SidebarInset>
-      </SidebarProvider>
-    </TooltipProvider>
+    </>
   );
 };
 

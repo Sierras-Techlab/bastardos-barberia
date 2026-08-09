@@ -30,6 +30,7 @@ export type SessionWithUser = {
   userId: string;
   expiresAt: string;
   revokedAt: string | null;
+  lastSeenAt: string;
   user: SafeUser;
 };
 

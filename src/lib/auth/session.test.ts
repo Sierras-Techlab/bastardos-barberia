@@ -8,6 +8,7 @@ const session = {
   userId: "user-id",
   expiresAt: "2026-08-08T00:00:00.000Z",
   revokedAt: null,
+  lastSeenAt: "2026-08-07T11:58:00.000Z",
   user: {
     id: "user-id", firstName: "Juan", lastName: "Pérez", username: "juan.perez",
     role: { id: 1 as const, name: "owner" as const }, isActive: true,
@@ -25,10 +26,18 @@ const deps = (value = session) => ({
 }) as unknown as SessionDependencies;
 
 describe("getCurrentSession", () => {
-  it("loads and touches a valid database session", async () => {
+  it("loads a recently active session without another database write", async () => {
     const dependencies = deps();
     await expect(getCurrentSession("raw-token", dependencies, now)).resolves.toMatchObject({ sessionId: "session-id" });
     expect(dependencies.sessions.findByTokenHash).toHaveBeenCalledWith("hashed-token");
+    expect(dependencies.sessions.touch).not.toHaveBeenCalled();
+  });
+
+  it("touches a valid session after five minutes without activity", async () => {
+    const dependencies = deps({ ...session, lastSeenAt: "2026-08-07T11:55:00.000Z" });
+
+    await getCurrentSession("raw-token", dependencies, now);
+
     expect(dependencies.sessions.touch).toHaveBeenCalledWith("session-id", now.toISOString());
   });
 
