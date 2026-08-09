@@ -1,4 +1,4 @@
-import { BadgeCheck, Package, Tags } from "lucide-react";
+import { Boxes, Package, Tags, TriangleAlert } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { formatArs } from "@/lib/incomes/income-calculations";
@@ -18,11 +18,18 @@ export const ProductMetrics = ({ metrics }: ProductMetricsProps) => {
       tone: "bg-[#202023] text-white",
     },
     {
-      label: "Disponibles",
-      value: String(metrics.availableProducts),
-      detail: `${metrics.totalProducts - metrics.availableProducts} sin disponibilidad`,
-      icon: BadgeCheck,
+      label: "Unidades en stock",
+      value: String(metrics.totalUnits),
+      detail: "Entre todos los productos",
+      icon: Boxes,
       tone: "bg-primary text-primary-foreground",
+    },
+    {
+      label: "Reponer pronto",
+      value: String(metrics.lowStockProducts),
+      detail: `${metrics.outOfStockProducts} sin stock`,
+      icon: TriangleAlert,
+      tone: "bg-white text-foreground",
     },
     {
       label: "Precio promedio",
@@ -36,7 +43,7 @@ export const ProductMetrics = ({ metrics }: ProductMetricsProps) => {
   return (
     <section
       aria-label="Resumen de productos"
-      className="grid gap-3 sm:grid-cols-3"
+      className="grid grid-cols-2 gap-3 xl:grid-cols-4"
     >
       {items.map((item) => (
         <Card

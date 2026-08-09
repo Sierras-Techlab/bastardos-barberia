@@ -1,6 +1,9 @@
 import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
-import { formatProductCategory } from "@/lib/products/product-catalog";
+import {
+  formatProductCategory,
+  getProductStockStatus,
+} from "@/lib/products/product-catalog";
 import type { CatalogProduct } from "@/types/product";
 
 type ProductTableProps = {
@@ -15,12 +18,15 @@ export const ProductTable = ({ products }: ProductTableProps) => (
           <tr>
             <th className="px-5 py-3.5 font-medium">Producto</th>
             <th className="px-5 py-3.5 font-medium">Categoría</th>
-            <th className="px-5 py-3.5 font-medium">Disponibilidad</th>
+            <th className="px-5 py-3.5 font-medium">Stock</th>
             <th className="px-5 py-3.5 text-right font-medium">Precio</th>
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
+          {products.map((product) => {
+            const stockStatus = getProductStockStatus(product.stock);
+
+            return (
             <tr
               key={product.id}
               className="border-b border-black/5 transition-colors last:border-0 hover:bg-[#f6f5f2]"
@@ -30,23 +36,33 @@ export const ProductTable = ({ products }: ProductTableProps) => (
                 {formatProductCategory(product.category)}
               </td>
               <td className="px-5 py-4">
-                <Badge
-                  className={
-                    product.availability === "available"
-                      ? "rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-                      : "rounded-full bg-black/5 text-muted-foreground hover:bg-black/5"
-                  }
-                >
-                  {product.availability === "available"
-                    ? "Disponible"
-                    : "No disponible"}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <span className="min-w-20 font-medium">
+                    {product.stock} {product.stock === 1 ? "unidad" : "unidades"}
+                  </span>
+                  <Badge
+                    className={
+                      stockStatus === "available"
+                        ? "rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                        : stockStatus === "low-stock"
+                          ? "rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50"
+                          : "rounded-full bg-red-50 text-red-700 hover:bg-red-50"
+                    }
+                  >
+                    {stockStatus === "available"
+                      ? "Disponible"
+                      : stockStatus === "low-stock"
+                        ? "Stock bajo"
+                        : "Sin stock"}
+                  </Badge>
+                </div>
               </td>
               <td className="px-5 py-4 text-right text-base font-semibold">
                 {formatArs(product.price)}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

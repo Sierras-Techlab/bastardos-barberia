@@ -24,7 +24,7 @@ type ProductsViewProps = {
 const initialFilters: ProductCatalogFilters = {
   query: "",
   category: "all",
-  availability: "all",
+  stockStatus: "all",
 };
 
 export const ProductsView = ({ data }: ProductsViewProps) => {
@@ -40,7 +40,7 @@ export const ProductsView = ({ data }: ProductsViewProps) => {
   const canClear =
     filters.query !== "" ||
     filters.category !== "all" ||
-    filters.availability !== "all";
+    filters.stockStatus !== "all";
 
   const clearFilters = () => setFilters(initialFilters);
 

@@ -6,6 +6,7 @@ import {
   calculateProductMetrics,
   filterProducts,
   formatProductCategory,
+  getProductStockStatus,
 } from "@/lib/products/product-catalog";
 
 describe("product catalog boundary", () => {
@@ -19,7 +20,7 @@ describe("product catalog boundary", () => {
       name: expect.any(String),
       category: expect.any(String),
       price: expect.any(Number),
-      availability: expect.stringMatching(/available|unavailable/),
+      stock: expect.any(Number),
     });
   });
 
@@ -41,18 +42,18 @@ describe("product catalog filtering", () => {
       filterProducts(products, {
         query: "  BARBA ",
         category: "all",
-        availability: "all",
+      stockStatus: "all",
       }),
     ).toEqual([
       expect.objectContaining({ name: "Aceite para barba" }),
     ]);
   });
 
-  it("combines category and availability filters", () => {
+  it("combines category and stock-status filters", () => {
     const filtered = filterProducts(products, {
       query: "",
       category: "hair-care",
-      availability: "available",
+      stockStatus: "low-stock",
     });
 
     expect(filtered.length).toBeGreaterThan(0);
@@ -60,7 +61,8 @@ describe("product catalog filtering", () => {
       filtered.every(
         (product) =>
           product.category === "hair-care" &&
-          product.availability === "available",
+          product.stock > 0 &&
+          product.stock <= 3,
       ),
     ).toBe(true);
   });
@@ -72,7 +74,9 @@ describe("product catalog presentation data", () => {
   it("derives hand-checked catalog metrics", () => {
     expect(calculateProductMetrics(products)).toEqual({
       totalProducts: 12,
-      availableProducts: 10,
+      totalUnits: 103,
+      lowStockProducts: 2,
+      outOfStockProducts: 1,
       categoryCount: 4,
       averagePrice: 10208,
     });
@@ -80,5 +84,12 @@ describe("product catalog presentation data", () => {
 
   it("formats category labels for the interface", () => {
     expect(formatProductCategory("beard-care")).toBe("Cuidado de barba");
+  });
+
+  it("derives stock status from the exact quantity", () => {
+    expect(getProductStockStatus(8)).toBe("available");
+    expect(getProductStockStatus(3)).toBe("low-stock");
+    expect(getProductStockStatus(1)).toBe("low-stock");
+    expect(getProductStockStatus(0)).toBe("out-of-stock");
   });
 });

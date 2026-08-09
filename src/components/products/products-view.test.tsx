@@ -23,7 +23,9 @@ it("shows the catalog summary in desktop and mobile representations", () => {
   expect(screen.getAllByText("Hunter Cream")).toHaveLength(2);
   expect(screen.getAllByText(/30\.000/)).toHaveLength(2);
   expect(screen.getAllByText("Disponible").length).toBeGreaterThan(0);
-  expect(screen.getAllByText("No disponible").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("8 unidades")).toHaveLength(2);
+  expect(screen.getAllByText("Stock bajo").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Sin stock").length).toBeGreaterThan(0);
 });
 
 it("filters by product name and restores the complete catalog", async () => {
@@ -50,10 +52,7 @@ it("combines filters and clears an empty result", async () => {
   render(<ProductsView data={data} />);
 
   await user.selectOptions(screen.getByLabelText("Categoría"), "fragrance");
-  await user.selectOptions(
-    screen.getByLabelText("Disponibilidad"),
-    "available",
-  );
+  await user.selectOptions(screen.getByLabelText("Estado de stock"), "available");
 
   expect(screen.getByText(/no encontramos productos/i)).toBeVisible();
 
@@ -63,5 +62,5 @@ it("combines filters and clears an empty result", async () => {
 
   expect(screen.getAllByText("Hunter Cream")).toHaveLength(2);
   expect(screen.getByLabelText("Categoría")).toHaveValue("all");
-  expect(screen.getByLabelText("Disponibilidad")).toHaveValue("all");
+  expect(screen.getByLabelText("Estado de stock")).toHaveValue("all");
 });

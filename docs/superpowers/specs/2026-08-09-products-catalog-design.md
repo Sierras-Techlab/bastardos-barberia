@@ -7,19 +7,19 @@
 
 ## Objective
 
-Give the barbershop owner and employees a fast way to consult the current product catalog and selling prices from the shop notebook or a phone. This increment is intentionally read-only: inventory quantities, purchasing, product creation, editing, deletion and backend persistence remain outside issue #16.
+Give the barbershop owner and employees a fast way to consult the current product catalog, selling prices and remaining units from the shop notebook or a phone. This increment is intentionally read-only: purchasing, product creation, editing, deletion and backend persistence remain outside issue #16.
 
 ## Experience
 
-The page keeps the authenticated dashboard shell and Bastardos visual language while avoiding a copy of the income history layout. A compact heading introduces the catalog and labels its values as demonstration data. Three small metrics summarize total products, represented categories and average selling price.
+The page keeps the authenticated dashboard shell and Bastardos visual language while avoiding a copy of the income history layout. A compact heading introduces the catalog and labels its values as demonstration data. Four small metrics summarize total products, total units, products that need replenishment and average selling price.
 
-A search field and category/status filters refine the catalog immediately in the browser. Desktop presents a dense table optimized for comparing names and prices. Mobile presents touch-friendly product cards. Both representations expose the same fields: product name, category, selling price and availability. Availability is categorical (`Disponible` or `No disponible`); numeric stock is not shown because inventory management is deferred.
+A search field and category/stock-status filters refine the catalog immediately in the browser. Desktop presents a dense table optimized for comparing names, prices and remaining units. Mobile presents touch-friendly product cards. Both representations expose the same fields: product name, category, selling price, exact stock and its derived status. More than three units is `Disponible`, one to three is `Stock bajo`, and zero is `Sin stock`.
 
 Empty filtered results explain what happened and offer a control to clear the filters. Hover and focus treatments provide feedback without implying unsupported edit actions.
 
 ## Data and boundaries
 
-Product demonstration data lives in a products-specific JSON fixture rather than importing data through the income form. The fixture may reuse the product names and prices already used by income mocks, adding presentation-only category and availability fields. A typed product module validates and derives filters and metrics from this fixture so the eventual backend response can replace the source without rewriting the view.
+Product demonstration data lives in a products-specific JSON fixture rather than importing data through the income form. The fixture reuses the product names and prices already used by income mocks, adding presentation-only category and stock fields. A typed product module validates and derives stock status, filters and metrics from this fixture so the eventual backend response can replace the source without rewriting the view.
 
 No component imports a Supabase client, calls an API, mutates product data or exposes an add/edit/delete control. The `/products` server page calls `requirePageUser()` so revoking a session still blocks the route at its page boundary.
 
@@ -28,7 +28,7 @@ No component imports a Supabase client, calls an API, mutates product data or ex
 - `ProductsPage`: metadata, live session authorization, page heading and demonstration badge.
 - `ProductsView`: owns search/filter state and selects table, mobile cards or empty state.
 - `ProductMetrics`: compact catalog overview cards.
-- `ProductFilters`: accessible search, category and availability controls.
+- `ProductFilters`: accessible search, category and stock-status controls.
 - `ProductTable`: desktop comparison view.
 - `ProductMobileList`: mobile catalog cards.
 - `products` domain helpers: types, runtime fixture validation, filtering and metric calculation.
@@ -49,7 +49,7 @@ The existing sidebar receives `/products` as the href for Productos, allowing it
 Tests are written before implementation and cover:
 
 - Product fixture validation and derived metric/filter behavior.
-- Search, category and availability filtering, including the clear-filters empty state.
+- Search, category and stock-status filtering, including the clear-filters empty state.
 - Desktop and mobile product representation.
 - Sidebar linking and active state for `/products`.
 - Page metadata, authenticated composition and rejection after session revocation.
@@ -60,6 +60,6 @@ The complete test suite, lint and production build must pass before the feature 
 
 - Product creation, editing and deletion.
 - Purchase cost and profit margin.
-- Numeric stock, stock movements and low-stock alerts.
+- Stock movements and automatic low-stock alerts.
 - Product images.
 - Backend endpoints and database persistence.

@@ -12,7 +12,7 @@
 
 - The feature is frontend-only and must not add or call product APIs, Supabase or server persistence.
 - The catalog is read-only; do not expose create, edit, delete, inventory or purchase controls.
-- Availability is categorical (`available` or `unavailable`); do not display numeric stock.
+- Display exact mock stock and derive `available`, `low-stock` and `out-of-stock`; stock is low from one through three units.
 - `/products` must call `requirePageUser()` at the page boundary.
 - Desktop uses a comparison table and mobile uses product cards with identical information.
 - Product data comes from a products-specific JSON fixture.
@@ -30,7 +30,7 @@
 - Test: `src/lib/products/product-catalog.test.ts`
 
 **Interfaces:**
-- Produces: `ProductAvailability`, `CatalogProduct`, `ProductCatalogData`, `ProductCatalogFilters` and `ProductCatalogMetrics` types.
+- Produces: `ProductStockStatus`, `CatalogProduct`, `ProductCatalogData`, `ProductCatalogFilters` and `ProductCatalogMetrics` types.
 - Produces: `authorizeProductCatalogData(input: unknown): ProductCatalogData`.
 - Produces: `filterProducts(products, filters): CatalogProduct[]`.
 - Produces: `calculateProductMetrics(products): ProductCatalogMetrics`.
@@ -48,13 +48,13 @@ expect(data.products[0]).toMatchObject({
   name: expect.any(String),
   category: expect.any(String),
   price: expect.any(Number),
-  availability: expect.stringMatching(/available|unavailable/),
+  stock: expect.any(Number),
 });
 
 expect(filterProducts(data.products, {
   query: "barba",
   category: "all",
-  availability: "all",
+  stockStatus: "all",
 })).toEqual(expect.arrayContaining([
   expect.objectContaining({ name: "Aceite para barba" }),
 ]));
@@ -62,14 +62,16 @@ expect(filterProducts(data.products, {
 expect(filterProducts(data.products, {
   query: "",
   category: "hair-care",
-  availability: "available",
+  stockStatus: "low-stock",
 }).every((product) =>
-  product.category === "hair-care" && product.availability === "available"
+  product.category === "hair-care" && product.stock > 0 && product.stock <= 3
 )).toBe(true);
 
 expect(calculateProductMetrics(data.products)).toEqual({
   totalProducts: 12,
-  availableProducts: expect.any(Number),
+  totalUnits: expect.any(Number),
+  lowStockProducts: expect.any(Number),
+  outOfStockProducts: expect.any(Number),
   categoryCount: expect.any(Number),
   averagePrice: expect.any(Number),
 });
@@ -88,7 +90,10 @@ Expected: FAIL because the product catalog module and fixture do not exist.
 Define:
 
 ```ts
-export type ProductAvailability = "available" | "unavailable";
+export type ProductStockStatus =
+  | "available"
+  | "low-stock"
+  | "out-of-stock";
 export type ProductCategory =
   | "hair-care"
   | "styling"
@@ -100,7 +105,7 @@ export type CatalogProduct = {
   name: string;
   category: ProductCategory;
   price: number;
-  availability: ProductAvailability;
+  stock: number;
 };
 
 export type ProductCatalogData = {
@@ -111,18 +116,20 @@ export type ProductCatalogData = {
 export type ProductCatalogFilters = {
   query: string;
   category: ProductCategory | "all";
-  availability: ProductAvailability | "all";
+  stockStatus: ProductStockStatus | "all";
 };
 
 export type ProductCatalogMetrics = {
   totalProducts: number;
-  availableProducts: number;
+  totalUnits: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
   categoryCount: number;
   averagePrice: number;
 };
 ```
 
-Use a strict Zod schema at the JSON boundary, normalize query text with `trim().toLocaleLowerCase("es-AR")`, and calculate the rounded mean price. Populate the fixture with the twelve products already used by the income form, classified across the four categories; mark at least one unavailable so the filter and status treatment are meaningful.
+Use a strict Zod schema at the JSON boundary, normalize query text with `trim().toLocaleLowerCase("es-AR")`, and calculate the rounded mean price. Populate the fixture with the twelve products already used by the income form, classified across the four categories; include quantities that exercise available, low-stock and out-of-stock states.
 
 - [x] **Step 4: Run the domain test and verify GREEN**
 
@@ -190,11 +197,11 @@ Use `ProductsView` as the only client-state owner with this initial state:
 const initialFilters: ProductCatalogFilters = {
   query: "",
   category: "all",
-  availability: "all",
+  stockStatus: "all",
 };
 ```
 
-Render three compact metrics: `Productos`, `Disponibles` and `Precio promedio`. Render the filters in one white rounded surface with a search input and native accessible selects. Use `ProductTable` inside `hidden md:block` and `ProductMobileList` inside `md:hidden`. Keep the same data in both because responsive CSS guarantees only one presentation is visible in the browser.
+Render four compact metrics: `Productos`, `Unidades en stock`, `Reponer pronto` and `Precio promedio`. Render the filters in one white rounded surface with a search input and native accessible selects. Use `ProductTable` inside `hidden md:block` and `ProductMobileList` inside `md:hidden`. Both representations show exact units plus the derived stock badge. Keep the same data in both because responsive CSS guarantees only one presentation is visible in the browser.
 
 Use the existing `formatArs` helper for prices. Table columns are `Producto`, `Categoría`, `Disponibilidad` and right-aligned `Precio`. Mobile cards show the product/category on the left and price/status on the right. Add subtle hover elevation and focus-visible feedback without click handlers.
 
@@ -304,7 +311,7 @@ Set the current branch to `feat/16-products-view`. Add `/products` to current im
 
 - [x] **Step 2: Update product status**
 
-Change `Services and products` from `Planned` to `Prototype` and describe the read-only mock catalog. Explicitly retain catalog persistence, prices, availability and inventory models as planned backend work.
+Change `Services and products` from `Planned` to `Prototype` and describe the read-only mock catalog. Explicitly retain catalog persistence, prices, stock and inventory movements as planned backend work.
 
 - [x] **Step 3: Run focused product tests**
 

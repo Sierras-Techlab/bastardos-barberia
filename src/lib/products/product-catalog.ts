@@ -6,6 +6,7 @@ import type {
   ProductCatalogFilters,
   ProductCatalogMetrics,
   ProductCategory,
+  ProductStockStatus,
 } from "@/types/product";
 
 const productCategorySchema = z.enum([
@@ -21,7 +22,7 @@ const productSchema = z
     name: z.string().min(1),
     category: productCategorySchema,
     price: z.number().int().nonnegative(),
-    availability: z.enum(["available", "unavailable"]),
+    stock: z.number().int().nonnegative(),
   })
   .strict();
 
@@ -56,12 +57,18 @@ export const filterProducts = (
     const matchesQuery = normalizeSearch(product.name).includes(query);
     const matchesCategory =
       filters.category === "all" || product.category === filters.category;
-    const matchesAvailability =
-      filters.availability === "all" ||
-      product.availability === filters.availability;
+    const matchesStockStatus =
+      filters.stockStatus === "all" ||
+      getProductStockStatus(product.stock) === filters.stockStatus;
 
-    return matchesQuery && matchesCategory && matchesAvailability;
+    return matchesQuery && matchesCategory && matchesStockStatus;
   });
+};
+
+export const getProductStockStatus = (stock: number): ProductStockStatus => {
+  if (stock === 0) return "out-of-stock";
+  if (stock <= 3) return "low-stock";
+  return "available";
 };
 
 export const calculateProductMetrics = (
@@ -71,8 +78,12 @@ export const calculateProductMetrics = (
 
   return {
     totalProducts: products.length,
-    availableProducts: products.filter(
-      (product) => product.availability === "available",
+    totalUnits: products.reduce((total, product) => total + product.stock, 0),
+    lowStockProducts: products.filter(
+      (product) => getProductStockStatus(product.stock) === "low-stock",
+    ).length,
+    outOfStockProducts: products.filter(
+      (product) => getProductStockStatus(product.stock) === "out-of-stock",
     ).length,
     categoryCount: new Set(products.map((product) => product.category)).size,
     averagePrice:

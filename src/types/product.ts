@@ -1,4 +1,7 @@
-export type ProductAvailability = "available" | "unavailable";
+export type ProductStockStatus =
+  | "available"
+  | "low-stock"
+  | "out-of-stock";
 
 export type ProductCategory =
   | "hair-care"
@@ -11,7 +14,7 @@ export type CatalogProduct = {
   name: string;
   category: ProductCategory;
   price: number;
-  availability: ProductAvailability;
+  stock: number;
 };
 
 export type ProductCatalogData = {
@@ -22,12 +25,14 @@ export type ProductCatalogData = {
 export type ProductCatalogFilters = {
   query: string;
   category: ProductCategory | "all";
-  availability: ProductAvailability | "all";
+  stockStatus: ProductStockStatus | "all";
 };
 
 export type ProductCatalogMetrics = {
   totalProducts: number;
-  availableProducts: number;
+  totalUnits: number;
+  lowStockProducts: number;
+  outOfStockProducts: number;
   categoryCount: number;
   averagePrice: number;
 };

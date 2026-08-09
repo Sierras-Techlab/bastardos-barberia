@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
   ProductCatalogFilters as ProductFiltersValue,
-  ProductAvailability,
   ProductCategory,
+  ProductStockStatus,
 } from "@/types/product";
 
 type ProductFiltersProps = {
@@ -60,19 +60,20 @@ export const ProductFilters = ({
       </select>
 
       <select
-        aria-label="Disponibilidad"
-        value={value.availability}
+        aria-label="Estado de stock"
+        value={value.stockStatus}
         onChange={(event) =>
           onChange({
             ...value,
-            availability: event.target.value as ProductAvailability | "all",
+            stockStatus: event.target.value as ProductStockStatus | "all",
           })
         }
         className={selectClassName}
       >
-        <option value="all">Toda disponibilidad</option>
-        <option value="available">Disponibles</option>
-        <option value="unavailable">No disponibles</option>
+        <option value="all">Todo el stock</option>
+        <option value="available">Disponible</option>
+        <option value="low-stock">Stock bajo</option>
+        <option value="out-of-stock">Sin stock</option>
       </select>
 
       <Button
