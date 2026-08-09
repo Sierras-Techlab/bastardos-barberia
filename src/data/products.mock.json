@@ -6,84 +6,96 @@
       "name": "Hunter Cream",
       "category": "styling",
       "price": 30000,
-      "stock": 8
+      "stock": 8,
+      "isActive": true
     },
     {
       "id": "product-skala-cream",
       "name": "Skala Cream",
       "category": "hair-care",
       "price": 7500,
-      "stock": 14
+      "stock": 14,
+      "isActive": true
     },
     {
       "id": "product-shampoo-acondicionador",
       "name": "Shampoo + acondicionador",
       "category": "hair-care",
       "price": 5900,
-      "stock": 11
+      "stock": 11,
+      "isActive": true
     },
     {
       "id": "product-acondicionador",
       "name": "Acondicionador",
       "category": "hair-care",
       "price": 3900,
-      "stock": 9
+      "stock": 9,
+      "isActive": true
     },
     {
       "id": "product-mascara-capilar",
       "name": "Máscara capilar",
       "category": "hair-care",
       "price": 3900,
-      "stock": 2
+      "stock": 2,
+      "isActive": true
     },
     {
       "id": "product-mousse",
       "name": "Mousse",
       "category": "styling",
       "price": 16900,
-      "stock": 5
+      "stock": 5,
+      "isActive": true
     },
     {
       "id": "product-perfume",
       "name": "Perfume",
       "category": "fragrance",
       "price": 10900,
-      "stock": 0
+      "stock": 0,
+      "isActive": false
     },
     {
       "id": "product-beard-oil",
       "name": "Aceite para barba",
       "category": "beard-care",
       "price": 8900,
-      "stock": 10
+      "stock": 10,
+      "isActive": true
     },
     {
       "id": "product-matizador",
       "name": "Matizador",
       "category": "hair-care",
       "price": 7900,
-      "stock": 3
+      "stock": 3,
+      "isActive": true
     },
     {
       "id": "product-cream-beauty",
       "name": "Crema Beauty",
       "category": "hair-care",
       "price": 4900,
-      "stock": 12
+      "stock": 12,
+      "isActive": true
     },
     {
       "id": "product-hair-wax",
       "name": "Cera para pelo",
       "category": "styling",
       "price": 11900,
-      "stock": 16
+      "stock": 16,
+      "isActive": true
     },
     {
       "id": "product-gel",
       "name": "Gel",
       "category": "styling",
       "price": 9900,
-      "stock": 13
+      "stock": 13,
+      "isActive": true
     }
   ]
 }

@@ -21,6 +21,7 @@ describe("product catalog boundary", () => {
       category: expect.any(String),
       price: expect.any(Number),
       stock: expect.any(Number),
+      isActive: expect.any(Boolean),
     });
   });
 
@@ -42,7 +43,8 @@ describe("product catalog filtering", () => {
       filterProducts(products, {
         query: "  BARBA ",
         category: "all",
-      stockStatus: "all",
+        stockStatus: "all",
+        activeState: "all",
       }),
     ).toEqual([
       expect.objectContaining({ name: "Aceite para barba" }),
@@ -54,6 +56,7 @@ describe("product catalog filtering", () => {
       query: "",
       category: "hair-care",
       stockStatus: "low-stock",
+      activeState: "active",
     });
 
     expect(filtered.length).toBeGreaterThan(0);
@@ -65,6 +68,18 @@ describe("product catalog filtering", () => {
           product.stock <= 3,
       ),
     ).toBe(true);
+  });
+
+  it("filters inactive products for manager views", () => {
+    const inactive = filterProducts(products, {
+      query: "",
+      category: "all",
+      stockStatus: "all",
+      activeState: "inactive",
+    });
+
+    expect(inactive).toHaveLength(1);
+    expect(inactive[0].isActive).toBe(false);
   });
 });
 

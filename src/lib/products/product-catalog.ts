@@ -23,6 +23,7 @@ const productSchema = z
     category: productCategorySchema,
     price: z.number().int().nonnegative(),
     stock: z.number().int().nonnegative(),
+    isActive: z.boolean(),
   })
   .strict();
 
@@ -60,8 +61,17 @@ export const filterProducts = (
     const matchesStockStatus =
       filters.stockStatus === "all" ||
       getProductStockStatus(product.stock) === filters.stockStatus;
+    const matchesActiveState =
+      filters.activeState === "all" ||
+      (filters.activeState === "active" && product.isActive) ||
+      (filters.activeState === "inactive" && !product.isActive);
 
-    return matchesQuery && matchesCategory && matchesStockStatus;
+    return (
+      matchesQuery &&
+      matchesCategory &&
+      matchesStockStatus &&
+      matchesActiveState
+    );
   });
 };
 
