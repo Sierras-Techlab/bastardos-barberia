@@ -39,7 +39,7 @@ const operationNavigation = [
   { label: "Ingresos", icon: ReceiptText, href: "/incomes" },
   { label: "Clientes", icon: Users },
   { label: "Servicios", icon: Scissors },
-  { label: "Productos", icon: Package },
+  { label: "Productos", icon: Package, href: "/products" },
 ];
 
 const administrationNavigation = [

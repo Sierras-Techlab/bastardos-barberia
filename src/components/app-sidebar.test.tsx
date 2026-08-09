@@ -108,3 +108,18 @@ it("keeps incomes active on nested income routes", () => {
     "data-active",
   );
 });
+
+it("links to the active product catalog", () => {
+  pathname.value = "/products";
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={employee} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  const link = screen.getByRole("link", { name: "Productos" });
+  expect(link).toHaveAttribute("href", "/products");
+  expect(link).toHaveAttribute("data-active");
+});
