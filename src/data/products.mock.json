@@ -1,0 +1,89 @@
+{
+  "isMock": true,
+  "products": [
+    {
+      "id": "product-hunter-cream",
+      "name": "Hunter Cream",
+      "category": "styling",
+      "price": 30000,
+      "availability": "available"
+    },
+    {
+      "id": "product-skala-cream",
+      "name": "Skala Cream",
+      "category": "hair-care",
+      "price": 7500,
+      "availability": "available"
+    },
+    {
+      "id": "product-shampoo-acondicionador",
+      "name": "Shampoo + acondicionador",
+      "category": "hair-care",
+      "price": 5900,
+      "availability": "available"
+    },
+    {
+      "id": "product-acondicionador",
+      "name": "Acondicionador",
+      "category": "hair-care",
+      "price": 3900,
+      "availability": "available"
+    },
+    {
+      "id": "product-mascara-capilar",
+      "name": "Máscara capilar",
+      "category": "hair-care",
+      "price": 3900,
+      "availability": "unavailable"
+    },
+    {
+      "id": "product-mousse",
+      "name": "Mousse",
+      "category": "styling",
+      "price": 16900,
+      "availability": "available"
+    },
+    {
+      "id": "product-perfume",
+      "name": "Perfume",
+      "category": "fragrance",
+      "price": 10900,
+      "availability": "unavailable"
+    },
+    {
+      "id": "product-beard-oil",
+      "name": "Aceite para barba",
+      "category": "beard-care",
+      "price": 8900,
+      "availability": "available"
+    },
+    {
+      "id": "product-matizador",
+      "name": "Matizador",
+      "category": "hair-care",
+      "price": 7900,
+      "availability": "available"
+    },
+    {
+      "id": "product-cream-beauty",
+      "name": "Crema Beauty",
+      "category": "hair-care",
+      "price": 4900,
+      "availability": "available"
+    },
+    {
+      "id": "product-hair-wax",
+      "name": "Cera para pelo",
+      "category": "styling",
+      "price": 11900,
+      "availability": "available"
+    },
+    {
+      "id": "product-gel",
+      "name": "Gel",
+      "category": "styling",
+      "price": 9900,
+      "availability": "available"
+    }
+  ]
+}
