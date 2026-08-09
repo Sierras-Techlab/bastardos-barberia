@@ -1,10 +1,10 @@
 # Context snapshot
 
-Captured: 2026-08-08
+Captured: 2026-08-09
 
 ## Repository state
 
-- Current branch: `fix/dashboard-navigation-performance` in the main worktree.
+- Current branch: `feat/16-products-view` in the main worktree.
 - Local branches: 6.
 - Remote tracking references: 7, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
@@ -26,6 +26,7 @@ Captured: 2026-08-08
 - Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
 - Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
+- `/products` is an authenticated, responsive read-only catalog backed by validated demonstration data, with summary metrics, search, category/availability filters, a desktop table and mobile cards.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
 - Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy and the complete user-management UI lifecycle, including pagination and keyboard access.
@@ -39,6 +40,7 @@ The configured Supabase project has migrations `001` through `007` installed. Th
 - Employee-specific permissions are intentionally deferred.
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
 - Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
+- Product creation, editing, deletion, purchase cost, numeric stock, inventory movements and backend persistence are intentionally outside the current catalog prototype.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
 
 ## Recommended next task
