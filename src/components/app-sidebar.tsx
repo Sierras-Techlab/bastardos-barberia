@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
@@ -57,15 +57,22 @@ type AppSidebarProps = {
 };
 
 export const AppSidebar = ({
-  activeItem = "Inicio",
+  activeItem,
   user,
 }: AppSidebarProps) => {
+  const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const name = `${user.firstName} ${user.lastName}`;
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
   const canManage = user.role.name === "owner" || user.role.name === "admin";
   const roleLabels = { owner: "Due\u00f1o", admin: "Administrador", employee: "Empleado" } as const;
+  const isItemActive = (label: string, href?: string) => {
+    if (activeItem) return activeItem === label;
+    if (!href) return false;
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const logOut = async () => {
     setIsLoggingOut(true);
@@ -109,7 +116,7 @@ export const AppSidebar = ({
                   {item.href ? (
                     <SidebarMenuButton
                       render={<Link href={item.href} />}
-                      isActive={activeItem === item.label}
+                      isActive={isItemActive(item.label, item.href)}
                       tooltip={item.label}
                       className="h-10 rounded-xl px-3 data-active:bg-primary data-active:text-primary-foreground"
                     >
@@ -143,7 +150,7 @@ export const AppSidebar = ({
                     {item.href ? (
                       <SidebarMenuButton
                         render={<Link href={item.href} />}
-                        isActive={activeItem === item.label}
+                        isActive={isItemActive(item.label, item.href)}
                         tooltip={item.label}
                         className="h-9 rounded-xl px-3 data-active:bg-primary data-active:text-primary-foreground"
                       >

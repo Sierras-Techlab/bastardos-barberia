@@ -1,6 +1,7 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { MANAGER_ROLES } from "./constants";
 import { getSessionCookie } from "./cookie";
 import { AppError } from "./errors";
@@ -14,8 +15,10 @@ export const assertManager = (user: SafeUser) => {
   return user;
 };
 
-export const requireUser = async () =>
-  getCurrentSession(await getSessionCookie());
+const resolveCurrentUser = cache(async () =>
+  getCurrentSession(await getSessionCookie()));
+
+export const requireUser = async () => resolveCurrentUser();
 
 export const requireManager = async () => {
   const session = await requireUser();

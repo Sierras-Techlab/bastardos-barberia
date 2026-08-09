@@ -22,36 +22,38 @@ vi.mock("@/lib/auth/authorization", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/incomes/new",
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
-import IncomesPage, { metadata } from "./page";
-import IncomesLayout from "./layout";
+import NewIncomePage, { metadata } from "./page";
+import DashboardLayout from "../../layout";
 
-it("composes the Bastardos income history route", async () => {
+it("composes the Bastardos income form route", async () => {
   const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  render(await DashboardLayout({ children: await NewIncomePage() }));
 
-  render(await IncomesLayout({ children: await IncomesPage() }));
-
-  expect(screen.getByRole("heading", { name: /ingresos/i })).toBeVisible();
-  expect(screen.getByText(/historial de ventas/i)).toBeVisible();
+  expect(screen.getByRole("heading", { name: /cargar ingreso/i })).toBeVisible();
+  expect(screen.getByText("Venta nueva")).toBeVisible();
   expect(screen.getByAltText("Bastardos Barbería")).toBeVisible();
-  expect(screen.getByRole("link", { name: /cargar ingreso/i })).toHaveAttribute(
-    "href",
-    "/incomes/new",
-  );
-  expect(screen.getByRole("link", { name: /^ingresos$/i })).toHaveAttribute(
-    "href",
-    "/incomes",
-  );
-  expect(metadata.title).toBe("Ingresos");
+  expect(
+    screen.getByRole("link", { name: /volver a ingresos/i }),
+  ).toHaveAttribute("href", "/incomes");
+  expect(screen.getByRole("button", { name: /revisar ingreso/i })).toBeVisible();
+  expect(metadata.title).toBe("Cargar ingreso");
   expect(consoleError).not.toHaveBeenCalled();
-
   consoleError.mockRestore();
 });
 
-it("does not render the income history when leaf session validation fails", async () => {
+it("revalidates the session at the income form boundary", async () => {
+  requirePageUser.mockClear();
+  await NewIncomePage();
+
+  expect(requirePageUser).toHaveBeenCalledOnce();
+});
+
+it("does not render the income form after session revocation", async () => {
   requirePageUser.mockRejectedValueOnce(new Error("revoked session"));
 
-  await expect(Promise.resolve().then(() => IncomesPage())).rejects.toThrow("revoked session");
+  await expect(NewIncomePage()).rejects.toThrow("revoked session");
 });

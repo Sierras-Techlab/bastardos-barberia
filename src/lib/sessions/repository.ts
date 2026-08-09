@@ -41,6 +41,7 @@ export const sessionRepository: SessionRepository = {
       userId: row.user_id,
       expiresAt: row.expires_at,
       revokedAt: row.revoked_at,
+      lastSeenAt: row.last_seen_at,
       user: toSafeUser(row.user),
     } satisfies SessionWithUser;
   },

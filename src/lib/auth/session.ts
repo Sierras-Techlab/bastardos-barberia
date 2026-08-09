@@ -14,6 +14,8 @@ const defaultDependencies: SessionDependencies = {
   hashToken: hashSessionToken,
 };
 
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+
 export const getCurrentSession = async (
   token: string | undefined,
   dependencies = defaultDependencies,
@@ -30,7 +32,10 @@ export const getCurrentSession = async (
     throw unauthenticatedError();
   }
 
-  await dependencies.sessions.touch(stored.id, now.toISOString());
+  const lastSeenAt = new Date(stored.lastSeenAt).getTime();
+  if (now.getTime() - lastSeenAt >= SESSION_TOUCH_INTERVAL_MS) {
+    await dependencies.sessions.touch(stored.id, now.toISOString());
+  }
   return { sessionId: stored.id, expiresAt: stored.expiresAt, user: stored.user };
 };
 

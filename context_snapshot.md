@@ -4,9 +4,9 @@ Captured: 2026-08-08
 
 ## Repository state
 
-- Current branch: `dev` in the main worktree.
-- Local branches: 2 (`dev`, `main`).
-- Remote branches: 3 real branches (`origin/dev`, `origin/feat/dashboard-ui`, `origin/main`) plus the `origin/HEAD` alias
+- Current branch: `fix/dashboard-navigation-performance` in the main worktree.
+- Local branches: 6.
+- Remote tracking references: 7, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
 
 ## Current implementation
@@ -22,9 +22,10 @@ Captured: 2026-08-08
 - Logical user deletion stores `deleted_at`/`deleted_by`, excludes deleted accounts from normal reads and atomically revokes their sessions.
 - `/users` is a responsive owner/admin-only workspace with search, role/status filters, pagination, create, profile edit, password replacement, activate/deactivate and delete flows.
 - The sidebar exposes an active Usuarios link only to owner/admin users.
-- Both the `/users` layout and leaf page independently require a live manager session.
-- Dashboard and income page require a live database session; `proxy.ts` adds an early cookie check.
-- The `/incomes` layout supplies the authenticated user to one persistent sidebar, while both list and new-income leaf pages independently revalidate the live session during client navigation.
+- A URL-transparent `(dashboard)` route group supplies one persistent authenticated sidebar to `/`, `/incomes`, `/incomes/new` and `/users`.
+- Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
+- Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
+- Income history and dashboard home provide matching centered loading states inside the persistent shell.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
 - Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy and the complete user-management UI lifecycle, including pagination and keyboard access.
