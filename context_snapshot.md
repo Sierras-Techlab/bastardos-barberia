@@ -4,9 +4,9 @@ Captured: 2026-08-09
 
 ## Repository state
 
-- Current branch: `feat/16-products-view` in the main worktree.
-- Local branches: 6.
-- Remote tracking references: 7, including the `origin/HEAD` alias.
+- Current branch: `feat/22-customers-view` in the main worktree.
+- Local branches: 8.
+- Remote tracking references: 9, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
 
 ## Current implementation
@@ -30,9 +30,11 @@ Captured: 2026-08-09
 - Owner/admin users can create and edit mock products, register stock entries/exits and activate/deactivate products. These frontend-only changes intentionally reset on reload; employees receive a read-only catalog without inactive products or management controls.
 - Successful product-management actions show an accessible, dismissible confirmation that automatically clears after three seconds.
 - Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
+- `/customers` is an authenticated responsive frontend prototype with validated demonstration data, summary metrics, identity/contact search, visit/date sorting, a desktop table and mobile contact cards.
+- Owner/admin users can create and edit mock customers with normalized unique email and phone validation. Employees receive a read-only directory. Visits remain read-only and frontend-only changes reset on reload.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product-management lifecycle.
+- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product/customer management lifecycles.
 
 ## Database integration state
 
@@ -43,12 +45,13 @@ The configured Supabase project has migrations `001` through `007` installed. Th
 - Employee-specific permissions are intentionally deferred.
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
 - Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
+- Customer persistence, customer history and automatic visit increments from associated incomes remain backend integration work.
 - Product deletion, purchase cost, persistent inventory movements and backend persistence remain outside the current catalog prototype.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
 
 ## Recommended next task
 
-Define the persistent sales and cash domain (sales, line items, payments, expenses and register closures) before replacing the dashboard and income demonstration data.
+Define the persistent customer and sales contracts so an income associated with a customer can atomically increment visit history before replacing the customer mocks.
 
 ## Context maintenance rule
 

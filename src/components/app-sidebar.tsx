@@ -37,7 +37,7 @@ import {
 const operationNavigation = [
   { label: "Inicio", icon: LayoutDashboard, href: "/" },
   { label: "Ingresos", icon: ReceiptText, href: "/incomes" },
-  { label: "Clientes", icon: Users },
+  { label: "Clientes", icon: Users, href: "/customers" },
   { label: "Servicios", icon: Scissors },
   { label: "Productos", icon: Package, href: "/products" },
 ];
