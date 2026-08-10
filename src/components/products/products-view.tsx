@@ -1,9 +1,9 @@
 "use client";
 
 import { PackagePlus, PackageSearch, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
-import { ProductActionFeedback } from "@/components/products/product-action-feedback";
 import { ProductFilters } from "@/components/products/product-filters";
 import { ProductEditorDialog } from "@/components/products/product-editor-dialog";
 import { ProductStatusDialog } from "@/components/products/product-status-dialog";
@@ -47,7 +47,6 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
   } | null>(null);
   const [stockProduct, setStockProduct] = useState<CatalogProduct | null>(null);
   const [statusProduct, setStatusProduct] = useState<CatalogProduct | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
   const visibleProducts = useMemo(
     () =>
       canManage
@@ -69,13 +68,6 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
     filters.stockStatus !== "all" ||
     filters.activeState !== "all";
 
-  useEffect(() => {
-    if (!feedback) return;
-
-    const timeout = window.setTimeout(() => setFeedback(null), 3000);
-    return () => window.clearTimeout(timeout);
-  }, [feedback]);
-
   const clearFilters = () => setFilters(initialFilters);
   const saveProduct = (input: ProductEditorInput) => {
     if (editor?.mode === "edit" && editor.product) {
@@ -84,7 +76,7 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
           product.id === editor.product?.id ? { ...product, ...input } : product,
         ),
       );
-      setFeedback("Producto actualizado correctamente.");
+      toast.success("Producto actualizado correctamente.");
     } else {
       setCatalogProducts((current) => [
         ...current,
@@ -94,7 +86,7 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
           isActive: true,
         },
       ]);
-      setFeedback("Producto añadido correctamente.");
+      toast.success("Producto añadido correctamente.");
     }
     setEditor(null);
   };
@@ -204,7 +196,7 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
           onSave={(stock) => {
             updateProduct(stockProduct.id, { stock });
             setStockProduct(null);
-            setFeedback("Stock actualizado correctamente.");
+            toast.success("Stock actualizado correctamente.");
           }}
         />
       )}
@@ -214,19 +206,13 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
           onClose={() => setStatusProduct(null)}
           onConfirm={() => {
             updateProduct(statusProduct.id, { isActive: !statusProduct.isActive });
-            setFeedback(
+            toast.success(
               statusProduct.isActive
                 ? "Producto desactivado correctamente."
                 : "Producto activado correctamente.",
             );
             setStatusProduct(null);
           }}
-        />
-      )}
-      {feedback && (
-        <ProductActionFeedback
-          message={feedback}
-          onClose={() => setFeedback(null)}
         />
       )}
     </div>

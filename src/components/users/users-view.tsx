@@ -2,7 +2,6 @@
 
 import {
   AlertCircle,
-  CheckCircle2,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import type { CreateUserInput, UpdateUserInput } from "@/lib/auth/schemas";
@@ -88,7 +88,6 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   const [confirmUser, setConfirmUser] = useState<SafeUser | null>(null);
   const [mutationPending, setMutationPending] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(
@@ -229,7 +228,6 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   };
 
   const openCreate = () => {
-    setSuccessNotice(null);
     setEditorUser(null);
     setCreatedUser(null);
     setMutationError(null);
@@ -246,7 +244,6 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   const createUser = async (input: CreateUserInput) => {
     setMutationPending(true);
     setMutationError(null);
-    setSuccessNotice(null);
     try {
       const result = await createAdminUser(input);
       setCreatedUser(result);
@@ -267,7 +264,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     try {
       await updateAdminUser(editorUser.id, changes);
       closeEditor();
-      setSuccessNotice("Datos del usuario actualizados.");
+      toast.success("Datos del usuario actualizados.");
       reloadList();
     } catch (error) {
       handleMutationError(error);
@@ -283,7 +280,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     try {
       await resetAdminUserPassword(passwordUser.id, password);
       setPasswordUser(null);
-      setSuccessNotice("Contraseña actualizada.");
+      toast.success("Contraseña actualizada.");
       reloadList();
     } catch (error) {
       handleMutationError(error);
@@ -293,7 +290,6 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   };
 
   const chooseAction = (action: UserAction, user: SafeUser) => {
-    setSuccessNotice(null);
     setMutationError(null);
     if (action === "edit") {
       setEditorUser(user);
@@ -330,7 +326,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
           confirmAction === "activate",
         );
       }
-      setSuccessNotice(
+      toast.success(
         confirmAction === "delete"
           ? "Usuario eliminado."
           : confirmAction === "activate"
@@ -405,17 +401,6 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
             Reintentar roles
           </Button>
         </section>
-      )}
-
-      {successNotice && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="flex items-center gap-2 rounded-[1.2rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900"
-        >
-          <CheckCircle2 className="size-4" />
-          {successNotice}
-        </p>
       )}
 
       <section aria-label="Resumen de la página" className="grid gap-3 sm:grid-cols-3">

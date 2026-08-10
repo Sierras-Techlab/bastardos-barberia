@@ -1,10 +1,10 @@
 "use client";
 
 import { Mail, Pencil, Phone, RotateCcw, Search, UserRoundPlus, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { CustomerEditorDialog } from "@/components/customers/customer-editor-dialog";
-import { ProductActionFeedback } from "@/components/products/product-action-feedback";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,23 +19,16 @@ export const CustomersView = ({ data, canManage }: CustomersViewProps) => {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<CustomerSort>("original");
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; customer: Customer | null } | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
   const displayed = useMemo(() => sortCustomers(filterCustomers(customers, query), sort), [customers, query, sort]);
   const metrics = useMemo(() => calculateCustomerMetrics(customers), [customers]);
-
-  useEffect(() => {
-    if (!feedback) return;
-    const timeout = window.setTimeout(() => setFeedback(null), 3000);
-    return () => window.clearTimeout(timeout);
-  }, [feedback]);
 
   const save = (input: CustomerEditorInput) => {
     if (editor?.mode === "edit" && editor.customer) {
       setCustomers((current) => current.map((customer) => customer.id === editor.customer?.id ? { ...customer, ...input } : customer));
-      setFeedback("Cliente actualizado correctamente.");
+      toast.success("Cliente actualizado correctamente.");
     } else {
       setCustomers((current) => [...current, { ...input, id: `mock-customer-${current.length + 1}`, visits: 0, createdAt: new Date().toISOString() }]);
-      setFeedback("Cliente añadido correctamente.");
+      toast.success("Cliente añadido correctamente.");
     }
     setEditor(null);
   };
@@ -72,7 +65,6 @@ export const CustomersView = ({ data, canManage }: CustomersViewProps) => {
         </> : <div className="flex min-h-64 flex-col items-center justify-center rounded-[1.6rem] bg-white text-center shadow-sm"><UsersRound className="size-8 text-primary" /><h3 className="mt-3 font-semibold">No encontramos clientes</h3><p className="text-sm text-muted-foreground">Probá con otra búsqueda.</p></div>}
       </section>
       {editor && <CustomerEditorDialog key={`${editor.mode}-${editor.customer?.id ?? "new"}`} mode={editor.mode} customer={editor.customer} customers={customers} onClose={() => setEditor(null)} onSave={save} />}
-      {feedback && <ProductActionFeedback message={feedback} onClose={() => setFeedback(null)} />}
     </div>
   );
 };

@@ -3,10 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 
 import { CustomersView } from "@/components/customers/customers-view";
+import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import customersMock from "@/data/customers.mock.json";
 import { authorizeCustomerCatalogData } from "@/lib/customers/customer-catalog";
 
 const data = authorizeCustomerCatalogData(customersMock);
+const expectToast = (message: string) =>
+  expect(screen.getByText(message).closest("[data-sonner-toast]")).not.toBeNull();
 
 it("renders metrics and responsive customer representations", () => {
   render(<CustomersView data={data} canManage />);
@@ -37,7 +40,7 @@ it("searches customers and sorts by visits", async () => {
 
 it("creates customers in memory with visits read-only", async () => {
   const user = userEvent.setup();
-  render(<CustomersView data={data} canManage />);
+  render(<><CustomersView data={data} canManage /><DashboardToaster /></>);
   await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
   const dialog = screen.getByRole("dialog");
   await user.type(within(dialog).getByLabelText("Nombre"), "Ana");
@@ -47,12 +50,12 @@ it("creates customers in memory with visits read-only", async () => {
   expect(within(dialog).queryByLabelText("Visitas")).not.toBeInTheDocument();
   await user.click(within(dialog).getByRole("button", { name: "Crear cliente" }));
   expect(screen.getAllByText("Ana Díaz")).toHaveLength(2);
-  expect(screen.getByRole("status", { name: "Cliente añadido correctamente." })).toBeVisible();
+  expectToast("Cliente añadido correctamente.");
 });
 
 it("edits a customer without changing their visits", async () => {
   const user = userEvent.setup();
-  render(<CustomersView data={data} canManage />);
+  render(<><CustomersView data={data} canManage /><DashboardToaster /></>);
 
   await user.click(screen.getAllByRole("button", { name: "Gestionar Lucas Ferreyra" })[0]);
   const dialog = screen.getByRole("dialog");
@@ -63,7 +66,7 @@ it("edits a customer without changing their visits", async () => {
 
   expect(screen.getAllByText("Luciano Ferreyra")).toHaveLength(2);
   expect(screen.getAllByText(/18 visitas/)).toHaveLength(2);
-  expect(screen.getByRole("status", { name: "Cliente actualizado correctamente." })).toBeVisible();
+  expectToast("Cliente actualizado correctamente.");
 });
 
 it("rejects duplicate customer contact data", async () => {
