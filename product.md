@@ -19,12 +19,12 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
-| Dashboard UI | Prototype | Responsive dashboard based on demonstration data, now protected by real authentication. |
+| Dashboard UI | Prototype | Responsive authenticated dashboard with one Sonner-based action-notification system shared by Users, Products, Customers and Services. |
 | Income entry UI | Prototype | Multi-step sales form based on demonstration data, now protected by real authentication. |
 | Income history UI | Prototype | Filterable responsive income list and detail views based on demonstration data, protected by the authenticated incomes layout. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Planned | Define persistent sales, line items, payment methods, expenses and register closures. |
-| Services and products | Prototype | Responsive product catalog with mock prices, exact stock quantities, derived stock states, filters and sorting. Owner/admin users can create, edit, adjust stock and activate/deactivate products in memory; persistence remains planned. |
+| Services and products | Prototype | Responsive mock catalogs with role-aware management. Products support stock and lifecycle actions; services use visual cards with price, search, sorting, activation and confirmed reload-scoped deletion. Persistent service deletion must be logical to preserve sales history. |
 | Customers | Prototype | Responsive mock directory with required identity/contact fields, search, sorting and manager-only create/edit. Visits are read-only pending income integration. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
@@ -35,6 +35,8 @@ Define the persistent sales and cash domain before replacing dashboard demonstra
 The product catalog is now available as a frontend prototype. Product CRUD, persistent prices and stock, purchase costs and inventory movements still require domain and backend design.
 
 The customer directory is also available as a frontend prototype. Persistence, customer history and the automatic visit increment produced by an associated income still require a shared frontend/backend contract.
+
+The service catalog is available as a frontend prototype. Its reload-scoped changes are intentionally independent from the income form fixture until a persistent service contract replaces both mock sources.
 
 ## Accepted authentication decisions
 

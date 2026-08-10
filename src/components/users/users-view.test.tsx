@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import type { PaginatedUsers, Role, SafeUser } from "@/lib/auth/types";
 import { AdminApiError } from "@/lib/users/client";
 
@@ -82,6 +83,14 @@ const page: PaginatedUsers = {
   total: 2,
   totalPages: 1,
 };
+
+const renderUsersWithToaster = () =>
+  render(<><UsersView currentUser={owner} /><DashboardToaster /></>);
+
+const expectToast = async (message: string) =>
+  expect(
+    (await screen.findByText(message)).closest("[data-sonner-toast]"),
+  ).not.toBeNull();
 
 const openActions = async (
   browser: ReturnType<typeof userEvent.setup>,
@@ -186,7 +195,7 @@ describe("UsersView", () => {
   it("edits profile fields without changing the username", async () => {
     const browser = userEvent.setup();
     updateAdminUser.mockResolvedValue({ ...employee, firstName: "Luz" });
-    render(<UsersView currentUser={owner} />);
+    renderUsersWithToaster();
     await screen.findByText("@lucia.ferreyra");
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Nuevo usuario" })).toBeEnabled();
@@ -206,12 +215,13 @@ describe("UsersView", () => {
         firstName: "Luz",
       });
     });
+    await expectToast("Datos del usuario actualizados.");
   });
 
   it("requires matching passwords before replacing credentials", async () => {
     const browser = userEvent.setup();
     resetAdminUserPassword.mockResolvedValue(employee);
-    render(<UsersView currentUser={owner} />);
+    renderUsersWithToaster();
     await screen.findByText("@lucia.ferreyra");
 
     await openActions(browser, /Acciones de Luc/);
@@ -248,12 +258,13 @@ describe("UsersView", () => {
         "Nueva-clave-2026",
       );
     });
+    await expectToast("Contraseña actualizada.");
   });
 
   it("deactivates an active user only after confirmation", async () => {
     const browser = userEvent.setup();
     setAdminUserActive.mockResolvedValue({ ...employee, isActive: false });
-    render(<UsersView currentUser={owner} />);
+    renderUsersWithToaster();
     await screen.findByText("@lucia.ferreyra");
 
     await openActions(browser, /Acciones de Luc/);
@@ -270,9 +281,7 @@ describe("UsersView", () => {
     await waitFor(() => {
       expect(setAdminUserActive).toHaveBeenCalledWith(employee.id, false);
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Usuario desactivado.",
-    );
+    await expectToast("Usuario desactivado.");
   });
 
   it("reactivates an inactive user", async () => {
@@ -280,7 +289,7 @@ describe("UsersView", () => {
     const inactive = { ...employee, isActive: false };
     listAdminUsers.mockResolvedValue({ ...page, items: [owner, inactive] });
     setAdminUserActive.mockResolvedValue({ ...inactive, isActive: true });
-    render(<UsersView currentUser={owner} />);
+    renderUsersWithToaster();
     await screen.findByText("@lucia.ferreyra");
 
     await openActions(browser, /Acciones de Luc/);
@@ -294,12 +303,13 @@ describe("UsersView", () => {
     await waitFor(() => {
       expect(setAdminUserActive).toHaveBeenCalledWith(employee.id, true);
     });
+    await expectToast("Usuario activado.");
   });
 
   it("logically deletes a named user after destructive confirmation", async () => {
     const browser = userEvent.setup();
     deleteAdminUser.mockResolvedValue({ id: employee.id });
-    render(<UsersView currentUser={owner} />);
+    renderUsersWithToaster();
     await screen.findByText("@lucia.ferreyra");
 
     await openActions(browser, /Acciones de Luc/);
@@ -317,6 +327,7 @@ describe("UsersView", () => {
       expect(deleteAdminUser).toHaveBeenCalledTimes(1);
       expect(deleteAdminUser).toHaveBeenCalledWith(employee.id);
     });
+    await expectToast("Usuario eliminado.");
   });
 
   it("returns to the nearest valid page after deleting its final row", async () => {

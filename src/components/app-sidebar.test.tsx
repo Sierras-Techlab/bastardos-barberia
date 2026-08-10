@@ -133,3 +133,13 @@ it("links every authenticated role to customers", () => {
   expect(link).toHaveAttribute("href", "/customers");
   expect(link).toHaveAttribute("data-active");
 });
+
+it("links every authenticated role to services", () => {
+  pathname.value = "/services";
+  render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={employee} /></SidebarProvider></TooltipProvider>,
+  );
+  const link = screen.getByRole("link", { name: "Servicios" });
+  expect(link).toHaveAttribute("href", "/services");
+  expect(link).toHaveAttribute("data-active");
+});

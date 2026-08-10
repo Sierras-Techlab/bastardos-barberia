@@ -38,7 +38,7 @@ const operationNavigation = [
   { label: "Inicio", icon: LayoutDashboard, href: "/" },
   { label: "Ingresos", icon: ReceiptText, href: "/incomes" },
   { label: "Clientes", icon: Users, href: "/customers" },
-  { label: "Servicios", icon: Scissors },
+  { label: "Servicios", icon: Scissors, href: "/services" },
   { label: "Productos", icon: Package, href: "/products" },
 ];
 

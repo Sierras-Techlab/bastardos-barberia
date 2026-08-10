@@ -1,14 +1,15 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 
 import { ProductsView } from "@/components/products/products-view";
+import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import productsMock from "@/data/products.mock.json";
 import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
 
 const data = authorizeProductCatalogData(productsMock);
-
-afterEach(() => vi.useRealTimers());
+const expectToast = (message: string) =>
+  expect(screen.getByText(message).closest("[data-sonner-toast]")).not.toBeNull();
 
 it("shows the catalog summary in desktop and mobile representations", () => {
   render(<ProductsView data={data} canManage />);
@@ -121,7 +122,7 @@ it("keeps inactive products for managers and hides them from employees", () => {
 
 it("creates and edits products in memory, then resets on remount", async () => {
   const user = userEvent.setup();
-  const { unmount } = render(<ProductsView data={data} canManage />);
+  const { unmount } = render(<><ProductsView data={data} canManage /><DashboardToaster /></>);
 
   await user.click(screen.getByRole("button", { name: "Nuevo producto" }));
   const createDialog = screen.getByRole("dialog");
@@ -136,9 +137,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
     within(createDialog).getByRole("button", { name: "Crear producto" }),
   );
 
-  expect(
-    screen.getByRole("status", { name: "Producto añadido correctamente." }),
-  ).toBeVisible();
+  expectToast("Producto añadido correctamente.");
   expect(screen.getAllByText("Pomada mate")).toHaveLength(2);
   expect(screen.getAllByText("6 unidades")).toHaveLength(2);
 
@@ -157,9 +156,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
     within(editDialog).getByRole("button", { name: "Guardar cambios" }),
   );
 
-  expect(
-    screen.getByRole("status", { name: "Producto actualizado correctamente." }),
-  ).toBeVisible();
+  expectToast("Producto actualizado correctamente.");
   expect(screen.getAllByText("Pomada mate premium")).toHaveLength(2);
   expect(screen.getAllByText("6 unidades")).toHaveLength(2);
 
@@ -170,7 +167,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
 
 it("adjusts stock and deactivates products in memory", async () => {
   const user = userEvent.setup();
-  render(<ProductsView data={data} canManage />);
+  render(<><ProductsView data={data} canManage /><DashboardToaster /></>);
 
   await user.click(
     screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
@@ -180,9 +177,7 @@ it("adjusts stock and deactivates products in memory", async () => {
   );
   await user.type(screen.getByLabelText("Cantidad"), "2");
   await user.click(screen.getByRole("button", { name: "Guardar ajuste" }));
-  expect(
-    screen.getByRole("status", { name: "Stock actualizado correctamente." }),
-  ).toBeVisible();
+  expectToast("Stock actualizado correctamente.");
   const hunterRow = within(
     screen.getByRole("table", { name: /catálogo de productos/i }),
   ).getByRole("row", { name: /Hunter Cream/ });
@@ -200,37 +195,6 @@ it("adjusts stock and deactivates products in memory", async () => {
   await user.click(
     screen.getByRole("button", { name: "Desactivar producto" }),
   );
-  expect(
-    screen.getByRole("status", {
-      name: "Producto desactivado correctamente.",
-    }),
-  ).toBeVisible();
+  expectToast("Producto desactivado correctamente.");
   expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(2);
-});
-
-it("dismisses product feedback automatically after three seconds", () => {
-  vi.useFakeTimers();
-  render(<ProductsView data={data} canManage />);
-
-  fireEvent.click(screen.getByRole("button", { name: "Nuevo producto" }));
-  const dialog = screen.getByRole("dialog");
-  fireEvent.change(within(dialog).getByLabelText("Nombre"), {
-    target: { value: "Pomada mate" },
-  });
-  fireEvent.change(within(dialog).getByLabelText("Categoría"), {
-    target: { value: "styling" },
-  });
-  fireEvent.change(within(dialog).getByLabelText("Precio"), {
-    target: { value: "14500" },
-  });
-  fireEvent.change(within(dialog).getByLabelText("Stock inicial"), {
-    target: { value: "6" },
-  });
-  fireEvent.click(
-    within(dialog).getByRole("button", { name: "Crear producto" }),
-  );
-
-  expect(screen.getByRole("status")).toBeVisible();
-  act(() => vi.advanceTimersByTime(3000));
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });

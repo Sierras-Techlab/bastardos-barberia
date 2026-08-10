@@ -4,9 +4,9 @@ Captured: 2026-08-09
 
 ## Repository state
 
-- Current branch: `feat/22-customers-view` in the main worktree.
-- Local branches: 8.
-- Remote tracking references: 9, including the `origin/HEAD` alias.
+- Current branch: `feat/23-services-view` in the main worktree.
+- Local branches: 9.
+- Remote tracking references: 10, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
 
 ## Current implementation
@@ -28,10 +28,12 @@ Captured: 2026-08-09
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
 - `/products` is an authenticated, responsive catalog backed by validated demonstration data, with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
 - Owner/admin users can create and edit mock products, register stock entries/exits and activate/deactivate products. These frontend-only changes intentionally reset on reload; employees receive a read-only catalog without inactive products or management controls.
-- Successful product-management actions show an accessible, dismissible confirmation that automatically clears after three seconds.
+- The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers and Services use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
 - Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
 - `/customers` is an authenticated responsive frontend prototype with validated demonstration data, summary metrics, identity/contact search, visit/date sorting, a desktop table and mobile contact cards.
 - Owner/admin users can create and edit mock customers with normalized unique email and phone validation. Employees receive a read-only directory. Visits remain read-only and frontend-only changes reset on reload.
+- `/services` is an authenticated visual-card catalog with validated demonstration data, active-service and price metrics, search, state filtering and name/price sorting. Its desktop filters and three-card catalog settle at the `lg` breakpoint so editor resizing and hot reloads do not switch between competing layouts.
+- Owner/admin users can create, edit, activate, deactivate and delete mock services with confirmation and duplicate-name validation. Deletion removes an item only from reload-scoped state; future persistence must use logical deletion to preserve sales history. Employees see active services only.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
 - Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product/customer management lifecycles.
@@ -46,6 +48,7 @@ The configured Supabase project has migrations `001` through `007` installed. Th
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
 - Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
 - Customer persistence, customer history and automatic visit increments from associated incomes remain backend integration work.
+- Service catalog changes are intentionally not synchronized with the separate income-form fixture until both use a persistent backend source.
 - Product deletion, purchase cost, persistent inventory movements and backend persistence remain outside the current catalog prototype.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
 

@@ -26,6 +26,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Zod for boundary validation
 - Vitest and Testing Library
 - Tailwind CSS and the existing shadcn/base-ui component layer
+- Sonner for globally consistent dashboard action notifications
 
 ## Architecture and invariants
 
