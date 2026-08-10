@@ -1,0 +1,83 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+
+import { ProductEditorDialog } from "@/components/products/product-editor-dialog";
+import productsMock from "@/data/products.mock.json";
+import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
+
+const products = authorizeProductCatalogData(productsMock).products;
+
+it("submits a valid new product with numeric values", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn();
+  render(
+    <ProductEditorDialog
+      mode="create"
+      product={null}
+      products={products}
+      onClose={vi.fn()}
+      onSave={onSave}
+    />,
+  );
+
+  await user.type(screen.getByLabelText("Nombre"), "Pomada mate");
+  await user.selectOptions(screen.getByLabelText("Categoría"), "styling");
+  await user.type(screen.getByLabelText("Precio"), "14500");
+  await user.type(screen.getByLabelText("Stock inicial"), "6");
+  await user.click(screen.getByRole("button", { name: "Crear producto" }));
+
+  expect(onSave).toHaveBeenCalledWith({
+    name: "Pomada mate",
+    category: "styling",
+    price: 14500,
+    stock: 6,
+  });
+});
+
+it("rejects a normalized duplicate product name", async () => {
+  const user = userEvent.setup();
+  render(
+    <ProductEditorDialog
+      mode="create"
+      product={null}
+      products={products}
+      onClose={vi.fn()}
+      onSave={vi.fn()}
+    />,
+  );
+
+  await user.type(screen.getByLabelText("Nombre"), " hunter cream ");
+  await user.type(screen.getByLabelText("Precio"), "10000");
+  await user.type(screen.getByLabelText("Stock inicial"), "1");
+  await user.click(screen.getByRole("button", { name: "Crear producto" }));
+
+  expect(
+    screen.getByText("Ya existe un producto con ese nombre."),
+  ).toBeVisible();
+});
+
+it("edits catalog fields while preserving stock", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn();
+  render(
+    <ProductEditorDialog
+      mode="edit"
+      product={products[0]}
+      products={products}
+      onClose={vi.fn()}
+      onSave={onSave}
+    />,
+  );
+
+  await user.clear(screen.getByLabelText("Nombre"));
+  await user.type(screen.getByLabelText("Nombre"), "Hunter Matte");
+  await user.clear(screen.getByLabelText("Precio"));
+  await user.type(screen.getByLabelText("Precio"), "32000");
+  expect(screen.queryByLabelText("Stock inicial")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({ name: "Hunter Matte", price: 32000, stock: 8 }),
+  );
+});

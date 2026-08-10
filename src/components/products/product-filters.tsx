@@ -35,8 +35,8 @@ export const ProductFilters = ({
     aria-label="Filtros de productos"
     className="rounded-[1.4rem] bg-white p-3 shadow-sm sm:p-4"
   >
-    <div className="grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_12rem_12rem_12rem_auto]">
-      <div className="relative min-w-0">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(15rem,1fr)_12rem_12rem_12rem_auto]">
+      <div className="relative min-w-0 sm:col-span-2 lg:col-span-1 xl:col-span-1">
         <Search className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" />
         <Input
           type="search"

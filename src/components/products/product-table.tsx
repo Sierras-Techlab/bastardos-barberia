@@ -1,3 +1,4 @@
+import { ProductActions } from "@/components/products/product-actions";
 import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
@@ -11,6 +12,10 @@ type ProductTableProps = {
   products: CatalogProduct[];
   sort: ProductSort;
   onSortChange: (sort: ProductSort) => void;
+  canManage?: boolean;
+  onEdit?: (product: CatalogProduct) => void;
+  onAdjustStock?: (product: CatalogProduct) => void;
+  onToggleStatus?: (product: CatalogProduct) => void;
 };
 
 const nextSort = (
@@ -32,6 +37,10 @@ export const ProductTable = ({
   products,
   sort,
   onSortChange,
+  canManage = false,
+  onEdit,
+  onAdjustStock,
+  onToggleStatus,
 }: ProductTableProps) => (
   <div className="overflow-hidden rounded-[1.6rem] bg-white shadow-sm">
     <div className="overflow-x-auto">
@@ -66,6 +75,11 @@ export const ProductTable = ({
                 Precio <SortIcon sort={sort} field="price" />
               </button>
             </th>
+            {canManage && (
+              <th className="w-14 px-3 py-3.5">
+                <span className="sr-only">Acciones</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -115,6 +129,16 @@ export const ProductTable = ({
               <td className="px-5 py-4 text-right text-base font-semibold">
                 {formatArs(product.price)}
               </td>
+              {canManage && (
+                <td className="px-3 py-4 text-right">
+                  <ProductActions
+                    product={product}
+                    onEdit={() => onEdit?.(product)}
+                    onAdjustStock={() => onAdjustStock?.(product)}
+                    onToggleStatus={() => onToggleStatus?.(product)}
+                  />
+                </td>
+              )}
             </tr>
             );
           })}

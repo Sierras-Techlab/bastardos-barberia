@@ -1,12 +1,14 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { ProductsView } from "@/components/products/products-view";
 import productsMock from "@/data/products.mock.json";
 import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
 
 const data = authorizeProductCatalogData(productsMock);
+
+afterEach(() => vi.useRealTimers());
 
 it("shows the catalog summary in desktop and mobile representations", () => {
   render(<ProductsView data={data} canManage />);
@@ -115,4 +117,120 @@ it("keeps inactive products for managers and hides them from employees", () => {
 
   expect(screen.queryByText("Perfume")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Estado del producto")).not.toBeInTheDocument();
+});
+
+it("creates and edits products in memory, then resets on remount", async () => {
+  const user = userEvent.setup();
+  const { unmount } = render(<ProductsView data={data} canManage />);
+
+  await user.click(screen.getByRole("button", { name: "Nuevo producto" }));
+  const createDialog = screen.getByRole("dialog");
+  await user.type(within(createDialog).getByLabelText("Nombre"), "Pomada mate");
+  await user.selectOptions(
+    within(createDialog).getByLabelText("Categoría"),
+    "styling",
+  );
+  await user.type(within(createDialog).getByLabelText("Precio"), "14500");
+  await user.type(within(createDialog).getByLabelText("Stock inicial"), "6");
+  await user.click(
+    within(createDialog).getByRole("button", { name: "Crear producto" }),
+  );
+
+  expect(
+    screen.getByRole("status", { name: "Producto añadido correctamente." }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Pomada mate")).toHaveLength(2);
+  expect(screen.getAllByText("6 unidades")).toHaveLength(2);
+
+  const actionTrigger = screen.getAllByRole("button", {
+    name: "Gestionar Pomada mate",
+  })[0];
+  await user.click(actionTrigger);
+  await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
+  const editDialog = screen.getByRole("dialog");
+  await user.clear(within(editDialog).getByLabelText("Nombre"));
+  await user.type(
+    within(editDialog).getByLabelText("Nombre"),
+    "Pomada mate premium",
+  );
+  await user.click(
+    within(editDialog).getByRole("button", { name: "Guardar cambios" }),
+  );
+
+  expect(
+    screen.getByRole("status", { name: "Producto actualizado correctamente." }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Pomada mate premium")).toHaveLength(2);
+  expect(screen.getAllByText("6 unidades")).toHaveLength(2);
+
+  unmount();
+  render(<ProductsView data={data} canManage />);
+  expect(screen.queryByText("Pomada mate premium")).not.toBeInTheDocument();
+});
+
+it("adjusts stock and deactivates products in memory", async () => {
+  const user = userEvent.setup();
+  render(<ProductsView data={data} canManage />);
+
+  await user.click(
+    screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
+  );
+  await user.click(
+    await screen.findByRole("menuitem", { name: "Ajustar stock" }),
+  );
+  await user.type(screen.getByLabelText("Cantidad"), "2");
+  await user.click(screen.getByRole("button", { name: "Guardar ajuste" }));
+  expect(
+    screen.getByRole("status", { name: "Stock actualizado correctamente." }),
+  ).toBeVisible();
+  const hunterRow = within(
+    screen.getByRole("table", { name: /catálogo de productos/i }),
+  ).getByRole("row", { name: /Hunter Cream/ });
+  expect(within(hunterRow).getByText("10 unidades")).toBeVisible();
+  const hunterMobileItem = screen
+    .getAllByText("Hunter Cream")[1]
+    .closest("li");
+  expect(hunterMobileItem).not.toBeNull();
+  expect(within(hunterMobileItem!).getByText("10 unidades")).toBeVisible();
+
+  await user.click(
+    screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
+  );
+  await user.click(await screen.findByRole("menuitem", { name: "Desactivar" }));
+  await user.click(
+    screen.getByRole("button", { name: "Desactivar producto" }),
+  );
+  expect(
+    screen.getByRole("status", {
+      name: "Producto desactivado correctamente.",
+    }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(2);
+});
+
+it("dismisses product feedback automatically after three seconds", () => {
+  vi.useFakeTimers();
+  render(<ProductsView data={data} canManage />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Nuevo producto" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Nombre"), {
+    target: { value: "Pomada mate" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Categoría"), {
+    target: { value: "styling" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Precio"), {
+    target: { value: "14500" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Stock inicial"), {
+    target: { value: "6" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Crear producto" }),
+  );
+
+  expect(screen.getByRole("status")).toBeVisible();
+  act(() => vi.advanceTimersByTime(3000));
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });

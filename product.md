@@ -24,7 +24,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Income history UI | Prototype | Filterable responsive income list and detail views based on demonstration data, protected by the authenticated incomes layout. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Planned | Define persistent sales, line items, payment methods, expenses and register closures. |
-| Services and products | Prototype | Authenticated read-only product catalog with mock prices, exact stock quantities, derived stock states, search, filters and responsive desktop/mobile views; persistence and inventory movements remain planned. |
+| Services and products | Prototype | Responsive product catalog with mock prices, exact stock quantities, derived stock states, filters and sorting. Owner/admin users can create, edit, adjust stock and activate/deactivate products in memory; persistence remains planned. |
 | Customers | Planned | Define customer identity, contact and visit history. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 

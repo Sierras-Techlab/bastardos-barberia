@@ -1,9 +1,13 @@
 "use client";
 
-import { PackageSearch, RotateCcw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { PackagePlus, PackageSearch, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
+import { ProductActionFeedback } from "@/components/products/product-action-feedback";
 import { ProductFilters } from "@/components/products/product-filters";
+import { ProductEditorDialog } from "@/components/products/product-editor-dialog";
+import { ProductStatusDialog } from "@/components/products/product-status-dialog";
+import { ProductStockDialog } from "@/components/products/product-stock-dialog";
 import { ProductMetrics } from "@/components/products/product-metrics";
 import { ProductMobileList } from "@/components/products/product-mobile-list";
 import { ProductTable } from "@/components/products/product-table";
@@ -16,6 +20,8 @@ import { sortProducts } from "@/lib/products/product-management";
 import type {
   ProductCatalogData,
   ProductCatalogFilters,
+  CatalogProduct,
+  ProductEditorInput,
   ProductSort,
 } from "@/types/product";
 
@@ -32,9 +38,16 @@ const initialFilters: ProductCatalogFilters = {
 };
 
 export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
-  const [catalogProducts] = useState(() => data.products);
+  const [catalogProducts, setCatalogProducts] = useState(() => data.products);
   const [filters, setFilters] = useState(initialFilters);
   const [sort, setSort] = useState<ProductSort>("original");
+  const [editor, setEditor] = useState<{
+    mode: "create" | "edit";
+    product: CatalogProduct | null;
+  } | null>(null);
+  const [stockProduct, setStockProduct] = useState<CatalogProduct | null>(null);
+  const [statusProduct, setStatusProduct] = useState<CatalogProduct | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const visibleProducts = useMemo(
     () =>
       canManage
@@ -56,7 +69,41 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
     filters.stockStatus !== "all" ||
     filters.activeState !== "all";
 
+  useEffect(() => {
+    if (!feedback) return;
+
+    const timeout = window.setTimeout(() => setFeedback(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
+
   const clearFilters = () => setFilters(initialFilters);
+  const saveProduct = (input: ProductEditorInput) => {
+    if (editor?.mode === "edit" && editor.product) {
+      setCatalogProducts((current) =>
+        current.map((product) =>
+          product.id === editor.product?.id ? { ...product, ...input } : product,
+        ),
+      );
+      setFeedback("Producto actualizado correctamente.");
+    } else {
+      setCatalogProducts((current) => [
+        ...current,
+        {
+          ...input,
+          id: `mock-product-${current.length + 1}`,
+          isActive: true,
+        },
+      ]);
+      setFeedback("Producto añadido correctamente.");
+    }
+    setEditor(null);
+  };
+  const updateProduct = (productId: string, changes: Partial<CatalogProduct>) =>
+    setCatalogProducts((current) =>
+      current.map((product) =>
+        product.id === productId ? { ...product, ...changes } : product,
+      ),
+    );
 
   return (
     <div className="space-y-5">
@@ -81,9 +128,19 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
               {products.length} {products.length === 1 ? "producto" : "productos"}
             </p>
           </div>
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            Precios de venta al público
-          </p>
+          {canManage ? (
+            <Button
+              type="button"
+              className="rounded-xl"
+              onClick={() => setEditor({ mode: "create", product: null })}
+            >
+              <PackagePlus /> Nuevo producto
+            </Button>
+          ) : (
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              Precios de venta al público
+            </p>
+          )}
         </div>
 
         {products.length > 0 ? (
@@ -93,10 +150,20 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
                 products={products}
                 sort={sort}
                 onSortChange={setSort}
+                canManage={canManage}
+                onEdit={(product) => setEditor({ mode: "edit", product })}
+                onAdjustStock={setStockProduct}
+                onToggleStatus={setStatusProduct}
               />
             </div>
             <div className="md:hidden">
-              <ProductMobileList products={products} />
+              <ProductMobileList
+                products={products}
+                canManage={canManage}
+                onEdit={(product) => setEditor({ mode: "edit", product })}
+                onAdjustStock={setStockProduct}
+                onToggleStatus={setStatusProduct}
+              />
             </div>
           </>
         ) : (
@@ -120,6 +187,48 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
           </div>
         )}
       </section>
+      {editor && (
+        <ProductEditorDialog
+          key={`${editor.mode}-${editor.product?.id ?? "new"}`}
+          mode={editor.mode}
+          product={editor.product}
+          products={catalogProducts}
+          onClose={() => setEditor(null)}
+          onSave={saveProduct}
+        />
+      )}
+      {stockProduct && (
+        <ProductStockDialog
+          product={stockProduct}
+          onClose={() => setStockProduct(null)}
+          onSave={(stock) => {
+            updateProduct(stockProduct.id, { stock });
+            setStockProduct(null);
+            setFeedback("Stock actualizado correctamente.");
+          }}
+        />
+      )}
+      {statusProduct && (
+        <ProductStatusDialog
+          product={statusProduct}
+          onClose={() => setStatusProduct(null)}
+          onConfirm={() => {
+            updateProduct(statusProduct.id, { isActive: !statusProduct.isActive });
+            setFeedback(
+              statusProduct.isActive
+                ? "Producto desactivado correctamente."
+                : "Producto activado correctamente.",
+            );
+            setStatusProduct(null);
+          }}
+        />
+      )}
+      {feedback && (
+        <ProductActionFeedback
+          message={feedback}
+          onClose={() => setFeedback(null)}
+        />
+      )}
     </div>
   );
 };

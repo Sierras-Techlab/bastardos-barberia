@@ -1,3 +1,4 @@
+import { ProductActions } from "@/components/products/product-actions";
 import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
@@ -8,9 +9,19 @@ import type { CatalogProduct } from "@/types/product";
 
 type ProductMobileListProps = {
   products: CatalogProduct[];
+  canManage?: boolean;
+  onEdit?: (product: CatalogProduct) => void;
+  onAdjustStock?: (product: CatalogProduct) => void;
+  onToggleStatus?: (product: CatalogProduct) => void;
 };
 
-export const ProductMobileList = ({ products }: ProductMobileListProps) => (
+export const ProductMobileList = ({
+  products,
+  canManage = false,
+  onEdit,
+  onAdjustStock,
+  onToggleStatus,
+}: ProductMobileListProps) => (
   <ul aria-label="Catálogo móvil de productos" className="space-y-3">
     {products.map((product) => {
       const stockStatus = getProductStockStatus(product.stock);
@@ -33,28 +44,38 @@ export const ProductMobileList = ({ products }: ProductMobileListProps) => (
             {formatProductCategory(product.category)}
           </p>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="font-semibold">{formatArs(product.price)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {product.stock} {product.stock === 1 ? "unidad" : "unidades"}
-          </p>
-          <Badge
-            className={
-              stockStatus === "available"
-                ? "mt-2 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+        <div className="flex shrink-0 items-start gap-1 text-right">
+          <div>
+            <p className="font-semibold">{formatArs(product.price)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {product.stock} {product.stock === 1 ? "unidad" : "unidades"}
+            </p>
+            <Badge
+              className={
+                stockStatus === "available"
+                  ? "mt-2 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                  : stockStatus === "low-stock"
+                    ? "mt-2 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50"
+                    : "mt-2 rounded-full bg-red-50 text-red-700 hover:bg-red-50"
+              }
+            >
+              {stockStatus === "available"
+                ? "Disponible"
                 : stockStatus === "low-stock"
-                  ? "mt-2 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50"
-                  : "mt-2 rounded-full bg-red-50 text-red-700 hover:bg-red-50"
-            }
-          >
-            {stockStatus === "available"
-              ? "Disponible"
-              : stockStatus === "low-stock"
-                ? "Stock bajo"
-                : "Sin stock"}
-          </Badge>
+                  ? "Stock bajo"
+                  : "Sin stock"}
+            </Badge>
+          </div>
+          {canManage && (
+            <ProductActions
+              product={product}
+              onEdit={() => onEdit?.(product)}
+              onAdjustStock={() => onAdjustStock?.(product)}
+              onToggleStatus={() => onToggleStatus?.(product)}
+            />
+          )}
         </div>
-      </li>
+        </li>
       );
     })}
   </ul>
