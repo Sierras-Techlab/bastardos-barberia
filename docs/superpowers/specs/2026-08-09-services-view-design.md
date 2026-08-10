@@ -39,13 +39,15 @@ Each service card shows name, formatted price and active state. Cards use the es
 
 ## Permissions and workflows
 
-- Owner and admin see active and inactive services and may create, edit, activate and deactivate them.
+- Owner and admin see active and inactive services and may create, edit, activate, deactivate and delete them.
 - Employee sees active services only and receives no management controls.
 - Create and edit use an accessible modal with required name and price fields.
 - Duplicate normalized names are rejected.
 - Status changes require explicit confirmation.
+- Deletion is a separate destructive action and requires explicit confirmation that identifies the service.
+- In the mock prototype, deleting removes the service from in-memory state and a reload restores the fixture.
+- Backend integration must implement deletion as a logical delete so historical sales keep their service reference.
 - Every successful mutation shows the existing accessible temporary feedback pattern.
-- Deletion is excluded; deactivation preserves historical references.
 
 These permissions are presentation-only for the mock prototype. Persistent server authorization remains mandatory when backend integration is added.
 
@@ -62,6 +64,7 @@ Tests cover:
 - visual card rendering and empty results;
 - create/edit validation and duplicate-name rejection;
 - activation/deactivation confirmation;
+- deletion confirmation and removal from the in-memory catalog;
 - owner/admin management versus employee read-only behavior;
 - authenticated route composition, sidebar navigation and loading state.
 
