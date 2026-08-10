@@ -1,0 +1,28 @@
+import { render, screen } from "@testing-library/react";
+import { expect, it, vi } from "vitest";
+
+const { requirePageUser } = vi.hoisted(() => ({
+  requirePageUser: vi.fn().mockResolvedValue({
+    user: { id: "owner", firstName: "Lautaro", lastName: "Bastardos", username: "lautaro.bastardos", role: { id: 1, name: "owner" }, isActive: true, lastLoginAt: null, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" },
+  }),
+}));
+
+vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/customers", useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
+
+import CustomersPage, { metadata } from "./page";
+import DashboardLayout from "../layout";
+
+it("composes the authenticated customer route for managers", async () => {
+  render(await DashboardLayout({ children: await CustomersPage() }));
+  expect(screen.getByRole("heading", { name: "Clientes" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Clientes" })).toHaveAttribute("href", "/customers");
+  expect(screen.getByRole("button", { name: "Nuevo cliente" })).toBeVisible();
+  expect(metadata.title).toBe("Clientes");
+});
+
+it("revalidates authentication", async () => {
+  requirePageUser.mockClear();
+  await CustomersPage();
+  expect(requirePageUser).toHaveBeenCalledOnce();
+});

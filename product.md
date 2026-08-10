@@ -25,7 +25,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Planned | Define persistent sales, line items, payment methods, expenses and register closures. |
 | Services and products | Prototype | Responsive product catalog with mock prices, exact stock quantities, derived stock states, filters and sorting. Owner/admin users can create, edit, adjust stock and activate/deactivate products in memory; persistence remains planned. |
-| Customers | Planned | Define customer identity, contact and visit history. |
+| Customers | Prototype | Responsive mock directory with required identity/contact fields, search, sorting and manager-only create/edit. Visits are read-only pending income integration. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
@@ -33,6 +33,8 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 Define the persistent sales and cash domain before replacing dashboard demonstration data. Authentication and user administration are implemented, and migrations through `007` are installed and validated in the configured Supabase project.
 
 The product catalog is now available as a frontend prototype. Product CRUD, persistent prices and stock, purchase costs and inventory movements still require domain and backend design.
+
+The customer directory is also available as a frontend prototype. Persistence, customer history and the automatic visit increment produced by an associated income still require a shared frontend/backend contract.
 
 ## Accepted authentication decisions
 

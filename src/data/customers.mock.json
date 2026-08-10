@@ -1,0 +1,17 @@
+{
+  "isMock": true,
+  "customers": [
+    { "id": "customer-1", "firstName": "Lucas", "lastName": "Ferreyra", "email": "lucas.ferreyra@gmail.com", "phone": "+54 351 555-0101", "visits": 18, "createdAt": "2026-05-14T14:30:00.000Z" },
+    { "id": "customer-2", "firstName": "Martín", "lastName": "Sosa", "email": "martin.sosa@gmail.com", "phone": "+54 351 555-0102", "visits": 11, "createdAt": "2026-06-02T17:10:00.000Z" },
+    { "id": "customer-3", "firstName": "Tomás", "lastName": "Pereyra", "email": "tomas.pereyra@outlook.com", "phone": "+54 351 555-0103", "visits": 7, "createdAt": "2026-07-18T12:00:00.000Z" },
+    { "id": "customer-4", "firstName": "Juan", "lastName": "Córdoba", "email": "juan.cordoba@gmail.com", "phone": "+54 351 555-0104", "visits": 24, "createdAt": "2026-02-09T10:20:00.000Z" },
+    { "id": "customer-5", "firstName": "Mateo", "lastName": "Roldán", "email": "mateo.roldan@gmail.com", "phone": "+54 351 555-0105", "visits": 3, "createdAt": "2026-08-02T19:15:00.000Z" },
+    { "id": "customer-6", "firstName": "Agustín", "lastName": "Vega", "email": "agustin.vega@yahoo.com", "phone": "+54 351 555-0106", "visits": 9, "createdAt": "2026-06-27T15:45:00.000Z" },
+    { "id": "customer-7", "firstName": "Nicolás", "lastName": "Acosta", "email": "nicolas.acosta@gmail.com", "phone": "+54 351 555-0107", "visits": 15, "createdAt": "2026-04-11T13:00:00.000Z" },
+    { "id": "customer-8", "firstName": "Franco", "lastName": "López", "email": "franco.lopez@outlook.com", "phone": "+54 351 555-0108", "visits": 5, "createdAt": "2026-07-29T16:35:00.000Z" },
+    { "id": "customer-9", "firstName": "Santiago", "lastName": "Ruiz", "email": "santiago.ruiz@gmail.com", "phone": "+54 351 555-0109", "visits": 21, "createdAt": "2026-03-22T11:50:00.000Z" },
+    { "id": "customer-10", "firstName": "Facundo", "lastName": "Molina", "email": "facundo.molina@gmail.com", "phone": "+54 351 555-0110", "visits": 1, "createdAt": "2026-08-06T18:00:00.000Z" },
+    { "id": "customer-11", "firstName": "Bruno", "lastName": "Gómez", "email": "bruno.gomez@outlook.com", "phone": "+54 351 555-0111", "visits": 13, "createdAt": "2026-05-31T09:40:00.000Z" },
+    { "id": "customer-12", "firstName": "Joaquín", "lastName": "Navarro", "email": "joaquin.navarro@gmail.com", "phone": "+54 351 555-0112", "visits": 0, "createdAt": "2026-08-08T20:10:00.000Z" }
+  ]
+}
