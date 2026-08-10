@@ -1,0 +1,236 @@
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, expect, it, vi } from "vitest";
+
+import { ProductsView } from "@/components/products/products-view";
+import productsMock from "@/data/products.mock.json";
+import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
+
+const data = authorizeProductCatalogData(productsMock);
+
+afterEach(() => vi.useRealTimers());
+
+it("shows the catalog summary in desktop and mobile representations", () => {
+  render(<ProductsView data={data} canManage />);
+
+  expect(
+    screen.getByRole("region", { name: /resumen de productos/i }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("table", { name: /catálogo de productos/i }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("list", { name: /catálogo móvil de productos/i }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Hunter Cream")).toHaveLength(2);
+  expect(screen.getAllByText(/30\.000/)).toHaveLength(2);
+  expect(screen.getAllByText("Disponible").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("8 unidades")).toHaveLength(2);
+  expect(screen.getAllByText("Stock bajo").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Sin stock").length).toBeGreaterThan(0);
+});
+
+it("filters by product name and restores the complete catalog", async () => {
+  const user = userEvent.setup();
+  render(<ProductsView data={data} canManage />);
+
+  await user.type(
+    screen.getByRole("searchbox", { name: /buscar productos/i }),
+    "barba",
+  );
+
+  expect(screen.getAllByText("Aceite para barba")).toHaveLength(2);
+  expect(screen.queryByText("Hunter Cream")).not.toBeInTheDocument();
+
+  await user.clear(
+    screen.getByRole("searchbox", { name: /buscar productos/i }),
+  );
+
+  expect(screen.getAllByText("Hunter Cream")).toHaveLength(2);
+});
+
+it("combines filters and clears an empty result", async () => {
+  const user = userEvent.setup();
+  render(<ProductsView data={data} canManage />);
+
+  await user.selectOptions(screen.getByLabelText("Categoría"), "fragrance");
+  await user.selectOptions(screen.getByLabelText("Estado de stock"), "available");
+
+  expect(screen.getByText(/no encontramos productos/i)).toBeVisible();
+
+  await user.click(
+    screen.getByRole("button", { name: /limpiar filtros/i }),
+  );
+
+  expect(screen.getAllByText("Hunter Cream")).toHaveLength(2);
+  expect(screen.getByLabelText("Categoría")).toHaveValue("all");
+  expect(screen.getByLabelText("Estado de stock")).toHaveValue("all");
+});
+
+it("sorts desktop stock through ascending, descending and original order", async () => {
+  const user = userEvent.setup();
+  render(<ProductsView data={data} canManage />);
+  const table = screen.getByRole("table", { name: /catálogo de productos/i });
+  const names = () =>
+    within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) =>
+        within(row)
+          .getAllByRole("cell")[0]
+          .textContent?.replace("Inactivo", ""),
+      );
+  const original = data.products.map((product) => product.name);
+
+  await user.click(screen.getByRole("button", { name: /ordenar por stock/i }));
+  expect(names()[0]).toBe("Perfume");
+  await user.click(screen.getByRole("button", { name: /ordenar por stock/i }));
+  expect(names()[0]).toBe("Cera para pelo");
+  await user.click(screen.getByRole("button", { name: /ordenar por stock/i }));
+  expect(names()).toEqual(original);
+});
+
+it("sorts the mobile catalog by price", async () => {
+  const user = userEvent.setup();
+  render(<ProductsView data={data} canManage />);
+
+  await user.selectOptions(screen.getByLabelText("Ordenar por"), "price-desc");
+
+  const mobileList = screen.getByRole("list", {
+    name: /catálogo móvil de productos/i,
+  });
+  expect(
+    within(within(mobileList).getAllByRole("listitem")[0]).getByText(
+      "Hunter Cream",
+    ),
+  ).toBeVisible();
+});
+
+it("keeps inactive products for managers and hides them from employees", () => {
+  const { rerender } = render(<ProductsView data={data} canManage />);
+
+  expect(screen.getAllByText("Perfume").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(0);
+  expect(screen.getByLabelText("Estado del producto")).toBeVisible();
+
+  rerender(<ProductsView data={data} canManage={false} />);
+
+  expect(screen.queryByText("Perfume")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Estado del producto")).not.toBeInTheDocument();
+});
+
+it("creates and edits products in memory, then resets on remount", async () => {
+  const user = userEvent.setup();
+  const { unmount } = render(<ProductsView data={data} canManage />);
+
+  await user.click(screen.getByRole("button", { name: "Nuevo producto" }));
+  const createDialog = screen.getByRole("dialog");
+  await user.type(within(createDialog).getByLabelText("Nombre"), "Pomada mate");
+  await user.selectOptions(
+    within(createDialog).getByLabelText("Categoría"),
+    "styling",
+  );
+  await user.type(within(createDialog).getByLabelText("Precio"), "14500");
+  await user.type(within(createDialog).getByLabelText("Stock inicial"), "6");
+  await user.click(
+    within(createDialog).getByRole("button", { name: "Crear producto" }),
+  );
+
+  expect(
+    screen.getByRole("status", { name: "Producto añadido correctamente." }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Pomada mate")).toHaveLength(2);
+  expect(screen.getAllByText("6 unidades")).toHaveLength(2);
+
+  const actionTrigger = screen.getAllByRole("button", {
+    name: "Gestionar Pomada mate",
+  })[0];
+  await user.click(actionTrigger);
+  await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
+  const editDialog = screen.getByRole("dialog");
+  await user.clear(within(editDialog).getByLabelText("Nombre"));
+  await user.type(
+    within(editDialog).getByLabelText("Nombre"),
+    "Pomada mate premium",
+  );
+  await user.click(
+    within(editDialog).getByRole("button", { name: "Guardar cambios" }),
+  );
+
+  expect(
+    screen.getByRole("status", { name: "Producto actualizado correctamente." }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Pomada mate premium")).toHaveLength(2);
+  expect(screen.getAllByText("6 unidades")).toHaveLength(2);
+
+  unmount();
+  render(<ProductsView data={data} canManage />);
+  expect(screen.queryByText("Pomada mate premium")).not.toBeInTheDocument();
+});
+
+it("adjusts stock and deactivates products in memory", async () => {
+  const user = userEvent.setup();
+  render(<ProductsView data={data} canManage />);
+
+  await user.click(
+    screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
+  );
+  await user.click(
+    await screen.findByRole("menuitem", { name: "Ajustar stock" }),
+  );
+  await user.type(screen.getByLabelText("Cantidad"), "2");
+  await user.click(screen.getByRole("button", { name: "Guardar ajuste" }));
+  expect(
+    screen.getByRole("status", { name: "Stock actualizado correctamente." }),
+  ).toBeVisible();
+  const hunterRow = within(
+    screen.getByRole("table", { name: /catálogo de productos/i }),
+  ).getByRole("row", { name: /Hunter Cream/ });
+  expect(within(hunterRow).getByText("10 unidades")).toBeVisible();
+  const hunterMobileItem = screen
+    .getAllByText("Hunter Cream")[1]
+    .closest("li");
+  expect(hunterMobileItem).not.toBeNull();
+  expect(within(hunterMobileItem!).getByText("10 unidades")).toBeVisible();
+
+  await user.click(
+    screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
+  );
+  await user.click(await screen.findByRole("menuitem", { name: "Desactivar" }));
+  await user.click(
+    screen.getByRole("button", { name: "Desactivar producto" }),
+  );
+  expect(
+    screen.getByRole("status", {
+      name: "Producto desactivado correctamente.",
+    }),
+  ).toBeVisible();
+  expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(2);
+});
+
+it("dismisses product feedback automatically after three seconds", () => {
+  vi.useFakeTimers();
+  render(<ProductsView data={data} canManage />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Nuevo producto" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Nombre"), {
+    target: { value: "Pomada mate" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Categoría"), {
+    target: { value: "styling" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Precio"), {
+    target: { value: "14500" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Stock inicial"), {
+    target: { value: "6" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Crear producto" }),
+  );
+
+  expect(screen.getByRole("status")).toBeVisible();
+  act(() => vi.advanceTimersByTime(3000));
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});

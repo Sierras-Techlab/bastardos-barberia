@@ -1,10 +1,10 @@
 # Context snapshot
 
-Captured: 2026-08-08
+Captured: 2026-08-09
 
 ## Repository state
 
-- Current branch: `fix/dashboard-navigation-performance` in the main worktree.
+- Current branch: `feat/16-products-view` in the main worktree.
 - Local branches: 6.
 - Remote tracking references: 7, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
@@ -26,9 +26,13 @@ Captured: 2026-08-08
 - Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
 - Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
+- `/products` is an authenticated, responsive catalog backed by validated demonstration data, with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
+- Owner/admin users can create and edit mock products, register stock entries/exits and activate/deactivate products. These frontend-only changes intentionally reset on reload; employees receive a read-only catalog without inactive products or management controls.
+- Successful product-management actions show an accessible, dismissible confirmation that automatically clears after three seconds.
+- Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy and the complete user-management UI lifecycle, including pagination and keyboard access.
+- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product-management lifecycle.
 
 ## Database integration state
 
@@ -39,6 +43,7 @@ The configured Supabase project has migrations `001` through `007` installed. Th
 - Employee-specific permissions are intentionally deferred.
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
 - Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
+- Product deletion, purchase cost, persistent inventory movements and backend persistence remain outside the current catalog prototype.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
 
 ## Recommended next task
