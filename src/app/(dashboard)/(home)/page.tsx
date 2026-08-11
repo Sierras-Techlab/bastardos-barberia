@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePageUser } from "@/lib/auth/authorization";
+import { getLatestCustomer } from "@/lib/customers/service";
+import {
+  buildCustomerActivity,
+  buildIncomeActivity,
+} from "@/lib/dashboard/recent-activity";
+import { listIncomes } from "@/lib/incomes/service";
 import Link from "next/link";
 
 const dashboard = dashboardMock as DashboardData;
@@ -73,9 +79,19 @@ const activityIcons = {
 };
 
 const Home = async () => {
-  await requirePageUser();
-  const { summary, revenue, topServices, paymentMethods, recentActivity } =
-    dashboard;
+  const { user } = await requirePageUser();
+  const [incomePage, latestCustomer] = await Promise.all([
+    listIncomes(user, { page: 1, pageSize: 1 }),
+    getLatestCustomer(user),
+  ]);
+  const { summary, revenue, topServices, paymentMethods } = dashboard;
+  const recentActivity = [
+    buildIncomeActivity(incomePage.items[0] ?? null),
+    buildCustomerActivity(latestCustomer),
+    ...dashboard.recentActivity
+      .filter((activity) => activity.type === "expense")
+      .slice(0, 1),
+  ];
   const currentDate = dateFormatter.format(new Date());
   const maxRevenue = Math.max(...revenue.series.map((item) => item.value));
 
