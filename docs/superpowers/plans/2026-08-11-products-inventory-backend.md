@@ -35,7 +35,7 @@
 - Consumes: `public.users(id)` and `service_role` security conventions from scripts `001` through `007`.
 - Produces: `products`, `inventory_movements`, `create_product(...)` and `adjust_product_stock(...)` for the product repository.
 
-- [ ] **Step 1: Add the complete SQL schema and atomic functions**
+- [x] **Step 1: Add the complete SQL schema and atomic functions**
 
 Implement these exact database contracts in `008_products_inventory.sql`:
 
@@ -69,7 +69,7 @@ Add a database-maintained normalized product name, indexes for active/name/catal
 
 Update `database.types.ts` with `ProductRow` and `InventoryMovementRow`. Update the README execution order and verification table list.
 
-- [ ] **Step 2: Review the rollback-safe verification block and run the local whitespace check**
+- [x] **Step 2: Review the rollback-safe verification block and run the local whitespace check**
 
 Confirm the script ends with read-only catalog/security queries plus `begin;` / sample RPC calls / assertions / `rollback;` instructions that the user can execute after installation without retaining sample data.
 
@@ -77,7 +77,7 @@ Run: `git diff --check`
 
 Expected: no output.
 
-- [ ] **Step 3: Commit the database contract**
+- [x] **Step 3: Commit the database contract**
 
 ```bash
 git add supabase/queries/008_products_inventory.sql supabase/queries/README.md src/lib/supabase/database.types.ts

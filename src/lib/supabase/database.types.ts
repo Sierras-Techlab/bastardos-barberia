@@ -32,3 +32,40 @@ export type SessionRow = {
   last_seen_at: string;
   created_at: string;
 };
+
+export type ProductCategoryRow =
+  | "hair-care"
+  | "styling"
+  | "beard-care"
+  | "fragrance";
+
+export type ProductRow = {
+  id: string;
+  name: string;
+  normalized_name: string;
+  category: ProductCategoryRow;
+  price: number;
+  stock: number;
+  is_active: boolean;
+  created_by: string;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InventoryMovementType =
+  | "initial"
+  | "entry"
+  | "exit"
+  | "sale"
+  | "sale_void";
+
+export type InventoryMovementRow = {
+  id: string;
+  product_id: string;
+  movement_type: InventoryMovementType;
+  quantity_delta: number;
+  stock_after: number;
+  user_id: string;
+  created_at: string;
+};
