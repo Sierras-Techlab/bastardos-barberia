@@ -1,10 +1,10 @@
 # Context snapshot
 
-Captured: 2026-08-09
+Captured: 2026-08-11
 
 ## Repository state
 
-- Current branch: `feat/23-services-view` in the main worktree.
+- Current branch: `feat/backend-models` in the main worktree.
 - Local branches: 9.
 - Remote tracking references: 10, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
@@ -37,6 +37,8 @@ Captured: 2026-08-09
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
 - Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product/customer management lifecycles.
+- Approved backend designs define a staged migration from the product, service, customer and income mocks to persistent server-authorized domains. Products and inventory are first; services, customers and incomes follow only after that milestone is complete.
+- The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
 
 ## Database integration state
 
@@ -51,10 +53,11 @@ The configured Supabase project has migrations `001` through `007` installed. Th
 - Service catalog changes are intentionally not synchronized with the separate income-form fixture until both use a persistent backend source.
 - Product deletion, purchase cost, persistent inventory movements and backend persistence remain outside the current catalog prototype.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
+- The new `008` and `009` SQL scripts are designed but not yet implemented or applied. Remote SQL execution remains a user-owned manual action.
 
 ## Recommended next task
 
-Define the persistent customer and sales contracts so an income associated with a customer can atomically increment visit history before replacing the customer mocks.
+Review the approved product/inventory and sales-domain specifications, then write separate TDD implementation plans beginning with Products.
 
 ## Context maintenance rule
 

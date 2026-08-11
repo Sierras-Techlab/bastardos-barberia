@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-09
+Last updated: 2026-08-11
 
 ## Vision
 
@@ -30,13 +30,17 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Define the persistent sales and cash domain before replacing dashboard demonstration data. Authentication and user administration are implemented, and migrations through `007` are installed and validated in the configured Supabase project.
+Implement the approved persistent commercial domain in two stages: Products and auditable inventory first, followed by Services, Customers and Incomes. Authentication and user administration are implemented, and migrations through `007` are installed and validated in the configured Supabase project.
 
 The product catalog is now available as a frontend prototype. Product CRUD, persistent prices and stock, purchase costs and inventory movements still require domain and backend design.
 
 The customer directory is also available as a frontend prototype. Persistence, customer history and the automatic visit increment produced by an associated income still require a shared frontend/backend contract.
 
 The service catalog is available as a frontend prototype. Its reload-scoped changes are intentionally independent from the income form fixture until a persistent service contract replaces both mock sources.
+
+The approved backend design makes customer phone the unique operational identity while allowing duplicate names and optional email. Every authenticated role may create and edit customers; only owner/admin may logically delete them.
+
+The approved income design attributes a sale only to the authenticated user who registered it. Owner/admin may view all sales and employees only their own. Sales and manager-only voids will update inventory and customer visits atomically, preserve historical item snapshots, prevent duplicate submissions through idempotency, and store an indexed Buenos Aires business date for future daily cash calculations.
 
 ## Accepted authentication decisions
 
