@@ -26,11 +26,13 @@ Captured: 2026-08-11
 - Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
 - Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
+- Dashboard recent activity reads the latest persisted income and customer on the server. Income visibility remains global for owner/admin and self-only for employees; expense activity stays demonstrative until that domain exists.
 - `/products` is an authenticated, responsive persistent catalog with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
 - Owner/admin product creation, profile edits, activation changes and stock entries/exits pass through manager-only Route Handlers and server services. Employees receive active products only from the server boundary and have no management controls.
 - Product stock changes use database row locking, reject negative results and append an actor-linked inventory movement in the same transaction. Product creation stores creator/updater audit IDs and an optional initial-stock movement.
 - The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers, Services and income voiding use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
 - Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
+- Inactive products retain their exact stock for inventory work but show `No disponible` in manager desktop and mobile catalogs; quantity-only stock filters and metrics remain unchanged.
 - `/customers` is persistent and responsive. Phone is the required normalized unique identity, exact names may repeat, email is optional/unique when supplied, all authenticated roles can create/edit, and owner/admin alone can logically delete. Missing email produces no `mailto:` action.
 - The reusable async customer editor is also available from `/incomes/new`; a newly created customer is appended and selected without leaving the sale draft.
 - `/services` is a persistent role-aware visual catalog. Owner/admin create, edit, activate/deactivate and logically delete; employees receive active services only. All writes carry authenticated audit users.
@@ -46,7 +48,7 @@ Captured: 2026-08-11
 - The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models` and installed in the configured Supabase project.
 - The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
 - Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
-- The complete commercial milestone passes 96 test files / 298 tests, ESLint without warnings, the Next.js production build and `git diff --check`. Income timestamp regression verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
+- The complete commercial milestone passes 97 test files / 307 tests, ESLint without warnings, the Next.js production build and `git diff --check`. Dashboard activity and product-availability verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
 
 ## Database integration state
 
