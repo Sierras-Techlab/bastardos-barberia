@@ -8,6 +8,7 @@ import type { CreateCustomerInput, UpdateCustomerInput } from "@/types/customer"
 const notFound = () => new AppError("CUSTOMER_NOT_FOUND", "No encontramos el cliente.", 404);
 const defaults: CustomerServiceDependencies = { customers: customerRepository, now: () => new Date().toISOString() };
 export const listCustomers = async (_actor: SafeUser, dependencies: CustomerServiceDependencies = defaults) => ({ customers: await dependencies.customers.list() });
+export const getLatestCustomer = async (_actor: SafeUser, dependencies: CustomerServiceDependencies = defaults) => dependencies.customers.latest();
 export const createCustomer = async (actor: SafeUser, input: CreateCustomerInput, dependencies: CustomerServiceDependencies = defaults) =>
   dependencies.customers.create({ ...input, createdBy: actor.id });
 export const updateCustomer = async (actor: SafeUser, id: string, input: UpdateCustomerInput, dependencies: CustomerServiceDependencies = defaults) => {

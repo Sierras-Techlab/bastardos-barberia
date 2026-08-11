@@ -41,6 +41,17 @@ export const customerRepository: CustomerRepository = {
     if (error) databaseFailure("list customers", error);
     return (data ?? []).map((item) => toCustomer(item as unknown as CustomerRow));
   },
+  async latest() {
+    const { data, error } = await getSupabaseAdmin()
+      .from("customers")
+      .select(CUSTOMER_SELECT)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) databaseFailure("latest customer", error);
+    return data ? toCustomer(data as unknown as CustomerRow) : null;
+  },
   async findById(id) {
     const { data, error } = await getSupabaseAdmin().from("customers").select(CUSTOMER_SELECT).eq("id", id).is("deleted_at", null).maybeSingle();
     if (error) databaseFailure("find customer", error);

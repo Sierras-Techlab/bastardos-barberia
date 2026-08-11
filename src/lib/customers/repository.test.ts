@@ -17,6 +17,30 @@ describe("customer repository", () => {
     await expect(customerRepository.list()).resolves.toEqual([toCustomer(row)]);
     expect(query.is).toHaveBeenCalledWith("deleted_at", null);
   });
+  it("returns only the newest non-deleted customer", async () => {
+    const query = {
+      select: vi.fn(),
+      is: vi.fn(),
+      order: vi.fn(),
+      limit: vi.fn(),
+      maybeSingle: vi.fn(),
+    };
+    query.select.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.order.mockReturnValue(query);
+    query.limit.mockReturnValue(query);
+    query.maybeSingle.mockResolvedValue({ data: row, error: null });
+    getSupabaseAdmin.mockReturnValue({
+      from: vi.fn().mockReturnValue(query),
+    });
+
+    await expect(customerRepository.latest()).resolves.toEqual(toCustomer(row));
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+    expect(query.order).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    });
+    expect(query.limit).toHaveBeenCalledWith(1);
+  });
   it("maps normalized phone and email conflicts", async () => {
     const makeQuery = (error: object) => { const q = { insert: vi.fn(), select: vi.fn(), maybeSingle: vi.fn() }; q.insert.mockReturnValue(q); q.select.mockReturnValue(q); q.maybeSingle.mockResolvedValue({ data: null, error }); return q; };
     getSupabaseAdmin.mockReturnValueOnce({ from: vi.fn().mockReturnValue(makeQuery({ code: "23505", details: "normalized_phone" })) });

@@ -4,6 +4,7 @@ export type CustomerCreateRecord = CreateCustomerInput & { createdBy: string };
 export type CustomerUpdateRecord = UpdateCustomerInput & { updatedBy: string };
 export type CustomerRepository = {
   list(): Promise<Customer[]>;
+  latest(): Promise<Customer | null>;
   findById(id: string): Promise<Customer | null>;
   findByNormalizedPhone(phone: string): Promise<Customer | null>;
   create(input: CustomerCreateRecord): Promise<Customer>;
