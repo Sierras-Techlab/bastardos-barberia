@@ -245,7 +245,7 @@ git commit -m "feat(products): persist catalog operations"
 - Consumes: `requireUser`, `requireManager`, product Zod schemas and Task 2 service functions.
 - Produces: the HTTP API consumed by the product client.
 
-- [ ] **Step 1: Write failing Route Handler tests**
+- [x] **Step 1: Write failing Route Handler tests**
 
 Use hoisted mocks and assert the exact actor/input boundary:
 
@@ -261,13 +261,13 @@ expect(response.status).toBe(201);
 
 Cover GET with `requireUser`, PATCH with awaited `context.params`, stock POST, invalid UUID/body responses, 401, 403, 404 and 409 error shapes.
 
-- [ ] **Step 2: Run Route Handler tests and verify RED**
+- [x] **Step 2: Run Route Handler tests and verify RED**
 
 Run: `npm test -- src/app/api/products`
 
 Expected: FAIL because the handlers do not exist.
 
-- [ ] **Step 3: Implement thin Next.js 16 handlers**
+- [x] **Step 3: Implement thin Next.js 16 handlers**
 
 Use native `Request`/`Response`, `successResponse`, `errorResponse` and promised route params:
 
@@ -288,13 +288,13 @@ export async function PATCH(request: Request, context: ProductRouteContext) {
 
 Do not cache GET because it reads authenticated request state and mutable database data.
 
-- [ ] **Step 4: Run API tests and verify GREEN**
+- [x] **Step 4: Run API tests and verify GREEN**
 
 Run: `npm test -- src/app/api/products`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the API**
+- [x] **Step 5: Commit the API**
 
 ```bash
 git add src/app/api/products
