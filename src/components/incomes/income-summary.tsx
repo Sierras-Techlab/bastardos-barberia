@@ -19,9 +19,7 @@ const paymentLabels = {
 };
 
 export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
-  const employee = data.employees.find(
-    (candidate) => candidate.id === values.employeeId,
-  );
+  const employee = data.currentUser;
   const customer = data.customers.find(
     (candidate) => candidate.id === values.customerId,
   );

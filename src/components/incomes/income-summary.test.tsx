@@ -12,9 +12,6 @@ const data: IncomeFormData = {
     lastName: "Bastardos",
     role: "owner",
   },
-  employees: [
-    { id: "employee-1", firstName: "Lautaro", lastName: "Bastardos" },
-  ],
   customers: [
     { id: "customer-1", firstName: "Tomás", lastName: "Pereyra" },
   ],
@@ -25,7 +22,6 @@ const data: IncomeFormData = {
 };
 
 const values: IncomeFormValues = {
-  employeeId: "employee-1",
   customerId: "customer-1",
   serviceId: "service-1",
   products: [{ productId: "product-1", quantity: 2 }],

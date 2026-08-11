@@ -69,7 +69,7 @@ const FilterFields = ({
         className="h-10 rounded-xl border-black/10 bg-[#f6f5f2] shadow-none"
       />
     </label>
-    {role === "owner" && (
+    {role !== "employee" && (
       <label className="space-y-1 text-xs font-medium text-muted-foreground">
         Empleado
         <select

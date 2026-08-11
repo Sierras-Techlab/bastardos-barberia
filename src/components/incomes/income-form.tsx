@@ -21,12 +21,11 @@ import {
   calculateIncomeTotal,
   formatArs,
 } from "@/lib/incomes/income-calculations";
-import { createMockIncomeService } from "@/lib/incomes/mock-income-service";
+import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
 import type {
   CreateIncomeInput,
   Income,
   IncomeFormData,
-  IncomeService,
 } from "@/types/income";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
@@ -38,11 +37,8 @@ import { ServiceSelector } from "./service-selector";
 
 type IncomeFormProps = {
   data: IncomeFormData;
-  incomeService?: IncomeService;
+  incomeClient?: Pick<IncomeClient, "create">;
 };
-
-const selectClassName =
-  "h-11 w-full rounded-xl border border-black/10 bg-[#f6f5f2] px-3 text-sm outline-none transition-colors focus:border-ring focus:bg-white focus:ring-2 focus:ring-ring/30";
 
 const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
   weekday: "long",
@@ -52,18 +48,19 @@ const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
   minute: "2-digit",
 });
 
-export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
+export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeFormProps) => {
   const [reviewValues, setReviewValues] = useState<IncomeFormValues | null>(
     null,
   );
   const [createdIncome, setCreatedIncome] = useState<Income | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customers, setCustomers] = useState(data.customers);
   const submittingRef = useRef(false);
+  const requestIdRef = useRef(crypto.randomUUID());
   const form = useForm<IncomeFormValues>({
     resolver: zodResolver(incomeFormSchema),
     defaultValues: {
-      employeeId: data.currentUser.id,
       customerId: null,
       serviceId: null,
       products: [],
@@ -71,9 +68,7 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
     },
   });
   const values = useWatch({ control: form.control }) as IncomeFormValues;
-  const currentEmployee = data.employees.find(
-    (employee) => employee.id === data.currentUser.id,
-  );
+  const liveData = { ...data, customers };
 
   const handleReview = (validValues: IncomeFormValues) => {
     setSubmitError(null);
@@ -90,22 +85,21 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
     }
 
     const input: CreateIncomeInput = {
-      employeeId: reviewValues.employeeId,
+      requestId: requestIdRef.current,
       customerId: reviewValues.customerId,
       serviceId: reviewValues.serviceId,
       products: reviewValues.products,
       paymentMethod: reviewValues.paymentMethod,
     };
-    const activeService = incomeService ?? createMockIncomeService(data);
-
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      const income = await activeService.create(input);
+      const income = await incomeClient.create(input);
       setCreatedIncome(income);
       setReviewValues(null);
+      requestIdRef.current = crypto.randomUUID();
     } catch (error) {
       setSubmitError(
         error instanceof Error
@@ -121,7 +115,6 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
 
   const handleReset = () => {
     form.reset({
-      employeeId: data.currentUser.id,
       customerId: null,
       serviceId: null,
       products: [],
@@ -159,25 +152,10 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
               >
                 Empleado responsable
               </label>
-              {data.currentUser.role === "owner" ? (
-                <select
-                  id="employeeId"
-                  aria-label="Empleado responsable"
-                  className={selectClassName}
-                  {...form.register("employeeId")}
-                >
-                  {data.employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="flex h-11 items-center gap-2 rounded-xl bg-[#f6f5f2] px-3 text-sm">
-                  <UserRound className="size-4 text-primary" />
-                  {currentEmployee?.firstName} {currentEmployee?.lastName}
-                </div>
-              )}
+              <div id="employeeId" className="flex h-11 items-center gap-2 rounded-xl bg-[#f6f5f2] px-3 text-sm">
+                <UserRound className="size-4 text-primary" />
+                {data.currentUser.firstName} {data.currentUser.lastName}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -193,9 +171,13 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
                 render={({ field }) => (
                   <CustomerSelector
                     id="customerId"
-                    customers={data.customers}
+                    customers={customers}
                     value={field.value}
                     onChange={field.onChange}
+                    onCustomerCreated={(customer) => {
+                      setCustomers((current) => [...current, customer]);
+                      field.onChange(customer.id);
+                    }}
                   />
                 )}
               />
@@ -277,7 +259,7 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
       </div>
 
       <aside className="space-y-3 xl:sticky xl:top-20">
-        <IncomeSummary values={values} data={data} />
+        <IncomeSummary values={values} data={liveData} />
         {submitError && (
           <p
             role="alert"
@@ -315,7 +297,7 @@ export const IncomeForm = ({ data, incomeService }: IncomeFormProps) => {
         <IncomeConfirmationDialog
           open
           values={reviewValues}
-          data={data}
+          data={liveData}
           pending={isSubmitting}
           onBack={() => setReviewValues(null)}
           onConfirm={handleConfirm}

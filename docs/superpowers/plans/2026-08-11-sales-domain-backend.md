@@ -270,7 +270,7 @@ git commit -m "feat(customers): persist customer lifecycle"
 - Consumes: SQL functions, current income presentation types, `SafeUser` and catalog/customer repositories.
 - Produces: authoritative create/list/detail/void services for APIs and Server Components.
 
-- [ ] **Step 1: Write failing schema and service tests**
+- [x] **Step 1: Write failing schema and service tests**
 
 The public create input must be:
 
@@ -288,13 +288,13 @@ Assert Zod strips/rejects `userId`, `employeeId`, `total`, `createdAt` and `busi
 
 Test manager list scope `{ userId: query.userId ?? null, canViewAll: true }`, employee scope `{ userId: employee.id, canViewAll: false }`, employee detail denial, manager void permission, employee void denial and stable missing/stock errors.
 
-- [ ] **Step 2: Run domain tests and verify RED**
+- [x] **Step 2: Run domain tests and verify RED**
 
 Run: `npm test -- src/lib/incomes/income-schema.test.ts src/lib/incomes/service.test.ts src/lib/incomes/repository.test.ts`
 
 Expected: FAIL because the real contracts and persistence modules are absent.
 
-- [ ] **Step 3: Implement contracts and server service**
+- [x] **Step 3: Implement contracts and server service**
 
 Define:
 
@@ -314,17 +314,17 @@ export const voidIncome: (actor: SafeUser, id: string, deps?: IncomeDependencies
 
 Add role `admin` to presentation types. Remove `employeeId` from form values. Add `businessDate`, pagination and filtered metrics DTOs.
 
-- [ ] **Step 4: Implement the Supabase repository**
+- [x] **Step 4: Implement the Supabase repository**
 
 Call `create_income`, `list_incomes`, `get_income_detail` and `void_income` with exact snake_case parameters. Treat RPC JSON as unknown, validate it with strict Zod response schemas, and map `INSUFFICIENT_STOCK`, unavailable catalog/customer, missing income and uniqueness sentinels to public `AppError`s.
 
-- [ ] **Step 5: Run domain tests and verify GREEN**
+- [x] **Step 5: Run domain tests and verify GREEN**
 
 Run: `npm test -- src/lib/incomes/income-schema.test.ts src/lib/incomes/service.test.ts src/lib/incomes/repository.test.ts src/lib/incomes/income-list.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the income domain**
+- [x] **Step 6: Commit the income domain**
 
 ```bash
 git add src/lib/incomes src/types/income.ts
@@ -347,7 +347,7 @@ git commit -m "feat(incomes): add transactional income domain"
 - Consumes: Task 4 schemas/services and current-session authorization.
 - Produces: create/list/detail/void HTTP contracts and a browser-safe client.
 
-- [ ] **Step 1: Write failing API and client tests**
+- [x] **Step 1: Write failing API and client tests**
 
 Assert GET parses search params and calls `listIncomes(user, query)`, POST parses only public create fields and returns 201, detail awaits promised params, void uses `requireManager`, and all errors use the shared response envelope.
 
@@ -362,23 +362,23 @@ export type IncomeClient = {
 };
 ```
 
-- [ ] **Step 2: Run API tests and verify RED**
+- [x] **Step 2: Run API tests and verify RED**
 
 Run: `npm test -- src/app/api/incomes src/lib/incomes/client.test.ts`
 
 Expected: FAIL because handlers/client do not exist.
 
-- [ ] **Step 3: Implement thin handlers and fetch client**
+- [x] **Step 3: Implement thin handlers and fetch client**
 
 Use `requireUser` for GET/POST/detail and `requireManager` for void. Route bodies contain no user/total/date overrides. The client sends `cache: "no-store"` for mutable authenticated collections and maps structured errors without exposing server internals.
 
-- [ ] **Step 4: Run API tests and verify GREEN**
+- [x] **Step 4: Run API tests and verify GREEN**
 
 Run: `npm test -- src/app/api/incomes src/lib/incomes/client.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit income APIs**
+- [x] **Step 5: Commit income APIs**
 
 ```bash
 git add src/app/api/incomes src/lib/incomes/client.ts src/lib/incomes/client.test.ts
@@ -404,7 +404,7 @@ git commit -m "feat(incomes): expose role-scoped income API"
 - Consumes: income/customer clients and persistent active catalogs.
 - Produces: authenticated sale submission with reusable inline customer creation.
 
-- [ ] **Step 1: Write failing form and selector tests**
+- [x] **Step 1: Write failing form and selector tests**
 
 Cover:
 
@@ -418,29 +418,29 @@ Cover:
 - Active services/products only are selectable.
 - Insufficient-stock and general failures preserve the sale draft.
 
-- [ ] **Step 2: Run focused form tests and verify RED**
+- [x] **Step 2: Run focused form tests and verify RED**
 
 Run: `npm test -- src/components/incomes "src/app/(dashboard)/incomes/new/page.test.tsx"`
 
 Expected: FAIL because the mock service, user selector and select-only customer flow remain.
 
-- [ ] **Step 3: Load real form data on the server**
+- [x] **Step 3: Load real form data on the server**
 
 After `requirePageUser()`, start active service, product and customer reads in parallel with `Promise.all`. Map `SafeUser` to the serializable current-user presentation and remove `income-form.mock.json` plus the demonstration badge.
 
-- [ ] **Step 4: Integrate async income and customer clients**
+- [x] **Step 4: Integrate async income and customer clients**
 
 Use the shared customer dialog directly from the selector. Keep a stable request ID in a ref for the current submission; generate a new UUID only after successful sale/reset. The backend response total replaces the preview total in the success state.
 
 Remove `createMockIncomeService`, `employeeId` and manager-on-behalf behavior. Keep the confirmation/pending/success/error interaction design.
 
-- [ ] **Step 5: Run form tests and verify GREEN**
+- [x] **Step 5: Run form tests and verify GREEN**
 
 Run: `npm test -- src/components/incomes "src/app/(dashboard)/incomes/new/page.test.tsx"`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the real sale form**
+- [x] **Step 6: Commit the real sale form**
 
 ```bash
 git add "src/app/(dashboard)/incomes/new" src/components/incomes src/types/income.ts src/data/income-form.mock.json src/lib/incomes/mock-income-service.ts src/lib/incomes/mock-income-service.test.ts
@@ -467,7 +467,7 @@ git commit -m "feat(incomes): connect sale form to persistence"
 - Consumes: `IncomeClient.list/void`, paginated response and role capabilities.
 - Produces: authorized server-filtered history with idempotent manager voiding.
 
-- [ ] **Step 1: Write failing history tests**
+- [x] **Step 1: Write failing history tests**
 
 Assert:
 
@@ -481,29 +481,29 @@ Assert:
 - Failed void preserves the open detail and exposes a retryable error.
 - Voided rows cannot restore stock twice through repeated UI actions.
 
-- [ ] **Step 2: Run history tests and verify RED**
+- [x] **Step 2: Run history tests and verify RED**
 
 Run: `npm test -- src/components/incomes/incomes-view.test.tsx src/components/incomes/income-filters.test.tsx src/components/incomes/income-detail-sheet.test.tsx "src/app/(dashboard)/incomes/page.test.tsx"`
 
 Expected: FAIL because history still uses a fixture and local pagination/filtering.
 
-- [ ] **Step 3: Implement server-backed history state**
+- [x] **Step 3: Implement server-backed history state**
 
 The Server Component loads the first `PaginatedIncomes` page after authorization. `IncomesView` owns query state, uses the client for subsequent changes, ignores stale responses, renders loading/error/no-results states and receives `canViewAll`/`canVoid` capabilities from the server.
 
 Use `Intl.DateTimeFormat` with `timeZone: "America/Argentina/Buenos_Aires"` for month and timestamps. Remove the fixed August label, `incomes.mock.json` and `authorizeIncomeListData` security simulation.
 
-- [ ] **Step 4: Implement confirmed manager voiding**
+- [x] **Step 4: Implement confirmed manager voiding**
 
 Add a focused confirmation dialog. On success, close confirmation, keep/open updated detail as appropriate, refetch the current query, and show the shared toast. Keep edit unavailable. Never show void controls to employees.
 
-- [ ] **Step 5: Run history tests and verify GREEN**
+- [x] **Step 5: Run history tests and verify GREEN**
 
 Run: `npm test -- src/components/incomes "src/app/(dashboard)/incomes/page.test.tsx"`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit persistent income history**
+- [x] **Step 6: Commit persistent income history**
 
 ```bash
 git add "src/app/(dashboard)/incomes" src/components/incomes src/data/incomes.mock.json src/data/incomes.mock.test.ts src/lib/incomes/income-list.ts src/lib/incomes/income-list.test.ts

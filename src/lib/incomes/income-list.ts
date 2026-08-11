@@ -1,6 +1,5 @@
 import type {
   IncomeKind,
-  IncomeListData,
   IncomeListFilters,
   IncomeListItem,
   IncomeListMetrics,
@@ -12,22 +11,6 @@ const normalize = (value: string) =>
     .toLocaleLowerCase("es")
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
-
-export const authorizeIncomeListData = (
-  data: IncomeListData,
-): IncomeListData => {
-  if (data.currentUser.role === "owner") return data;
-
-  return {
-    currentUser: data.currentUser,
-    employees: data.employees.filter(
-      (employee) => employee.id === data.currentUser.id,
-    ),
-    incomes: data.incomes.filter(
-      (income) => income.employee.id === data.currentUser.id,
-    ),
-  };
-};
 
 const productQuantity = (item: IncomeListItem) =>
   item.products.reduce((total, product) => total + product.quantity, 0);
@@ -65,6 +48,7 @@ export const formatIncomeDateTime = (createdAt: string) =>
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(createdAt));
 
 const matchesQuery = (item: IncomeListItem, rawQuery: string) => {

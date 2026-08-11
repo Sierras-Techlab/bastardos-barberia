@@ -6,14 +6,16 @@ import type { Income } from "@/types/income";
 import { IncomeSuccessState } from "./income-success-state";
 
 const income: Income = {
-  id: "income-1",
-  employeeId: "employee-1",
-  customerId: null,
-  serviceId: "service-1",
+  id: "20000000-0000-4000-8000-000000000001",
+  employee: { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez" },
+  customer: null,
+  service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte", price: 16000 },
   products: [],
   paymentMethod: "cash",
   total: 16000,
   createdAt: "2026-08-07T12:00:00.000Z",
+  businessDate: "2026-08-07",
+  status: "active",
 };
 
 it("shows the created amount and both next actions", async () => {

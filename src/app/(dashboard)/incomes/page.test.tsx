@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser } = vi.hoisted(() => ({
+const { requirePageUser, listIncomes, listUsers } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -15,11 +15,15 @@ const { requirePageUser } = vi.hoisted(() => ({
       updatedAt: "2026-08-07T00:00:00.000Z",
     },
   }),
+  listIncomes: vi.fn().mockResolvedValue({ items: [], metrics: { total: 0, count: 0, average: 0, cashTotal: 0, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
+  listUsers: vi.fn().mockResolvedValue({ items: [] }),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
   requirePageUser,
 }));
+vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
+vi.mock("@/lib/users/repository", () => ({ userRepository: { list: listUsers } }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes",
@@ -34,7 +38,7 @@ it("composes the Bastardos income history route", async () => {
 
   render(await DashboardLayout({ children: await IncomesPage() }));
 
-  expect(screen.getByRole("heading", { name: /ingresos/i })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: /ingresos/i })).toBeVisible();
   expect(screen.getByText(/historial de ventas/i)).toBeVisible();
   expect(screen.getByAltText("Bastardos Barbería")).toBeVisible();
   expect(screen.getByRole("link", { name: /cargar ingreso/i })).toHaveAttribute(
@@ -53,9 +57,11 @@ it("composes the Bastardos income history route", async () => {
 
 it("revalidates the session at the income history boundary", async () => {
   requirePageUser.mockClear();
+  listIncomes.mockClear();
   await IncomesPage();
 
   expect(requirePageUser).toHaveBeenCalledOnce();
+  expect(listIncomes).toHaveBeenCalledOnce();
 });
 
 it("does not render income history after session revocation", async () => {
