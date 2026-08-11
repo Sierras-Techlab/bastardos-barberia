@@ -4,7 +4,7 @@ import type { CreateIncomeInput, Income, IncomeListItem, IncomeListQuery, Pagina
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
 const serviceSchema = z.object({ id: z.uuid(), name: z.string(), price: z.number().int().positive() }).strict();
 export const incomeResponseSchema = z.object({
-  id: z.uuid(), createdAt: z.iso.datetime(), businessDate: z.iso.date(), employee: employeeSchema,
+  id: z.uuid(), createdAt: z.iso.datetime({ offset: true }), businessDate: z.iso.date(), employee: employeeSchema,
   customer: employeeSchema.nullable(), service: serviceSchema.nullable(),
   products: z.array(z.object({ id: z.uuid(), name: z.string(), unitPrice: z.number().int().positive(), quantity: z.number().int().positive() }).strict()),
   paymentMethod: z.enum(["cash", "transfer"]), total: z.number().int().positive(), status: z.enum(["active", "voided"]),

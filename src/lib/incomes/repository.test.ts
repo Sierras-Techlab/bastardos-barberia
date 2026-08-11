@@ -14,6 +14,27 @@ it("maps create and list to exact RPC parameters and validates JSON", async () =
   await incomeRepository.list({ requestingUserId: item.employee.id, canViewAll: false, userId: item.employee.id }, { page: 1, pageSize: 10 });
   expect(rpc).toHaveBeenLastCalledWith("list_incomes", expect.objectContaining({ requesting_user_id: item.employee.id, can_view_all: false, filter_user_id: item.employee.id, page_number: 1, page_size: 10 }));
 });
+it("accepts the PostgreSQL timestamptz offset returned for createdAt", async () => {
+  const databaseItem = {
+    ...item,
+    createdAt: "2026-08-11T21:47:11.479856+00:00",
+  };
+  const rpc = vi
+    .fn()
+    .mockResolvedValueOnce({ data: item.id, error: null })
+    .mockResolvedValueOnce({ data: databaseItem, error: null });
+  getSupabaseAdmin.mockReturnValue({ rpc });
+
+  await expect(
+    incomeRepository.create(item.employee.id, {
+      requestId: "40000000-0000-4000-8000-000000000001",
+      customerId: null,
+      serviceId: item.service.id,
+      products: [],
+      paymentMethod: "cash",
+    }),
+  ).resolves.toEqual(databaseItem);
+});
 it("maps insufficient stock without exposing database details", async () => {
   getSupabaseAdmin.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "INSUFFICIENT_STOCK:Gel" } }) });
   await expect(incomeRepository.create(item.employee.id, { requestId: "40000000-0000-4000-8000-000000000001", customerId: null, serviceId: item.service.id, products: [], paymentMethod: "cash" })).rejects.toMatchObject({ code: "INSUFFICIENT_STOCK", status: 409, message: expect.stringContaining("Gel") });

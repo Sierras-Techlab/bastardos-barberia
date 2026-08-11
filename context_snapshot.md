@@ -39,29 +39,29 @@ Captured: 2026-08-11
 - `/incomes` uses server-side role scoping, Buenos Aires monthly date defaults, filters, metrics and pagination. Owner/admin can inspect all registering users and confirm a void; employees can only receive their own sales and have no void control.
 - Voiding is idempotent and manager-only. It marks rather than edits/deletes the sale, restores product stock, records reversal movements and decrements the associated customer visit exactly once.
 - `incomes.created_at` comes from the database clock and `business_date` is derived/indexed in `America/Argentina/Buenos_Aires` for the next daily-cash increment.
+- Income response validation accepts PostgreSQL `timestamptz` values with explicit UTC offsets. A runtime failure exposed this boundary after the transaction committed; the persisted sale remained intact and a regression test now covers the database's exact timestamp representation.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
 - Tests cover schemas, authentication/session/user lifecycle, server authorization, persistent commercial repositories/services/APIs, async catalog/customer UI, idempotent sale submission, role-scoped history and manager voiding.
-- The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models`; manual database installation remains the external deployment step.
+- The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models` and installed in the configured Supabase project.
 - The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
 - Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
-- The complete commercial milestone passes 96 test files / 297 tests, ESLint without warnings, the Next.js production build and `git diff --check`. The first build attempt hit the known transient Windows `spawn EPERM`; the immediate rerun completed all build phases successfully. Verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
+- The complete commercial milestone passes 96 test files / 298 tests, ESLint without warnings, the Next.js production build and `git diff --check`. Income timestamp regression verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
 
 ## Database integration state
 
-The configured Supabase project has migrations `001` through `007` installed. Scripts `008_products_inventory.sql` and `009_sales_domain.sql` are implemented but have not been applied remotely. The application cannot use the new commercial persistence until the user executes both entire scripts in order and runs the documented rollback-safe checks. No SQL, credentials or bootstrap command was executed by this implementation session. Fresh installations must run all nine ordered scripts documented in `supabase/queries/README.md`.
+The configured Supabase project has scripts `001` through `009` installed. Runtime use confirmed product, service and customer creation, while a read-only database check confirmed the persisted income and the `get_income_detail` response from `009_sales_domain.sql`. SQL installation remains manual for other environments, which must run all nine ordered scripts documented in `supabase/queries/README.md`.
 
 ## Known boundaries
 
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
-- Product deletion and purchase cost remain outside the persistent catalog. The application cannot use product persistence in the configured environment until the user applies `008_products_inventory.sql`.
+- Product deletion and purchase cost remain outside the persistent catalog.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
-- Scripts `008` and `009` are implemented but unapplied. Remote SQL execution remains a user-owned manual action.
 - Physical deletion, sale editing, customer-history screens, expenses, daily cash/register closure and reporting remain outside this milestone.
 
 ## Recommended next task
 
-Manually execute and verify `008_products_inventory.sql` followed by `009_sales_domain.sql`; after deployment validation, design the daily cash view from `created_at`, `business_date`, payment method and active/voided sales.
+Design the daily cash view from the deployed `created_at`, `business_date`, payment method and active/voided sales data.
 
 ## Context maintenance rule
 

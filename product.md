@@ -20,18 +20,18 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
 | Dashboard UI | Prototype | Responsive authenticated dashboard with one Sonner-based action-notification system shared by Users, Products, Customers and Services. |
-| Income entry UI | Backend ready; deployment pending | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
-| Income history UI | Backend ready; deployment pending | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
+| Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
+| Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
-| Products | Backend ready; deployment pending | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements. `008_products_inventory.sql` still requires manual installation. |
-| Services | Backend ready; deployment pending | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
-| Customers | Backend ready; deployment pending | Persistent phone-identified directory; all roles create/edit, managers logically delete, email is optional and associated sales update visits. |
+| Products | Implemented | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements. |
+| Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
+| Customers | Implemented | Persistent phone-identified directory; all roles create/edit, managers logically delete, email is optional and associated sales update visits. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
 
-Install and verify the completed commercial-domain backend. Products, Services, Customers and Incomes are implemented and locally verified; `008_products_inventory.sql` and `009_sales_domain.sql` still require manual installation in the configured project, whose installed migrations remain at `007`.
+Verify the deployed commercial workflow and then design daily cash. Products, Services, Customers and Incomes are implemented in the application, scripts `008_products_inventory.sql` and `009_sales_domain.sql` are installed in the configured project, and live creation has exercised the persistent domains.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 
@@ -42,6 +42,8 @@ The service catalog and sale form now share persistent active services. Manager 
 The approved backend design makes customer phone the unique operational identity while allowing duplicate names and optional email. Every authenticated role may create and edit customers; only owner/admin may logically delete them.
 
 Each sale is attributed only to its authenticated registering user. Owner/admin may view all sales and employees only their own. Sale creation and manager-only voiding update inventory and customer visits atomically, preserve item name/price snapshots, prevent duplicate submissions through per-user request IDs, and store exact database timestamps plus indexed Buenos Aires business dates for future daily cash calculations.
+
+Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 
 ## Accepted authentication decisions
 
