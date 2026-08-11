@@ -3,6 +3,7 @@ import { MANAGER_ROLES } from "@/lib/auth/constants";
 import { AppError } from "@/lib/auth/errors";
 import type { SafeUser } from "@/lib/auth/types";
 import type { ProductServiceDependencies } from "@/lib/products/contracts";
+import { productRepository } from "@/lib/products/repository";
 import type {
   CreateProductInput,
   ProductCatalogData,
@@ -13,9 +14,13 @@ import type {
 const productNotFound = () =>
   new AppError("PRODUCT_NOT_FOUND", "No encontramos el producto.", 404);
 
+const defaultDependencies: ProductServiceDependencies = {
+  products: productRepository,
+};
+
 export const listProducts = async (
   actor: SafeUser,
-  dependencies: ProductServiceDependencies,
+  dependencies: ProductServiceDependencies = defaultDependencies,
 ): Promise<ProductCatalogData> => ({
   products: await dependencies.products.list(
     MANAGER_ROLES.has(actor.role.name),
@@ -25,7 +30,7 @@ export const listProducts = async (
 export const createProduct = async (
   actor: SafeUser,
   input: CreateProductInput,
-  dependencies: ProductServiceDependencies,
+  dependencies: ProductServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
   return dependencies.products.create({ ...input, createdBy: actor.id });
@@ -35,7 +40,7 @@ export const updateProduct = async (
   actor: SafeUser,
   id: string,
   input: UpdateProductInput,
-  dependencies: ProductServiceDependencies,
+  dependencies: ProductServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
   const product = await dependencies.products.update(id, {
@@ -50,7 +55,7 @@ export const adjustProductStock = async (
   actor: SafeUser,
   id: string,
   input: StockAdjustment,
-  dependencies: ProductServiceDependencies,
+  dependencies: ProductServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
   const product = await dependencies.products.adjustStock(

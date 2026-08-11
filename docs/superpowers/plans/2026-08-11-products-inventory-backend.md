@@ -180,7 +180,7 @@ git commit -m "feat(products): add product domain service"
 - Consumes: `ProductRepository`, `ProductRow`, `getSupabaseAdmin()` and SQL RPC names from Task 1.
 - Produces: `productRepository`, the default persistence dependency for the service.
 
-- [ ] **Step 1: Write failing repository tests**
+- [x] **Step 1: Write failing repository tests**
 
 Mock `getSupabaseAdmin()` and assert:
 
@@ -206,25 +206,25 @@ expect(admin.rpc).toHaveBeenCalledWith("create_product", {
 
 Cover active-only and manager listing, update audit values, entry/exit RPC mapping, missing rows, normalized-name conflict mapping and insufficient-stock mapping.
 
-- [ ] **Step 2: Run the repository test and verify RED**
+- [x] **Step 2: Run the repository test and verify RED**
 
 Run: `npm test -- src/lib/products/repository.test.ts`
 
 Expected: FAIL because `repository.ts` does not exist.
 
-- [ ] **Step 3: Implement the server-only repository**
+- [x] **Step 3: Implement the server-only repository**
 
 Add `import "server-only";`, a safe select string, `toCatalogProduct`, sanitized `productDatabaseFailure`, RPC calls followed by exact-ID reads, and direct profile/status updates that always set `updated_by`. Map SQL sentinel messages to `AppError` codes defined by Task 2.
 
 Do not export raw rows and do not use the browser Supabase roles.
 
-- [ ] **Step 4: Run repository and service tests**
+- [x] **Step 4: Run repository and service tests**
 
 Run: `npm test -- src/lib/products/repository.test.ts src/lib/products/service.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the repository**
+- [x] **Step 5: Commit the repository**
 
 ```bash
 git add src/lib/products/repository.ts src/lib/products/repository.test.ts src/lib/products/service.ts
