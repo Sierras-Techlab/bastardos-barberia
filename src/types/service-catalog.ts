@@ -6,9 +6,13 @@ export type ServiceCatalogItem = {
 };
 
 export type ServiceCatalogData = {
-  isMock: true;
   services: ServiceCatalogItem[];
 };
+
+export type CreateServiceInput = Pick<ServiceCatalogItem, "name" | "price">;
+export type UpdateServiceInput = Partial<
+  Pick<ServiceCatalogItem, "name" | "price" | "isActive">
+>;
 
 export type ServiceActiveState = "all" | "active" | "inactive";
 export type ServiceCatalogFilters = { query: string; activeState: ServiceActiveState };

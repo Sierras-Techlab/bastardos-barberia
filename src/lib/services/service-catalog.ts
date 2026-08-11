@@ -15,10 +15,15 @@ const serviceSchema = z.object({
   isActive: z.boolean(),
 }).strict();
 
-const serviceCatalogSchema = z.object({
+const serviceCatalogFixtureSchema = z.object({
   isMock: z.literal(true),
   services: z.array(serviceSchema),
 }).strict();
+
+const serviceCatalogSchema = z.union([
+  serviceCatalogFixtureSchema,
+  z.object({ services: z.array(serviceSchema) }).strict(),
+]).transform(({ services }) => ({ services }));
 
 export const serviceEditorSchema = z.object({
   name: z.string().trim().min(1, "Ingresá el nombre del servicio."),

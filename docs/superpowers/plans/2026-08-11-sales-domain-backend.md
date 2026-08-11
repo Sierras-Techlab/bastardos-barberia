@@ -106,7 +106,7 @@ git commit -m "feat(sales): add persistent sales database domain"
 - Consumes: `ServiceRow`, authenticated users and existing service presentation components.
 - Produces: persistent service APIs and `ServiceRepository` for income catalog validation.
 
-- [ ] **Step 1: Write failing service-domain tests**
+- [x] **Step 1: Write failing service-domain tests**
 
 Cover trimmed names, positive integer prices, UUIDs, empty PATCH rejection, manager mutations, employee active-only listing, logical deletion, duplicate-name mapping and audit actor propagation.
 
@@ -122,13 +122,13 @@ export type ServiceRepository = {
 };
 ```
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run: `npm test -- src/lib/services src/app/api/services src/components/services "src/app/(dashboard)/services/page.test.tsx"`
 
 Expected: FAIL because persistent modules and async UI behavior are absent.
 
-- [ ] **Step 3: Implement server domain, API client and handlers**
+- [x] **Step 3: Implement server domain, API client and handlers**
 
 Create `listServices`, `createService`, `updateService` and `deleteService` with optional dependency injection and default `serviceRepository`. Use `requireUser` for GET and `requireManager` for mutations. Translate missing/deleted/duplicate cases to `SERVICE_NOT_FOUND` and `SERVICE_NAME_EXISTS`.
 
@@ -142,7 +142,7 @@ export type ServiceClient = {
 };
 ```
 
-- [ ] **Step 4: Connect `/services` and verify GREEN**
+- [x] **Step 4: Connect `/services` and verify GREEN**
 
 Load authorized data in the Server Component, remove fixture/demo imports, convert dialogs to guarded async saves, preserve drafts on failure, update returned rows only on success and keep existing feedback/layout.
 
@@ -150,7 +150,7 @@ Run: `npm test -- src/lib/services src/app/api/services src/components/services 
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit persistent services**
+- [x] **Step 5: Commit persistent services**
 
 ```bash
 git add src/lib/services src/app/api/services "src/app/(dashboard)/services" src/components/services src/types/service-catalog.ts src/data/services.mock.json

@@ -148,7 +148,7 @@ begin
   insert into public.services (
     name, normalized_name, price, created_by, updated_by
   ) values (
-    'Servicio temporal de verificaciÃ³n', '', 5000, actor_id, actor_id
+    'Servicio temporal de verificación', '', 5000, actor_id, actor_id
   ) returning id into service_id;
 
   insert into public.customers (
