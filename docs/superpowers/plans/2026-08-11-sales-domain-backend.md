@@ -37,7 +37,7 @@
 - Consumes: `users`, `products`, `inventory_movements` and service-role security from scripts `001` through `008`.
 - Produces: `services`, `customers`, `incomes`, `income_items`, sale/void/list/detail functions and income-linked inventory movements.
 
-- [ ] **Step 1: Implement the complete ordered SQL script**
+- [x] **Step 1: Implement the complete ordered SQL script**
 
 Create these contracts:
 
@@ -62,7 +62,7 @@ Implement service-role-only `create_income`, `void_income`, `list_incomes` and `
 
 Add row types for every new table to `database.types.ts`, update README order and include copy/paste verification queries for schema/security plus one rollback-wrapped sample sale and void transaction.
 
-- [ ] **Step 2: Review rollback-safe transaction verification and run the local whitespace check**
+- [x] **Step 2: Review rollback-safe transaction verification and run the local whitespace check**
 
 Confirm the README provides a `begin;` / create sale / inspect stock, visits and business date / void sale / inspect reversals / `rollback;` sequence for the user to execute after installation.
 
