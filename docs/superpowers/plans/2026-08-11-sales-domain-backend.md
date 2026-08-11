@@ -521,13 +521,13 @@ git commit -m "feat(incomes): persist history and voiding"
 - Consumes: all services/customers/incomes deliverables.
 - Produces: accurate project state, external SQL instructions and a clean verified branch.
 
-- [ ] **Step 1: Run focused domain verification**
+- [x] **Step 1: Run focused domain verification**
 
 Run: `npm test -- src/lib/services src/lib/customers src/lib/incomes src/app/api/services src/app/api/customers src/app/api/incomes src/components/services src/components/customers src/components/incomes`
 
 Expected: PASS.
 
-- [ ] **Step 2: Run the complete verification suite**
+- [x] **Step 2: Run the complete verification suite**
 
 Run: `npm test`
 
@@ -545,18 +545,18 @@ Run: `git diff --check`
 
 Expected: no output.
 
-- [ ] **Step 3: Update durable documentation**
+- [x] **Step 3: Update durable documentation**
 
 Record persistent module behavior, exact role permissions, logical deletion, phone identity, idempotency, atomic stock/visit behavior, Buenos Aires business dates, verification results and the unapplied remote SQL actions. Set the recommended next task to applying/verifying `008` and `009`, then designing daily cash without claiming deployment occurred.
 
-- [ ] **Step 4: Commit the verified sales milestone**
+- [x] **Step 4: Commit the verified sales milestone**
 
 ```bash
 git add context_snapshot.md product.md AGENTS.md
 git commit -m "docs(sales): record persistent commercial domain"
 ```
 
-- [ ] **Step 5: Verify clean handoff state**
+- [x] **Step 5: Verify clean handoff state**
 
 Run: `git status --short --branch`
 
