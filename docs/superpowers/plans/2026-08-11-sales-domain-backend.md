@@ -188,7 +188,7 @@ git commit -m "feat(services): connect catalog to persistence"
 - Consumes: `CustomerRow`, authenticated session roles and current customer presentation.
 - Produces: `CustomerRepository`, reusable async editor and customer API/client for `/incomes/new`.
 
-- [ ] **Step 1: Write failing validation, permission and UI tests**
+- [x] **Step 1: Write failing validation, permission and UI tests**
 
 Assert this model and behavior:
 
@@ -210,13 +210,13 @@ expect(customerEditorSchema.parse({
 
 Test that employee creation/edit succeeds, employee deletion fails before persistence, manager deletion calls `softDelete`, exact duplicate names are accepted, normalized duplicate phone is rejected, optional duplicate non-null email is rejected, missing email renders no `mailto:` action, and every authenticated role sees create/edit controls while only managers see delete.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run: `npm test -- src/lib/customers src/app/api/customers src/components/customers "src/app/(dashboard)/customers/page.test.tsx"`
 
 Expected: FAIL because the persistent modules, optional email and delete flow are absent.
 
-- [ ] **Step 3: Implement customer repository, services and handlers**
+- [x] **Step 3: Implement customer repository, services and handlers**
 
 Define:
 
@@ -233,19 +233,19 @@ export type CustomerRepository = {
 
 GET/POST require any authenticated user; PATCH also requires any authenticated user; DELETE requires a manager. Propagate actor IDs internally, exclude deleted rows and map uniqueness to `CUSTOMER_PHONE_EXISTS` or `CUSTOMER_EMAIL_EXISTS`.
 
-- [ ] **Step 4: Implement the reusable async dialog and persistent page**
+- [x] **Step 4: Implement the reusable async dialog and persistent page**
 
 Change `CustomerEditorDialog.onSave` to return `Promise<Customer>`, require name/last name/phone, make email optional, expose pending/error state and keep the draft open on failure. Add confirmed logical deletion and update `/customers` capability props to `{ canDelete: boolean }` rather than manager-gating all mutations.
 
 Load customers in the Server Component, remove mock/demo usage and preserve filters, metrics, responsive UI and toasts.
 
-- [ ] **Step 5: Run focused tests and verify GREEN**
+- [x] **Step 5: Run focused tests and verify GREEN**
 
 Run: `npm test -- src/lib/customers src/app/api/customers src/components/customers "src/app/(dashboard)/customers/page.test.tsx"`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit persistent customers**
+- [x] **Step 6: Commit persistent customers**
 
 ```bash
 git add src/lib/customers src/app/api/customers "src/app/(dashboard)/customers" src/components/customers src/types/customer.ts src/data/customers.mock.json
