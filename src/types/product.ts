@@ -28,7 +28,6 @@ export type CatalogProduct = {
 };
 
 export type ProductCatalogData = {
-  isMock: true;
   products: CatalogProduct[];
 };
 
@@ -45,6 +44,12 @@ export type ProductEditorInput = {
   price: number;
   stock: number;
 };
+
+export type CreateProductInput = ProductEditorInput;
+
+export type UpdateProductInput = Partial<
+  Pick<CatalogProduct, "name" | "category" | "price" | "isActive">
+>;
 
 export type StockAdjustment = {
   kind: "entry" | "exit";

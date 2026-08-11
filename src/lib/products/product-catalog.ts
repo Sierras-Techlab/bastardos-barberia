@@ -27,12 +27,19 @@ const productSchema = z
   })
   .strict();
 
-const productCatalogDataSchema = z
+const productCatalogFixtureSchema = z
   .object({
     isMock: z.literal(true),
     products: z.array(productSchema),
   })
   .strict();
+
+const productCatalogDataSchema = z
+  .union([
+    productCatalogFixtureSchema,
+    z.object({ products: z.array(productSchema) }).strict(),
+  ])
+  .transform(({ products }) => ({ products }));
 
 const categoryLabels: Record<ProductCategory, string> = {
   "hair-care": "Cuidado capilar",

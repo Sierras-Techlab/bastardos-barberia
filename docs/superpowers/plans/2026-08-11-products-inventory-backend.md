@@ -100,7 +100,7 @@ git commit -m "feat(products): add inventory database contract"
 - Consumes: `SafeUser`, `assertManager` and the existing `CatalogProduct` presentation shape.
 - Produces: `ProductRepository`, public Zod schemas and service functions used by pages and Route Handlers.
 
-- [ ] **Step 1: Write failing schema and service tests**
+- [x] **Step 1: Write failing schema and service tests**
 
 Test these exact behaviors:
 
@@ -128,13 +128,13 @@ expect(deps.products.adjustStock).toHaveBeenCalledWith(
 
 Also cover empty PATCH rejection, UUID IDs, invalid category/price/stock, employees receiving active products only, managers receiving all products, missing records and stable domain errors.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run: `npm test -- src/lib/products/service.test.ts src/lib/products/product-management.test.ts`
 
 Expected: FAIL because the schemas, contracts and service do not exist.
 
-- [ ] **Step 3: Implement the public contracts and service**
+- [x] **Step 3: Implement the public contracts and service**
 
 Define:
 
@@ -157,13 +157,13 @@ export const adjustProductStock: (actor: SafeUser, id: string, input: StockAdjus
 
 Change `ProductCatalogData` from `{ isMock: true; products: ... }` to `{ products: ... }`. Keep pure presentation filtering/sorting functions. Re-export or reuse the Zod input schemas so UI and API validation cannot drift.
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
 Run: `npm test -- src/lib/products/service.test.ts src/lib/products/product-management.test.ts src/lib/products/product-catalog.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit validation and services**
+- [x] **Step 5: Commit validation and services**
 
 ```bash
 git add src/types/product.ts src/lib/products

@@ -13,7 +13,7 @@ describe("product catalog boundary", () => {
   it("accepts the complete product demonstration fixture", () => {
     const data = authorizeProductCatalogData(productsMock);
 
-    expect(data.isMock).toBe(true);
+    expect(data).not.toHaveProperty("isMock");
     expect(data.products).toHaveLength(12);
     expect(data.products[0]).toMatchObject({
       id: expect.any(String),
