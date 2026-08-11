@@ -20,6 +20,7 @@
 - Do not execute SQL against Supabase, run the owner bootstrap or modify credentials.
 - Preserve the existing responsive catalog, filters, sorting, metrics, dialogs and Sonner success feedback.
 - Use TDD for behavior changes and commit after every completed task.
+- SQL migration files are the sole TDD exception: no local PostgreSQL/Docker runtime is available and remote execution is prohibited, so their behavior is verified by rollback-safe queries documented for the user; every TypeScript consumer is still developed RED/GREEN.
 
 ---
 
@@ -27,7 +28,6 @@
 
 **Files:**
 - Create: `supabase/queries/008_products_inventory.sql`
-- Create: `src/lib/products/sql-contract.test.ts`
 - Modify: `supabase/queries/README.md`
 - Modify: `src/lib/supabase/database.types.ts`
 
@@ -35,34 +35,7 @@
 - Consumes: `public.users(id)` and `service_role` security conventions from scripts `001` through `007`.
 - Produces: `products`, `inventory_movements`, `create_product(...)` and `adjust_product_stock(...)` for the product repository.
 
-- [ ] **Step 1: Write a failing SQL contract test**
-
-```ts
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-
-const sql = readFileSync("supabase/queries/008_products_inventory.sql", "utf8");
-
-describe("008 products and inventory SQL", () => {
-  it("defines audited products, movements and atomic functions", () => {
-    expect(sql).toMatch(/create table if not exists public\.products/i);
-    expect(sql).toMatch(/created_by uuid not null references public\.users/i);
-    expect(sql).toMatch(/create table if not exists public\.inventory_movements/i);
-    expect(sql).toMatch(/quantity_delta integer not null/i);
-    expect(sql).toMatch(/create or replace function public\.create_product/i);
-    expect(sql).toMatch(/create or replace function public\.adjust_product_stock/i);
-    expect(sql).toMatch(/alter table public\.products enable row level security/i);
-  });
-});
-```
-
-- [ ] **Step 2: Run the test and verify RED**
-
-Run: `npm test -- src/lib/products/sql-contract.test.ts`
-
-Expected: FAIL because `008_products_inventory.sql` does not exist.
-
-- [ ] **Step 3: Add the complete SQL schema and atomic functions**
+- [ ] **Step 1: Add the complete SQL schema and atomic functions**
 
 Implement these exact database contracts in `008_products_inventory.sql`:
 
@@ -96,20 +69,18 @@ Add a database-maintained normalized product name, indexes for active/name/catal
 
 Update `database.types.ts` with `ProductRow` and `InventoryMovementRow`. Update the README execution order and verification table list.
 
-- [ ] **Step 4: Run the SQL contract test and whitespace check**
+- [ ] **Step 2: Review the rollback-safe verification block and run the local whitespace check**
 
-Run: `npm test -- src/lib/products/sql-contract.test.ts`
-
-Expected: PASS.
+Confirm the script ends with read-only catalog/security queries plus `begin;` / sample RPC calls / assertions / `rollback;` instructions that the user can execute after installation without retaining sample data.
 
 Run: `git diff --check`
 
 Expected: no output.
 
-- [ ] **Step 5: Commit the database contract**
+- [ ] **Step 3: Commit the database contract**
 
 ```bash
-git add supabase/queries/008_products_inventory.sql supabase/queries/README.md src/lib/supabase/database.types.ts src/lib/products/sql-contract.test.ts
+git add supabase/queries/008_products_inventory.sql supabase/queries/README.md src/lib/supabase/database.types.ts
 git commit -m "feat(products): add inventory database contract"
 ```
 

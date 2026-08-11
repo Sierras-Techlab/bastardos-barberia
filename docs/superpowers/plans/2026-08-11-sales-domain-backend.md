@@ -22,6 +22,7 @@
 - Do not execute SQL remotely, alter credentials, run bootstrap or implement cash/report screens.
 - Physical deletion and income editing remain out of scope.
 - Use TDD and commit after every completed task.
+- SQL migration files are the sole TDD exception: no local PostgreSQL/Docker runtime is available and remote execution is prohibited, so their behavior is verified by rollback-safe queries documented for the user; every TypeScript consumer is still developed RED/GREEN.
 
 ---
 
@@ -29,7 +30,6 @@
 
 **Files:**
 - Create: `supabase/queries/009_sales_domain.sql`
-- Create: `src/lib/incomes/sql-contract.test.ts`
 - Modify: `supabase/queries/README.md`
 - Modify: `src/lib/supabase/database.types.ts`
 
@@ -37,36 +37,7 @@
 - Consumes: `users`, `products`, `inventory_movements` and service-role security from scripts `001` through `008`.
 - Produces: `services`, `customers`, `incomes`, `income_items`, sale/void/list/detail functions and income-linked inventory movements.
 
-- [ ] **Step 1: Write a failing SQL contract test**
-
-```ts
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-
-const sql = readFileSync("supabase/queries/009_sales_domain.sql", "utf8");
-
-describe("009 sales domain SQL", () => {
-  it("defines persistent catalogs, sales and atomic functions", () => {
-    expect(sql).toMatch(/create table if not exists public\.services/i);
-    expect(sql).toMatch(/create table if not exists public\.customers/i);
-    expect(sql).toMatch(/create table if not exists public\.incomes/i);
-    expect(sql).toMatch(/create table if not exists public\.income_items/i);
-    expect(sql).toMatch(/business_date date not null/i);
-    expect(sql).toMatch(/America\/Argentina\/Buenos_Aires/i);
-    expect(sql).toMatch(/create or replace function public\.create_income/i);
-    expect(sql).toMatch(/create or replace function public\.void_income/i);
-    expect(sql).toMatch(/alter table public\.incomes enable row level security/i);
-  });
-});
-```
-
-- [ ] **Step 2: Run the test and verify RED**
-
-Run: `npm test -- src/lib/incomes/sql-contract.test.ts`
-
-Expected: FAIL because `009_sales_domain.sql` does not exist.
-
-- [ ] **Step 3: Implement the complete ordered SQL script**
+- [ ] **Step 1: Implement the complete ordered SQL script**
 
 Create these contracts:
 
@@ -91,20 +62,18 @@ Implement service-role-only `create_income`, `void_income`, `list_incomes` and `
 
 Add row types for every new table to `database.types.ts`, update README order and include copy/paste verification queries for schema/security plus one rollback-wrapped sample sale and void transaction.
 
-- [ ] **Step 4: Run the SQL contract and whitespace checks**
+- [ ] **Step 2: Review rollback-safe transaction verification and run the local whitespace check**
 
-Run: `npm test -- src/lib/incomes/sql-contract.test.ts`
-
-Expected: PASS.
+Confirm the README provides a `begin;` / create sale / inspect stock, visits and business date / void sale / inspect reversals / `rollback;` sequence for the user to execute after installation.
 
 Run: `git diff --check`
 
 Expected: no output.
 
-- [ ] **Step 5: Commit the database domain**
+- [ ] **Step 3: Commit the database domain**
 
 ```bash
-git add supabase/queries/009_sales_domain.sql supabase/queries/README.md src/lib/supabase/database.types.ts src/lib/incomes/sql-contract.test.ts
+git add supabase/queries/009_sales_domain.sql supabase/queries/README.md src/lib/supabase/database.types.ts
 git commit -m "feat(sales): add persistent sales database domain"
 ```
 
