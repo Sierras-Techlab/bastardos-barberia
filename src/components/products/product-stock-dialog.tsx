@@ -1,7 +1,7 @@
 "use client";
 
 import { Boxes } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,13 +19,15 @@ import type { CatalogProduct, StockAdjustment } from "@/types/product";
 type ProductStockDialogProps = {
   product: CatalogProduct;
   onClose: () => void;
-  onSave: (stock: number) => void;
+  onSave: (adjustment: StockAdjustment) => Promise<void> | void;
 };
 
 export const ProductStockDialog = ({ product, onClose, onSave }: ProductStockDialogProps) => {
   const [kind, setKind] = useState<StockAdjustment["kind"]>("entry");
   const [quantity, setQuantity] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const numericQuantity = Number(quantity);
   const preview = Number.isInteger(numericQuantity) && numericQuantity > 0
     ? kind === "entry"
@@ -33,17 +35,26 @@ export const ProductStockDialog = ({ product, onClose, onSave }: ProductStockDia
       : Math.max(0, product.stock - numericQuantity)
     : product.stock;
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (savingRef.current) return;
     try {
-      onSave(applyStockAdjustment(product.stock, { kind, quantity: numericQuantity }));
+      const adjustment = { kind, quantity: numericQuantity };
+      applyStockAdjustment(product.stock, adjustment);
+      savingRef.current = true;
+      setIsSaving(true);
+      setError(null);
+      await onSave(adjustment);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo ajustar el stock.");
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
     }
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
       <DialogContent className="rounded-[1.6rem] p-5 sm:max-w-md">
         <form onSubmit={submit}>
           <DialogHeader>
@@ -67,8 +78,8 @@ export const ProductStockDialog = ({ product, onClose, onSave }: ProductStockDia
           <p className="mt-3 rounded-xl bg-[#f7f6f3] px-3 py-2 text-sm font-medium">Stock resultante: {preview} {preview === 1 ? "unidad" : "unidades"}</p>
           {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <DialogFooter className="-mx-5 -mb-5 mt-5 p-5">
-            <Button type="button" variant="outline" onClick={onClose} className="rounded-xl">Cancelar</Button>
-            <Button type="submit" className="rounded-xl">Guardar ajuste</Button>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} className="rounded-xl">Cancelar</Button>
+            <Button type="submit" disabled={isSaving} className="rounded-xl">{isSaving ? "Guardando..." : "Guardar ajuste"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

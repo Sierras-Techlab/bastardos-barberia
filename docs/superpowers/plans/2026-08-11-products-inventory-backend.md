@@ -321,7 +321,7 @@ git commit -m "feat(products): expose authorized product API"
 - Consumes: the Task 4 HTTP endpoints and Task 2 DTO/input types.
 - Produces: a persistent `/products` experience with no mock dependency.
 
-- [ ] **Step 1: Write failing client and UI tests**
+- [x] **Step 1: Write failing client and UI tests**
 
 Assert the client unwraps `{ data }`, maps structured API errors to an `ApiClientError`, and sends exact methods/bodies. Update page tests to mock `listProducts(user)` and assert the demonstration badge is absent.
 
@@ -344,13 +344,13 @@ expect(await screen.findByText(createdProduct.name)).toBeVisible();
 
 Cover pending double-submit prevention, preserved dialog on failure, server error display, successful edit/stock/status replacement, and employee read-only behavior.
 
-- [ ] **Step 2: Run focused client/UI tests and verify RED**
+- [x] **Step 2: Run focused client/UI tests and verify RED**
 
 Run: `npm test -- src/lib/products/client.test.ts src/components/products "src/app/(dashboard)/products/page.test.tsx"`
 
 Expected: FAIL because the API client and async integration are absent.
 
-- [ ] **Step 3: Implement the API-backed UI**
+- [x] **Step 3: Implement the API-backed UI**
 
 Define:
 
@@ -366,13 +366,13 @@ The server page calls `requirePageUser()`, then `listProducts(user)`, and passes
 
 Make dialog saves asynchronous, add one mutation-in-progress guard, preserve inputs and show returned errors on failure, replace the returned product by ID on success, and keep existing success toasts. General editing must never send stock.
 
-- [ ] **Step 4: Run all product tests and verify GREEN**
+- [x] **Step 4: Run all product tests and verify GREEN**
 
 Run: `npm test -- src/lib/products src/components/products src/app/api/products "src/app/(dashboard)/products/page.test.tsx"`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the persistent UI**
+- [x] **Step 5: Commit the persistent UI**
 
 ```bash
 git add "src/app/(dashboard)/products" src/components/products src/lib/products/client.ts src/lib/products/client.test.ts src/data/products.mock.json

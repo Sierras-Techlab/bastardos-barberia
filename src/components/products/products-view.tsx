@@ -16,6 +16,10 @@ import {
   calculateProductMetrics,
   filterProducts,
 } from "@/lib/products/product-catalog";
+import {
+  productClient as defaultProductClient,
+  type ProductClient,
+} from "@/lib/products/client";
 import { sortProducts } from "@/lib/products/product-management";
 import type {
   ProductCatalogData,
@@ -28,6 +32,7 @@ import type {
 type ProductsViewProps = {
   data: ProductCatalogData;
   canManage: boolean;
+  productClient?: ProductClient;
 };
 
 const initialFilters: ProductCatalogFilters = {
@@ -37,7 +42,11 @@ const initialFilters: ProductCatalogFilters = {
   activeState: "all",
 };
 
-export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
+export const ProductsView = ({
+  data,
+  canManage,
+  productClient = defaultProductClient,
+}: ProductsViewProps) => {
   const [catalogProducts, setCatalogProducts] = useState(() => data.products);
   const [filters, setFilters] = useState(initialFilters);
   const [sort, setSort] = useState<ProductSort>("original");
@@ -69,33 +78,25 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
     filters.activeState !== "all";
 
   const clearFilters = () => setFilters(initialFilters);
-  const saveProduct = (input: ProductEditorInput) => {
+  const replaceProduct = (updated: CatalogProduct) =>
+    setCatalogProducts((current) =>
+      current.map((product) =>
+        product.id === updated.id ? updated : product,
+      ),
+    );
+  const saveProduct = async (input: ProductEditorInput) => {
     if (editor?.mode === "edit" && editor.product) {
-      setCatalogProducts((current) =>
-        current.map((product) =>
-          product.id === editor.product?.id ? { ...product, ...input } : product,
-        ),
-      );
+      const { stock: _stock, ...changes } = input;
+      const updated = await productClient.update(editor.product.id, changes);
+      replaceProduct(updated);
       toast.success("Producto actualizado correctamente.");
     } else {
-      setCatalogProducts((current) => [
-        ...current,
-        {
-          ...input,
-          id: `mock-product-${current.length + 1}`,
-          isActive: true,
-        },
-      ]);
+      const created = await productClient.create(input);
+      setCatalogProducts((current) => [...current, created]);
       toast.success("Producto añadido correctamente.");
     }
     setEditor(null);
   };
-  const updateProduct = (productId: string, changes: Partial<CatalogProduct>) =>
-    setCatalogProducts((current) =>
-      current.map((product) =>
-        product.id === productId ? { ...product, ...changes } : product,
-      ),
-    );
 
   return (
     <div className="space-y-5">
@@ -193,8 +194,12 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
         <ProductStockDialog
           product={stockProduct}
           onClose={() => setStockProduct(null)}
-          onSave={(stock) => {
-            updateProduct(stockProduct.id, { stock });
+          onSave={async (adjustment) => {
+            const updated = await productClient.adjustStock(
+              stockProduct.id,
+              adjustment,
+            );
+            replaceProduct(updated);
             setStockProduct(null);
             toast.success("Stock actualizado correctamente.");
           }}
@@ -204,8 +209,11 @@ export const ProductsView = ({ data, canManage }: ProductsViewProps) => {
         <ProductStatusDialog
           product={statusProduct}
           onClose={() => setStatusProduct(null)}
-          onConfirm={() => {
-            updateProduct(statusProduct.id, { isActive: !statusProduct.isActive });
+          onConfirm={async () => {
+            const updated = await productClient.update(statusProduct.id, {
+              isActive: !statusProduct.isActive,
+            });
+            replaceProduct(updated);
             toast.success(
               statusProduct.isActive
                 ? "Producto desactivado correctamente."
