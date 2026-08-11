@@ -39,6 +39,7 @@ Captured: 2026-08-11
 - Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product/customer management lifecycles.
 - Approved backend designs define a staged migration from the product, service, customer and income mocks to persistent server-authorized domains. Products and inventory are first; services, customers and incomes follow only after that milestone is complete.
 - The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
+- Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
 
 ## Database integration state
 
@@ -57,7 +58,7 @@ The configured Supabase project has migrations `001` through `007` installed. Th
 
 ## Recommended next task
 
-Review the approved product/inventory and sales-domain specifications, then write separate TDD implementation plans beginning with Products.
+Execute the Products and Inventory Backend plan completely before starting the Services, Customers and Incomes plan.
 
 ## Context maintenance rule
 
