@@ -236,4 +236,10 @@ it("adjusts stock and deactivates products in memory", async () => {
   });
   expectToast("Producto desactivado correctamente.");
   expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(2);
+  expect(within(hunterRow).getByText("No disponible")).toBeVisible();
+  expect(within(hunterRow).queryByText("Disponible")).not.toBeInTheDocument();
+  expect(within(hunterMobileItem!).getByText("No disponible")).toBeVisible();
+  expect(
+    within(hunterMobileItem!).queryByText("Disponible"),
+  ).not.toBeInTheDocument();
 });

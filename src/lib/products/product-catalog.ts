@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type {
   CatalogProduct,
+  ProductAvailabilityStatus,
   ProductCatalogData,
   ProductCatalogFilters,
   ProductCatalogMetrics,
@@ -87,6 +88,11 @@ export const getProductStockStatus = (stock: number): ProductStockStatus => {
   if (stock <= 3) return "low-stock";
   return "available";
 };
+
+export const getProductAvailabilityStatus = (
+  product: Pick<CatalogProduct, "isActive" | "stock">,
+): ProductAvailabilityStatus =>
+  product.isActive ? getProductStockStatus(product.stock) : "unavailable";
 
 export const calculateProductMetrics = (
   products: CatalogProduct[],

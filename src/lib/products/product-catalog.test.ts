@@ -6,6 +6,7 @@ import {
   calculateProductMetrics,
   filterProducts,
   formatProductCategory,
+  getProductAvailabilityStatus,
   getProductStockStatus,
 } from "@/lib/products/product-catalog";
 
@@ -106,5 +107,14 @@ describe("product catalog presentation data", () => {
     expect(getProductStockStatus(3)).toBe("low-stock");
     expect(getProductStockStatus(1)).toBe("low-stock");
     expect(getProductStockStatus(0)).toBe("out-of-stock");
+  });
+
+  it("gives inactivity precedence over remaining stock in presentation", () => {
+    expect(
+      getProductAvailabilityStatus({ stock: 8, isActive: false }),
+    ).toBe("unavailable");
+    expect(
+      getProductAvailabilityStatus({ stock: 8, isActive: true }),
+    ).toBe("available");
   });
 });

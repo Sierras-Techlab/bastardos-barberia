@@ -3,6 +3,10 @@ export type ProductStockStatus =
   | "low-stock"
   | "out-of-stock";
 
+export type ProductAvailabilityStatus =
+  | ProductStockStatus
+  | "unavailable";
+
 export type ProductCategory =
   | "hair-care"
   | "styling"
