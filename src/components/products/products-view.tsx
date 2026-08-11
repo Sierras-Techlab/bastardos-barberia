@@ -86,7 +86,11 @@ export const ProductsView = ({
     );
   const saveProduct = async (input: ProductEditorInput) => {
     if (editor?.mode === "edit" && editor.product) {
-      const { stock: _stock, ...changes } = input;
+      const changes = {
+        name: input.name,
+        category: input.category,
+        price: input.price,
+      };
       const updated = await productClient.update(editor.product.id, changes);
       replaceProduct(updated);
       toast.success("Producto actualizado correctamente.");

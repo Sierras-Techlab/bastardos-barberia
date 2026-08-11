@@ -389,7 +389,7 @@ git commit -m "feat(products): connect catalog to persistence"
 - Consumes: all product milestone deliverables.
 - Produces: an accurate handoff that marks remote SQL application as the only external action.
 
-- [ ] **Step 1: Run focused and complete verification**
+- [x] **Step 1: Run focused and complete verification**
 
 Run: `npm test -- src/lib/products src/components/products src/app/api/products "src/app/(dashboard)/products/page.test.tsx"`
 
@@ -411,18 +411,18 @@ Run: `git diff --check`
 
 Expected: no output.
 
-- [ ] **Step 2: Update durable project state**
+- [x] **Step 2: Update durable project state**
 
 Record the exact branch, delivered persistent product behavior, automated verification results, the unapplied `008_products_inventory.sql` action and the next task: execute the sales-domain plan without claiming remote database installation.
 
-- [ ] **Step 3: Commit the verified product milestone**
+- [x] **Step 3: Commit the verified product milestone**
 
 ```bash
 git add context_snapshot.md product.md
 git commit -m "docs(products): record persistent catalog milestone"
 ```
 
-- [ ] **Step 4: Verify the milestone commit and clean tree**
+- [x] **Step 4: Verify the milestone commit and clean tree**
 
 Run: `git status --short --branch`
 

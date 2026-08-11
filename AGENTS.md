@@ -45,6 +45,8 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
 - Database tables have RLS enabled with no browser policies. Only the server secret role can access them.
 - SQL in `supabase/queries` is the source of truth and is designed for manual execution in the Supabase SQL Editor.
+- Products retain creator/updater audit users, are deactivated rather than deleted, and expose inactive records only to owner/admin.
+- Product stock changes are atomic, cannot produce negative stock and append an actor-linked inventory movement.
 
 ## Repository map
 
@@ -53,10 +55,11 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/app/users`, `src/components/users`: manager-only user administration route and interactive lifecycle workspace.
 - `src/lib/auth`: schemas, hashing, session, authentication and authorization rules.
 - `src/lib/users`, `src/lib/sessions`: persistence repositories and user lifecycle service.
+- `src/app/api/products`, `src/lib/products`: authenticated product endpoints, validation, persistence, inventory services and browser API client.
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `008` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

@@ -24,15 +24,16 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Income history UI | Prototype | Filterable responsive income list and detail views based on demonstration data, protected by the authenticated incomes layout. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Planned | Define persistent sales, line items, payment methods, expenses and register closures. |
-| Services and products | Prototype | Responsive mock catalogs with role-aware management. Products support stock and lifecycle actions; services use visual cards with price, search, sorting, activation and confirmed reload-scoped deletion. Persistent service deletion must be logical to preserve sales history. |
+| Products | Backend ready; deployment pending | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements. `008_products_inventory.sql` still requires manual installation. |
+| Services | Prototype | Responsive visual cards with price, search, sorting, activation and confirmed reload-scoped deletion. Persistent service deletion must be logical to preserve sales history. |
 | Customers | Prototype | Responsive mock directory with required identity/contact fields, search, sorting and manager-only create/edit. Visits are read-only pending income integration. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
 
-Implement the approved persistent commercial domain in two stages: Products and auditable inventory first, followed by Services, Customers and Incomes. Authentication and user administration are implemented, and migrations through `007` are installed and validated in the configured Supabase project.
+Complete the second commercial-domain stage: persistent Services, Customers and Incomes. The Products and auditable inventory code is implemented and verified; `008_products_inventory.sql` still requires manual installation in the configured project, whose installed migrations currently remain at `007`.
 
-The product catalog is now available as a frontend prototype. Product CRUD, persistent prices and stock, purchase costs and inventory movements still require domain and backend design.
+The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 
 The customer directory is also available as a frontend prototype. Persistence, customer history and the automatic visit increment produced by an associated income still require a shared frontend/backend contract.
 

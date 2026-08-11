@@ -11,8 +11,8 @@ Captured: 2026-08-11
 
 ## Current implementation
 
-- Supabase SQL installation is in `supabase/queries/001` through `007`.
-- Tables: `roles`, `users`, `sessions`.
+- Supabase SQL installation source is in `supabase/queries/001` through `008`.
+- Tables defined by the ordered scripts: `roles`, `users`, `sessions`, `products`, `inventory_movements`.
 - Fixed roles: owner, admin, employee.
 - Database trigger generates normalized, collision-safe usernames.
 - RLS and grants block browser roles and permit the server secret role.
@@ -26,8 +26,9 @@ Captured: 2026-08-11
 - Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
 - Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
-- `/products` is an authenticated, responsive catalog backed by validated demonstration data, with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
-- Owner/admin users can create and edit mock products, register stock entries/exits and activate/deactivate products. These frontend-only changes intentionally reset on reload; employees receive a read-only catalog without inactive products or management controls.
+- `/products` is an authenticated, responsive persistent catalog with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
+- Owner/admin product creation, profile edits, activation changes and stock entries/exits pass through manager-only Route Handlers and server services. Employees receive active products only from the server boundary and have no management controls.
+- Product stock changes use database row locking, reject negative results and append an actor-linked inventory movement in the same transaction. Product creation stores creator/updater audit IDs and an optional initial-stock movement.
 - The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers and Services use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
 - Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
 - `/customers` is an authenticated responsive frontend prototype with validated demonstration data, summary metrics, identity/contact search, visit/date sorting, a desktop table and mobile contact cards.
@@ -36,29 +37,30 @@ Captured: 2026-08-11
 - Owner/admin users can create, edit, activate, deactivate and delete mock services with confirmation and duplicate-name validation. Deletion removes an item only from reload-scoped state; future persistence must use logical deletion to preserve sales history. Employees see active services only.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product/customer management lifecycles.
+- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management, persistent product behavior and the remaining mock customer/service lifecycles.
 - Approved backend designs define a staged migration from the product, service, customer and income mocks to persistent server-authorized domains. Products and inventory are first; services, customers and incomes follow only after that milestone is complete.
 - The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
 - Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
+- The Products milestone passes 78 test files / 269 tests, ESLint without warnings, the Next.js production build and `git diff --check`. Verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
 
 ## Database integration state
 
-The configured Supabase project has migrations `001` through `007` installed. The `deleted_at` and `deleted_by` columns were verified through the server connection and the application session flow is working. No authentication or user-schema action remains for this environment. Fresh installations must still run all seven ordered scripts documented in `supabase/queries/README.md`.
+The configured Supabase project has migrations `001` through `007` installed. Product script `008_products_inventory.sql` is implemented but has not been applied remotely. The `deleted_at` and `deleted_by` columns were verified through the server connection and the application session flow is working. No authentication or user-schema action remains for this environment. Fresh installations must run all eight ordered scripts documented in `supabase/queries/README.md`.
 
 ## Known boundaries
 
 - Employee-specific permissions are intentionally deferred.
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
-- Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
+- Sales, services, customers, cash and reports still use mock data or have no persistence model.
 - Customer persistence, customer history and automatic visit increments from associated incomes remain backend integration work.
 - Service catalog changes are intentionally not synchronized with the separate income-form fixture until both use a persistent backend source.
-- Product deletion, purchase cost, persistent inventory movements and backend persistence remain outside the current catalog prototype.
+- Product deletion and purchase cost remain outside the persistent catalog. The application cannot use product persistence in the configured environment until the user applies `008_products_inventory.sql`.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
-- The new `008` and `009` SQL scripts are designed but not yet implemented or applied. Remote SQL execution remains a user-owned manual action.
+- Script `008` is implemented but unapplied; script `009` remains planned. Remote SQL execution remains a user-owned manual action.
 
 ## Recommended next task
 
-Execute the Products and Inventory Backend plan completely before starting the Services, Customers and Incomes plan.
+Execute Task 1 of the Services, Customers and Incomes plan by implementing `009_sales_domain.sql` without applying it remotely.
 
 ## Context maintenance rule
 
