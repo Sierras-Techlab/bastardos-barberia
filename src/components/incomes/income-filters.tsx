@@ -23,6 +23,7 @@ import type {
 
 type IncomeFiltersProps = {
   role: UserRole;
+  canFilterEmployees?: boolean;
   employees: Employee[];
   value: IncomeListFiltersValue;
   onChange: (value: IncomeListFiltersValue) => void;
@@ -39,6 +40,7 @@ type FilterFieldsProps = Omit<IncomeFiltersProps, "onClear" | "canClear"> & {
 
 const FilterFields = ({
   role,
+  canFilterEmployees = role !== "employee",
   employees,
   value,
   onChange,
@@ -69,7 +71,7 @@ const FilterFields = ({
         className="h-10 rounded-xl border-black/10 bg-[#f6f5f2] shadow-none"
       />
     </label>
-    {role !== "employee" && (
+    {canFilterEmployees && (
       <label className="space-y-1 text-xs font-medium text-muted-foreground">
         Empleado
         <select
@@ -134,6 +136,7 @@ const FilterFields = ({
 
 export const IncomeFilters = ({
   role,
+  canFilterEmployees = role !== "employee",
   employees,
   value,
   onChange,
@@ -182,6 +185,7 @@ export const IncomeFilters = ({
       <div className="hidden rounded-2xl bg-white p-4 shadow-sm lg:block">
         <FilterFields
           role={role}
+          canFilterEmployees={canFilterEmployees}
           employees={employees}
           value={value}
           onChange={onChange}
@@ -200,6 +204,7 @@ export const IncomeFilters = ({
           <div className="overflow-y-auto px-4">
             <FilterFields
               role={role}
+              canFilterEmployees={canFilterEmployees}
               employees={employees}
               value={value}
               onChange={onChange}

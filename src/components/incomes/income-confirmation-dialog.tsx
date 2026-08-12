@@ -14,6 +14,7 @@ import {
 import type { IncomeFormValues } from "@/lib/incomes/income-schema";
 import type { IncomeFormData } from "@/types/income";
 import { IncomeSummary } from "./income-summary";
+import { CommissionPreview } from "./commission-preview";
 
 type IncomeConfirmationDialogProps = {
   open: boolean;
@@ -32,7 +33,12 @@ export const IncomeConfirmationDialog = ({
   onBack,
   onConfirm,
 }: IncomeConfirmationDialogProps) => (
-  <Dialog open={open}>
+  <Dialog
+    open={open}
+    onOpenChange={(nextOpen) => {
+      if (!nextOpen && !pending) onBack();
+    }}
+  >
     <DialogContent
       showCloseButton={!pending}
       className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg"
@@ -45,6 +51,7 @@ export const IncomeConfirmationDialog = ({
       </DialogHeader>
 
       <IncomeSummary values={values} data={data} />
+      <CommissionPreview values={values} data={data} />
 
       <DialogFooter className="-mx-5 -mb-5 p-5">
         <Button

@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
+
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 
 const { getLatestCustomer, listIncomes, requirePageUser } = vi.hoisted(() => ({
   getLatestCustomer: vi.fn(),
@@ -25,94 +27,85 @@ const user = {
   createdAt: "2026-08-01T00:00:00.000Z",
   updatedAt: "2026-08-01T00:00:00.000Z",
 };
-const latestIncome = {
-  id: "20000000-0000-4000-8000-000000000001",
-  createdAt: new Date().toISOString(),
-  businessDate: "2026-08-11",
-  employee: { id: user.id, firstName: user.firstName, lastName: user.lastName },
-  customer: null,
-  service: {
-    id: "30000000-0000-4000-8000-000000000001",
-    name: "Corte real",
-    price: 14000,
-  },
-  products: [],
-  paymentMethod: "cash",
-  total: 14000,
-  status: "active",
-};
-const latestCustomer = {
-  id: "10000000-0000-4000-8000-000000000001",
-  firstName: "Lucía",
-  lastName: "Nueva",
-  phone: "3515550101",
-  email: null,
-  visits: 0,
-  createdAt: new Date().toISOString(),
-};
+const currentRange = getBuenosAiresSevenDayRange();
 const incomePage = {
-  items: [latestIncome],
-  metrics: {
-    total: 14000,
-    count: 1,
-    average: 14000,
-    cashTotal: 14000,
-    transferTotal: 0,
-  },
-  pagination: { page: 1, pageSize: 1, total: 1, totalPages: 1 },
+  items: [{
+    id: "20000000-0000-4000-8000-000000000001",
+    createdAt: new Date().toISOString(),
+    businessDate: currentRange.dateTo,
+    employee: { id: user.id, firstName: user.firstName, lastName: user.lastName },
+    customer: null,
+    service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte real", price: 16000 },
+    products: [],
+    paymentMethod: "cash",
+    total: 16000,
+    status: "active",
+  }],
+  metrics: { total: 16000, count: 1, average: 16000, cashTotal: 16000, transferTotal: 0 },
+  pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
 };
-const renderHome = async () =>
-  render(<SidebarProvider>{await Home()}</SidebarProvider>);
+const renderHome = async () => render(<SidebarProvider>{await Home()}</SidebarProvider>);
 
 beforeEach(() => {
   vi.clearAllMocks();
   requirePageUser.mockResolvedValue({ user });
   listIncomes.mockResolvedValue(incomePage);
-  getLatestCustomer.mockResolvedValue(latestCustomer);
+  getLatestCustomer.mockResolvedValue(null);
 });
 
-it("revalidates the session and loads role-scoped recent activity", async () => {
+it("revalidates the session and requests only the role-scoped seven-day income window", async () => {
   await renderHome();
-
   expect(requirePageUser).toHaveBeenCalledOnce();
-  expect(listIncomes).toHaveBeenCalledWith(user, { page: 1, pageSize: 1 });
-  expect(getLatestCustomer).toHaveBeenCalledWith(user);
-});
-
-it("renders the latest persisted income and customer instead of fixture activity", async () => {
-  await renderHome();
-
-  expect(screen.getByText(/Corte real/)).toHaveTextContent("$ 14.000");
-  expect(screen.getByText("Lucía Nueva fue agregado a clientes")).toBeVisible();
-  expect(screen.queryByText(/Tomás Pereyra/)).not.toBeInTheDocument();
-  expect(screen.queryByText(/Corte \+ barba y pomada/)).not.toBeInTheDocument();
-});
-
-it("renders honest activity slots when no income or customer exists", async () => {
-  listIncomes.mockResolvedValueOnce({
-    ...incomePage,
-    items: [],
-    metrics: {
-      total: 0,
-      count: 0,
-      average: 0,
-      cashTotal: 0,
-      transferTotal: 0,
-    },
-    pagination: { page: 1, pageSize: 1, total: 0, totalPages: 0 },
+  expect(listIncomes).toHaveBeenCalledWith(user, {
+    dateFrom: currentRange.dateFrom,
+    dateTo: currentRange.dateTo,
+    status: "active",
+    page: 1,
+    pageSize: 100,
   });
-  getLatestCustomer.mockResolvedValueOnce(null);
+});
 
+it("renders only the three approved dashboard blocks", async () => {
   await renderHome();
+  expect(screen.getByRole("heading", { name: "Ingresos de hoy" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Acciones rápidas" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Clientes fijos" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("md:grid-cols-2", "xl:grid-cols-1");
+  expect(screen.queryByText("Servicios destacados")).not.toBeInTheDocument();
+  expect(screen.queryByText("Actividad reciente")).not.toBeInTheDocument();
+});
 
-  expect(screen.getByText("Todavía no se registraron ingresos.")).toBeVisible();
-  expect(screen.getByText("Todavía no se registraron clientes.")).toBeVisible();
+it("uses a spaced twelve-column desktop layout with constrained children", async () => {
+  await renderHome();
+  const dashboardGrid = screen.getByTestId("dashboard-grid");
+  expect(dashboardGrid).toHaveClass("gap-5", "xl:grid-cols-12");
+  expect(screen.getByRole("heading", { name: "Ingresos de hoy" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-span-8");
+  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "gap-5", "xl:col-span-4");
+});
+
+it("keeps employee dashboard data scoped by the server service", async () => {
+  requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
+  await renderHome();
+  expect(screen.getByRole("heading", { name: "Tus ingresos de hoy" })).toBeVisible();
+  expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
+});
+
+it("loads every result page before deriving the seven-day summary", async () => {
+  listIncomes
+    .mockResolvedValueOnce({ ...incomePage, pagination: { page: 1, pageSize: 100, total: 101, totalPages: 2 } })
+    .mockResolvedValueOnce({
+      ...incomePage,
+      items: [{ ...incomePage.items[0], id: "20000000-0000-4000-8000-000000000002", total: 19000, paymentMethod: "transfer" }],
+      pagination: { page: 2, pageSize: 100, total: 101, totalPages: 2 },
+    });
+  await renderHome();
+  expect(listIncomes).toHaveBeenNthCalledWith(2, user, expect.objectContaining({ page: 2, pageSize: 100 }));
+  expect(screen.getByText("$ 35.000")).toBeVisible();
+  expect(screen.getByText("2 ventas")).toBeVisible();
 });
 
 it("does not render the dashboard after session revocation", async () => {
   requirePageUser.mockRejectedValueOnce(new Error("revoked session"));
-
   await expect(Home()).rejects.toThrow("revoked session");
   expect(listIncomes).not.toHaveBeenCalled();
-  expect(getLatestCustomer).not.toHaveBeenCalled();
 });

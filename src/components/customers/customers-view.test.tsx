@@ -50,6 +50,7 @@ it("creates and edits through persistence without editing visits", async () => {
   await user.click(within(dialog).getByRole("button", { name: "Guardar cambios" }));
   expect(await screen.findAllByText("Luciano Ferreyra")).toHaveLength(2);
   expect(screen.getAllByText(/18 visitas/)).toHaveLength(2);
+  expect(vi.mocked(customerClient.update).mock.calls[0]?.[1]).not.toHaveProperty("fixedSchedule");
 });
 
 it("allows employees to create and edit but hides deletion", () => {

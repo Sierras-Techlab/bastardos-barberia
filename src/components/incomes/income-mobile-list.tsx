@@ -1,4 +1,4 @@
-import { ArrowUpRight, Banknote, CreditCard } from "lucide-react";
+import { ArrowUpRight, CreditCard } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
@@ -7,15 +7,11 @@ import {
   formatIncomeDateTime,
 } from "@/lib/incomes/income-list";
 import type { IncomeListItem } from "@/types/income";
+import { getIncomeCommissionState, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
 
 type IncomeMobileListProps = {
   incomes: IncomeListItem[];
   onSelect: (income: IncomeListItem) => void;
-};
-
-const paymentLabels = {
-  cash: "Efectivo",
-  transfer: "Transferencia",
 };
 
 export const IncomeMobileList = ({
@@ -24,7 +20,7 @@ export const IncomeMobileList = ({
 }: IncomeMobileListProps) => (
   <div className="space-y-3" aria-label="Historial de ingresos móvil">
     {incomes.map((income) => {
-      const PaymentIcon = income.paymentMethod === "cash" ? Banknote : CreditCard;
+      const commission = getIncomeCommissionState(income);
 
       return (
         <button
@@ -54,9 +50,10 @@ export const IncomeMobileList = ({
                 {income.employee.firstName} {income.employee.lastName}
               </p>
               <p className="flex items-center gap-1.5">
-                <PaymentIcon className="size-3.5" />
-                {paymentLabels[income.paymentMethod]}
+                <CreditCard className="size-3.5" />
+                {getIncomePaymentLabel(income)}
               </p>
+              <p>Comisión: {commission.available ? formatArs(commission.amount) : "Pendiente de backend"}</p>
             </div>
             <div className="text-right">
               {income.status === "voided" && (

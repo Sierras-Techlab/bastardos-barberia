@@ -71,6 +71,8 @@ describe("admin users API client", () => {
       lastName: "Ferreyra",
       roleId: 3 as const,
       password: "Bastardos-2026",
+      serviceCommissionRate: 45,
+      productCommissionRate: 10,
     };
 
     await expect(createAdminUser(input)).resolves.toEqual(user);

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import { formatIncomeDateTime } from "@/lib/incomes/income-list";
-import type { IncomeListItem } from "@/types/income";
+import type { IncomeListItem, UserRole } from "@/types/income";
 
 type IncomeDetailSheetProps = {
   income: IncomeListItem | null;
@@ -22,6 +22,7 @@ type IncomeDetailSheetProps = {
   onOpenChange: (open: boolean) => void;
   canVoid?: boolean;
   onVoid?: (income: IncomeListItem) => void;
+  viewerRole?: UserRole;
 };
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
@@ -37,6 +38,7 @@ export const IncomeDetailSheet = ({
   onOpenChange,
   canVoid = false,
   onVoid,
+  viewerRole = "owner",
 }: IncomeDetailSheetProps) => {
   if (!income) return null;
 
@@ -44,6 +46,8 @@ export const IncomeDetailSheet = ({
   const customerName = income.customer
     ? `${income.customer.firstName} ${income.customer.lastName}`
     : "Sin cliente";
+  const manager = viewerRole === "owner" || viewerRole === "admin";
+  const payments = income.payments ?? [{ method: income.paymentMethod, amount: income.total }];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -103,18 +107,24 @@ export const IncomeDetailSheet = ({
             </h3>
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
               <DetailRow
-                label="Empleado"
+                label="Empleado responsable"
                 value={`${income.employee.firstName} ${income.employee.lastName}`}
               />
+              {manager && <DetailRow label="Registrado por" value={income.registeredBy ? `${income.registeredBy.firstName} ${income.registeredBy.lastName}` : "Pendiente de backend"} />}
               <DetailRow label="Cliente" value={customerName} />
-              <div className="flex items-center justify-between gap-4 py-2.5">
-                <dt className="text-muted-foreground">Forma de pago</dt>
-                <dd className="flex items-center gap-2 font-medium">
-                  <PaymentIcon className="size-4 text-primary" />
-                  {income.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}
-                </dd>
-              </div>
+              {payments.map((payment) => <DetailRow key={payment.method} label={payment.method === "cash" ? "Efectivo" : "Transferencia"} value={formatArs(payment.amount)} />)}
             </dl>
+          </section>
+
+          <section>
+            <h3 className="mb-2 flex items-center gap-2 font-semibold"><PaymentIcon className="size-4 text-primary" />Comisión</h3>
+            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
+              <DetailRow label="Comisión devengada" value={income.commission ? formatArs(income.commission.total) : "Pendiente de backend"} />
+              {income.commission && <><DetailRow label={`Servicio (${income.commission.serviceRate}%)`} value={formatArs(income.commission.serviceAmount)} /><DetailRow label={`Productos (${income.commission.productRate}%)`} value={formatArs(income.commission.productAmount)} /></>}
+              {manager && <DetailRow label="Neto barbería" value={income.commission ? formatArs(income.commission.barbershopNet) : "Pendiente de backend"} />}
+            </dl>
+            {income.commission?.fullServiceCommission && <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>}
+            {income.status === "voided" && <p className="mt-2 text-xs text-muted-foreground">Importes excluidos de las métricas activas.</p>}
           </section>
 
           <p className="flex items-center gap-2 text-xs text-muted-foreground">

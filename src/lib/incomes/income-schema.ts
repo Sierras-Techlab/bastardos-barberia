@@ -4,14 +4,17 @@ const formProductSchema = z.object({ productId: z.string().min(1), quantity: z.n
 const publicProductSchema = z.object({ productId: z.uuid(), quantity: z.number().int().positive().max(999) }).strict();
 
 export const incomeFormSchema = z.object({
+  employeeId: z.uuid("Seleccioná un empleado responsable."),
   customerId: z.string().nullable(),
   serviceId: z.string().nullable(),
   products: z.array(formProductSchema),
-  paymentMethod: z.enum(["cash", "transfer"]).nullable(),
+  paymentMode: z.enum(["cash", "transfer", "combined"]).nullable(),
+  payments: z.array(z.object({ method: z.enum(["cash", "transfer"]), amount: z.number().int().nonnegative() }).strict()),
+  grantFullServiceCommission: z.boolean(),
 }).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
   message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
-}).refine((value) => value.paymentMethod !== null, {
-  message: "Seleccioná un medio de pago.", path: ["paymentMethod"],
+}).refine((value) => value.paymentMode !== null, {
+  message: "Seleccioná un medio de pago.", path: ["paymentMode"],
 });
 
 export const createIncomeSchema = z.object({

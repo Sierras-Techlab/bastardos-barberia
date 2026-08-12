@@ -1,3 +1,5 @@
+import type { FixedSchedule } from "@/types/fixed-customer";
+
 export type Customer = {
   id: string;
   firstName: string;
@@ -6,6 +8,7 @@ export type Customer = {
   phone: string;
   visits: number;
   createdAt: string;
+  fixedSchedule?: FixedSchedule | null;
 };
 
 export type CustomerCatalogData = { customers: Customer[] };

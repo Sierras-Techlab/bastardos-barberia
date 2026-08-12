@@ -13,8 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { CreateUserInput, UpdateUserInput } from "@/lib/auth/schemas";
 import type { Role, SafeUser } from "@/lib/auth/types";
+import { normalizeCommissionUser } from "@/lib/users/frontend-user-contracts";
+import type { FrontendCreateUserInput, FrontendUpdateUserInput } from "@/types/user-commissions";
 import { ROLE_LABELS } from "@/lib/users/presentation";
 
 type UserEditorDialogProps = {
@@ -25,8 +26,8 @@ type UserEditorDialogProps = {
   pending: boolean;
   error: string | null;
   onClose: () => void;
-  onCreate: (input: CreateUserInput) => Promise<boolean>;
-  onUpdate: (changes: UpdateUserInput) => Promise<void>;
+  onCreate: (input: FrontendCreateUserInput) => Promise<boolean>;
+  onUpdate: (changes: FrontendUpdateUserInput) => Promise<void>;
 };
 
 const fieldClassName =
@@ -47,6 +48,9 @@ export const UserEditorDialog = ({
   const [lastName, setLastName] = useState(user?.lastName ?? "");
   const [roleId, setRoleId] = useState<1 | 2 | 3>(user?.role.id ?? 3);
   const [password, setPassword] = useState("");
+  const commissionUser = user ? normalizeCommissionUser(user) : null;
+  const [serviceCommissionRate, setServiceCommissionRate] = useState(commissionUser?.serviceCommissionRate ?? 0);
+  const [productCommissionRate, setProductCommissionRate] = useState(commissionUser?.productCommissionRate ?? 0);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -55,6 +59,10 @@ export const UserEditorDialog = ({
     const cleanLastName = lastName.trim();
     if (!cleanFirstName || !cleanLastName) {
       setValidationError("Completá nombre y apellido.");
+      return;
+    }
+    if (![serviceCommissionRate, productCommissionRate].every((rate) => Number.isInteger(rate) && rate >= 0 && rate <= 100)) {
+      setValidationError("Las comisiones deben ser porcentajes enteros entre 0 y 100.");
       return;
     }
 
@@ -69,16 +77,20 @@ export const UserEditorDialog = ({
         lastName: cleanLastName,
         roleId,
         password,
+        serviceCommissionRate,
+        productCommissionRate,
       });
       if (created) setPassword("");
       return;
     }
 
     if (!user) return;
-    const changes: UpdateUserInput = {};
+    const changes: FrontendUpdateUserInput = {};
     if (cleanFirstName !== user.firstName) changes.firstName = cleanFirstName;
     if (cleanLastName !== user.lastName) changes.lastName = cleanLastName;
     if (roleId !== user.role.id) changes.roleId = roleId;
+    if (serviceCommissionRate !== commissionUser?.serviceCommissionRate) changes.serviceCommissionRate = serviceCommissionRate;
+    if (productCommissionRate !== commissionUser?.productCommissionRate) changes.productCommissionRate = productCommissionRate;
     if (Object.keys(changes).length === 0) {
       onClose();
       return;
@@ -178,6 +190,18 @@ export const UserEditorDialog = ({
                   ))}
                 </select>
               </label>
+
+              <div className="grid gap-4 rounded-2xl bg-[#f7f6f3] p-4 sm:col-span-2 sm:grid-cols-2">
+                <label className="space-y-1.5 text-sm font-medium">
+                  Comisión por servicios (%)
+                  <Input type="number" min="0" max="100" step="1" value={serviceCommissionRate} onChange={(event) => setServiceCommissionRate(Number(event.target.value))} className={fieldClassName} />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium">
+                  Comisión por productos (%)
+                  <Input type="number" min="0" max="100" step="1" value={productCommissionRate} onChange={(event) => setProductCommissionRate(Number(event.target.value))} className={fieldClassName} />
+                </label>
+                <p className="text-xs text-zinc-500 sm:col-span-2">Los cambios se aplicarán a ventas futuras y no modificarán el historial.</p>
+              </div>
 
               {mode === "create" && (
                 <label className="space-y-1.5 text-sm font-medium sm:col-span-2">

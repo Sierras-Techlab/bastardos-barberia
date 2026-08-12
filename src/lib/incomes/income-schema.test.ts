@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import { incomeFormSchema } from "./income-schema";
 
 const validBase = {
+  employeeId: "00000000-0000-4000-8000-000000000001",
   customerId: null,
   serviceId: "service-1",
   products: [],
-  paymentMethod: "cash" as const,
+  paymentMode: "cash" as const,
+  payments: [{ method: "cash" as const, amount: 16000 }],
+  grantFullServiceCommission: false,
 };
 
 describe("incomeFormSchema", () => {
@@ -47,7 +50,7 @@ describe("incomeFormSchema", () => {
   it("rejects a missing payment method", () => {
     const result = incomeFormSchema.safeParse({
       ...validBase,
-      paymentMethod: null,
+      paymentMode: null,
     });
 
     expect(result.success).toBe(false);

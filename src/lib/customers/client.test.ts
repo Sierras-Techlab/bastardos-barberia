@@ -7,8 +7,24 @@ beforeEach(() => { vi.clearAllMocks(); vi.stubGlobal("fetch", fetchMock); });
 
 it("creates, edits and removes customers through JSON APIs", async () => {
   fetchMock.mockResolvedValueOnce(Response.json({ data: customer }, { status: 201 })).mockResolvedValueOnce(Response.json({ data: customer })).mockResolvedValueOnce(Response.json({ data: { id: customer.id } }));
-  await customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null });
+  await customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: null });
   await customerClient.update(customer.id, { firstName: "Anita" });
   await customerClient.remove(customer.id);
+  expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/customers", expect.objectContaining({ body: JSON.stringify({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null }) }));
+  expect(fetchMock).toHaveBeenNthCalledWith(2, `/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ firstName: "Anita" }) }));
   expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/customers/${customer.id}`, { method: "DELETE" });
+});
+
+it("sends a configured schedule and explains a legacy backend rejection", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "VALIDATION_ERROR", message: "Revisá los datos ingresados." } }, { status: 400 }));
+  const promise = customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" } });
+  await expect(promise).rejects.toThrow("El horario fijo todavía no está disponible en el servidor.");
+  expect(fetchMock).toHaveBeenCalledWith("/api/customers", expect.objectContaining({ body: expect.stringContaining('"fixedSchedule":{"weekday":4,"time":"10:00"}') }));
+});
+
+it("preserves the explicit null used to disable a schedule and explains a legacy rejection", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "VALIDATION_ERROR", message: "Revisá los datos ingresados." } }, { status: 400 }));
+  const promise = customerClient.update(customer.id, { fixedSchedule: null });
+  await expect(promise).rejects.toThrow("El horario fijo todavía no está disponible en el servidor.");
+  expect(fetchMock).toHaveBeenCalledWith(`/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ fixedSchedule: null }) }));
 });

@@ -189,6 +189,8 @@ describe("UsersView", () => {
       lastName: "Ferreyra",
       roleId: 3,
       password: "Bastardos-2026",
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
     });
   });
 

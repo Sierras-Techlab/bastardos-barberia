@@ -14,7 +14,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import type { CreateUserInput, UpdateUserInput } from "@/lib/auth/schemas";
 import type { PaginatedUsers, Role, SafeUser } from "@/lib/auth/types";
 import {
   AdminApiError,
@@ -27,6 +26,7 @@ import {
   updateAdminUser,
 } from "@/lib/users/client";
 import { summarizeUserPage } from "@/lib/users/presentation";
+import type { FrontendCreateUserInput, FrontendUpdateUserInput } from "@/types/user-commissions";
 import {
   UserFilters,
   type UserFiltersValue,
@@ -241,7 +241,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     setMutationError(null);
   };
 
-  const createUser = async (input: CreateUserInput) => {
+  const createUser = async (input: FrontendCreateUserInput) => {
     setMutationPending(true);
     setMutationError(null);
     try {
@@ -257,7 +257,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     }
   };
 
-  const updateUser = async (changes: UpdateUserInput) => {
+  const updateUser = async (changes: FrontendUpdateUserInput) => {
     if (!editorUser) return;
     setMutationPending(true);
     setMutationError(null);

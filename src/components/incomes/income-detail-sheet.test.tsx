@@ -18,6 +18,7 @@ it("shows the complete read-only income detail", () => {
     <IncomeDetailSheet
       income={income ?? null}
       open
+      viewerRole="employee"
       onOpenChange={vi.fn()}
     />,
   );
@@ -40,8 +41,28 @@ it("shows the complete read-only income detail", () => {
 
 it("does not render content without a selected income", () => {
   render(
-    <IncomeDetailSheet income={null} open={false} onOpenChange={vi.fn()} />,
+    <IncomeDetailSheet income={null} open={false} viewerRole="owner" onOpenChange={vi.fn()} />,
   );
 
   expect(screen.queryByText(/detalle del ingreso/i)).not.toBeInTheDocument();
+});
+
+it("shows split payments and manager-only audit economics", () => {
+  const income = { ...data.incomes[0], registeredBy: { id: "manager", firstName: "Ana", lastName: "Admin" }, payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { serviceBase: 19000, productBase: 30000, serviceRate: 45, productRate: 10, serviceAmount: 8550, productAmount: 3000, total: 11550, barbershopNet: 37450, fullServiceCommission: false } };
+  render(<IncomeDetailSheet income={income} open viewerRole="owner" onOpenChange={vi.fn()} />);
+  expect(screen.getByText("Registrado por")).toBeVisible();
+  expect(screen.getByText("Ana Admin")).toBeVisible();
+  expect(screen.getByText("Efectivo")).toBeVisible();
+  expect(screen.getByText("Transferencia")).toBeVisible();
+  expect(screen.getByText(/20\.000/)).toBeVisible();
+  expect(screen.getByText(/29\.000/)).toBeVisible();
+  expect(screen.getByText("Neto barbería")).toBeVisible();
+});
+
+it("hides manager-only net and registrator from employees", () => {
+  const income = { ...data.incomes[0], registeredBy: { id: "manager", firstName: "Ana", lastName: "Admin" } };
+  render(<IncomeDetailSheet income={income} open viewerRole="employee" onOpenChange={vi.fn()} />);
+  expect(screen.queryByText("Registrado por")).not.toBeInTheDocument();
+  expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
+  expect(screen.getByText("Pendiente de backend")).toBeVisible();
 });

@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
 ## Vision
 
@@ -19,14 +19,16 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
-| Dashboard UI | Prototype | Responsive authenticated dashboard with real latest income/customer activity; expenses, metrics and charts remain demonstrative. |
+| Dashboard UI | Frontend preparado | Real role-scoped daily/seven-day income summary, six quick actions and fixed-customer occurrences; recurrence persistence remains pending. |
+| Comisiones y pagos combinados | Frontend preparado | Selección de responsable por rol, distribución de pagos, configuración/preview de comisiones y contrato V2 listos; persistencia backend pendiente. |
+| Historial de ingresos por rol | Frontend preparado | Tabla y tarjetas móviles adaptan filtros, métricas, pagos, comisiones y detalle para employee frente a owner/admin; datos V2 reales dependen del backend. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
 | Products | Implemented | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements; inactive items show `No disponible` regardless of retained stock. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
-| Customers | Implemented | Persistent phone-identified directory; all roles create/edit, managers logically delete, email is optional and associated sales update visits. |
+| Customers | Implemented; horarios fijos preparados | Persistent phone-identified directory plus frontend V2 for one optional weekly schedule; recurrence backend remains pending. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
@@ -45,7 +47,7 @@ Each sale is attributed only to its authenticated registering user. Owner/admin 
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 
-Dashboard recent activity now reads the latest persisted income and customer. Income visibility follows the authenticated role, deleted customers are excluded, and expense activity remains demonstrative until expenses are implemented.
+Dashboard home now concentrates on a real role-scoped income summary, implemented/future quick actions and weekly fixed-customer occurrences. Fixed schedules use one ISO weekday plus local time, and attendance is independent from sales; persistence and auditing remain pending in the backend handoff.
 
 ## Accepted authentication decisions
 

@@ -16,10 +16,11 @@ type IncomeSummaryProps = {
 const paymentLabels = {
   cash: "Efectivo",
   transfer: "Transferencia",
+  combined: "Combinado",
 };
 
 export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
-  const employee = data.currentUser;
+  const employee = data.employees?.find((candidate) => candidate.id === values.employeeId) ?? data.currentUser;
   const customer = data.customers.find(
     (candidate) => candidate.id === values.customerId,
   );
@@ -116,8 +117,8 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
           <div className="mb-4 flex items-center justify-between gap-4 text-xs text-white/55">
             <span>Medio de pago</span>
             <span className="font-medium text-white">
-              {values.paymentMethod
-                ? paymentLabels[values.paymentMethod]
+              {values.paymentMode
+                ? paymentLabels[values.paymentMode]
                 : "Sin seleccionar"}
             </span>
           </div>
