@@ -6,6 +6,7 @@ import {
   calculateProductMetrics,
   filterProducts,
   formatProductCategory,
+  getProductAvailabilityStatus,
   getProductStockStatus,
 } from "@/lib/products/product-catalog";
 
@@ -13,7 +14,7 @@ describe("product catalog boundary", () => {
   it("accepts the complete product demonstration fixture", () => {
     const data = authorizeProductCatalogData(productsMock);
 
-    expect(data.isMock).toBe(true);
+    expect(data).not.toHaveProperty("isMock");
     expect(data.products).toHaveLength(12);
     expect(data.products[0]).toMatchObject({
       id: expect.any(String),
@@ -106,5 +107,14 @@ describe("product catalog presentation data", () => {
     expect(getProductStockStatus(3)).toBe("low-stock");
     expect(getProductStockStatus(1)).toBe("low-stock");
     expect(getProductStockStatus(0)).toBe("out-of-stock");
+  });
+
+  it("gives inactivity precedence over remaining stock in presentation", () => {
+    expect(
+      getProductAvailabilityStatus({ stock: 8, isActive: false }),
+    ).toBe("unavailable");
+    expect(
+      getProductAvailabilityStatus({ stock: 8, isActive: true }),
+    ).toBe("available");
   });
 });

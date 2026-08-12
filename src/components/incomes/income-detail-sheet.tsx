@@ -20,6 +20,8 @@ type IncomeDetailSheetProps = {
   income: IncomeListItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  canVoid?: boolean;
+  onVoid?: (income: IncomeListItem) => void;
 };
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
@@ -33,6 +35,8 @@ export const IncomeDetailSheet = ({
   income,
   open,
   onOpenChange,
+  canVoid = false,
+  onVoid,
 }: IncomeDetailSheetProps) => {
   if (!income) return null;
 
@@ -120,17 +124,7 @@ export const IncomeDetailSheet = ({
         </div>
 
         <SheetFooter className="border-t border-black/5 bg-white px-6 py-4">
-          <div className="mb-1 text-center text-xs text-muted-foreground">
-            Edición y anulación: Próximamente
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" disabled>
-              Editar venta
-            </Button>
-            <Button type="button" variant="destructive" disabled>
-              Anular venta
-            </Button>
-          </div>
+          {canVoid && income.status === "active" ? <Button type="button" variant="destructive" onClick={() => onVoid?.(income)}>Anular venta</Button> : income.status === "active" ? <p className="text-center text-xs text-muted-foreground">Venta de solo lectura</p> : <p className="text-center text-xs text-muted-foreground">Esta venta ya fue anulada</p>}
         </SheetFooter>
       </SheetContent>
     </Sheet>

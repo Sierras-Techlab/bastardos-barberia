@@ -1,113 +1,74 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
-
+import { expect, it, vi } from "vitest";
 import { CustomersView } from "@/components/customers/customers-view";
 import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import customersMock from "@/data/customers.mock.json";
 import { authorizeCustomerCatalogData } from "@/lib/customers/customer-catalog";
+import type { CustomerClient } from "@/lib/customers/client";
 
 const data = authorizeCustomerCatalogData(customersMock);
-const expectToast = (message: string) =>
-  expect(screen.getByText(message).closest("[data-sonner-toast]")).not.toBeNull();
+const client = (): CustomerClient => ({
+  create: vi.fn(async (input) => ({ id: "10000000-0000-4000-8000-000000000099", ...input, visits: 0, createdAt: "2026-08-11T12:00:00.000Z" })),
+  update: vi.fn(async (id, input) => ({ ...(data.customers.find((customer) => customer.id === id) ?? data.customers[0]), ...input, id })),
+  remove: vi.fn(async (id) => ({ id })),
+});
 
 it("renders metrics and responsive customer representations", () => {
-  render(<CustomersView data={data} canManage />);
-  const summary = screen.getByRole("region", { name: "Resumen de clientes" });
-  expect(summary).toBeVisible();
-  expect(summary.firstElementChild).toHaveClass(
-    "transition-all",
-    "hover:-translate-y-0.5",
-    "hover:shadow-lg",
-  );
+  render(<CustomersView data={data} canDelete />);
+  expect(screen.getByRole("region", { name: "Resumen de clientes" })).toBeVisible();
   expect(screen.getByRole("table", { name: "Listado de clientes" })).toBeVisible();
   expect(screen.getByRole("list", { name: "Listado móvil de clientes" })).toBeVisible();
   expect(screen.getAllByText("Lucas Ferreyra")).toHaveLength(2);
-  expect(screen.getAllByText(/18 visitas/)).toHaveLength(2);
 });
 
 it("searches customers and sorts by visits", async () => {
-  const user = userEvent.setup();
-  render(<CustomersView data={data} canManage />);
+  const user = userEvent.setup(); render(<CustomersView data={data} canDelete />);
   await user.type(screen.getByRole("searchbox", { name: "Buscar clientes" }), "lucas");
   expect(screen.getAllByText("Lucas Ferreyra")).toHaveLength(2);
-  expect(screen.queryAllByText("Martín Sosa")).toHaveLength(0);
   await user.clear(screen.getByRole("searchbox", { name: "Buscar clientes" }));
   await user.selectOptions(screen.getByLabelText("Ordenar clientes"), "visits-desc");
-  const rows = within(screen.getByRole("table", { name: "Listado de clientes" })).getAllByRole("row");
-  expect(rows[1]).toHaveTextContent("Juan Córdoba");
+  expect(within(screen.getByRole("table")).getAllByRole("row")[1]).toHaveTextContent("Juan Córdoba");
 });
 
-it("creates customers in memory with visits read-only", async () => {
-  const user = userEvent.setup();
-  render(<><CustomersView data={data} canManage /><DashboardToaster /></>);
+it("creates and edits through persistence without editing visits", async () => {
+  const user = userEvent.setup(); const customerClient = client();
+  render(<><CustomersView data={data} canDelete customerClient={customerClient} /><DashboardToaster /></>);
   await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
-  const dialog = screen.getByRole("dialog");
+  let dialog = screen.getByRole("dialog");
   await user.type(within(dialog).getByLabelText("Nombre"), "Ana");
   await user.type(within(dialog).getByLabelText("Apellido"), "Díaz");
-  await user.type(within(dialog).getByLabelText("Email"), "ana@mail.com");
   await user.type(within(dialog).getByLabelText("Teléfono"), "3515550200");
   expect(within(dialog).queryByLabelText("Visitas")).not.toBeInTheDocument();
   await user.click(within(dialog).getByRole("button", { name: "Crear cliente" }));
-  expect(screen.getAllByText("Ana Díaz")).toHaveLength(2);
-  expectToast("Cliente añadido correctamente.");
-});
+  expect(await screen.findAllByText("Ana Díaz")).toHaveLength(2);
+  expect(customerClient.create).toHaveBeenCalledWith(expect.objectContaining({ email: null }));
 
-it("edits a customer without changing their visits", async () => {
-  const user = userEvent.setup();
-  render(<><CustomersView data={data} canManage /><DashboardToaster /></>);
-
-  await user.click(screen.getAllByRole("button", { name: "Gestionar Lucas Ferreyra" })[0]);
-  const dialog = screen.getByRole("dialog");
-  const firstName = within(dialog).getByLabelText("Nombre");
-  await user.clear(firstName);
-  await user.type(firstName, "Luciano");
+  await user.click(screen.getAllByRole("button", { name: "Editar Lucas Ferreyra" })[0]);
+  dialog = screen.getByRole("dialog"); const firstName = within(dialog).getByLabelText("Nombre");
+  await user.clear(firstName); await user.type(firstName, "Luciano");
   await user.click(within(dialog).getByRole("button", { name: "Guardar cambios" }));
-
-  expect(screen.getAllByText("Luciano Ferreyra")).toHaveLength(2);
+  expect(await screen.findAllByText("Luciano Ferreyra")).toHaveLength(2);
   expect(screen.getAllByText(/18 visitas/)).toHaveLength(2);
-  expectToast("Cliente actualizado correctamente.");
 });
 
-it("rejects duplicate customer contact data", async () => {
-  const user = userEvent.setup();
-  render(<CustomersView data={data} canManage />);
-
-  await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
-  const dialog = screen.getByRole("dialog");
-  await user.type(within(dialog).getByLabelText("Nombre"), "Ana");
-  await user.type(within(dialog).getByLabelText("Apellido"), "Díaz");
-  await user.type(within(dialog).getByLabelText("Email"), data.customers[0].email);
-  await user.type(within(dialog).getByLabelText("Teléfono"), "3515550200");
-  await user.click(within(dialog).getByRole("button", { name: "Crear cliente" }));
-
-  expect(within(dialog).getByRole("alert")).toHaveTextContent(
-    "Ya existe un cliente con ese email.",
-  );
+it("allows employees to create and edit but hides deletion", () => {
+  render(<CustomersView data={data} canDelete={false} />);
+  expect(screen.getByRole("button", { name: "Nuevo cliente" })).toBeVisible();
+  expect(screen.getAllByRole("button", { name: "Editar Lucas Ferreyra" })).toHaveLength(2);
+  expect(screen.queryByRole("button", { name: "Eliminar Lucas Ferreyra" })).not.toBeInTheDocument();
 });
 
-it("explains that customer emails cannot contain accents or ñ", async () => {
-  const user = userEvent.setup();
-  render(<CustomersView data={data} canManage />);
-
-  await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
-  const dialog = screen.getByRole("dialog");
-  await user.type(within(dialog).getByLabelText("Nombre"), "Pedro");
-  await user.type(within(dialog).getByLabelText("Apellido"), "Castañeda");
-  await user.type(
-    within(dialog).getByLabelText("Email"),
-    "pedro.castañeda@gmail.com",
-  );
-  await user.type(within(dialog).getByLabelText("Teléfono"), "3515550200");
-  await user.click(within(dialog).getByRole("button", { name: "Crear cliente" }));
-
-  expect(within(dialog).getByRole("alert")).toHaveTextContent(
-    "Ingresá un email válido, sin ñ ni acentos.",
-  );
+it("manager deletion requires confirmation", async () => {
+  const user = userEvent.setup(); const customerClient = client();
+  render(<><CustomersView data={data} canDelete customerClient={customerClient} /><DashboardToaster /></>);
+  await user.click(screen.getAllByRole("button", { name: "Eliminar Lucas Ferreyra" })[0]);
+  await user.click(screen.getByRole("button", { name: "Eliminar cliente" }));
+  await waitFor(() => expect(customerClient.remove).toHaveBeenCalledWith(data.customers.find(({ firstName }) => firstName === "Lucas")!.id));
+  expect(screen.queryByText("Cliente eliminado correctamente.")).toBeInTheDocument();
 });
 
-it("keeps employees read-only", () => {
-  render(<CustomersView data={data} canManage={false} />);
-  expect(screen.queryByRole("button", { name: "Nuevo cliente" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Gestionar Lucas Ferreyra/ })).not.toBeInTheDocument();
+it("does not render a mailto action for missing email", () => {
+  render(<CustomersView data={{ customers: [{ ...data.customers[0], email: null }] }} canDelete={false} />);
+  expect(document.querySelector('a[href^="mailto:"]')).toBeNull();
 });

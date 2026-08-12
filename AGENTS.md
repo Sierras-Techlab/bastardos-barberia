@@ -45,6 +45,12 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
 - Database tables have RLS enabled with no browser policies. Only the server secret role can access them.
 - SQL in `supabase/queries` is the source of truth and is designed for manual execution in the Supabase SQL Editor.
+- Products retain creator/updater audit users, are deactivated rather than deleted, and expose inactive records only to owner/admin.
+- Product stock changes are atomic, cannot produce negative stock and append an actor-linked inventory movement.
+- Services are logically deleted, preserve sales-history references and may be mutated only by owner/admin; employees receive active services only.
+- Customer names may duplicate. Normalized phone is required and unique, email is optional and unique when present, every authenticated role may create/edit, and only owner/admin may logically delete.
+- Every income belongs to the authenticated user who registered it. Owner/admin can read all incomes and employees can read only their own; browser payloads never choose the actor, total, timestamp or business date.
+- Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, product stock, inventory movements and customer visits. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
 
 ## Repository map
 
@@ -53,10 +59,14 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/app/users`, `src/components/users`: manager-only user administration route and interactive lifecycle workspace.
 - `src/lib/auth`: schemas, hashing, session, authentication and authorization rules.
 - `src/lib/users`, `src/lib/sessions`: persistence repositories and user lifecycle service.
+- `src/app/api/products`, `src/lib/products`: authenticated product endpoints, validation, persistence, inventory services and browser API client.
+- `src/app/api/services`, `src/lib/services`: persistent role-aware service catalog and logical lifecycle.
+- `src/app/api/customers`, `src/lib/customers`: authenticated customer persistence with manager-only logical deletion.
+- `src/app/api/incomes`, `src/lib/incomes`: transactional sale creation, scoped history/detail, voiding and browser API client.
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `009` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

@@ -1,13 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser } = vi.hoisted(() => ({
+const { requirePageUser, listCustomers } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: { id: "owner", firstName: "Lautaro", lastName: "Bastardos", username: "lautaro.bastardos", role: { id: 1, name: "owner" }, isActive: true, lastLoginAt: null, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" },
   }),
+  listCustomers: vi.fn().mockResolvedValue({ customers: [] }),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
+vi.mock("@/lib/customers/service", () => ({ listCustomers }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/customers", useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
 
 import CustomersPage, { metadata } from "./page";
@@ -23,6 +25,8 @@ it("composes the authenticated customer route for managers", async () => {
 
 it("revalidates authentication", async () => {
   requirePageUser.mockClear();
+  listCustomers.mockClear();
   await CustomersPage();
   expect(requirePageUser).toHaveBeenCalledOnce();
+  expect(listCustomers).toHaveBeenCalledOnce();
 });

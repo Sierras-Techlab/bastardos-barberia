@@ -9,7 +9,6 @@ import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 
 const data = incomeFormMock as IncomeFormData;
 const values: IncomeFormValues = {
-  employeeId: "employee-lautaro",
   customerId: null,
   serviceId: "service-haircut-eyebrows",
   products: [{ productId: "product-hair-wax", quantity: 2 }],

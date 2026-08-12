@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-09
+Last updated: 2026-08-11
 
 ## Vision
 
@@ -19,24 +19,33 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
-| Dashboard UI | Prototype | Responsive authenticated dashboard with one Sonner-based action-notification system shared by Users, Products, Customers and Services. |
-| Income entry UI | Prototype | Multi-step sales form based on demonstration data, now protected by real authentication. |
-| Income history UI | Prototype | Filterable responsive income list and detail views based on demonstration data, protected by the authenticated incomes layout. |
+| Dashboard UI | Prototype | Responsive authenticated dashboard with real latest income/customer activity; expenses, metrics and charts remain demonstrative. |
+| Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
+| Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
-| Sales and cash | Planned | Define persistent sales, line items, payment methods, expenses and register closures. |
-| Services and products | Prototype | Responsive mock catalogs with role-aware management. Products support stock and lifecycle actions; services use visual cards with price, search, sorting, activation and confirmed reload-scoped deletion. Persistent service deletion must be logical to preserve sales history. |
-| Customers | Prototype | Responsive mock directory with required identity/contact fields, search, sorting and manager-only create/edit. Visits are read-only pending income integration. |
+| Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
+| Products | Implemented | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements; inactive items show `No disponible` regardless of retained stock. |
+| Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
+| Customers | Implemented | Persistent phone-identified directory; all roles create/edit, managers logically delete, email is optional and associated sales update visits. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
 
-Define the persistent sales and cash domain before replacing dashboard demonstration data. Authentication and user administration are implemented, and migrations through `007` are installed and validated in the configured Supabase project.
+Verify the deployed commercial workflow and then design daily cash. Products, Services, Customers and Incomes are implemented in the application, scripts `008_products_inventory.sql` and `009_sales_domain.sql` are installed in the configured project, and live creation has exercised the persistent domains.
 
-The product catalog is now available as a frontend prototype. Product CRUD, persistent prices and stock, purchase costs and inventory movements still require domain and backend design.
+The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 
-The customer directory is also available as a frontend prototype. Persistence, customer history and the automatic visit increment produced by an associated income still require a shared frontend/backend contract.
+The customer directory persists required normalized phones and optional emails. Exact names may repeat, all authenticated roles can create/edit, only managers can logically delete, and associated active sales increment visits atomically.
 
-The service catalog is available as a frontend prototype. Its reload-scoped changes are intentionally independent from the income form fixture until a persistent service contract replaces both mock sources.
+The service catalog and sale form now share persistent active services. Manager mutations are audited and deletion is logical, so historical sale snapshots and foreign-key references remain intact.
+
+The approved backend design makes customer phone the unique operational identity while allowing duplicate names and optional email. Every authenticated role may create and edit customers; only owner/admin may logically delete them.
+
+Each sale is attributed only to its authenticated registering user. Owner/admin may view all sales and employees only their own. Sale creation and manager-only voiding update inventory and customer visits atomically, preserve item name/price snapshots, prevent duplicate submissions through per-user request IDs, and store exact database timestamps plus indexed Buenos Aires business dates for future daily cash calculations.
+
+Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
+
+Dashboard recent activity now reads the latest persisted income and customer. Income visibility follows the authenticated role, deleted customers are excluded, and expense activity remains demonstrative until expenses are implemented.
 
 ## Accepted authentication decisions
 

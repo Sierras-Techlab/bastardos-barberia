@@ -7,33 +7,29 @@ import type {
   CustomerMetrics,
   CustomerSort,
 } from "@/types/customer";
+import { createCustomerSchema } from "@/lib/customers/schemas";
 
 const customerSchema = z.object({
   id: z.string().min(1),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
-  email: z.email(),
+  email: z.email().nullable(),
   phone: z.string().min(1),
   visits: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
 }).strict();
 
-const customerCatalogSchema = z.object({
+const customerCatalogFixtureSchema = z.object({
   isMock: z.literal(true),
   customers: z.array(customerSchema),
 }).strict();
 
-export const customerEditorSchema = z.object({
-  firstName: z.string().trim().min(1, "Ingresá el nombre."),
-  lastName: z.string().trim().min(1, "Ingresá el apellido."),
-  email: z.string().trim().toLowerCase().pipe(
-    z.email("Ingresá un email válido, sin ñ ni acentos."),
-  ),
-  phone: z.string().trim().refine(
-    (value) => value.replace(/\D/g, "").length >= 8,
-    "Ingresá un teléfono válido.",
-  ),
-});
+const customerCatalogSchema = z.union([
+  customerCatalogFixtureSchema,
+  z.object({ customers: z.array(customerSchema) }).strict(),
+]).transform(({ customers }) => ({ customers }));
+
+export const customerEditorSchema = createCustomerSchema;
 
 const normalizeText = (value: string) => value.trim().toLocaleLowerCase("es-AR");
 const normalizePhone = (value: string) => value.replace(/\D/g, "");
@@ -48,7 +44,7 @@ export const filterCustomers = (customers: Customer[], query: string) => {
 
   return customers.filter((customer) => {
     const searchable = normalizeText(
-      `${customer.firstName} ${customer.lastName} ${customer.email} ${customer.phone} ${normalizePhone(customer.phone)}`,
+      `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone} ${normalizePhone(customer.phone)}`,
     );
     return searchable.includes(normalized)
       || (normalizedQueryPhone.length > 0
@@ -83,11 +79,11 @@ export const validateUniqueCustomerContact = (
   customers: Customer[],
   ignoredCustomerId?: string,
 ) => {
-  const email = normalizeText(contact.email);
+  const email = contact.email ? normalizeText(contact.email) : null;
   const phone = normalizePhone(contact.phone);
   const candidates = customers.filter((customer) => customer.id !== ignoredCustomerId);
 
-  if (candidates.some((customer) => normalizeText(customer.email) === email)) {
+  if (email && candidates.some((customer) => customer.email && normalizeText(customer.email) === email)) {
     return "Ya existe un cliente con ese email.";
   }
   if (candidates.some((customer) => normalizePhone(customer.phone) === phone)) {

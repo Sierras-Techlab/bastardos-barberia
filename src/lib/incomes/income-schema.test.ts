@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { incomeFormSchema } from "./income-schema";
 
 const validBase = {
-  employeeId: "employee-1",
   customerId: null,
   serviceId: "service-1",
   products: [],

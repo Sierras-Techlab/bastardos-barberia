@@ -1,7 +1,7 @@
 "use client";
 
 import { PackagePlus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ type ProductEditorDialogProps = {
   product: CatalogProduct | null;
   products: CatalogProduct[];
   onClose: () => void;
-  onSave: (input: ProductEditorInput) => void;
+  onSave: (input: ProductEditorInput) => Promise<void> | void;
 };
 
 const fieldClassName =
@@ -48,9 +48,12 @@ export const ProductEditorDialog = ({
   const [price, setPrice] = useState(product ? String(product.price) : "");
   const [stock, setStock] = useState(product ? String(product.stock) : "");
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (savingRef.current) return;
     const input = {
       name,
       category,
@@ -74,11 +77,23 @@ export const ProductEditorDialog = ({
       return;
     }
 
-    onSave(parsed.data);
+    savingRef.current = true;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onSave(parsed.data);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "No se pudo guardar el producto.",
+      );
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
         <form onSubmit={submit}>
           <DialogHeader>
@@ -153,11 +168,15 @@ export const ProductEditorDialog = ({
           )}
 
           <DialogFooter className="-mx-5 -mb-5 mt-5 p-5">
-            <Button type="button" variant="outline" onClick={onClose} className="h-10 rounded-xl">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} className="h-10 rounded-xl">
               Cancelar
             </Button>
-            <Button type="submit" className="h-10 rounded-xl">
-              {mode === "create" ? "Crear producto" : "Guardar cambios"}
+            <Button type="submit" disabled={isSaving} className="h-10 rounded-xl">
+              {isSaving
+                ? "Guardando..."
+                : mode === "create"
+                  ? "Crear producto"
+                  : "Guardar cambios"}
             </Button>
           </DialogFooter>
         </form>

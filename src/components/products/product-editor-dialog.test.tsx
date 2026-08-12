@@ -81,3 +81,27 @@ it("edits catalog fields while preserving stock", async () => {
     expect.objectContaining({ name: "Hunter Matte", price: 32000, stock: 8 }),
   );
 });
+
+it("preserves the draft and displays asynchronous save failures", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn().mockRejectedValue(new Error("No se pudo guardar."));
+  render(
+    <ProductEditorDialog
+      mode="create"
+      product={null}
+      products={products}
+      onClose={vi.fn()}
+      onSave={onSave}
+    />,
+  );
+
+  await user.type(screen.getByLabelText("Nombre"), "Pomada mate");
+  await user.type(screen.getByLabelText("Precio"), "14500");
+  await user.type(screen.getByLabelText("Stock inicial"), "6");
+  await user.click(screen.getByRole("button", { name: "Crear producto" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "No se pudo guardar.",
+  );
+  expect(screen.getByLabelText("Nombre")).toHaveValue("Pomada mate");
+});

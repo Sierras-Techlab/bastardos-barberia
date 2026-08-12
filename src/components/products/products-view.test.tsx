@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import { ProductsView } from "@/components/products/products-view";
 import { DashboardToaster } from "@/components/ui/dashboard-toaster";
@@ -122,7 +122,22 @@ it("keeps inactive products for managers and hides them from employees", () => {
 
 it("creates and edits products in memory, then resets on remount", async () => {
   const user = userEvent.setup();
-  const { unmount } = render(<><ProductsView data={data} canManage /><DashboardToaster /></>);
+  const createdProduct = {
+    id: "10000000-0000-4000-8000-000000000099",
+    name: "Pomada mate",
+    category: "styling" as const,
+    price: 14500,
+    stock: 6,
+    isActive: true,
+  };
+  const productClient = {
+    create: vi.fn().mockResolvedValue(createdProduct),
+    update: vi.fn().mockImplementation(
+      async (_id: string, input: object) => ({ ...createdProduct, ...input }),
+    ),
+    adjustStock: vi.fn(),
+  };
+  const { unmount } = render(<><ProductsView data={data} canManage productClient={productClient} /><DashboardToaster /></>);
 
   await user.click(screen.getByRole("button", { name: "Nuevo producto" }));
   const createDialog = screen.getByRole("dialog");
@@ -137,6 +152,12 @@ it("creates and edits products in memory, then resets on remount", async () => {
     within(createDialog).getByRole("button", { name: "Crear producto" }),
   );
 
+  expect(productClient.create).toHaveBeenCalledWith({
+    name: "Pomada mate",
+    category: "styling",
+    price: 14500,
+    stock: 6,
+  });
   expectToast("Producto añadido correctamente.");
   expect(screen.getAllByText("Pomada mate")).toHaveLength(2);
   expect(screen.getAllByText("6 unidades")).toHaveLength(2);
@@ -156,6 +177,11 @@ it("creates and edits products in memory, then resets on remount", async () => {
     within(editDialog).getByRole("button", { name: "Guardar cambios" }),
   );
 
+  expect(productClient.update).toHaveBeenCalledWith(createdProduct.id, {
+    name: "Pomada mate premium",
+    category: "styling",
+    price: 14500,
+  });
   expectToast("Producto actualizado correctamente.");
   expect(screen.getAllByText("Pomada mate premium")).toHaveLength(2);
   expect(screen.getAllByText("6 unidades")).toHaveLength(2);
@@ -167,7 +193,13 @@ it("creates and edits products in memory, then resets on remount", async () => {
 
 it("adjusts stock and deactivates products in memory", async () => {
   const user = userEvent.setup();
-  render(<><ProductsView data={data} canManage /><DashboardToaster /></>);
+  const hunter = data.products[0];
+  const productClient = {
+    create: vi.fn(),
+    update: vi.fn().mockResolvedValue({ ...hunter, isActive: false }),
+    adjustStock: vi.fn().mockResolvedValue({ ...hunter, stock: 10 }),
+  };
+  render(<><ProductsView data={data} canManage productClient={productClient} /><DashboardToaster /></>);
 
   await user.click(
     screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
@@ -177,6 +209,10 @@ it("adjusts stock and deactivates products in memory", async () => {
   );
   await user.type(screen.getByLabelText("Cantidad"), "2");
   await user.click(screen.getByRole("button", { name: "Guardar ajuste" }));
+  expect(productClient.adjustStock).toHaveBeenCalledWith(hunter.id, {
+    kind: "entry",
+    quantity: 2,
+  });
   expectToast("Stock actualizado correctamente.");
   const hunterRow = within(
     screen.getByRole("table", { name: /catálogo de productos/i }),
@@ -195,6 +231,15 @@ it("adjusts stock and deactivates products in memory", async () => {
   await user.click(
     screen.getByRole("button", { name: "Desactivar producto" }),
   );
+  expect(productClient.update).toHaveBeenCalledWith(hunter.id, {
+    isActive: false,
+  });
   expectToast("Producto desactivado correctamente.");
   expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(2);
+  expect(within(hunterRow).getByText("No disponible")).toBeVisible();
+  expect(within(hunterRow).queryByText("Disponible")).not.toBeInTheDocument();
+  expect(within(hunterMobileItem!).getByText("No disponible")).toBeVisible();
+  expect(
+    within(hunterMobileItem!).queryByText("Disponible"),
+  ).not.toBeInTheDocument();
 });

@@ -1,5 +1,7 @@
-import { z } from "zod";
-
+import {
+  createProductSchema,
+  stockAdjustmentSchema,
+} from "@/lib/products/schemas";
 import type {
   CatalogProduct,
   ProductEditorInput,
@@ -7,31 +9,8 @@ import type {
   StockAdjustment,
 } from "@/types/product";
 
-export const productEditorSchema = z.object({
-  name: z.string().trim().min(1, "Ingresá el nombre del producto."),
-  category: z.enum([
-    "hair-care",
-    "styling",
-    "beard-care",
-    "fragrance",
-  ]),
-  price: z
-    .number({ error: "Ingresá un precio válido." })
-    .int("Ingresá un precio válido.")
-    .nonnegative("Ingresá un precio válido."),
-  stock: z
-    .number({ error: "Ingresá un stock válido." })
-    .int("Ingresá un stock válido.")
-    .nonnegative("Ingresá un stock válido."),
-});
-
-export const stockAdjustmentSchema = z.object({
-  kind: z.enum(["entry", "exit"]),
-  quantity: z
-    .number({ error: "Ingresá una cantidad mayor a cero." })
-    .int("Ingresá una cantidad mayor a cero.")
-    .positive("Ingresá una cantidad mayor a cero."),
-});
+export const productEditorSchema = createProductSchema;
+export { stockAdjustmentSchema };
 
 const normalizeName = (value: string) =>
   value.trim().toLocaleLowerCase("es-AR");

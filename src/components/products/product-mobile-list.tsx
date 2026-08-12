@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
   formatProductCategory,
-  getProductStockStatus,
+  getProductAvailabilityStatus,
 } from "@/lib/products/product-catalog";
 import type { CatalogProduct } from "@/types/product";
 
@@ -24,7 +24,7 @@ export const ProductMobileList = ({
 }: ProductMobileListProps) => (
   <ul aria-label="Catálogo móvil de productos" className="space-y-3">
     {products.map((product) => {
-      const stockStatus = getProductStockStatus(product.stock);
+      const availabilityStatus = getProductAvailabilityStatus(product);
 
       return (
       <li
@@ -52,16 +52,20 @@ export const ProductMobileList = ({
             </p>
             <Badge
               className={
-                stockStatus === "available"
+                availabilityStatus === "unavailable"
+                  ? "mt-2 rounded-full bg-black/5 text-muted-foreground hover:bg-black/5"
+                  : availabilityStatus === "available"
                   ? "mt-2 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-                  : stockStatus === "low-stock"
+                  : availabilityStatus === "low-stock"
                     ? "mt-2 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50"
                     : "mt-2 rounded-full bg-red-50 text-red-700 hover:bg-red-50"
               }
             >
-              {stockStatus === "available"
+              {availabilityStatus === "unavailable"
+                ? "No disponible"
+                : availabilityStatus === "available"
                 ? "Disponible"
-                : stockStatus === "low-stock"
+                : availabilityStatus === "low-stock"
                   ? "Stock bajo"
                   : "Sin stock"}
             </Badge>

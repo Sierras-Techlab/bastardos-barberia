@@ -14,7 +14,6 @@ const data = authorizeCustomerCatalogData(customersMock);
 
 describe("customer catalog", () => {
   it("strictly validates the fixture", () => {
-    expect(data.isMock).toBe(true);
     expect(data.customers.length).toBeGreaterThan(10);
     expect(() => authorizeCustomerCatalogData({ ...data, extra: true })).toThrow();
   });
@@ -54,11 +53,12 @@ describe("customer catalog", () => {
       email: "ana@mail.com",
       phone: "+54 351 555-0101",
     });
+    expect(customerEditorSchema.parse({ firstName: "Ana", lastName: "Díaz", email: "", phone: "+54 351 555-0101" }).email).toBeNull();
   });
 
   it("rejects normalized duplicate email and phone while allowing self edits", () => {
     const first = data.customers[0];
-    expect(validateUniqueCustomerContact({ email: ` ${first.email.toUpperCase()} `, phone: "9999999999" }, data.customers)).toBe("Ya existe un cliente con ese email.");
+    expect(validateUniqueCustomerContact({ email: ` ${first.email!.toUpperCase()} `, phone: "9999999999" }, data.customers)).toBe("Ya existe un cliente con ese email.");
     expect(validateUniqueCustomerContact({ email: "otro@mail.com", phone: first.phone.replaceAll(" ", "") }, data.customers)).toBe("Ya existe un cliente con ese teléfono.");
     expect(validateUniqueCustomerContact({ email: first.email, phone: first.phone }, data.customers, first.id)).toBeNull();
   });

@@ -8,7 +8,7 @@ import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
 
 const product = authorizeProductCatalogData(productsMock).products[0];
 
-it("registers an entry and previews the resulting stock", async () => {
+it("submits an entry adjustment and previews the resulting stock", async () => {
   const user = userEvent.setup();
   const onSave = vi.fn();
   render(<ProductStockDialog product={product} onClose={vi.fn()} onSave={onSave} />);
@@ -17,7 +17,7 @@ it("registers an entry and previews the resulting stock", async () => {
   expect(screen.getByText("Stock resultante: 12 unidades")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Guardar ajuste" }));
 
-  expect(onSave).toHaveBeenCalledWith(12);
+  expect(onSave).toHaveBeenCalledWith({ kind: "entry", quantity: 4 });
 });
 
 it("prevents an exit greater than the available stock", async () => {

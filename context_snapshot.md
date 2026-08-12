@@ -1,18 +1,18 @@
 # Context snapshot
 
-Captured: 2026-08-09
+Captured: 2026-08-11
 
 ## Repository state
 
-- Current branch: `feat/23-services-view` in the main worktree.
+- Current branch: `feat/backend-models` in the main worktree.
 - Local branches: 9.
 - Remote tracking references: 10, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
 
 ## Current implementation
 
-- Supabase SQL installation is in `supabase/queries/001` through `007`.
-- Tables: `roles`, `users`, `sessions`.
+- Supabase SQL installation source is in `supabase/queries/001` through `009`.
+- Tables defined by the ordered scripts: `roles`, `users`, `sessions`, `products`, `inventory_movements`, `services`, `customers`, `incomes`, `income_items`.
 - Fixed roles: owner, admin, employee.
 - Database trigger generates normalized, collision-safe usernames.
 - RLS and grants block browser roles and permit the server secret role.
@@ -26,35 +26,44 @@ Captured: 2026-08-09
 - Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
 - Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
-- `/products` is an authenticated, responsive catalog backed by validated demonstration data, with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
-- Owner/admin users can create and edit mock products, register stock entries/exits and activate/deactivate products. These frontend-only changes intentionally reset on reload; employees receive a read-only catalog without inactive products or management controls.
-- The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers and Services use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
+- Dashboard recent activity reads the latest persisted income and customer on the server. Income visibility remains global for owner/admin and self-only for employees; expense activity stays demonstrative until that domain exists.
+- `/products` is an authenticated, responsive persistent catalog with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
+- Owner/admin product creation, profile edits, activation changes and stock entries/exits pass through manager-only Route Handlers and server services. Employees receive active products only from the server boundary and have no management controls.
+- Product stock changes use database row locking, reject negative results and append an actor-linked inventory movement in the same transaction. Product creation stores creator/updater audit IDs and an optional initial-stock movement.
+- The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers, Services and income voiding use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
 - Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
-- `/customers` is an authenticated responsive frontend prototype with validated demonstration data, summary metrics, identity/contact search, visit/date sorting, a desktop table and mobile contact cards.
-- Owner/admin users can create and edit mock customers with normalized unique email and phone validation. Employees receive a read-only directory. Visits remain read-only and frontend-only changes reset on reload.
-- `/services` is an authenticated visual-card catalog with validated demonstration data, active-service and price metrics, search, state filtering and name/price sorting. Its desktop filters and three-card catalog settle at the `lg` breakpoint so editor resizing and hot reloads do not switch between competing layouts.
-- Owner/admin users can create, edit, activate, deactivate and delete mock services with confirmation and duplicate-name validation. Deletion removes an item only from reload-scoped state; future persistence must use logical deletion to preserve sales history. Employees see active services only.
+- Inactive products retain their exact stock for inventory work but show `No disponible` in manager desktop and mobile catalogs; quantity-only stock filters and metrics remain unchanged.
+- `/customers` is persistent and responsive. Phone is the required normalized unique identity, exact names may repeat, email is optional/unique when supplied, all authenticated roles can create/edit, and owner/admin alone can logically delete. Missing email produces no `mailto:` action.
+- The reusable async customer editor is also available from `/incomes/new`; a newly created customer is appended and selected without leaving the sale draft.
+- `/services` is a persistent role-aware visual catalog. Owner/admin create, edit, activate/deactivate and logically delete; employees receive active services only. All writes carry authenticated audit users.
+- `/incomes/new` loads real active products/services and customers after session authorization, fixes the registering user to the authenticated account, sends no actor/total/date overrides, and uses stable UUID request IDs for idempotent retries.
+- Income creation is one PostgreSQL transaction: authoritative catalog snapshots and totals, deterministic product locks, stock deductions, sale-linked inventory movements and customer visit increments either all commit or all roll back.
+- `/incomes` uses server-side role scoping, Buenos Aires monthly date defaults, filters, metrics and pagination. Owner/admin can inspect all registering users and confirm a void; employees can only receive their own sales and have no void control.
+- Voiding is idempotent and manager-only. It marks rather than edits/deletes the sale, restores product stock, records reversal movements and decrements the associated customer visit exactly once.
+- `incomes.created_at` comes from the database clock and `business_date` is derived/indexed in `America/Argentina/Buenos_Aires` for the next daily-cash increment.
+- Income response validation accepts PostgreSQL `timestamptz` values with explicit UTC offsets. A runtime failure exposed this boundary after the transaction committed; the persisted sale remained intact and a regression test now covers the database's exact timestamp representation.
 - The login form calls the real API and the sidebar exposes logout.
 - A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, username rules, hashing, authentication, sessions, authorization, repositories, lifecycle rules, API responses/routes, login UI, proxy, bootstrap policy, user management and the complete mock product/customer management lifecycles.
+- Tests cover schemas, authentication/session/user lifecycle, server authorization, persistent commercial repositories/services/APIs, async catalog/customer UI, idempotent sale submission, role-scoped history and manager voiding.
+- The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models` and installed in the configured Supabase project.
+- The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
+- Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
+- The complete commercial milestone passes 97 test files / 307 tests, ESLint without warnings, the Next.js production build and `git diff --check`. Dashboard activity and product-availability verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
 
 ## Database integration state
 
-The configured Supabase project has migrations `001` through `007` installed. The `deleted_at` and `deleted_by` columns were verified through the server connection and the application session flow is working. No authentication or user-schema action remains for this environment. Fresh installations must still run all seven ordered scripts documented in `supabase/queries/README.md`.
+The configured Supabase project has scripts `001` through `009` installed. Runtime use confirmed product, service and customer creation, while a read-only database check confirmed the persisted income and the `get_income_detail` response from `009_sales_domain.sql`. SQL installation remains manual for other environments, which must run all nine ordered scripts documented in `supabase/queries/README.md`.
 
 ## Known boundaries
 
-- Employee-specific permissions are intentionally deferred.
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
-- Sales, products, services, customers, cash and reports still use mock data or have no persistence model.
-- Customer persistence, customer history and automatic visit increments from associated incomes remain backend integration work.
-- Service catalog changes are intentionally not synchronized with the separate income-form fixture until both use a persistent backend source.
-- Product deletion, purchase cost, persistent inventory movements and backend persistence remain outside the current catalog prototype.
+- Product deletion and purchase cost remain outside the persistent catalog.
 - Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
+- Physical deletion, sale editing, customer-history screens, expenses, daily cash/register closure and reporting remain outside this milestone.
 
 ## Recommended next task
 
-Define the persistent customer and sales contracts so an income associated with a customer can atomically increment visit history before replacing the customer mocks.
+Design the daily cash view from the deployed `created_at`, `business_date`, payment method and active/voided sales data.
 
 ## Context maintenance rule
 

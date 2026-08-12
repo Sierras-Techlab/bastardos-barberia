@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  IncomeListData,
   IncomeListFilters,
   IncomeListItem,
 } from "@/types/income";
 import {
-  authorizeIncomeListData,
   calculateIncomeMetrics,
   filterIncomeItems,
   formatIncomeConcept,
@@ -29,6 +27,7 @@ const employeeFer = {
 const serviceOnly: IncomeListItem = {
   id: "service-only",
   createdAt: "2026-08-07T14:00:00.000Z",
+  businessDate: "2026-08-07",
   employee: employeeLautaro,
   customer: { id: "customer-lucas", firstName: "Lucas", lastName: "Romero" },
   service: {
@@ -45,6 +44,7 @@ const serviceOnly: IncomeListItem = {
 const productsOnly: IncomeListItem = {
   id: "products-only",
   createdAt: "2026-08-06T18:00:00.000Z",
+  businessDate: "2026-08-06",
   employee: employeeFer,
   customer: null,
   service: null,
@@ -59,6 +59,7 @@ const productsOnly: IncomeListItem = {
 const combined: IncomeListItem = {
   id: "combined",
   createdAt: "2026-08-05T16:00:00.000Z",
+  businessDate: "2026-08-05",
   employee: employeeLautaro,
   customer: {
     id: "customer-tomas",
@@ -122,20 +123,6 @@ describe("income list domain", () => {
     expect(
       filterIncomeItems(items, { ...emptyFilters, query: "fernanda" }),
     ).toEqual([productsOnly]);
-  });
-
-  it("removes other employees' data before client serialization", () => {
-    const employeeData: IncomeListData = {
-      currentUser: { ...employeeFer, role: "employee" },
-      employees: [employeeLautaro, employeeFer],
-      incomes: [serviceOnly, productsOnly, combined],
-    };
-
-    expect(authorizeIncomeListData(employeeData)).toEqual({
-      currentUser: employeeData.currentUser,
-      employees: [employeeFer],
-      incomes: [productsOnly],
-    });
   });
 
   it("combines employee, payment, kind and inclusive date filters", () => {

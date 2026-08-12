@@ -1,133 +1,36 @@
 "use client";
 
 import { ReceiptText, RotateCcw } from "lucide-react";
-import { useMemo, useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { IncomeDetailSheet } from "@/components/incomes/income-detail-sheet";
 import { IncomeFilters } from "@/components/incomes/income-filters";
 import { IncomeMetrics } from "@/components/incomes/income-metrics";
 import { IncomeMobileList } from "@/components/incomes/income-mobile-list";
 import { IncomeTable } from "@/components/incomes/income-table";
-import {
-  calculateIncomeMetrics,
-  filterIncomeItems,
-  sortIncomeItems,
-} from "@/lib/incomes/income-list";
-import type {
-  IncomeListData,
-  IncomeListFilters,
-  IncomeListItem,
-} from "@/types/income";
+import { IncomeVoidDialog } from "@/components/incomes/income-void-dialog";
+import { Button } from "@/components/ui/button";
+import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
+import type { CurrentUser, Employee, IncomeListFilters, IncomeListItem, IncomeListQuery, PaginatedIncomes } from "@/types/income";
 
-type IncomesViewProps = {
-  data: IncomeListData;
-};
+type Props = { data: PaginatedIncomes; initialQuery: IncomeListQuery; currentUser: CurrentUser; employees: Employee[]; canViewAll: boolean; canVoid: boolean; incomeClient?: Pick<IncomeClient, "list" | "void"> };
+const asFilters = (query: IncomeListQuery): IncomeListFilters => ({ query: query.query ?? "", dateFrom: query.dateFrom ?? "", dateTo: query.dateTo ?? "", employeeId: query.userId ?? "", paymentMethod: query.paymentMethod ?? "all", kind: query.kind ?? "all", status: query.status ?? "all" });
+const asQuery = (filters: IncomeListFilters, page = 1): IncomeListQuery => ({ page, pageSize: 10, ...(filters.query && { query: filters.query }), ...(filters.dateFrom && { dateFrom: filters.dateFrom }), ...(filters.dateTo && { dateTo: filters.dateTo }), ...(filters.employeeId && { userId: filters.employeeId }), ...(filters.paymentMethod !== "all" && { paymentMethod: filters.paymentMethod }), ...(filters.kind !== "all" && { kind: filters.kind }), ...(filters.status && filters.status !== "all" && { status: filters.status }) });
 
-const initialFilters: IncomeListFilters = {
-  query: "",
-  dateFrom: "2026-08-01",
-  dateTo: "2026-08-31",
-  employeeId: "",
-  paymentMethod: "all",
-  kind: "all",
-};
-
-export const IncomesView = ({ data }: IncomesViewProps) => {
-  const [filters, setFilters] = useState(initialFilters);
-  const [selectedIncome, setSelectedIncome] = useState<IncomeListItem | null>(
-    null,
-  );
-
-  const allowedIncomes = useMemo(
-    () =>
-      data.currentUser.role === "owner"
-        ? data.incomes
-        : data.incomes.filter(
-            (income) => income.employee.id === data.currentUser.id,
-          ),
-    [data],
-  );
-
-  const incomes = useMemo(
-    () => sortIncomeItems(filterIncomeItems(allowedIncomes, filters)),
-    [allowedIncomes, filters],
-  );
-  const metrics = useMemo(() => calculateIncomeMetrics(incomes), [incomes]);
+export const IncomesView = ({ data, initialQuery, currentUser, employees, canViewAll, canVoid, incomeClient = defaultIncomeClient }: Props) => {
+  const initialFilters = asFilters(initialQuery); const [filters, setFilters] = useState(initialFilters); const [result, setResult] = useState(data); const [selected, setSelected] = useState<IncomeListItem | null>(null); const [voiding, setVoiding] = useState<IncomeListItem | null>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const requestSequence = useRef(0);
+  const load = async (query: IncomeListQuery) => { const sequence = ++requestSequence.current; setLoading(true); setError(null); try { const next = await incomeClient.list(query); if (sequence === requestSequence.current) setResult(next); } catch (caught) { if (sequence === requestSequence.current) setError(caught instanceof Error ? caught.message : "No se pudo cargar el historial."); } finally { if (sequence === requestSequence.current) setLoading(false); } };
+  const changeFilters = (next: IncomeListFilters) => { setFilters(next); void load(asQuery(next)); };
+  const changePage = (page: number) => void load({ ...asQuery(filters, page), pageSize: result.pagination.pageSize });
   const canClear = JSON.stringify(filters) !== JSON.stringify(initialFilters);
-  const movementLabel = `${incomes.length} ${
-    incomes.length === 1 ? "movimiento" : "movimientos"
-  }`;
 
-  const clearFilters = () => setFilters(initialFilters);
-
-  return (
-    <div className="space-y-5">
-      <IncomeMetrics metrics={metrics} />
-
-      <IncomeFilters
-        role={data.currentUser.role}
-        employees={data.employees}
-        value={filters}
-        onChange={setFilters}
-        onClear={clearFilters}
-        canClear={canClear}
-      />
-
-      <section aria-labelledby="income-history-title">
-        <div className="mb-3 flex items-end justify-between gap-4 px-1">
-          <div>
-            <h2 id="income-history-title" className="text-lg font-semibold">
-              Historial de ventas
-            </h2>
-            <p className="text-sm text-muted-foreground">{movementLabel}</p>
-          </div>
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            Los anulados no se suman al resumen
-          </p>
-        </div>
-
-        {incomes.length > 0 ? (
-          <>
-            <div className="hidden md:block">
-              <IncomeTable incomes={incomes} onSelect={setSelectedIncome} />
-            </div>
-            <div className="md:hidden">
-              <IncomeMobileList
-                incomes={incomes}
-                onSelect={setSelectedIncome}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-[1.6rem] bg-white px-6 text-center shadow-sm">
-            <span className="flex size-12 items-center justify-center rounded-full bg-[#f6f5f2] text-primary">
-              <ReceiptText className="size-5" />
-            </span>
-            <h3 className="mt-4 font-semibold">No encontramos ingresos</h3>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Probá cambiando la búsqueda o limpiando los filtros aplicados.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-4 rounded-xl"
-              onClick={clearFilters}
-            >
-              <RotateCcw />
-              Limpiar filtros
-            </Button>
-          </div>
-        )}
-      </section>
-
-      <IncomeDetailSheet
-        income={selectedIncome}
-        open={selectedIncome !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedIncome(null);
-        }}
-      />
-    </div>
-  );
+  return <div className="space-y-5"><IncomeMetrics metrics={result.metrics} /><IncomeFilters role={currentUser.role} employees={employees} value={filters} onChange={changeFilters} onClear={() => changeFilters(initialFilters)} canClear={canClear} />
+    {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+    <section aria-labelledby="income-history-title" aria-busy={loading}><div className="mb-3 flex items-end justify-between gap-4 px-1"><div><h2 id="income-history-title" className="text-lg font-semibold">Historial de ventas</h2><p className="text-sm text-muted-foreground">{result.pagination.total} {result.pagination.total === 1 ? "movimiento" : "movimientos"}</p></div><p className="hidden text-xs text-muted-foreground sm:block">Los anulados no se suman al resumen</p></div>
+      {result.items.length ? <><div className={`hidden md:block ${loading ? "opacity-60" : ""}`}><IncomeTable incomes={result.items} onSelect={setSelected} /></div><div className={`md:hidden ${loading ? "opacity-60" : ""}`}><IncomeMobileList incomes={result.items} onSelect={setSelected} /></div><div className="mt-4 flex items-center justify-between"><Button variant="outline" disabled={loading || result.pagination.page <= 1} onClick={() => changePage(result.pagination.page - 1)}>Anterior</Button><span className="text-sm text-muted-foreground">Página {result.pagination.page} de {Math.max(result.pagination.totalPages, 1)}</span><Button variant="outline" disabled={loading || result.pagination.page >= result.pagination.totalPages} onClick={() => changePage(result.pagination.page + 1)}>Siguiente</Button></div></> : <div className="flex min-h-64 flex-col items-center justify-center rounded-[1.6rem] bg-white px-6 text-center shadow-sm"><ReceiptText className="size-5 text-primary" /><h3 className="mt-4 font-semibold">No encontramos ingresos</h3><p className="mt-1 text-sm text-muted-foreground">Probá cambiando la búsqueda o limpiando los filtros.</p><Button type="button" variant="outline" className="mt-4 rounded-xl" onClick={() => changeFilters(initialFilters)}><RotateCcw /> Limpiar filtros</Button></div>}
+    </section>
+    <IncomeDetailSheet income={selected} open={selected !== null} onOpenChange={(open) => { if (!open) setSelected(null); }} canVoid={canVoid} onVoid={(income) => setVoiding(income)} />
+    {voiding && <IncomeVoidDialog income={voiding} onClose={() => setVoiding(null)} onConfirm={async () => { const updated = await incomeClient.void(voiding.id); setSelected(updated); setVoiding(null); await load({ ...asQuery(filters, result.pagination.page), pageSize: result.pagination.pageSize }); toast.success("Venta anulada correctamente."); }} />}
+    {!canViewAll && <span className="sr-only">Vista limitada al usuario autenticado</span>}
+  </div>;
 };

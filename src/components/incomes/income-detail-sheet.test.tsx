@@ -34,9 +34,8 @@ it("shows the complete read-only income detail", () => {
       `${income?.employee.firstName} ${income?.employee.lastName}`,
     ),
   ).toBeVisible();
-  expect(screen.getByRole("button", { name: /editar venta/i })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /anular venta/i })).toBeDisabled();
-  expect(screen.getAllByText(/próximamente/i)).not.toHaveLength(0);
+  expect(screen.queryByRole("button", { name: /anular venta/i })).not.toBeInTheDocument();
+  expect(screen.getByText(/solo lectura/i)).toBeVisible();
 });
 
 it("does not render content without a selected income", () => {

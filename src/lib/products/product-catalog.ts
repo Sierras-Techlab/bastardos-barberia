@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type {
   CatalogProduct,
+  ProductAvailabilityStatus,
   ProductCatalogData,
   ProductCatalogFilters,
   ProductCatalogMetrics,
@@ -27,12 +28,19 @@ const productSchema = z
   })
   .strict();
 
-const productCatalogDataSchema = z
+const productCatalogFixtureSchema = z
   .object({
     isMock: z.literal(true),
     products: z.array(productSchema),
   })
   .strict();
+
+const productCatalogDataSchema = z
+  .union([
+    productCatalogFixtureSchema,
+    z.object({ products: z.array(productSchema) }).strict(),
+  ])
+  .transform(({ products }) => ({ products }));
 
 const categoryLabels: Record<ProductCategory, string> = {
   "hair-care": "Cuidado capilar",
@@ -80,6 +88,11 @@ export const getProductStockStatus = (stock: number): ProductStockStatus => {
   if (stock <= 3) return "low-stock";
   return "available";
 };
+
+export const getProductAvailabilityStatus = (
+  product: Pick<CatalogProduct, "isActive" | "stock">,
+): ProductAvailabilityStatus =>
+  product.isActive ? getProductStockStatus(product.stock) : "unavailable";
 
 export const calculateProductMetrics = (
   products: CatalogProduct[],
