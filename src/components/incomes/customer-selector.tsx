@@ -6,7 +6,8 @@ import { CustomerEditorDialog } from "@/components/customers/customer-editor-dia
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomerApiError, customerClient as defaultCustomerClient, type CustomerClient } from "@/lib/customers/client";
-import type { Customer as StoredCustomer, CustomerEditorInput } from "@/types/customer";
+import type { FrontendCustomerEditorInput } from "@/lib/customers/frontend-customer-contracts";
+import type { Customer as StoredCustomer } from "@/types/customer";
 import type { Customer } from "@/types/income";
 
 type Props = { id?: string; customers: Customer[]; value: string | null; onChange(customerId: string | null): void; onCustomerCreated?(customer: StoredCustomer): void; customerClient?: Pick<CustomerClient, "create"> };
@@ -18,7 +19,7 @@ export const CustomerSelector = ({ id, customers, value, onChange, onCustomerCre
   const [query, setQuery] = useState(""); const [creating, setCreating] = useState(false); const [duplicate, setDuplicate] = useState<Customer | null>(null);
   const selected = customers.find((customer) => customer.id === value);
   const filtered = useMemo(() => { const text = query.trim().toLocaleLowerCase("es-AR"); const phone = digits(query); return customers.filter((customer) => name(customer).toLocaleLowerCase("es-AR").includes(text) || (phone && digits(customer.phone ?? "").includes(phone))).slice(0, 5); }, [customers, query]);
-  const save = async (input: CustomerEditorInput) => {
+  const save = async (input: FrontendCustomerEditorInput) => {
     try { const created = await customerClient.create(input); onCustomerCreated?.(created); setCreating(false); setQuery(""); return created; }
     catch (error) { if (error instanceof CustomerApiError && error.code === "CUSTOMER_PHONE_EXISTS") setDuplicate(customers.find((customer) => digits(customer.phone ?? "") === digits(input.phone)) ?? null); throw error; }
   };

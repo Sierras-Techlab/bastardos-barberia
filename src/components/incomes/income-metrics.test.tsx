@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 import { IncomeMetrics } from "./income-metrics";
 
-it("shows totals, sales average and payment distribution", () => {
+it("shows manager totals and explicit pending backend economics", () => {
   render(
     <IncomeMetrics
       metrics={{
@@ -17,13 +17,17 @@ it("shows totals, sales average and payment distribution", () => {
   );
 
   expect(screen.getByText(/874\.000/)).toBeVisible();
+  expect(screen.getAllByText("Pendiente de backend")).toHaveLength(2);
   expect(screen.getByText("42")).toBeVisible();
-  expect(screen.getByText(/20\.810/)).toBeVisible();
-  expect(screen.getByText(/60% efectivo/i)).toBeVisible();
-  expect(screen.getByText(/40% transferencia/i)).toBeVisible();
 });
 
-it("shows a zero distribution when there are no active incomes", () => {
+it("shows commission and barbershop net when the V2 backend provides them", () => {
+  render(<IncomeMetrics metrics={{ total: 100000, count: 4, average: 25000, cashTotal: 50000, transferTotal: 50000, commissionTotal: 42000, barbershopNet: 58000 }} />);
+  expect(screen.getByText(/42\.000/)).toBeVisible();
+  expect(screen.getByText(/58\.000/)).toBeVisible();
+});
+
+it("shows zero sales when there are no active incomes", () => {
   render(
     <IncomeMetrics
       metrics={{
@@ -36,6 +40,13 @@ it("shows a zero distribution when there are no active incomes", () => {
     />,
   );
 
-  expect(screen.getByText(/0% efectivo/i)).toBeVisible();
-  expect(screen.getByText(/0% transferencia/i)).toBeVisible();
+  expect(screen.getByText("Ventas")).toBeVisible();
+  expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+});
+
+it("shows employee metrics without barbershop net", () => {
+  render(<IncomeMetrics role="employee" metrics={{ total: 50000, count: 2, average: 25000, cashTotal: 50000, transferTotal: 0, commissionTotal: 22500 }} />);
+  expect(screen.getByText("Total vendido")).toBeVisible();
+  expect(screen.getByText("Mi comisión")).toBeVisible();
+  expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
 });

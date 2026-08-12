@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser, listServices, listProducts, listCustomers } = vi.hoisted(() => ({
+const { requirePageUser, listServices, listProducts, listCustomers, listUsers } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -18,6 +18,7 @@ const { requirePageUser, listServices, listProducts, listCustomers } = vi.hoiste
   listServices: vi.fn().mockResolvedValue([]),
   listProducts: vi.fn().mockResolvedValue([]),
   listCustomers: vi.fn().mockResolvedValue([]),
+  listUsers: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0, totalPages: 0 }),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -26,6 +27,7 @@ vi.mock("@/lib/auth/authorization", () => ({
 vi.mock("@/lib/services/repository", () => ({ serviceRepository: { list: listServices } }));
 vi.mock("@/lib/products/repository", () => ({ productRepository: { list: listProducts } }));
 vi.mock("@/lib/customers/repository", () => ({ customerRepository: { list: listCustomers } }));
+vi.mock("@/lib/users/repository", () => ({ userRepository: { list: listUsers } }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes/new",

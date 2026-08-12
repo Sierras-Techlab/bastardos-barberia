@@ -33,3 +33,10 @@ it("identifies voided cards", () => {
 
   expect(screen.getByText("Anulado")).toBeVisible();
 });
+
+it("shows combined payment and accrued commission", () => {
+  const income = { ...data.incomes[0], payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { serviceBase: 19000, productBase: 30000, serviceRate: 45, productRate: 10, serviceAmount: 8550, productAmount: 3000, total: 11550, barbershopNet: 37450, fullServiceCommission: false } };
+  render(<IncomeMobileList incomes={[income]} onSelect={vi.fn()} />);
+  expect(screen.getByText("Combinado")).toBeVisible();
+  expect(screen.getByText(/Comisión.*11\.550/)).toBeVisible();
+});

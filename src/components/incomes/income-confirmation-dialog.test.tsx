@@ -9,10 +9,13 @@ import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 
 const data = incomeFormMock as IncomeFormData;
 const values: IncomeFormValues = {
+  employeeId: data.currentUser.id,
   customerId: null,
   serviceId: "service-haircut-eyebrows",
   products: [{ productId: "product-hair-wax", quantity: 2 }],
-  paymentMethod: "cash",
+  paymentMode: "cash",
+  payments: [{ method: "cash", amount: 39800 }],
+  grantFullServiceCommission: false,
 };
 
 it("reviews the exact draft before allowing confirmation", async () => {
@@ -33,7 +36,7 @@ it("reviews the exact draft before allowing confirmation", async () => {
   expect(screen.getByRole("dialog", { name: /confirmar ingreso/i })).toBeVisible();
   expect(screen.getByText("Corte de pelo y perfilado de cejas")).toBeVisible();
   expect(screen.getByText("Cera para pelo × 2")).toBeVisible();
-  expect(screen.getByText(/39\.800/)).toBeVisible();
+  expect(screen.getAllByText(/39\.800/).length).toBeGreaterThan(0);
 
   await user.click(screen.getByRole("button", { name: /volver y editar/i }));
   expect(onBack).toHaveBeenCalledOnce();
@@ -56,4 +59,22 @@ it("locks confirmation actions while the income is pending", () => {
 
   expect(screen.getByRole("button", { name: /volver y editar/i })).toBeDisabled();
   expect(screen.getByRole("button", { name: /registrando ingreso/i })).toBeDisabled();
+});
+
+it("returns to editing when the close button is pressed", async () => {
+  const onBack = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <IncomeConfirmationDialog
+      open
+      values={values}
+      data={data}
+      pending={false}
+      onBack={onBack}
+      onConfirm={vi.fn()}
+    />,
+  );
+
+  await user.click(screen.getByRole("button", { name: /close/i }));
+  expect(onBack).toHaveBeenCalledOnce();
 });

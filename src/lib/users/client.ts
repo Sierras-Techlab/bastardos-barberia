@@ -1,12 +1,9 @@
 import type {
-  CreateUserInput,
-  UpdateUserInput,
-} from "@/lib/auth/schemas";
-import type {
   PaginatedUsers,
   Role,
   SafeUser,
 } from "@/lib/auth/types";
+import type { CommissionSafeUser, FrontendCreateUserInput, FrontendUpdateUserInput } from "@/types/user-commissions";
 
 export type AdminUserFilters = {
   page: number;
@@ -80,11 +77,11 @@ export const listAdminUsers = (
 export const listAdminRoles = () =>
   request<Role[]>("/api/admin/roles");
 
-export const createAdminUser = (input: CreateUserInput) =>
-  request<SafeUser>("/api/admin/users", jsonRequest("POST", input));
+export const createAdminUser = (input: FrontendCreateUserInput) =>
+  request<CommissionSafeUser>("/api/admin/users", jsonRequest("POST", input));
 
-export const updateAdminUser = (id: string, changes: UpdateUserInput) =>
-  request<SafeUser>(
+export const updateAdminUser = (id: string, changes: FrontendUpdateUserInput) =>
+  request<CommissionSafeUser>(
     "/api/admin/users/" + encodeURIComponent(id),
     jsonRequest("PATCH", changes),
   );

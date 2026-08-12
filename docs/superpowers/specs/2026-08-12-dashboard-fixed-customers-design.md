@@ -91,6 +91,10 @@ El frontend usa adaptadores explícitos para respuestas legacy. No inventa una r
 - Tablet: resumen a ancho completo y los otros dos bloques en columnas.
 - Móvil: métricas, gráfico, acciones y clientes fijos se apilan; las acciones conservan objetivos táctiles cómodos.
 - El dashboard puede tener scroll natural en pantallas pequeñas; no se fuerza a comprimir contenido por debajo de su legibilidad.
+- Los tres bloques principales usan `rounded-3xl`, borde explícito y sombra suave para no depender de radios arbitrarios durante HMR.
+- En escritorio, una grilla estable de doce columnas asigna ocho al resumen y cuatro al lateral; todos sus hijos admiten contracción con `min-w-0`.
+- Las métricas claras llevan borde visible contra la superficie blanca y las acciones oscuras se separan del panel mediante borde translúcido y un espacio mínimo de `gap-3`.
+- La separación entre los bloques principales es de al menos `gap-5`, conservando la misma jerarquía visual en tablet y móvil.
 
 ## Backend handoff
 
@@ -116,4 +120,3 @@ Se ampliará `docs/backend-handoffs/2026-08-12-income-commissions-and-split-paym
 - Ocurrencias se ordenan por fecha/hora y cambian de pendiente a asistió/ausente.
 - Cambiar una ocurrencia no altera las siguientes.
 - Se validan estados vacíos, legacy, responsive y errores de backend.
-

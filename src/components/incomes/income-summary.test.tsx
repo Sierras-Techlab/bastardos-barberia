@@ -22,10 +22,13 @@ const data: IncomeFormData = {
 };
 
 const values: IncomeFormValues = {
+  employeeId: "employee-1",
   customerId: "customer-1",
   serviceId: "service-1",
   products: [{ productId: "product-1", quantity: 2 }],
-  paymentMethod: "transfer",
+  paymentMode: "transfer",
+  payments: [{ method: "transfer", amount: 36000 }],
+  grantFullServiceCommission: false,
 };
 
 it("shows the itemized sale and its hand-calculated total", () => {

@@ -10,7 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { customerClient as defaultCustomerClient, type CustomerClient } from "@/lib/customers/client";
 import { calculateCustomerMetrics, filterCustomers, sortCustomers } from "@/lib/customers/customer-catalog";
-import type { Customer, CustomerCatalogData, CustomerEditorInput, CustomerSort } from "@/types/customer";
+import type { FrontendCustomerEditorInput } from "@/lib/customers/frontend-customer-contracts";
+import type { Customer, CustomerCatalogData, CustomerSort } from "@/types/customer";
 
 type Props = { data: CustomerCatalogData; canDelete: boolean; customerClient?: CustomerClient };
 const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(value));
@@ -22,9 +23,12 @@ export const CustomersView = ({ data, canDelete, customerClient = defaultCustome
   const [deleting, setDeleting] = useState<Customer | null>(null);
   const displayed = useMemo(() => sortCustomers(filterCustomers(customers, query), sort), [customers, query, sort]);
   const metrics = useMemo(() => calculateCustomerMetrics(customers), [customers]);
-  const save = async (input: CustomerEditorInput) => {
+  const save = async (input: FrontendCustomerEditorInput) => {
+    const updateInput = editor?.customer?.fixedSchedule || input.fixedSchedule
+      ? input
+      : { firstName: input.firstName, lastName: input.lastName, phone: input.phone, email: input.email };
     const saved = editor?.mode === "edit" && editor.customer
-      ? await customerClient.update(editor.customer.id, input)
+      ? await customerClient.update(editor.customer.id, updateInput)
       : await customerClient.create(input);
     setCustomers((current) => editor?.mode === "edit"
       ? current.map((customer) => customer.id === saved.id ? saved : customer)

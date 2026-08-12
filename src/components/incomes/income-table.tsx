@@ -18,15 +18,11 @@ import {
   formatIncomeDateTime,
 } from "@/lib/incomes/income-list";
 import type { IncomeListItem } from "@/types/income";
+import { getIncomeCommissionState, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
 
 type IncomeTableProps = {
   incomes: IncomeListItem[];
   onSelect: (income: IncomeListItem) => void;
-};
-
-const paymentLabels = {
-  cash: "Efectivo",
-  transfer: "Transferencia",
 };
 
 const features = tableFeatures({
@@ -85,7 +81,12 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
         columnHelper.display({
         id: "paymentMethod",
         header: "Pago",
-        cell: ({ row }) => paymentLabels[row.original.paymentMethod],
+        cell: ({ row }) => getIncomePaymentLabel(row.original),
+        }),
+        columnHelper.display({
+        id: "commission",
+        header: () => <span className="block text-right">Comisión</span>,
+        cell: ({ row }) => { const state = getIncomeCommissionState(row.original); return <span className="block whitespace-nowrap text-right text-xs text-muted-foreground">{state.available ? formatArs(state.amount) : "Pendiente de backend"}</span>; },
         }),
         columnHelper.display({
         id: "total",

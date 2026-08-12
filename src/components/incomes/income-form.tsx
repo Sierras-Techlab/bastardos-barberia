@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, UserRound } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
@@ -22,11 +22,9 @@ import {
   formatArs,
 } from "@/lib/incomes/income-calculations";
 import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
-import type {
-  CreateIncomeInput,
-  Income,
-  IncomeFormData,
-} from "@/types/income";
+import type { Income, IncomeFormData } from "@/types/income";
+import type { CreateIncomeV2Input } from "@/types/income-commissions";
+import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
 import { IncomeSummary } from "./income-summary";
@@ -34,10 +32,12 @@ import { IncomeSuccessState } from "./income-success-state";
 import { PaymentMethodSelector } from "./payment-method-selector";
 import { ProductSelector } from "./product-selector";
 import { ServiceSelector } from "./service-selector";
+import { EmployeeSelector } from "./employee-selector";
+import { CommissionPreview } from "./commission-preview";
 
 type IncomeFormProps = {
   data: IncomeFormData;
-  incomeClient?: Pick<IncomeClient, "create">;
+  incomeClient?: Pick<IncomeClient, "createV2">;
 };
 
 const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
@@ -62,9 +62,12 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     resolver: zodResolver(incomeFormSchema),
     defaultValues: {
       customerId: null,
+      employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      paymentMethod: null,
+      paymentMode: null,
+      payments: [],
+      grantFullServiceCommission: false,
     },
   });
   const values = useWatch({ control: form.control }) as IncomeFormValues;
@@ -72,31 +75,39 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
 
   const handleReview = (validValues: IncomeFormValues) => {
     setSubmitError(null);
+    const total = calculateIncomeTotal(validValues, data.services, data.products);
+    const balance = calculatePaymentBalance(total, validValues.payments);
+    if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => payment.amount <= 0)) {
+      form.setError("paymentMode", { message: "Distribuí el importe total entre medios de pago válidos." });
+      return;
+    }
     setReviewValues(validValues);
   };
 
   const handleConfirm = async () => {
     if (
       !reviewValues ||
-      !reviewValues.paymentMethod ||
+      !reviewValues.paymentMode ||
       submittingRef.current
     ) {
       return;
     }
 
-    const input: CreateIncomeInput = {
+    const input: CreateIncomeV2Input = {
       requestId: requestIdRef.current,
+      employeeId: reviewValues.employeeId,
       customerId: reviewValues.customerId,
       serviceId: reviewValues.serviceId,
       products: reviewValues.products,
-      paymentMethod: reviewValues.paymentMethod,
+      payments: reviewValues.payments.filter((payment) => payment.amount > 0),
+      grantFullServiceCommission: reviewValues.grantFullServiceCommission,
     };
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      const income = await incomeClient.create(input);
+      const income = await incomeClient.createV2(input);
       setCreatedIncome(income);
       setReviewValues(null);
       requestIdRef.current = crypto.randomUUID();
@@ -116,9 +127,12 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const handleReset = () => {
     form.reset({
       customerId: null,
+      employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      paymentMethod: null,
+      paymentMode: null,
+      payments: [],
+      grantFullServiceCommission: false,
     });
     setCreatedIncome(null);
     setSubmitError(null);
@@ -152,10 +166,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
               >
                 Empleado responsable
               </label>
-              <div id="employeeId" className="flex h-11 items-center gap-2 rounded-xl bg-[#f6f5f2] px-3 text-sm">
-                <UserRound className="size-4 text-primary" />
-                {data.currentUser.firstName} {data.currentUser.lastName}
-              </div>
+              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); }} error={fieldState.error?.message} />} />
             </div>
 
             <div className="space-y-2">
@@ -245,11 +256,13 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           <CardContent>
             <Controller
               control={form.control}
-              name="paymentMethod"
+              name="paymentMode"
               render={({ field, fieldState }) => (
                 <PaymentMethodSelector
-                  value={field.value}
-                  onChange={field.onChange}
+                  mode={field.value}
+                  payments={values.payments}
+                  total={calculateIncomeTotal(values, data.services, data.products)}
+                  onChange={(mode, payments) => { field.onChange(mode); form.setValue("payments", payments, { shouldValidate: true }); }}
                   error={fieldState.error?.message}
                 />
               )}
@@ -260,6 +273,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
 
       <aside className="space-y-3 xl:sticky xl:top-20">
         <IncomeSummary values={values} data={liveData} />
+        <CommissionPreview values={values} data={liveData} onGrantFullServiceCommission={(checked) => form.setValue("grantFullServiceCommission", checked)} />
         {submitError && (
           <p
             role="alert"

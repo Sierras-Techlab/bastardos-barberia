@@ -1,10 +1,10 @@
 # Context snapshot
 
-Captured: 2026-08-11
+Captured: 2026-08-12
 
 ## Repository state
 
-- Current branch: `feat/backend-models` in the main worktree.
+- Current branch: `feat/27-income-commissions` in the main worktree.
 - Local branches: 9.
 - Remote tracking references: 10, including the `origin/HEAD` alias.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
@@ -26,7 +26,8 @@ Captured: 2026-08-11
 - Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
 - Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
 - Income history and dashboard home provide matching centered loading states inside the persistent shell.
-- Dashboard recent activity reads the latest persisted income and customer on the server. Income visibility remains global for owner/admin and self-only for employees; expense activity stays demonstrative until that domain exists.
+- Dashboard home is simplified to a real seven-day income summary, six quick actions and weekly fixed-customer occurrences. Income visibility remains global for owner/admin and self-only for employees; fixed occurrences remain an isolated frontend fixture until their backend contract is implemented.
+- Dashboard surfaces now use stable standard radii, explicit light/dark borders and a twelve-column desktop grid with 20 px gaps. Browser verification covered 1280 px desktop, 1024 px tablet and 390 px mobile without horizontal overflow.
 - `/products` is an authenticated, responsive persistent catalog with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
 - Owner/admin product creation, profile edits, activation changes and stock entries/exits pass through manager-only Route Handlers and server services. Employees receive active products only from the server boundary and have no management controls.
 - Product stock changes use database row locking, reject negative results and append an actor-linked inventory movement in the same transaction. Product creation stores creator/updater audit IDs and an optional initial-stock movement.
@@ -48,13 +49,18 @@ Captured: 2026-08-11
 - The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models` and installed in the configured Supabase project.
 - The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
 - Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
-- The complete commercial milestone passes 97 test files / 307 tests, ESLint without warnings, the Next.js production build and `git diff --check`. Dashboard activity and product-availability verification ran on local Node 24.17/npm 11.13 although the repository target remains Node 24.18/npm 11.16.
+- The current frontend milestone passes 112 test files / 359 tests, ESLint without warnings, the Next.js 16.3 webpack production build and `git diff --check` on the repository target Node/npm toolchain.
 
 ## Database integration state
 
 The configured Supabase project has scripts `001` through `009` installed. Runtime use confirmed product, service and customer creation, while a read-only database check confirmed the persisted income and the `get_income_detail` response from `009_sales_domain.sql`. SQL installation remains manual for other environments, which must run all nine ordered scripts documented in `supabase/queries/README.md`.
 
 ## Known boundaries
+
+- Frontend V2 now prepares responsible-employee selection, split payments and accrued commission previews. Backend/SQL support is intentionally pending and documented in `docs/backend-handoffs/2026-08-12-income-commissions-and-split-payments.md`.
+- `/incomes` now has role-aware dual presentations: employees have personal gross/commission/count/average metrics with no employee filter or barbershop net; owner/admin users can view all or filter one employee and receive gross/commission/net/count metrics. Desktop rows, mobile cards and detail surfaces support split payments and commission snapshots with explicit legacy fallbacks.
+- Commission controls sent by user administration and the V2 income payload are not accepted by the current backend yet; no SQL was executed from this branch.
+- Customer create/edit now prepares one optional ISO-weekday and local-time fixed schedule. The dashboard can mark mock occurrences as attended/missed in local state, while persistence, generation, auditing and `/customers/fixed` remain pending in the same backend handoff.
 
 - Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
 - Product deletion and purchase cost remain outside the persistent catalog.
@@ -63,7 +69,7 @@ The configured Supabase project has scripts `001` through `009` installed. Runti
 
 ## Recommended next task
 
-Design the daily cash view from the deployed `created_at`, `business_date`, payment method and active/voided sales data.
+Implement and review the backend handoff for responsible employees, split payments, immutable commission snapshots and weekly fixed-customer occurrences, then reconnect the prepared frontend V2.
 
 ## Context maintenance rule
 
