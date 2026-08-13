@@ -4,77 +4,51 @@ Captured: 2026-08-13
 
 ## Repository state
 
-- Current planning branch: `codex/commercial-operations-v2` in `.worktrees/commercial-operations-v2`, based on integrated `origin/dev` commit `05b479f`.
-- The primary checkout remains unchanged on `feat/backend-models`.
-- Local branches: 4.
-- Remote tracking references: 6.
-- User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
+- Active isolated branch: `codex/commercial-operations-v2` in `.worktrees/commercial-operations-v2`, based on integrated `origin/dev` commit `05b479f`.
+- The primary checkout remains untouched on `feat/backend-models`.
+- Commercial operations V2 is implemented locally through migrations `010` and `011`; neither migration was applied to the configured Supabase project.
+- User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 
-## Current implementation
+## Delivered behavior
 
-- Supabase SQL installation source is in `supabase/queries/001` through `009`.
-- Tables defined by the ordered scripts: `roles`, `users`, `sessions`, `products`, `inventory_movements`, `services`, `customers`, `incomes`, `income_items`.
-- Fixed roles: owner, admin, employee.
-- Database trigger generates normalized, collision-safe usernames.
-- RLS and grants block browser roles and permit the server secret role.
-- Local auth uses Argon2id, generic credential errors, five-attempt lockout and 12-hour opaque sessions.
-- Failed-login counters and the final-active-owner rule are atomic database operations, so concurrent requests cannot bypass them.
-- Auth endpoints and manager-only user/role endpoints are implemented.
-- Logical user deletion stores `deleted_at`/`deleted_by`, excludes deleted accounts from normal reads and atomically revokes their sessions.
-- `/users` is a responsive owner/admin-only workspace with search, role/status filters, pagination, create, profile edit, password replacement, activate/deactivate and delete flows.
-- The sidebar exposes an active Usuarios link only to owner/admin users.
-- A URL-transparent `(dashboard)` route group supplies one persistent authenticated sidebar to `/`, `/incomes`, `/incomes/new` and `/users`.
-- Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
-- Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
-- Income history and dashboard home provide matching centered loading states inside the persistent shell.
-- Dashboard home is simplified to a real seven-day income summary, six quick actions and weekly fixed-customer occurrences. Income visibility remains global for owner/admin and self-only for employees; fixed occurrences remain an isolated frontend fixture until their backend contract is implemented.
-- Dashboard surfaces now use stable standard radii, explicit light/dark borders and a twelve-column desktop grid with 20 px gaps. Browser verification covered 1280 px desktop, 1024 px tablet and 390 px mobile without horizontal overflow.
-- `/products` is an authenticated, responsive persistent catalog with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
-- Owner/admin product creation, profile edits, activation changes and stock entries/exits pass through manager-only Route Handlers and server services. Employees receive active products only from the server boundary and have no management controls.
-- Product stock changes use database row locking, reject negative results and append an actor-linked inventory movement in the same transaction. Product creation stores creator/updater audit IDs and an optional initial-stock movement.
-- The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers, Services and income voiding use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
-- Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
-- Inactive products retain their exact stock for inventory work but show `No disponible` in manager desktop and mobile catalogs; quantity-only stock filters and metrics remain unchanged.
-- `/customers` is persistent and responsive. Phone is the required normalized unique identity, exact names may repeat, email is optional/unique when supplied, all authenticated roles can create/edit, and owner/admin alone can logically delete. Missing email produces no `mailto:` action.
-- The reusable async customer editor is also available from `/incomes/new`; a newly created customer is appended and selected without leaving the sale draft.
-- `/services` is a persistent role-aware visual catalog. Owner/admin create, edit, activate/deactivate and logically delete; employees receive active services only. All writes carry authenticated audit users.
-- `/incomes/new` loads real active products/services and customers after session authorization, fixes the registering user to the authenticated account, sends no actor/total/date overrides, and uses stable UUID request IDs for idempotent retries.
-- Income creation is one PostgreSQL transaction: authoritative catalog snapshots and totals, deterministic product locks, stock deductions, sale-linked inventory movements and customer visit increments either all commit or all roll back.
-- `/incomes` uses server-side role scoping, Buenos Aires monthly date defaults, filters, metrics and pagination. Owner/admin can inspect all registering users and confirm a void; employees can only receive their own sales and have no void control.
-- Voiding is idempotent and manager-only. It marks rather than edits/deletes the sale, restores product stock, records reversal movements and decrements the associated customer visit exactly once.
-- `incomes.created_at` comes from the database clock and `business_date` is derived/indexed in `America/Argentina/Buenos_Aires` for the next daily-cash increment.
-- Income response validation accepts PostgreSQL `timestamptz` values with explicit UTC offsets. A runtime failure exposed this boundary after the transaction committed; the persisted sale remained intact and a regression test now covers the database's exact timestamp representation.
-- The login form calls the real API and the sidebar exposes logout.
-- A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, authentication/session/user lifecycle, server authorization, persistent commercial repositories/services/APIs, async catalog/customer UI, idempotent sale submission, role-scoped history and manager voiding.
-- The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models` and installed in the configured Supabase project.
-- The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
-- Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
-- The current frontend milestone passes 112 test files / 359 tests, ESLint without warnings, the Next.js 16.3 webpack production build and `git diff --check` on the repository target Node/npm toolchain.
-- The commercial operations V2 backend design was approved on 2026-08-13 and is documented at `docs/superpowers/specs/2026-08-13-commercial-operations-v2-backend-design.md`.
-- Execution is intentionally split into `docs/superpowers/plans/2026-08-13-income-attribution-commissions-split-payments.md` followed by `docs/superpowers/plans/2026-08-13-customer-visits-fixed-schedules.md`; the split keeps migrations `010` and `011` independently reviewable.
-- The isolated `origin/dev` baseline passes 112 test files / 359 tests on local Node 24.17/npm 11.13; final implementation verification still targets Node 24.18/npm 11.16.
+- User administration persists integer service/product commission rates from 0 through 100, initially zero.
+- `/incomes/new` enforces role-aware responsible employees: employees are forced to themselves; owner/admin may choose any active user.
+- A sale accepts one or two distinct positive cash/transfer allocations whose exact sum is validated against server-authoritative prices and total.
+- PostgreSQL snapshots service/product commission bases, configured rates, independently rounded amounts, total commission, barbershop net and the optional manager-authorized 100% service exception.
+- Income creation remains idempotent and atomic with catalog snapshots, stock, inventory movements, payments and customer visits. Semantic request conflicts are rejected.
+- `/incomes` scopes employees by responsible `employee_id`; owner/admin can view and filter all responsible users. V2 metrics expose gross, commission, net, count, average and exact payment totals while excluding voids.
+- Income detail shows responsible employee, registering actor for managers, split payments, commission bases/rates/amounts, net and 100% authorizer. The confirmation flow shows the complete estimated sale before submission.
+- `/customers` persists one optional ISO-weekday/local-time habitual schedule in the same transaction as customer create/update.
+- Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Changes preserve past/current and resolved history while removing only future pending rows from superseded schedules.
+- The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. The response intentionally excludes prices, totals, payments, commissions and user identities.
+- Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
+- The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
 
-## Database integration state
+## SQL and deployment state
 
-The configured Supabase project has scripts `001` through `009` installed. Runtime use confirmed product, service and customer creation, while a read-only database check confirmed the persisted income and the `get_income_detail` response from `009_sales_domain.sql`. SQL installation remains manual for other environments, which must run all nine ordered scripts documented in `supabase/queries/README.md`.
+- `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation, normalized payments, immutable commission snapshots and V2 create/read/list functions.
+- `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains weekly schedules, occurrence generation/resolution, transactional customer V2 functions and sanitized visit projection.
+- `supabase/queries/README.md` documents ordered installation `001` through `011` and transaction-wrapped post-install acceptance checks.
+- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` then `011` manually and run the documented checks before considering these features live.
+
+## Verification
+
+- Full suite: 118 test files / 400 tests passed.
+- ESLint passed with no warnings.
+- Next.js 16.3 production build passed, including all new API routes.
+- TypeScript and `git diff --check` passed.
+- Local runtime was Node 24.17/npm 11.13; repository target remains Node 24.18/npm 11.16.
 
 ## Known boundaries
 
-- Frontend V2 now prepares responsible-employee selection, split payments and accrued commission previews. Backend/SQL support is intentionally pending and documented in `docs/backend-handoffs/2026-08-12-income-commissions-and-split-payments.md`.
-- `/incomes` now has role-aware dual presentations: employees have personal gross/commission/count/average metrics with no employee filter or barbershop net; owner/admin users can view all or filter one employee and receive gross/commission/net/count metrics. Desktop rows, mobile cards and detail surfaces support split payments and commission snapshots with explicit legacy fallbacks.
-- Commission controls sent by user administration and the V2 income payload are not accepted by the current backend yet; no SQL was executed from this branch.
-- Customer create/edit now prepares one optional ISO-weekday and local-time fixed schedule. The dashboard can mark mock occurrences as attended/missed in local state, while persistence, generation, auditing and `/customers/fixed` remain pending in the same backend handoff.
-
-- Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
-- Product deletion and purchase cost remain outside the persistent catalog.
-- Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
-- Physical deletion, sale editing, customer-history screens, expenses, daily cash/register closure and reporting remain outside this milestone.
+- SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010`/`011` still require manual PostgreSQL execution and verification.
+- Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
+- A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 
 ## Recommended next task
 
-Execute `docs/superpowers/plans/2026-08-13-income-attribution-commissions-split-payments.md` from Task 1 through Task 7, without applying migration `010` to shared Supabase until it receives separate deployment authorization.
+Review and manually execute migrations `010` and `011` in order, run every corresponding README verification query, then perform live owner/admin/employee smoke tests before integrating the branch.
 
 ## Context maintenance rule
 
-Update this file after every completed task with the active branch, branch counts, delivered behavior, unresolved external actions, known boundaries and the single best next task. Update `product.md` whenever scope, module status or product objectives change; update `AGENTS.md` only when durable architecture or workflow changes.
+Update this file after every completed task with the active branch, delivered behavior, unresolved external actions, known boundaries and the single best next task. Update `product.md` whenever scope, module status or objectives change; update `AGENTS.md` only when durable architecture or workflow changes.
