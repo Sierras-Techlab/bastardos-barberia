@@ -36,8 +36,6 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
     client.listVisits(customer.id, { page, pageSize }, controller.signal)
       .then((result) => setData(result))
       .catch((caught: unknown) => {
@@ -51,6 +49,17 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
     return () => controller.abort();
   }, [client, customer.id, page, retry]);
 
+  const changePage = (nextPage: number) => {
+    setLoading(true);
+    setError(null);
+    setPage(nextPage);
+  };
+  const retryLoad = () => {
+    setLoading(true);
+    setError(null);
+    setRetry((value) => value + 1);
+  };
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] sm:max-w-xl">
@@ -63,7 +72,7 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
         {!loading && error && (
           <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
             <p>{error}</p>
-            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setRetry((value) => value + 1)}>Reintentar</Button>
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={retryLoad}>Reintentar</Button>
           </div>
         )}
         {!loading && !error && data?.items.length === 0 && (
@@ -95,8 +104,8 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
             {data ? `Página ${data.pagination.page} de ${Math.max(data.pagination.totalPages, 1)}` : ""}
           </p>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}>Anterior</Button>
-            <Button type="button" variant="outline" disabled={loading || !data || page >= data.pagination.totalPages} onClick={() => setPage((value) => value + 1)}>Siguiente</Button>
+            <Button type="button" variant="outline" disabled={loading || page <= 1} onClick={() => changePage(page - 1)}>Anterior</Button>
+            <Button type="button" variant="outline" disabled={loading || !data || page >= data.pagination.totalPages} onClick={() => changePage(page + 1)}>Siguiente</Button>
           </div>
         </DialogFooter>
       </DialogContent>
