@@ -12,6 +12,8 @@ export type NewUserRecord = {
   lastName: string;
   passwordHash: string;
   roleId: 1 | 2 | 3;
+  serviceCommissionRate: number;
+  productCommissionRate: number;
   createdBy: string | null;
 };
 
@@ -20,6 +22,8 @@ export type UserRecordChanges = Partial<{
   lastName: string;
   roleId: 1 | 2 | 3;
   isActive: boolean;
+  serviceCommissionRate: number;
+  productCommissionRate: number;
   passwordHash: string;
   passwordChangedAt: string;
   failedLoginAttempts: number;

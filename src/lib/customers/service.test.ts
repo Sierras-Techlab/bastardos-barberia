@@ -6,7 +6,7 @@ import { createCustomerSchema, customerIdSchema, updateCustomerSchema } from "@/
 import { createCustomer, deleteCustomer, getLatestCustomer, listCustomers, updateCustomer } from "@/lib/customers/service";
 import type { Customer } from "@/types/customer";
 
-const owner: SafeUser = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García", username: "ana.garcia", role: { id: 1, name: "owner" }, isActive: true, lastLoginAt: null, createdAt: "2026-08-07T00:00:00.000Z", updatedAt: "2026-08-07T00:00:00.000Z" };
+const owner: SafeUser = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García", username: "ana.garcia", role: { id: 1, name: "owner" }, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0, lastLoginAt: null, createdAt: "2026-08-07T00:00:00.000Z", updatedAt: "2026-08-07T00:00:00.000Z" };
 const employee: SafeUser = { ...owner, id: "00000000-0000-4000-8000-000000000003", username: "fer.perez", role: { id: 3, name: "employee" } };
 const customer: Customer = { id: "10000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez", phone: "+54 351 555 0101", email: null, visits: 0, createdAt: "2026-08-11T10:00:00.000Z" };
 const deps = (): CustomerServiceDependencies => ({

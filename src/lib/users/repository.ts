@@ -6,11 +6,11 @@ import type { UserWithRoleRow } from "@/lib/supabase/database.types";
 
 export type SafeUserRow = Pick<
   UserWithRoleRow,
-  "id" | "first_name" | "last_name" | "username" | "is_active" | "last_login_at" | "created_at" | "updated_at" | "role"
+  "id" | "first_name" | "last_name" | "username" | "is_active" | "service_commission_rate" | "product_commission_rate" | "last_login_at" | "created_at" | "updated_at" | "role"
 >;
 
-const SAFE_USER_SELECT = "id,first_name,last_name,username,is_active,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
-const CREDENTIAL_USER_SELECT = "id,first_name,last_name,username,password_hash,is_active,failed_login_attempts,locked_until,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
+const SAFE_USER_SELECT = "id,first_name,last_name,username,is_active,service_commission_rate,product_commission_rate,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
+const CREDENTIAL_USER_SELECT = "id,first_name,last_name,username,password_hash,is_active,service_commission_rate,product_commission_rate,failed_login_attempts,locked_until,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
 
 const databaseFailure = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
@@ -46,6 +46,8 @@ export const toSafeUser = (row: SafeUserRow): SafeUser => ({
   username: row.username,
   role: row.role,
   isActive: row.is_active,
+  serviceCommissionRate: row.service_commission_rate,
+  productCommissionRate: row.product_commission_rate,
   lastLoginAt: row.last_login_at,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -117,7 +119,7 @@ export const userRepository: UserRepository = {
   async create(input: NewUserRecord) {
     const { data, error } = await getSupabaseAdmin()
       .from("users")
-      .insert({ first_name: input.firstName, last_name: input.lastName, password_hash: input.passwordHash, role_id: input.roleId, created_by: input.createdBy })
+      .insert({ first_name: input.firstName, last_name: input.lastName, password_hash: input.passwordHash, role_id: input.roleId, service_commission_rate: input.serviceCommissionRate, product_commission_rate: input.productCommissionRate, created_by: input.createdBy })
       .select(SAFE_USER_SELECT)
       .single();
     if (error) userMutationFailure("create user", error);
@@ -128,7 +130,9 @@ export const userRepository: UserRepository = {
     const hasProfileChanges = changes.firstName !== undefined
       || changes.lastName !== undefined
       || changes.roleId !== undefined
-      || changes.isActive !== undefined;
+      || changes.isActive !== undefined
+      || changes.serviceCommissionRate !== undefined
+      || changes.productCommissionRate !== undefined;
     const hasCredentialChanges = changes.passwordHash !== undefined
       || changes.passwordChangedAt !== undefined
       || changes.failedLoginAttempts !== undefined
@@ -139,7 +143,7 @@ export const userRepository: UserRepository = {
     }
 
     if (hasProfileChanges) {
-      const { error } = await getSupabaseAdmin().rpc("update_user_profile", {
+      const { error } = await getSupabaseAdmin().rpc("update_user_profile_v2", {
         target_user_id: id,
         set_first_name: changes.firstName !== undefined,
         new_first_name: changes.firstName ?? null,
@@ -149,6 +153,10 @@ export const userRepository: UserRepository = {
         new_role_id: changes.roleId ?? null,
         set_is_active: changes.isActive !== undefined,
         new_is_active: changes.isActive ?? null,
+        set_service_commission_rate: changes.serviceCommissionRate !== undefined,
+        new_service_commission_rate: changes.serviceCommissionRate ?? null,
+        set_product_commission_rate: changes.productCommissionRate !== undefined,
+        new_product_commission_rate: changes.productCommissionRate ?? null,
       });
       if (error) userMutationFailure("update user profile", error);
       return findSafeUserById(id);

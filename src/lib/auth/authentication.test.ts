@@ -11,6 +11,8 @@ const user: CredentialUser = {
   username: "juan.perez",
   role: { id: 1, name: "owner" },
   isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
   passwordHash: "$argon2id$v=19$hash",
   failedLoginAttempts: 0,
   lockedUntil: null,

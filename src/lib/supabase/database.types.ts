@@ -10,6 +10,8 @@ export type UserRow = {
   password_hash: string;
   role_id: 1 | 2 | 3;
   is_active: boolean;
+  service_commission_rate: number;
+  product_commission_rate: number;
   failed_login_attempts: number;
   locked_until: string | null;
   last_login_at: string | null;

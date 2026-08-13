@@ -26,6 +26,8 @@ const owner: SafeUser = {
   username: "ana.garcia",
   role: { id: 1, name: "owner" },
   isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
   lastLoginAt: null,
   createdAt: "2026-08-07T00:00:00.000Z",
   updatedAt: "2026-08-07T00:00:00.000Z",

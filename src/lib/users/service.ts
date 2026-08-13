@@ -45,6 +45,8 @@ export const createUser = async (actor: SafeUser, input: CreateUserInput, depend
     lastName: input.lastName,
     passwordHash,
     roleId: input.roleId,
+    serviceCommissionRate: input.serviceCommissionRate,
+    productCommissionRate: input.productCommissionRate,
     createdBy: actor.id,
   });
 };

@@ -19,6 +19,8 @@ const user: SafeUser = {
   username: "lucia.ferreyra",
   role: { id: 3, name: "employee" },
   isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
   lastLoginAt: null,
   createdAt: "2026-08-08T12:00:00.000Z",
   updatedAt: "2026-08-08T12:00:00.000Z",
