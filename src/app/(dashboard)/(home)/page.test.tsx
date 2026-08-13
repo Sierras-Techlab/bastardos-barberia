@@ -4,14 +4,14 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 
-const { getLatestCustomer, listIncomes, requirePageUser } = vi.hoisted(() => ({
-  getLatestCustomer: vi.fn(),
+const { listFixedOccurrences, listIncomes, requirePageUser } = vi.hoisted(() => ({
+  listFixedOccurrences: vi.fn(),
   listIncomes: vi.fn(),
   requirePageUser: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
-vi.mock("@/lib/customers/service", () => ({ getLatestCustomer }));
+vi.mock("@/lib/fixed-customers/service", () => ({ listFixedOccurrences }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
 
 import Home from "./page";
@@ -50,7 +50,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   requirePageUser.mockResolvedValue({ user });
   listIncomes.mockResolvedValue(incomePage);
-  getLatestCustomer.mockResolvedValue(null);
+  listFixedOccurrences.mockResolvedValue([]);
 });
 
 it("revalidates the session and requests only the role-scoped seven-day income window", async () => {
@@ -63,6 +63,9 @@ it("revalidates the session and requests only the role-scoped seven-day income w
     page: 1,
     pageSize: 100,
   });
+  expect(listFixedOccurrences).toHaveBeenCalledWith(user, expect.objectContaining({
+    dateFrom: currentRange.dateTo,
+  }));
 });
 
 it("renders only the three approved dashboard blocks", async () => {
@@ -73,6 +76,7 @@ it("renders only the three approved dashboard blocks", async () => {
   expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("md:grid-cols-2", "xl:grid-cols-1");
   expect(screen.queryByText("Servicios destacados")).not.toBeInTheDocument();
   expect(screen.queryByText("Actividad reciente")).not.toBeInTheDocument();
+  expect(screen.queryByText(/demostraciÃ³n/i)).not.toBeInTheDocument();
 });
 
 it("uses a spaced twelve-column desktop layout with constrained children", async () => {

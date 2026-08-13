@@ -25,7 +25,7 @@ it("sorts fixed occurrences and renders their current states", () => {
   expect(within(rows[0]).getByRole("button", { name: "Marcar asistencia de Juan Cruz" })).toHaveTextContent("Asistió");
   expect(within(rows[1]).getByText("No asistió")).toBeVisible();
   expect(within(rows[2]).getByText("Asistió")).toBeVisible();
-  expect(screen.getByRole("link", { name: "Ver todos los clientes fijos" })).toHaveAttribute("href", "/customers/fixed");
+  expect(screen.getByRole("link", { name: "Gestionar clientes fijos" })).toHaveAttribute("href", "/customers");
 });
 
 it("changes only the selected pending occurrence", async () => {
@@ -34,6 +34,7 @@ it("changes only the selected pending occurrence", async () => {
   render(<FixedCustomersCard occurrences={occurrences} dateFrom="2026-08-13" onStatusChange={onStatusChange} />);
   await user.click(screen.getByRole("button", { name: "Marcar asistencia de Juan Cruz" }));
   expect(onStatusChange).toHaveBeenCalledWith("occ-1", "attended");
+  await screen.findByText("Juan Cruz");
   expect(screen.queryByRole("button", { name: "Marcar asistencia de Juan Cruz" })).not.toBeInTheDocument();
   expect(screen.getByText("Juan Cruz").closest("li")).toHaveTextContent("Asistió");
   expect(screen.getByText("Pedro Castañeda").closest("li")).toHaveTextContent("No asistió");
