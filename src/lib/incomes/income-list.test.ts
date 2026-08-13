@@ -147,6 +147,25 @@ describe("income list domain", () => {
     ).toEqual([productsOnly]);
   });
 
+  it("filters and totals split payments by their actual allocations", () => {
+    const split: IncomeListItem = {
+      ...combined,
+      payments: [
+        { method: "cash", amount: 20000 },
+        { method: "transfer", amount: 29000 },
+      ],
+    };
+
+    expect(filterIncomeItems([split], {
+      ...emptyFilters,
+      paymentMethod: "transfer",
+    })).toEqual([split]);
+    expect(calculateIncomeMetrics([split])).toMatchObject({
+      cashTotal: 20000,
+      transferTotal: 29000,
+    });
+  });
+
   it("sorts newest first without mutating the source", () => {
     const source = [combined, serviceOnly, productsOnly];
 
@@ -172,6 +191,7 @@ describe("income list domain", () => {
 
     expect(calculateIncomeMetrics([serviceOnly, productsOnly, voided])).toEqual({
       total: 35800,
+      grossTotal: 35800,
       count: 2,
       average: 17900,
       cashTotal: 16000,
@@ -179,6 +199,7 @@ describe("income list domain", () => {
     });
     expect(calculateIncomeMetrics([voided])).toEqual({
       total: 0,
+      grossTotal: 0,
       count: 0,
       average: 0,
       cashTotal: 0,

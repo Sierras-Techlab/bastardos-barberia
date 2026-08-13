@@ -66,3 +66,30 @@ it("hides manager-only net and registrator from employees", () => {
   expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
   expect(screen.getByText("Pendiente de backend")).toBeVisible();
 });
+
+it("shows commission bases and the manager who authorized a full service", () => {
+  const income = {
+    ...data.incomes[0],
+    registeredBy: { id: "manager", firstName: "Ana", lastName: "Admin" },
+    payments: [{ method: "cash" as const, amount: 49000 }],
+    commission: {
+      serviceBase: 19000,
+      productBase: 30000,
+      serviceRate: 100,
+      productRate: 10,
+      serviceAmount: 19000,
+      productAmount: 3000,
+      total: 22000,
+      barbershopNet: 27000,
+      fullServiceCommission: true,
+      authorizedBy: { id: "manager", firstName: "Ana", lastName: "Admin" },
+    },
+  };
+
+  render(<IncomeDetailSheet income={income} open viewerRole="owner" onOpenChange={vi.fn()} />);
+
+  expect(screen.getByText("Base servicios")).toBeVisible();
+  expect(screen.getByText("Base productos")).toBeVisible();
+  expect(screen.getByText("Autorizado por")).toBeVisible();
+  expect(screen.getAllByText("Ana Admin")).toHaveLength(2);
+});

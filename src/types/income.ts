@@ -23,13 +23,13 @@ export type IncomeKind = "service" | "products" | "combined";
 export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number };
 export type IncomeListItem = {
   id: string; createdAt: string; businessDate: string; employee: Employee; customer: Employee | null;
-  service: Service | null; products: IncomeListProduct[]; paymentMethod: PaymentMethod; payments?: import("@/types/income-commissions").IncomePayment[]; registeredBy?: Employee; commission?: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; status: IncomeStatus;
+  service: Service | null; products: IncomeListProduct[]; paymentMethod: PaymentMethod; payments?: IncomePayment[]; registeredBy?: Employee; commission?: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; status: IncomeStatus;
 };
 export type Income = IncomeListItem;
 export type IncomeService = { create(input: CreateIncomeInput): Promise<Income> };
 export type IncomeListFilters = { query: string; dateFrom: string; dateTo: string; employeeId: string; paymentMethod: PaymentMethod | "all"; kind: IncomeKind | "all"; status?: IncomeStatus | "all" };
 export type IncomeListQuery = { query?: string; dateFrom?: string; dateTo?: string; userId?: string; paymentMethod?: PaymentMethod; kind?: IncomeKind; status?: IncomeStatus; page: number; pageSize: number };
-export type IncomeListMetrics = { total: number; count: number; average: number; cashTotal: number; transferTotal: number; commissionTotal?: number; barbershopNet?: number };
+export type IncomeListMetrics = { grossTotal?: number; total?: number; commissionTotal?: number; barbershopNet?: number; count: number; average: number; cashTotal: number; transferTotal: number };
 export type IncomePagination = { page: number; pageSize: number; total: number; totalPages: number };
 export type PaginatedIncomes = { items: IncomeListItem[]; metrics: IncomeListMetrics; pagination: IncomePagination };
 export type IncomeListData = { currentUser: CurrentUser; employees: Employee[]; incomes: IncomeListItem[] };

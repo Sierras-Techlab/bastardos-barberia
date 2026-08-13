@@ -29,4 +29,5 @@ export type IncomeCommissionSnapshot = {
   total: number;
   barbershopNet: number;
   fullServiceCommission: boolean;
+  authorizedBy?: import("@/types/income").Employee | null;
 };

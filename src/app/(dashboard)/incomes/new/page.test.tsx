@@ -60,6 +60,32 @@ it("revalidates the session at the income form boundary", async () => {
   expect(requirePageUser).toHaveBeenCalledOnce();
 });
 
+it("forwards the persisted commission rates to the sale preview", async () => {
+  listUsers.mockResolvedValueOnce({
+    items: [{
+      id: "00000000-0000-4000-8000-000000000001",
+      firstName: "Owner",
+      lastName: "Bastardos",
+      username: "owner.bastardos",
+      role: { id: 1, name: "owner" },
+      isActive: true,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+      lastLoginAt: null,
+      createdAt: "2026-08-07T00:00:00.000Z",
+      updatedAt: "2026-08-07T00:00:00.000Z",
+    }],
+    page: 1,
+    pageSize: 100,
+    total: 1,
+    totalPages: 1,
+  });
+
+  render(await DashboardLayout({ children: await NewIncomePage() }));
+
+  expect(screen.getByText(/Servicio 45%.*Productos 12%/)).toBeVisible();
+});
+
 it("does not render the income form after session revocation", async () => {
   requirePageUser.mockRejectedValueOnce(new Error("revoked session"));
 

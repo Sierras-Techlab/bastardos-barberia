@@ -15,6 +15,9 @@ const normalize = (value: string) =>
 const productQuantity = (item: IncomeListItem) =>
   item.products.reduce((total, product) => total + product.quantity, 0);
 
+const incomePayments = (item: IncomeListItem) =>
+  item.payments ?? [{ method: item.paymentMethod, amount: item.total }];
+
 export const getIncomeKind = (item: IncomeListItem): IncomeKind => {
   if (item.service && item.products.length > 0) {
     return "combined";
@@ -96,7 +99,9 @@ export const filterIncomeItems = (
       createdAt <= to &&
       (!filters.employeeId || item.employee.id === filters.employeeId) &&
       (filters.paymentMethod === "all" ||
-        item.paymentMethod === filters.paymentMethod) &&
+        incomePayments(item).some(
+          (payment) => payment.method === filters.paymentMethod,
+        )) &&
       (filters.kind === "all" || getIncomeKind(item) === filters.kind)
     );
   });
@@ -113,16 +118,22 @@ export const calculateIncomeMetrics = (
 ): IncomeListMetrics => {
   const activeItems = items.filter((item) => item.status === "active");
   const total = activeItems.reduce((sum, item) => sum + item.total, 0);
-  const cashTotal = activeItems
-    .filter((item) => item.paymentMethod === "cash")
-    .reduce((sum, item) => sum + item.total, 0);
-  const transferTotal = total - cashTotal;
+  const paymentTotals = activeItems
+    .flatMap(incomePayments)
+    .reduce(
+      (totals, payment) => ({
+        ...totals,
+        [payment.method]: totals[payment.method] + payment.amount,
+      }),
+      { cash: 0, transfer: 0 },
+    );
 
   return {
     total,
+    grossTotal: total,
     count: activeItems.length,
     average: activeItems.length > 0 ? total / activeItems.length : 0,
-    cashTotal,
-    transferTotal,
+    cashTotal: paymentTotals.cash,
+    transferTotal: paymentTotals.transfer,
   };
 };
