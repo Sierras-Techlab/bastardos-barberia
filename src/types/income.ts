@@ -8,7 +8,16 @@ export type CurrentUser = Employee & { role: UserRole };
 export type IncomeFormEmployee = CurrentUser & { isActive: boolean; serviceCommissionRate: number; productCommissionRate: number };
 export type IncomeFormData = { currentUser: CurrentUser; customers: Customer[]; services: Service[]; products: Product[]; employees?: IncomeFormEmployee[] };
 export type IncomeProductInput = { productId: string; quantity: number };
-export type CreateIncomeInput = { requestId: string; customerId: string | null; serviceId: string | null; products: IncomeProductInput[]; paymentMethod: PaymentMethod };
+export type IncomePayment = { method: PaymentMethod; amount: number };
+export type CreateIncomeInput = {
+  requestId: string;
+  employeeId: string;
+  customerId: string | null;
+  serviceId: string | null;
+  products: IncomeProductInput[];
+  payments: IncomePayment[];
+  grantFullServiceCommission: boolean;
+};
 export type IncomeStatus = "active" | "voided";
 export type IncomeKind = "service" | "products" | "combined";
 export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number };

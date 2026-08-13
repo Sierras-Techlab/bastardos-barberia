@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { incomeFormSchema } from "./income-schema";
+import { createIncomeSchema, incomeFormSchema } from "./income-schema";
 
 const validBase = {
   employeeId: "00000000-0000-4000-8000-000000000001",
@@ -54,5 +54,48 @@ describe("incomeFormSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+const publicV2 = {
+  requestId: "00000000-0000-4000-8000-000000000010",
+  employeeId: "00000000-0000-4000-8000-000000000001",
+  customerId: null,
+  serviceId: "00000000-0000-4000-8000-000000000020",
+  products: [],
+  payments: [{ method: "cash" as const, amount: 16000 }],
+  grantFullServiceCommission: false,
+};
+
+describe("createIncomeSchema", () => {
+  it("accepts one or two distinct positive payment allocations", () => {
+    expect(createIncomeSchema.parse(publicV2)).toEqual(publicV2);
+    expect(createIncomeSchema.safeParse({
+      ...publicV2,
+      payments: [
+        { method: "cash", amount: 8000 },
+        { method: "transfer", amount: 8000 },
+      ],
+    }).success).toBe(true);
+  });
+
+  it("rejects duplicate payment methods", () => {
+    expect(createIncomeSchema.safeParse({
+      ...publicV2,
+      payments: [
+        { method: "cash", amount: 8000 },
+        { method: "cash", amount: 8000 },
+      ],
+    }).success).toBe(false);
+  });
+
+  it.each([
+    { total: 16000 },
+    { registeredBy: publicV2.employeeId },
+    { serviceCommissionRate: 45 },
+    { createdAt: "2026-08-13T10:00:00-03:00" },
+  ])("rejects browser authority fields: %o", (authority) => {
+    expect(createIncomeSchema.safeParse({ ...publicV2, ...authority }).success)
+      .toBe(false);
   });
 });

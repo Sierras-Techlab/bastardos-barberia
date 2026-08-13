@@ -13,6 +13,11 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
     SERVICE_NOT_AVAILABLE: ["SERVICE_NOT_AVAILABLE", "El servicio seleccionado ya no está disponible.", 409],
     PRODUCT_NOT_FOUND: ["PRODUCT_NOT_FOUND", "No encontramos uno de los productos.", 404],
     PRODUCT_NOT_AVAILABLE: ["PRODUCT_NOT_AVAILABLE", "Uno de los productos ya no está disponible.", 409],
+    EMPLOYEE_NOT_ELIGIBLE: ["EMPLOYEE_NOT_ELIGIBLE", "El empleado seleccionado no está disponible.", 409],
+    PAYMENT_ALLOCATION_MISMATCH: ["PAYMENT_ALLOCATION_MISMATCH", "La distribución del pago no coincide con el total.", 409],
+    INVALID_COMMISSION_OVERRIDE: ["INVALID_COMMISSION_OVERRIDE", "No se puede otorgar el servicio completo en esta venta.", 403],
+    COMMISSION_RATE_OUT_OF_RANGE: ["COMMISSION_RATE_OUT_OF_RANGE", "La comisión configurada no es válida.", 409],
+    INCOME_REQUEST_CONFLICT: ["INCOME_REQUEST_CONFLICT", "Este intento de venta ya fue usado con otros datos.", 409],
   };
   for (const [sentinel, [code, publicMessage, status]] of Object.entries(mappings)) if (message.includes(sentinel)) throw new AppError(code, publicMessage, status);
   return databaseFailure(operation, error);
@@ -30,10 +35,11 @@ const listParams = (scope: IncomeScope, query: IncomeListQuery) => ({
   filter_query: query.query ?? null, page_number: query.page, page_size: query.pageSize,
 });
 export const incomeRepository: IncomeRepository = {
-  async create(actorId, input) {
-    const { data, error } = await getSupabaseAdmin().rpc("create_income", { actor_user_id: actorId, income_request_id: input.requestId, selected_customer_id: input.customerId, selected_service_id: input.serviceId, product_items: input.products, selected_payment_method: input.paymentMethod });
+  async create(actor, input) {
+    const { data, error } = await getSupabaseAdmin().rpc("create_income_v2", { actor_user_id: actor.id, responsible_employee_id: input.employeeId, income_request_id: input.requestId, selected_customer_id: input.customerId, selected_service_id: input.serviceId, product_items: input.products, payment_items: input.payments, grant_full_service_commission: input.grantFullServiceCommission });
     if (error) rpcFailure("create income", error); if (typeof data !== "string") return databaseFailure("create income", new Error("Missing income id"));
-    const created = await detail({ requestingUserId: actorId, canViewAll: false, userId: actorId }, data as string);
+    const canViewAll = actor.role.name === "owner" || actor.role.name === "admin";
+    const created = await detail({ requestingUserId: actor.id, canViewAll, userId: canViewAll ? null : actor.id }, data as string);
     if (!created) return databaseFailure("create income", new Error("Missing income")); return created;
   },
   async list(scope, query) {

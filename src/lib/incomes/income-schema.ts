@@ -2,6 +2,10 @@ import { z } from "zod";
 
 const formProductSchema = z.object({ productId: z.string().min(1), quantity: z.number().int().positive() }).strict();
 const publicProductSchema = z.object({ productId: z.uuid(), quantity: z.number().int().positive().max(999) }).strict();
+export const incomePaymentSchema = z.object({
+  method: z.enum(["cash", "transfer"]),
+  amount: z.number().int().positive(),
+}).strict();
 
 export const incomeFormSchema = z.object({
   employeeId: z.uuid("Seleccioná un empleado responsable."),
@@ -19,6 +23,7 @@ export const incomeFormSchema = z.object({
 
 export const createIncomeSchema = z.object({
   requestId: z.uuid(),
+  employeeId: z.uuid(),
   customerId: z.uuid().nullable(),
   serviceId: z.uuid().nullable(),
   products: z.array(publicProductSchema).superRefine((products, context) => {
@@ -28,7 +33,13 @@ export const createIncomeSchema = z.object({
       ids.add(product.productId);
     }
   }),
-  paymentMethod: z.enum(["cash", "transfer"]),
+  payments: z.array(incomePaymentSchema).min(1).max(2).superRefine((payments, context) => {
+    const methods = new Set(payments.map(({ method }) => method));
+    if (methods.size !== payments.length) {
+      context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez." });
+    }
+  }),
+  grantFullServiceCommission: z.boolean(),
 }).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
   message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
 });

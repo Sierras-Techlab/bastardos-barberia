@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SafeUser } from "@/lib/auth/types";
 import type { CreateIncomeInput, Income, IncomeListItem, IncomeListQuery, PaginatedIncomes } from "@/types/income";
 
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
@@ -16,7 +17,7 @@ export const paginatedIncomesSchema = z.object({
 }).strict();
 export type IncomeScope = { requestingUserId: string; canViewAll: boolean; userId: string | null };
 export type IncomeRepository = {
-  create(actorId: string, input: CreateIncomeInput): Promise<Income>;
+  create(actor: SafeUser, input: CreateIncomeInput): Promise<Income>;
   list(scope: IncomeScope, query: IncomeListQuery): Promise<PaginatedIncomes>;
   findById(scope: IncomeScope, id: string): Promise<IncomeListItem | null>;
   void(id: string, actorId: string): Promise<IncomeListItem | null>;

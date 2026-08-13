@@ -13,7 +13,7 @@ const data: IncomeFormData = {
   employees: [{ id: "00000000-0000-4000-8000-000000000003", firstName: "Fernanda", lastName: "Pérez", role: "employee", isActive: true, serviceCommissionRate: 45, productCommissionRate: 10 }],
 };
 const result = (input: CreateIncomeV2Input): Income => ({ id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: data.currentUser, customer: null, service: data.services[0], products: [], paymentMethod: input.payments[0].method, total: 13000, status: "active" });
-const client = (createV2 = vi.fn(async (input: CreateIncomeV2Input) => result(input))): Pick<IncomeClient, "createV2"> => ({ createV2 });
+const client = (create = vi.fn(async (input: CreateIncomeV2Input) => result(input))): Pick<IncomeClient, "create"> => ({ create });
 const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /efectivo/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 
 describe("IncomeForm", () => {

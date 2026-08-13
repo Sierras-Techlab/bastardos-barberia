@@ -8,7 +8,7 @@ it("parses list query and public create body", async () => {
   listIncomes.mockResolvedValue({ items: [] }); createIncome.mockResolvedValue({ id: "id" });
   await GET(new Request("http://localhost/api/incomes?page=2&pageSize=10&paymentMethod=cash"));
   expect(listIncomes).toHaveBeenCalledWith(actor, { page: 2, pageSize: 10, paymentMethod: "cash" });
-  const input = { requestId: "40000000-0000-4000-8000-000000000001", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], paymentMethod: "cash" };
+  const input = { requestId: "40000000-0000-4000-8000-000000000001", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], payments: [{ method: "cash", amount: 13000 }], grantFullServiceCommission: false };
   expect((await POST(new Request("http://localhost/api/incomes", { method: "POST", body: JSON.stringify(input) }))).status).toBe(201);
   expect(createIncome).toHaveBeenCalledWith(actor, input);
 });

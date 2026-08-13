@@ -20,4 +20,11 @@ it("rejects authoritative and malformed browser fields", () => {
   expect(() => createIncomeV2InputSchema.parse({ ...valid, total: 19000 })).toThrow();
   expect(() => createIncomeV2InputSchema.parse({ ...valid, payments: [{ method: "cash", amount: 0 }] })).toThrow();
   expect(() => createIncomeV2InputSchema.parse({ ...valid, serviceCommissionRate: 45 })).toThrow();
+  expect(() => createIncomeV2InputSchema.parse({
+    ...valid,
+    payments: [
+      { method: "cash", amount: 9000 },
+      { method: "cash", amount: 10000 },
+    ],
+  })).toThrow();
 });

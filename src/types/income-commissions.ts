@@ -1,4 +1,5 @@
 import type { UserRole } from "@/types/income";
+export type { CreateIncomeInput as CreateIncomeV2Input, IncomePayment } from "@/types/income";
 
 export type CommissionUser = {
   id: string;
@@ -8,21 +9,6 @@ export type CommissionUser = {
   isActive: boolean;
   serviceCommissionRate: number;
   productCommissionRate: number;
-};
-
-export type IncomePayment = {
-  method: "cash" | "transfer";
-  amount: number;
-};
-
-export type CreateIncomeV2Input = {
-  requestId: string;
-  employeeId: string;
-  customerId: string | null;
-  serviceId: string | null;
-  products: Array<{ productId: string; quantity: number }>;
-  payments: IncomePayment[];
-  grantFullServiceCommission: boolean;
 };
 
 export type CommissionPreviewInput = {

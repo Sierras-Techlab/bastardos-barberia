@@ -37,7 +37,7 @@ import { CommissionPreview } from "./commission-preview";
 
 type IncomeFormProps = {
   data: IncomeFormData;
-  incomeClient?: Pick<IncomeClient, "createV2">;
+  incomeClient?: Pick<IncomeClient, "create">;
 };
 
 const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
@@ -107,7 +107,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     setSubmitError(null);
 
     try {
-      const income = await incomeClient.createV2(input);
+      const income = await incomeClient.create(input);
       setCreatedIncome(income);
       setReviewValues(null);
       requestIdRef.current = crypto.randomUUID();
