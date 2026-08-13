@@ -8,7 +8,7 @@ export type Customer = {
   phone: string;
   visits: number;
   createdAt: string;
-  fixedSchedule?: FixedSchedule | null;
+  fixedSchedule: FixedSchedule | null;
 };
 
 export type CustomerCatalogData = { customers: Customer[] };
@@ -16,8 +16,24 @@ export type CustomerCatalogData = { customers: Customer[] };
 export type CustomerSort = "original" | "visits-desc" | "visits-asc" | "newest" | "oldest";
 
 export type CustomerEditorInput = Pick<Customer, "firstName" | "lastName" | "email" | "phone">;
-export type CreateCustomerInput = CustomerEditorInput;
-export type UpdateCustomerInput = Partial<CustomerEditorInput>;
+export type CreateCustomerInput = CustomerEditorInput & { fixedSchedule: FixedSchedule | null };
+export type UpdateCustomerInput = Partial<CustomerEditorInput & { fixedSchedule: FixedSchedule | null }>;
+
+export type CustomerVisit = {
+  id: string;
+  occurredAt: string;
+  businessDate: string;
+  items: Array<{
+    type: "service" | "product";
+    name: string;
+    quantity: number;
+  }>;
+};
+
+export type PaginatedCustomerVisits = {
+  items: CustomerVisit[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+};
 
 export type CustomerMetrics = {
   totalCustomers: number;

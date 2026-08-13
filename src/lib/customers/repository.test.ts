@@ -44,8 +44,8 @@ describe("customer repository", () => {
   it("maps normalized phone and email conflicts", async () => {
     const makeQuery = (error: object) => { const q = { insert: vi.fn(), select: vi.fn(), maybeSingle: vi.fn() }; q.insert.mockReturnValue(q); q.select.mockReturnValue(q); q.maybeSingle.mockResolvedValue({ data: null, error }); return q; };
     getSupabaseAdmin.mockReturnValueOnce({ from: vi.fn().mockReturnValue(makeQuery({ code: "23505", details: "normalized_phone" })) });
-    await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_PHONE_EXISTS" });
+    await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, fixedSchedule: null, createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_PHONE_EXISTS" });
     getSupabaseAdmin.mockReturnValueOnce({ from: vi.fn().mockReturnValue(makeQuery({ code: "23505", details: "email" })) });
-    await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: "3515559999", email: "ana@mail.com", createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_EMAIL_EXISTS" });
+    await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: "3515559999", email: "ana@mail.com", fixedSchedule: null, createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_EMAIL_EXISTS" });
   });
 });

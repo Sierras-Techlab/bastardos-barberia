@@ -52,6 +52,7 @@ describe("customer catalog", () => {
       lastName: "Díaz",
       email: "ana@mail.com",
       phone: "+54 351 555-0101",
+      fixedSchedule: null,
     });
     expect(customerEditorSchema.parse({ firstName: "Ana", lastName: "Díaz", email: "", phone: "+54 351 555-0101" }).email).toBeNull();
   });

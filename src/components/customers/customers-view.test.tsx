@@ -12,6 +12,7 @@ const client = (): CustomerClient => ({
   create: vi.fn(async (input) => ({ id: "10000000-0000-4000-8000-000000000099", ...input, visits: 0, createdAt: "2026-08-11T12:00:00.000Z" })),
   update: vi.fn(async (id, input) => ({ ...(data.customers.find((customer) => customer.id === id) ?? data.customers[0]), ...input, id })),
   remove: vi.fn(async (id) => ({ id })),
+  listVisits: vi.fn(async () => ({ items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } })),
 });
 
 it("renders metrics and responsive customer representations", () => {

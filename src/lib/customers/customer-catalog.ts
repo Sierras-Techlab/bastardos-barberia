@@ -7,7 +7,7 @@ import type {
   CustomerMetrics,
   CustomerSort,
 } from "@/types/customer";
-import { createCustomerSchema } from "@/lib/customers/schemas";
+import { createCustomerSchema, fixedScheduleSchema } from "@/lib/customers/schemas";
 
 const customerSchema = z.object({
   id: z.string().min(1),
@@ -17,6 +17,7 @@ const customerSchema = z.object({
   phone: z.string().min(1),
   visits: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
+  fixedSchedule: fixedScheduleSchema.nullable().default(null),
 }).strict();
 
 const customerCatalogFixtureSchema = z.object({

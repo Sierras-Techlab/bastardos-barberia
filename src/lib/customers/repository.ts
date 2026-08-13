@@ -10,7 +10,7 @@ const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,vi
 export const normalizeCustomerPhone = (value: string) => value.replace(/\D/g, "");
 export const toCustomer = (row: CustomerRow): Customer => ({
   id: row.id, firstName: row.first_name, lastName: row.last_name, phone: row.phone,
-  email: row.email, visits: row.visits, createdAt: row.created_at,
+  email: row.email, visits: row.visits, createdAt: row.created_at, fixedSchedule: null,
 });
 const databaseFailure = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
