@@ -291,7 +291,6 @@ git commit -m "refactor(incomes): make v2 request canonical"
 
 **Files:**
 - Modify: `supabase/queries/010_income_commissions_and_split_payments.sql`
-- Create: `src/lib/incomes/sql-migration-contract.test.ts`
 - Modify: `src/lib/supabase/database.types.ts`
 - Modify: `supabase/queries/README.md`
 
@@ -301,27 +300,11 @@ git commit -m "refactor(incomes): make v2 request canonical"
 - Replaces JSON output of `get_income_detail` and `list_incomes` with safe V2 identities, payments and commission snapshot.
 - Preserves `void_income(uuid, uuid)` behavior while excluding voids from V2 metrics.
 
-- [ ] **Step 1: Write a failing migration contract test**
+- [ ] **Step 1: Record executable post-install behavior checks before writing SQL**
 
-Read the SQL file from `process.cwd()` and assert the security-critical and backfill clauses exist:
+Add SQL Editor verification queries to `supabase/queries/README.md` that fail unless the migration produced the intended behavior: query commission columns/check constraints, verify `income_payments` RLS and grants, confirm every historical income has one payment whose amount equals total, and list the exact V2 routines. These queries are the deployment acceptance checks; source-text assertions are explicitly forbidden because they do not exercise PostgreSQL.
 
-```ts
-const sql = readFileSync(resolve(process.cwd(), "supabase/queries/010_income_commissions_and_split_payments.sql"), "utf8");
-expect(sql).toContain("create table if not exists public.income_payments");
-expect(sql).toContain("create or replace function public.create_income_v2");
-expect(sql).toContain("alter table public.income_payments enable row level security");
-expect(sql).toContain("from public, anon, authenticated");
-expect(sql).toContain("America/Argentina/Buenos_Aires");
-expect(sql).toContain("INCOME_REQUEST_CONFLICT");
-```
-
-- [ ] **Step 2: Run the test and confirm migration 010 is incomplete**
-
-Run: `npm test -- src/lib/incomes/sql-migration-contract.test.ts`
-
-Expected: FAIL on the missing income table/function clauses.
-
-- [ ] **Step 3: Add schema changes and historical backfills**
+- [ ] **Step 2: Add schema changes and historical backfills**
 
 In one transaction-safe script:
 
@@ -335,7 +318,7 @@ In one transaction-safe script:
 
 Use `extensions.digest()` for the new request fingerprint. Historical rows use `encode(extensions.digest(('legacy:' || id::text)::bytea, 'sha256'), 'hex')`.
 
-- [ ] **Step 4: Implement `create_income_v2` validations and atomic writes**
+- [ ] **Step 3: Implement `create_income_v2` validations and atomic writes**
 
 Use an advisory lock keyed by `registered_by + request_id`. Compute a stable fingerprint from normalized effective employee, customer, service, ordered products, ordered payments and override flag. If the key exists, return the existing ID only when the fingerprint matches; otherwise raise `INCOME_REQUEST_CONFLICT`.
 
@@ -359,7 +342,7 @@ barbershop_net := sale_total - commission_total;
 
 Validate employee eligibility, override authorization, exact distinct positive payment allocation, catalog availability and stock before inserting. Insert income, items, payments, stock movements and customer visit in the same function body.
 
-- [ ] **Step 5: Replace read/list/void JSON and metrics**
+- [ ] **Step 4: Replace read/list/void JSON and metrics**
 
 Return:
 
@@ -380,18 +363,18 @@ Return:
 
 Scope `get_income_detail` and `list_incomes` by `employee_id`. Compute active `grossTotal`, `commissionTotal`, `barbershopNet`, `count`, `average`, `cashTotal` and `transferTotal`; voided rows contribute zero. Preserve void idempotency, stock restoration and one-time visit decrement.
 
-- [ ] **Step 6: Finish grants, verification queries and migration tests**
+- [ ] **Step 5: Finish grants and local contract verification**
 
 Drop the obsolete `create_income(uuid, uuid, uuid, uuid, jsonb, text)` function after backfill. Revoke all new tables/functions from browser roles, grant required access only to `service_role`, notify PostgREST to reload schema, and add README verification queries for columns, payments, RLS and routines.
 
-Run: `npm test -- src/lib/incomes/sql-migration-contract.test.ts && git diff --check`
+Run the repository tests introduced in Task 5 immediately after its RED step and confirm they fail because the adapter still calls the legacy routine. After Task 5 GREEN, those same tests prove the application emits the exact V2 RPC contract. For this SQL-only step run: `git diff --check`.
 
-Expected: PASS.
+Expected: no whitespace errors. PostgreSQL behavior remains pending the separately authorized manual installation and README queries.
 
-- [ ] **Step 7: Commit the complete migration**
+- [ ] **Step 6: Commit the complete migration**
 
 ```bash
-git add supabase/queries/010_income_commissions_and_split_payments.sql supabase/queries/README.md src/lib/incomes/sql-migration-contract.test.ts src/lib/supabase/database.types.ts
+git add supabase/queries/010_income_commissions_and_split_payments.sql supabase/queries/README.md src/lib/supabase/database.types.ts
 git commit -m "feat(incomes): add transactional commission migration"
 ```
 

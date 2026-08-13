@@ -125,7 +125,6 @@ git commit -m "feat(customers): define fixed schedule contracts"
 
 **Files:**
 - Create: `supabase/queries/011_customer_visits_and_fixed_schedules.sql`
-- Create: `src/lib/customers/sql-migration-contract.test.ts`
 - Modify: `src/lib/supabase/database.types.ts`
 - Modify: `supabase/queries/README.md`
 
@@ -134,27 +133,11 @@ git commit -m "feat(customers): define fixed schedule contracts"
 - Produces RPCs `create_customer_v2`, `update_customer_v2`, `list_customer_visits`, `list_fixed_customer_occurrences`, `resolve_fixed_customer_occurrence`.
 - Produces internal function `ensure_fixed_customer_occurrences(date, date)`.
 
-- [ ] **Step 1: Write a failing migration contract test**
+- [ ] **Step 1: Record executable post-install behavior checks before writing SQL**
 
-```ts
-const sql = readFileSync(resolve(process.cwd(), "supabase/queries/011_customer_visits_and_fixed_schedules.sql"), "utf8");
-for (const fragment of [
-  "create table if not exists public.customer_fixed_schedules",
-  "create table if not exists public.fixed_customer_occurrences",
-  "create or replace function public.list_customer_visits",
-  "create or replace function public.ensure_fixed_customer_occurrences",
-  "America/Argentina/Buenos_Aires",
-  "alter table public.fixed_customer_occurrences enable row level security",
-]) expect(sql).toContain(fragment);
-```
+Add SQL Editor verification queries to `supabase/queries/README.md` for one-schedule uniqueness, RLS/grants, occurrence uniqueness, routine availability and a transaction-wrapped generation sample that rolls back. These deployment checks exercise PostgreSQL; do not add tests that merely search SQL source text.
 
-- [ ] **Step 2: Run the migration test and confirm file absence**
-
-Run: `npm test -- src/lib/customers/sql-migration-contract.test.ts`
-
-Expected: FAIL because migration `011` does not exist.
-
-- [ ] **Step 3: Create tables, checks, indexes, RLS and audit fields**
+- [ ] **Step 2: Create tables, checks, indexes, RLS and audit fields**
 
 Use the approved schema:
 
@@ -174,7 +157,7 @@ create table public.customer_fixed_schedules (
 
 Create occurrences with schedule/customer references, version, `occurrence_date`, `scheduled_time`, constrained status, nullable status actor/time, unique schedule-version-date and chronological indexes. Enable RLS on both tables without browser policies.
 
-- [ ] **Step 4: Implement idempotent occurrence generation and schedule synchronization**
+- [ ] **Step 3: Implement idempotent occurrence generation and schedule synchronization**
 
 `ensure_fixed_customer_occurrences(date_from, date_to)` calculates each active schedule's matching ISO weekday in Buenos Aires and inserts with `on conflict do nothing`. Reject inverted ranges and ranges over 70 days.
 
@@ -185,7 +168,7 @@ An internal `sync_customer_fixed_schedule(customer_id, actor_id, fixed_schedule 
 - On `null`, set inactive and delete only future pending rows.
 - Preserve current-day, attended and missed rows.
 
-- [ ] **Step 5: Implement transactional customer mutation and read RPCs**
+- [ ] **Step 4: Implement transactional customer mutation and read RPCs**
 
 `create_customer_v2` inserts customer plus schedule in one function. `update_customer_v2` locks the non-deleted customer, updates only fields whose `set_*` flags are true, and calls schedule synchronization only when `set_fixed_schedule` is true.
 
@@ -195,18 +178,18 @@ An internal `sync_customer_fixed_schedule(customer_id, actor_id, fixed_schedule 
 
 `resolve_fixed_customer_occurrence` updates only when current status equals `expected_status = 'pending'`, writes actor/time and otherwise raises `FIXED_OCCURRENCE_ALREADY_RESOLVED`.
 
-- [ ] **Step 6: Finish grants, database types and README verification**
+- [ ] **Step 5: Finish grants, database types and local contract verification**
 
 Revoke tables/functions from `public`, `anon`, `authenticated`; grant table access and function execution only to `service_role`. Add `CustomerFixedScheduleRow` and `FixedCustomerOccurrenceRow`. Document install order and queries checking RLS, one-schedule uniqueness and available routines.
 
-Run: `npm test -- src/lib/customers/sql-migration-contract.test.ts && git diff --check`
+Repository RED/GREEN tests in Tasks 3, 4 and 6 prove the exact RPC names, arguments, output validation and error mappings. For this SQL-only step run: `git diff --check`.
 
-Expected: PASS.
+Expected: no whitespace errors. Database behavior remains pending manual installation and the README SQL Editor checks.
 
-- [ ] **Step 7: Commit migration 011**
+- [ ] **Step 6: Commit migration 011**
 
 ```bash
-git add supabase/queries/011_customer_visits_and_fixed_schedules.sql supabase/queries/README.md src/lib/customers/sql-migration-contract.test.ts src/lib/supabase/database.types.ts
+git add supabase/queries/011_customer_visits_and_fixed_schedules.sql supabase/queries/README.md src/lib/supabase/database.types.ts
 git commit -m "feat(customers): add fixed schedule migration"
 ```
 
