@@ -18,7 +18,7 @@ it("adds one required weekly schedule and shows its readable preview", async () 
   const onSave = vi.fn().mockResolvedValue({});
   render(<CustomerEditorDialog mode="create" customer={null} customers={[]} onClose={vi.fn()} onSave={onSave} />);
   expect(screen.queryByLabelText("Día fijo")).not.toBeInTheDocument();
-  await user.click(screen.getByRole("checkbox", { name: /tiene horario fijo/i }));
+  await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.selectOptions(screen.getByLabelText("Día fijo"), "4");
   await user.type(screen.getByLabelText("Hora fija"), "10:00");
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
@@ -33,7 +33,7 @@ it("requires a valid time when a fixed schedule is enabled", async () => {
   const user = userEvent.setup();
   const onSave = vi.fn();
   render(<CustomerEditorDialog mode="create" customer={null} customers={[]} onClose={vi.fn()} onSave={onSave} />);
-  await user.click(screen.getByRole("checkbox", { name: /tiene horario fijo/i }));
+  await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");
   await user.type(screen.getByLabelText("Teléfono"), "3515550200");
@@ -56,9 +56,9 @@ it("loads and can disable an existing fixed schedule", async () => {
     fixedSchedule: { weekday: 4 as const, time: "10:00" },
   };
   render(<CustomerEditorDialog mode="edit" customer={customer} customers={[customer]} onClose={vi.fn()} onSave={onSave} />);
-  expect(screen.getByRole("checkbox", { name: /tiene horario fijo/i })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: /es cliente habitual/i })).toBeChecked();
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
-  await user.click(screen.getByRole("checkbox", { name: /tiene horario fijo/i }));
+  await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   expect(screen.queryByLabelText("Día fijo")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: null }));

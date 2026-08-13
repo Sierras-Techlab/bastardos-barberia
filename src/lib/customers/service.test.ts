@@ -14,6 +14,7 @@ const deps = (): CustomerServiceDependencies => ({
     list: vi.fn().mockResolvedValue([customer]), latest: vi.fn().mockResolvedValue(customer), findById: vi.fn().mockResolvedValue(customer),
     findByNormalizedPhone: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue(customer),
     update: vi.fn().mockResolvedValue(customer), softDelete: vi.fn().mockResolvedValue(customer.id),
+    listVisits: vi.fn().mockResolvedValue({ items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } }),
   } satisfies CustomerRepository,
   now: () => "2026-08-11T12:00:00.000Z",
 });

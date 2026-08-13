@@ -74,3 +74,23 @@ it("does not render a mailto action for missing email", () => {
   render(<CustomersView data={{ customers: [{ ...data.customers[0], email: null }] }} canDelete={false} />);
   expect(document.querySelector('a[href^="mailto:"]')).toBeNull();
 });
+
+it("opens visit details from desktop and mobile visit controls", async () => {
+  const user = userEvent.setup();
+  const customerClient = client();
+  vi.mocked(customerClient.listVisits).mockResolvedValue({
+    items: [{
+      id: "20000000-0000-4000-8000-000000000001",
+      occurredAt: "2026-08-13T14:00:00.000Z",
+      businessDate: "2026-08-13",
+      items: [{ type: "service", name: "Corte clásico", quantity: 1 }],
+    }],
+    pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+  });
+  render(<CustomersView data={data} canDelete customerClient={customerClient} />);
+
+  const controls = screen.getAllByRole("button", { name: "Ver 18 visitas de Lucas Ferreyra" });
+  expect(controls).toHaveLength(2);
+  await user.click(controls[0]);
+  expect(await screen.findByText("Corte clásico")).toBeVisible();
+});

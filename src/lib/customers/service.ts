@@ -3,7 +3,7 @@ import { AppError } from "@/lib/auth/errors";
 import type { SafeUser } from "@/lib/auth/types";
 import type { CustomerServiceDependencies } from "@/lib/customers/contracts";
 import { customerRepository } from "@/lib/customers/repository";
-import type { CreateCustomerInput, UpdateCustomerInput } from "@/types/customer";
+import type { CreateCustomerInput, CustomerVisitQuery, UpdateCustomerInput } from "@/types/customer";
 
 const notFound = () => new AppError("CUSTOMER_NOT_FOUND", "No encontramos el cliente.", 404);
 const defaults: CustomerServiceDependencies = { customers: customerRepository, now: () => new Date().toISOString() };
@@ -22,3 +22,5 @@ export const deleteCustomer = async (actor: SafeUser, id: string, dependencies: 
   if (!deletedId) throw notFound();
   return { id: deletedId };
 };
+export const listCustomerVisits = async (actor: SafeUser, id: string, query: CustomerVisitQuery, dependencies: CustomerServiceDependencies = defaults) =>
+  dependencies.customers.listVisits(actor.id, id, query);

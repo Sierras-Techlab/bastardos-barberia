@@ -77,4 +77,27 @@ describe("customer repository", () => {
       new_fixed_schedule: null,
     }));
   });
+
+  it("returns a sanitized paginated visit projection", async () => {
+    const response = {
+      items: [{
+        id: "20000000-0000-4000-8000-000000000001",
+        occurredAt: "2026-08-13T14:00:00.000Z",
+        businessDate: "2026-08-13",
+        items: [{ type: "service", name: "Corte", quantity: 1 }],
+      }],
+      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+    };
+    const rpc = vi.fn().mockResolvedValue({ data: response, error: null });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+
+    await expect(customerRepository.listVisits(row.created_by, row.id, { page: 1, pageSize: 20 })).resolves.toEqual(response);
+    expect(rpc).toHaveBeenCalledWith("list_customer_visits", {
+      actor_user_id: row.created_by,
+      target_customer_id: row.id,
+      page_number: 1,
+      page_size: 20,
+    });
+    expect(JSON.stringify(response)).not.toMatch(/totalAmount|payment|commission|employee|registeredBy/i);
+  });
 });

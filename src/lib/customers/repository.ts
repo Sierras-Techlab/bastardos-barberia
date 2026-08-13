@@ -1,10 +1,30 @@
 import "server-only";
 
+import { z } from "zod";
 import { AppError } from "@/lib/auth/errors";
 import type { CustomerRepository } from "@/lib/customers/contracts";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CustomerRow } from "@/lib/supabase/database.types";
 import type { Customer } from "@/types/customer";
+
+const paginatedCustomerVisitsSchema = z.object({
+  items: z.array(z.object({
+    id: z.uuid(),
+    occurredAt: z.iso.datetime({ offset: true }),
+    businessDate: z.iso.date(),
+    items: z.array(z.object({
+      type: z.enum(["service", "product"]),
+      name: z.string().min(1),
+      quantity: z.number().int().positive(),
+    }).strict()).min(1),
+  }).strict()),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().nonnegative(),
+  }).strict(),
+}).strict();
 
 const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active)";
 type CustomerWithScheduleRow = CustomerRow & {
@@ -107,5 +127,18 @@ export const customerRepository: CustomerRepository = {
     const { data, error } = await getSupabaseAdmin().from("customers").update({ deleted_at: at, deleted_by: actorId, updated_by: actorId }).eq("id", id).is("deleted_at", null).select("id").maybeSingle();
     if (error) databaseFailure("delete customer", error);
     return data && typeof data.id === "string" ? data.id : null;
+  },
+  async listVisits(actorId, customerId, query) {
+    const { data, error } = await getSupabaseAdmin().rpc("list_customer_visits", {
+      actor_user_id: actorId,
+      target_customer_id: customerId,
+      page_number: query.page,
+      page_size: query.pageSize,
+    });
+    if (error) databaseFailure("list customer visits", error);
+    if (data === null) throw new AppError("CUSTOMER_NOT_FOUND", "No encontramos el cliente.", 404);
+    const parsed = paginatedCustomerVisitsSchema.safeParse(data);
+    if (!parsed.success) return databaseFailure("list customer visits", parsed.error);
+    return parsed.data;
   },
 };

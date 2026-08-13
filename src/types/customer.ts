@@ -34,6 +34,7 @@ export type PaginatedCustomerVisits = {
   items: CustomerVisit[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 };
+export type CustomerVisitQuery = { page: number; pageSize: number };
 
 export type CustomerMetrics = {
   totalCustomers: number;

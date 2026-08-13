@@ -28,3 +28,15 @@ it("preserves the explicit null used to disable a schedule", async () => {
   await expect(promise).rejects.toThrow("Revisá los datos ingresados.");
   expect(fetchMock).toHaveBeenCalledWith(`/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ fixedSchedule: null }) }));
 });
+
+it("loads paginated visit details without caching", async () => {
+  const visits = { items: [], pagination: { page: 2, pageSize: 20, total: 22, totalPages: 2 } };
+  fetchMock.mockResolvedValueOnce(Response.json({ data: visits }));
+  const controller = new AbortController();
+
+  await expect(customerClient.listVisits(customer.id, { page: 2, pageSize: 20 }, controller.signal)).resolves.toEqual(visits);
+  expect(fetchMock).toHaveBeenCalledWith(
+    `/api/customers/${customer.id}/visits?page=2&pageSize=20`,
+    { cache: "no-store", signal: controller.signal },
+  );
+});
