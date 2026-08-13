@@ -109,15 +109,35 @@ export type IncomeStatus = "active" | "voided";
 export type IncomeRow = {
   id: string;
   request_id: string;
-  user_id: string;
+  registered_by: string;
+  employee_id: string;
+  request_fingerprint: string;
   customer_id: string | null;
-  payment_method: IncomePaymentMethod;
+  payment_method: IncomePaymentMethod | null;
   total: number;
+  service_commission_base: number;
+  product_commission_base: number;
+  service_commission_rate: number;
+  product_commission_rate: number;
+  service_commission_amount: number;
+  product_commission_amount: number;
+  commission_total: number;
+  barbershop_net: number;
+  full_service_commission: boolean;
+  full_service_commission_authorized_by: string | null;
   status: IncomeStatus;
   created_at: string;
   business_date: string;
   voided_at: string | null;
   voided_by: string | null;
+};
+
+export type IncomePaymentRow = {
+  id: string;
+  income_id: string;
+  method: IncomePaymentMethod;
+  amount: number;
+  created_at: string;
 };
 
 export type IncomeItemType = "service" | "product";
