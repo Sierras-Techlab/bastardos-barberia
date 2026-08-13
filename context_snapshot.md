@@ -1,12 +1,13 @@
 # Context snapshot
 
-Captured: 2026-08-12
+Captured: 2026-08-13
 
 ## Repository state
 
-- Current branch: `feat/27-income-commissions` in the main worktree.
-- Local branches: 9.
-- Remote tracking references: 10, including the `origin/HEAD` alias.
+- Current planning branch: `codex/commercial-operations-v2` in `.worktrees/commercial-operations-v2`, based on integrated `origin/dev` commit `05b479f`.
+- The primary checkout remains unchanged on `feat/backend-models`.
+- Local branches: 4.
+- Remote tracking references: 6.
 - User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
 
 ## Current implementation
@@ -50,6 +51,9 @@ Captured: 2026-08-12
 - The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
 - Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
 - The current frontend milestone passes 112 test files / 359 tests, ESLint without warnings, the Next.js 16.3 webpack production build and `git diff --check` on the repository target Node/npm toolchain.
+- The commercial operations V2 backend design was approved on 2026-08-13 and is documented at `docs/superpowers/specs/2026-08-13-commercial-operations-v2-backend-design.md`.
+- Execution is intentionally split into `docs/superpowers/plans/2026-08-13-income-attribution-commissions-split-payments.md` followed by `docs/superpowers/plans/2026-08-13-customer-visits-fixed-schedules.md`; the split keeps migrations `010` and `011` independently reviewable.
+- The isolated `origin/dev` baseline passes 112 test files / 359 tests on local Node 24.17/npm 11.13; final implementation verification still targets Node 24.18/npm 11.16.
 
 ## Database integration state
 
@@ -69,7 +73,7 @@ The configured Supabase project has scripts `001` through `009` installed. Runti
 
 ## Recommended next task
 
-Implement and review the backend handoff for responsible employees, split payments, immutable commission snapshots and weekly fixed-customer occurrences, then reconnect the prepared frontend V2.
+Execute `docs/superpowers/plans/2026-08-13-income-attribution-commissions-split-payments.md` from Task 1 through Task 7, without applying migration `010` to shared Supabase until it receives separate deployment authorization.
 
 ## Context maintenance rule
 

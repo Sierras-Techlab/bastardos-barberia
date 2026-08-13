@@ -224,6 +224,8 @@ A customer has zero or one active weekly schedule. `fixedSchedule: null` means n
 
 Customer creation and update use database functions that persist the customer and schedule atomically. All currently authenticated roles may create or edit customers and their schedules; manager-only deletion remains unchanged.
 
+The shared create/edit dialog presents the question `¿Es cliente habitual?`. Selecting yes requires one weekday and one local time and shows a readable weekly summary; selecting no sends `fixedSchedule: null`.
+
 ### Concrete occurrences and attendance
 
 Create `fixed_customer_occurrences` with:
