@@ -103,6 +103,31 @@ export type CustomerRow = {
   updated_at: string;
 };
 
+export type CustomerFixedScheduleRow = {
+  customer_id: string;
+  weekday: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  local_time: string;
+  is_active: boolean;
+  version: number;
+  created_by: string;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FixedCustomerOccurrenceRow = {
+  id: string;
+  schedule_customer_id: string;
+  schedule_version: number;
+  customer_id: string;
+  occurrence_date: string;
+  scheduled_time: string;
+  status: "pending" | "attended" | "missed";
+  status_changed_by: string | null;
+  status_changed_at: string | null;
+  created_at: string;
+};
+
 export type IncomePaymentMethod = "cash" | "transfer";
 export type IncomeStatus = "active" | "voided";
 

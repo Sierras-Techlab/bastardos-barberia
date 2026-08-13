@@ -24,11 +24,8 @@ export const CustomersView = ({ data, canDelete, customerClient = defaultCustome
   const displayed = useMemo(() => sortCustomers(filterCustomers(customers, query), sort), [customers, query, sort]);
   const metrics = useMemo(() => calculateCustomerMetrics(customers), [customers]);
   const save = async (input: FrontendCustomerEditorInput) => {
-    const updateInput = editor?.customer?.fixedSchedule || input.fixedSchedule
-      ? input
-      : { firstName: input.firstName, lastName: input.lastName, phone: input.phone, email: input.email };
     const saved = editor?.mode === "edit" && editor.customer
-      ? await customerClient.update(editor.customer.id, updateInput)
+      ? await customerClient.update(editor.customer.id, input)
       : await customerClient.create(input);
     setCustomers((current) => editor?.mode === "edit"
       ? current.map((customer) => customer.id === saved.id ? saved : customer)

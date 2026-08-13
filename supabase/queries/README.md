@@ -14,6 +14,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 8. `008_products_inventory.sql`
 9. `009_sales_domain.sql`
 10. `010_income_commissions_and_split_payments.sql`
+11. `011_customer_visits_and_fixed_schedules.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -136,6 +137,60 @@ order by grantee, privilege_type;
 ```
 
 Every listed V2 data column except the optional authorizer must report `NO`; all eight constraints must be present; the historical allocation query must return zero rows. `income_payments` must have RLS enabled and no grants to `anon` or `authenticated`.
+
+Verify weekly schedules, attendance and their server-only routines:
+
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+  and tablename in ('customer_fixed_schedules', 'fixed_customer_occurrences')
+order by tablename;
+
+select routine_name
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name in (
+    'create_customer_v2', 'update_customer_v2', 'list_customer_visits',
+    'ensure_fixed_customer_occurrences', 'list_fixed_customer_occurrences',
+    'resolve_fixed_customer_occurrence'
+  )
+order by routine_name;
+
+select conname
+from pg_constraint
+where conrelid in (
+  'public.customer_fixed_schedules'::regclass,
+  'public.fixed_customer_occurrences'::regclass
+)
+  and contype in ('p', 'u')
+order by conname;
+
+select grantee, table_name, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('customer_fixed_schedules', 'fixed_customer_occurrences')
+order by grantee, table_name, privilege_type;
+```
+
+Both tables must report RLS enabled, all six routines must be present, the schedule table must have its customer primary key, occurrences must have their schedule-version-date uniqueness constraint, and neither `anon` nor `authenticated` may have table grants.
+
+After an active customer has a schedule, verify idempotent occurrence generation without retaining changes. Replace the dates with a range of at most 70 days:
+
+```sql
+begin;
+select public.ensure_fixed_customer_occurrences('2026-08-13', '2026-10-08');
+select public.ensure_fixed_customer_occurrences('2026-08-13', '2026-10-08');
+
+select schedule_customer_id, schedule_version, occurrence_date, count(*)
+from public.fixed_customer_occurrences
+where occurrence_date between '2026-08-13' and '2026-10-08'
+group by schedule_customer_id, schedule_version, occurrence_date
+having count(*) > 1;
+rollback;
+```
+
+The duplicate query must return zero rows. The rollback preserves the pre-verification state.
 
 After an active user exists, verify product creation and stock adjustment without retaining sample data. Replace the actor UUID before running this block:
 

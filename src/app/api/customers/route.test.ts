@@ -9,6 +9,6 @@ it("allows authenticated listing and creation", async () => {
   listCustomers.mockResolvedValue({ customers: [] }); createCustomer.mockResolvedValue({ id: "customer-id" });
   expect((await GET()).status).toBe(200);
   const response = await POST(new Request("http://localhost/api/customers", { method: "POST", body: JSON.stringify({ firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: "" }) }));
-  expect(createCustomer).toHaveBeenCalledWith(actor, { firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: null });
+  expect(createCustomer).toHaveBeenCalledWith(actor, { firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: null, fixedSchedule: null });
   expect(response.status).toBe(201);
 });

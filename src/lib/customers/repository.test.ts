@@ -42,10 +42,39 @@ describe("customer repository", () => {
     expect(query.limit).toHaveBeenCalledWith(1);
   });
   it("maps normalized phone and email conflicts", async () => {
-    const makeQuery = (error: object) => { const q = { insert: vi.fn(), select: vi.fn(), maybeSingle: vi.fn() }; q.insert.mockReturnValue(q); q.select.mockReturnValue(q); q.maybeSingle.mockResolvedValue({ data: null, error }); return q; };
-    getSupabaseAdmin.mockReturnValueOnce({ from: vi.fn().mockReturnValue(makeQuery({ code: "23505", details: "normalized_phone" })) });
+    getSupabaseAdmin.mockReturnValueOnce({ rpc: vi.fn().mockResolvedValue({ data: null, error: { code: "23505", details: "normalized_phone" } }) });
     await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, fixedSchedule: null, createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_PHONE_EXISTS" });
-    getSupabaseAdmin.mockReturnValueOnce({ from: vi.fn().mockReturnValue(makeQuery({ code: "23505", details: "email" })) });
+    getSupabaseAdmin.mockReturnValueOnce({ rpc: vi.fn().mockResolvedValue({ data: null, error: { code: "23505", details: "email" } }) });
     await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: "3515559999", email: "ana@mail.com", fixedSchedule: null, createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_EMAIL_EXISTS" });
+  });
+
+  it("persists customer and weekly schedule through atomic V2 RPCs", async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: row.id, error: null })
+      .mockResolvedValueOnce({ data: row.id, error: null });
+    const query = { select: vi.fn(), eq: vi.fn(), is: vi.fn(), maybeSingle: vi.fn() };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.maybeSingle.mockResolvedValue({ data: { ...row, fixed_schedule: [{ weekday: 4, local_time: "10:00:00", is_active: true }] }, error: null });
+    getSupabaseAdmin.mockReturnValue({ rpc, from: vi.fn().mockReturnValue(query) });
+
+    await customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" }, createdBy: row.created_by });
+    await customerRepository.update(row.id, { fixedSchedule: null, updatedBy: row.updated_by });
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "create_customer_v2", {
+      actor_user_id: row.created_by,
+      new_first_name: "Ana",
+      new_last_name: "Pérez",
+      new_phone: row.phone,
+      new_email: null,
+      fixed_schedule: { weekday: 4, time: "10:00" },
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "update_customer_v2", expect.objectContaining({
+      target_customer_id: row.id,
+      actor_user_id: row.updated_by,
+      set_fixed_schedule: true,
+      new_fixed_schedule: null,
+    }));
   });
 });
