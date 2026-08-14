@@ -15,6 +15,7 @@ export type Customer = {
 export type CustomerCatalogData = { customers: Customer[] };
 
 export type CustomerSort = "original" | "visits-desc" | "visits-asc" | "newest" | "oldest";
+export type CustomerScheduleFilter = "all" | "fixed" | "not-fixed";
 
 export type CustomerEditorInput = Pick<Customer, "firstName" | "lastName" | "email" | "phone">;
 export type CreateCustomerInput = CustomerEditorInput & { fixedSchedule: FixedSchedule | null };
