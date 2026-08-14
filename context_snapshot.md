@@ -8,7 +8,7 @@ Captured: 2026-08-14
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
 - Commercial operations V2 is implemented locally through migrations `010` through `013`; none has been applied to the configured Supabase project.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
-- Product-category domain groundwork and authenticated API client are implemented locally: strict names, role-scoped reads, manager-only lifecycle mutations and safe repository error mappings. Its migration and product integration remain pending in plan `014`.
+- Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 
 ## Delivered behavior
 
@@ -23,8 +23,8 @@ Captured: 2026-08-14
 - Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Versioned effective dates prevent historical fabrication; same-day reprogramming preserves today's prior appointment; reactivation starts today unless a preserved occurrence already exists; per-customer advisory locks and optimistic versions prevent deadlocks and lost updates.
 - The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. Its strict financial contract includes immutable visit total plus historical item unit price and subtotal; the dialog shows those ARS values while excluding user identities, payments, commissions and authorizations.
 - Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
-- Product categories now have a server-only domain boundary with audited create/update records, atomic logical deactivation, normalized-name/in-use conflict mappings and active-only employee reads. Product editor contracts, UI, migration and SQL remain pending.
-- Product categories expose authenticated list/detail routes, manager-only create/rename/reactivation/deactivation routes, and a browser-only API client that preserves structured server errors. Products now carry complete category objects, use category UUIDs for mutations and filters, and managers have a dynamic category administration dialog; migration/SQL remains pending.
+- Product categories now have a server-only domain boundary with audited create/update records, atomic logical deactivation, normalized-name/in-use conflict mappings and active-only employee reads. Products carry complete category objects, use category UUIDs for mutations and filters, and managers have a dynamic category administration dialog.
+- Migration `014_product_categories.sql` creates the secured canonical category catalog, seeds/backfills the four legacy categories, replaces `products.category` with `category_id`, and promotes category-locked product/category lifecycle RPCs with rollback-wrapped SQL acceptance checks.
 - Category UI state keeps catalog product snapshots synchronized after category rename/reactivation/deactivation, editors never submit an inactive hidden category ID, and an in-use deactivation conflict disables that category's action until the manager closes the dialog and refreshes its state.
 - Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
@@ -36,12 +36,13 @@ Captured: 2026-08-14
 - `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains effective-dated weekly schedules, per-customer serialized occurrence generation/resolution, optimistic schedule concurrency, transactional customer V2 functions and sanitized visit projection.
 - `supabase/queries/012_owner_commission_rules.sql` enforces owner-zero commission rates and snapshots, and promotes `update_user_profile` to its canonical RPC.
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
-- `supabase/queries/README.md` documents ordered installation `001` through `013` and transaction-wrapped post-install acceptance checks.
-- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `013` manually and run the documented checks before considering these features live.
+- `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
+- `supabase/queries/README.md` documents ordered installation `001` through `014` and transaction-wrapped post-install acceptance checks.
+- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `014` manually and run the documented checks before considering these features live.
 
 ## Verification
 
-- Full suite: 122 test files / 430 tests passed.
+- Full suite: 126 test files / 448 tests passed.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.
@@ -57,7 +58,7 @@ Captured: 2026-08-14
 
 ## Recommended next task
 
-Implement migration `014_product_categories.sql` and its SQL Editor acceptance checks before deploying the local category contracts and UI. The prior migrations `010` through `013` must remain installed first.
+Manually install migrations `010` through `014` in order and run their SQL Editor acceptance checks before deploying the local category contracts and UI.
 
 ## Context maintenance rule
 

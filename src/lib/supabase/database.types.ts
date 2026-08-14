@@ -35,17 +35,22 @@ export type SessionRow = {
   created_at: string;
 };
 
-export type ProductCategoryRow =
-  | "hair-care"
-  | "styling"
-  | "beard-care"
-  | "fragrance";
+export type ProductCategoryRow = {
+  id: string;
+  name: string;
+  normalized_name: string;
+  is_active: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type ProductRow = {
   id: string;
   name: string;
   normalized_name: string;
-  category: ProductCategoryRow;
+  category_id: string;
   price: number;
   stock: number;
   is_active: boolean;

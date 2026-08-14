@@ -17,6 +17,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 11. `011_customer_visits_and_fixed_schedules.sql`
 12. `012_owner_commission_rules.sql`
 13. `013_customer_visit_financials.sql`
+14. `014_product_categories.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -728,5 +729,120 @@ rollback;
 ```
 
 The block must complete successfully. It proves that owner-responsible sales snapshot zero rates and commission, manager attribution to an employee retains that employee's configured rate, and an owner-targeted full-service override fails with `INVALID_COMMISSION_OVERRIDE`. `rollback` removes the temporary users, services and sales.
+
+After script `014` is installed, verify the canonical category catalog and its
+product lock/lifecycle rules without retaining sample data:
+
+```sql
+begin;
+
+do $$
+declare
+  manager_id uuid;
+  employee_id uuid;
+  target_category_id uuid;
+  product_id uuid;
+  seeded_category_count integer;
+  orphan_count integer;
+begin
+  select count(*) into seeded_category_count
+  from public.product_categories
+  where (normalized_name, name) in (
+    ('cuidado capilar', 'Cuidado capilar'),
+    ('peinado y styling', 'Peinado y styling'),
+    ('cuidado de barba', 'Cuidado de barba'),
+    ('fragancias', 'Fragancias')
+  );
+
+  if seeded_category_count <> 4 then
+    raise exception 'PRODUCT_CATEGORY_SEEDS_NOT_MAPPED';
+  end if;
+
+  select count(*) into orphan_count
+  from public.products p
+  left join public.product_categories c on c.id = p.category_id
+  where p.category_id is null or c.id is null;
+
+  if orphan_count <> 0 then
+    raise exception 'PRODUCT_CATEGORY_ORPHANS_PRESENT';
+  end if;
+
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Categoria', 'Manager',
+    'categoria.manager.' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 10),
+    '$argon2id$verification', 1, 0, 0
+  ) returning id into manager_id;
+
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Categoria', 'Empleado',
+    'categoria.empleado.' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 10),
+    '$argon2id$verification', 3, 0, 0
+  ) returning id into employee_id;
+
+  select id into target_category_id
+  from public.product_categories
+  where normalized_name = 'cuidado capilar';
+
+  begin
+    insert into public.product_categories (
+      name, normalized_name, created_by, updated_by
+    ) values (
+      '  CUIDADO   CAPILAR  ', '', manager_id, manager_id
+    );
+    raise exception 'PRODUCT_CATEGORY_NORMALIZED_DUPLICATE_ACCEPTED';
+  exception
+    when unique_violation then null;
+  end;
+
+  begin
+    perform public.deactivate_product_category(employee_id, target_category_id);
+    raise exception 'PRODUCT_CATEGORY_EMPLOYEE_MUTATION_ACCEPTED';
+  exception
+    when insufficient_privilege then
+      if sqlerrm <> 'MANAGER_REQUIRED' then
+        raise;
+      end if;
+  end;
+
+  product_id := public.create_product(
+    'Producto categoría temporal ' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 10),
+    target_category_id,
+    1000,
+    1,
+    manager_id
+  );
+
+  if not exists (
+    select 1 from public.products
+    where id = product_id and category_id = target_category_id
+  ) then
+    raise exception 'PRODUCT_CATEGORY_CREATE_MAPPING_FAILED';
+  end if;
+
+  begin
+    perform public.deactivate_product_category(manager_id, target_category_id);
+    raise exception 'PRODUCT_CATEGORY_IN_USE_ACCEPTED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'PRODUCT_CATEGORY_IN_USE' then
+        raise;
+      end if;
+  end;
+end;
+$$;
+
+rollback;
+```
+
+The block must complete successfully. It verifies all four seeded mappings,
+zero null/orphan product references, global normalized-name uniqueness,
+manager-only mutation and the active-product deactivation conflict. The
+rollback preserves the pre-verification state.
 
 Then configure `.env`, temporarily add the three `BOOTSTRAP_OWNER_*` values, and run `npm run bootstrap:owner`. Remove the temporary password value immediately afterward.
