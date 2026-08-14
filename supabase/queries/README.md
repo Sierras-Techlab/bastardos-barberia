@@ -75,7 +75,10 @@ order by tablename;
 select routine_name
 from information_schema.routines
 where routine_schema = 'public'
-  and routine_name in ('create_income_v2', 'void_income', 'list_incomes', 'get_income_detail')
+  and routine_name in (
+    'create_income_v2', 'void_income', 'list_incomes', 'get_income_detail',
+    'list_income_responsible_users'
+  )
 order by routine_name;
 
 select column_name
@@ -85,7 +88,7 @@ where table_schema = 'public'
   and column_name = 'income_id';
 ```
 
-All five tables must report `rowsecurity = true`, the four functions must be present, and `inventory_movements.income_id` must be listed.
+All five tables must report `rowsecurity = true`, the five functions must be present, and `inventory_movements.income_id` must be listed. `list_income_responsible_users` is the unpaginated manager-only source for the history filter and intentionally retains inactive or logically deleted responsible users that still have sales.
 
 Verify the V2 income columns, commission constraints, historical payment backfill and browser-role isolation:
 
@@ -158,7 +161,9 @@ from information_schema.routines
 where routine_schema = 'public'
   and routine_name in (
     'create_customer_v2', 'update_customer_v2', 'list_customer_visits',
-    'ensure_fixed_customer_occurrences', 'list_fixed_customer_occurrences',
+    'ensure_fixed_customer_occurrences',
+    'ensure_fixed_customer_occurrences_for_customer',
+    'list_fixed_customer_occurrences',
     'resolve_fixed_customer_occurrence'
   )
 order by routine_name;
@@ -178,6 +183,12 @@ where table_schema = 'public'
   and table_name in ('customer_fixed_schedules', 'fixed_customer_occurrences')
 order by grantee, table_name, privilege_type;
 
+select grantee, routine_name, privilege_type
+from information_schema.routine_privileges
+where routine_schema = 'public'
+  and routine_name = 'ensure_fixed_customer_occurrences_for_customer'
+order by grantee, privilege_type;
+
 select column_name, is_nullable, data_type
 from information_schema.columns
 where table_schema = 'public'
@@ -193,7 +204,7 @@ join public.customer_fixed_schedules s
 where o.occurrence_date < s.effective_from;
 ```
 
-Both tables must report RLS enabled, all six routines must be present, the schedule table must have its customer primary key plus non-null `version` and `effective_from`, occurrences must have their schedule-version-date uniqueness constraint, and neither `PUBLIC`, `anon` nor `authenticated` may have table grants. The final query must return zero rows: a schedule version may never generate occurrences before its effective date.
+Both tables must report RLS enabled, all seven routines must be present, the schedule table must have its customer primary key plus non-null `version` and `effective_from`, occurrences must have their schedule-version-date uniqueness constraint, and neither `PUBLIC`, `anon` nor `authenticated` may have table grants. The per-customer occurrence helper must also have no direct `service_role` execute grant. The final query must return zero rows: a schedule version may never generate occurrences before its effective date.
 
 After an active customer has a schedule, verify idempotent occurrence generation without retaining changes. Replace the dates with a range of at most 70 days:
 

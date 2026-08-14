@@ -17,5 +17,9 @@ const notFound = () => new AppError("INCOME_NOT_FOUND", "No encontramos el ingre
 export const createIncome = (actor: SafeUser, input: CreateIncomeInput, dependencies: IncomeDependencies = defaults) =>
   dependencies.incomes.create(actor, input);
 export const listIncomes = (actor: SafeUser, query: IncomeListQuery, dependencies: IncomeDependencies = defaults) => dependencies.incomes.list(scopeFor(actor, query.userId), query);
+export const listIncomeResponsibleEmployees = (actor: SafeUser, dependencies: IncomeDependencies = defaults) => {
+  assertManager(actor);
+  return dependencies.incomes.listResponsibleEmployees(actor.id);
+};
 export const getIncome = async (actor: SafeUser, id: string, dependencies: IncomeDependencies = defaults) => { const income = await dependencies.incomes.findById(scopeFor(actor), id); if (!income) throw notFound(); return income; };
 export const voidIncome = async (actor: SafeUser, id: string, dependencies: IncomeDependencies = defaults) => { assertManager(actor); const income = await dependencies.incomes.void(id, actor.id); if (!income) throw notFound(); return income; };

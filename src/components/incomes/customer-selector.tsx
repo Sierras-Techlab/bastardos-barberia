@@ -13,7 +13,7 @@ import type { Customer } from "@/types/income";
 type Props = { id?: string; customers: Customer[]; value: string | null; onChange(customerId: string | null): void; onCustomerCreated?(customer: StoredCustomer): void; customerClient?: Pick<CustomerClient, "create"> };
 const name = (customer: Customer) => `${customer.firstName} ${customer.lastName}`;
 const digits = (value: string) => value.replace(/\D/g, "");
-const asStored = (customer: Customer): StoredCustomer => ({ id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone ?? "", email: null, visits: 0, createdAt: new Date(0).toISOString(), fixedSchedule: null });
+const asStored = (customer: Customer): StoredCustomer => ({ id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone ?? "", email: null, visits: 0, createdAt: new Date(0).toISOString(), fixedSchedule: null, fixedScheduleVersion: null });
 
 export const CustomerSelector = ({ id, customers, value, onChange, onCustomerCreated, customerClient = defaultCustomerClient }: Props) => {
   const [query, setQuery] = useState(""); const [creating, setCreating] = useState(false); const [duplicate, setDuplicate] = useState<Customer | null>(null);

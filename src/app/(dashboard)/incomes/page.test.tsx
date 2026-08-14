@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser, listIncomes, listUsers } = vi.hoisted(() => ({
+const { requirePageUser, listIncomes, listIncomeResponsibleEmployees } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -16,14 +16,13 @@ const { requirePageUser, listIncomes, listUsers } = vi.hoisted(() => ({
     },
   }),
   listIncomes: vi.fn().mockResolvedValue({ items: [], metrics: { total: 0, count: 0, average: 0, cashTotal: 0, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
-  listUsers: vi.fn().mockResolvedValue({ items: [] }),
+  listIncomeResponsibleEmployees: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
   requirePageUser,
 }));
-vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
-vi.mock("@/lib/users/repository", () => ({ userRepository: { list: listUsers } }));
+vi.mock("@/lib/incomes/service", () => ({ listIncomes, listIncomeResponsibleEmployees }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes",
@@ -62,6 +61,19 @@ it("revalidates the session at the income history boundary", async () => {
 
   expect(requirePageUser).toHaveBeenCalledOnce();
   expect(listIncomes).toHaveBeenCalledOnce();
+});
+
+it("loads historical responsible users for the manager filter", async () => {
+  listIncomeResponsibleEmployees.mockResolvedValueOnce([{
+    id: "00000000-0000-4000-8000-000000000099",
+    firstName: "Empleado",
+    lastName: "Histórico",
+  }]);
+
+  render(await DashboardLayout({ children: await IncomesPage() }));
+
+  expect(listIncomeResponsibleEmployees).toHaveBeenCalledWith(expect.objectContaining({ id: "00000000-0000-4000-8000-000000000001" }));
+  expect(screen.getByRole("option", { name: "Empleado Histórico" })).toBeVisible();
 });
 
 it("does not render income history after session revocation", async () => {

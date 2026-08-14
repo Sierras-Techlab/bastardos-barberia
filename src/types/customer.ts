@@ -9,7 +9,7 @@ export type Customer = {
   visits: number;
   createdAt: string;
   fixedSchedule: FixedSchedule | null;
-  fixedScheduleVersion?: number | null;
+  fixedScheduleVersion: number | null;
 };
 
 export type CustomerCatalogData = { customers: Customer[] };

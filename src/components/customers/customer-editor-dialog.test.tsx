@@ -54,6 +54,7 @@ it("loads and can disable an existing fixed schedule", async () => {
     visits: 4,
     createdAt: "2026-08-01T10:00:00.000Z",
     fixedSchedule: { weekday: 4 as const, time: "10:00" },
+    fixedScheduleVersion: 1,
   };
   render(<CustomerEditorDialog mode="edit" customer={customer} customers={[customer]} onClose={vi.fn()} onSave={onSave} />);
   expect(screen.getByRole("checkbox", { name: /es cliente habitual/i })).toBeChecked();

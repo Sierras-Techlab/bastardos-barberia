@@ -31,6 +31,13 @@ it("accepts the PostgreSQL timestamptz offset returned for createdAt", async () 
     incomeRepository.create(actor, input),
   ).resolves.toEqual(databaseItem);
 });
+it("lists every historical responsible user through the dedicated RPC", async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: [item.employee], error: null });
+  getSupabaseAdmin.mockReturnValue({ rpc });
+
+  await expect(incomeRepository.listResponsibleEmployees(actor.id)).resolves.toEqual([item.employee]);
+  expect(rpc).toHaveBeenCalledWith("list_income_responsible_users", { requesting_user_id: actor.id });
+});
 it("maps insufficient stock without exposing database details", async () => {
   getSupabaseAdmin.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: null, error: { message: "INSUFFICIENT_STOCK:Gel" } }) });
   await expect(incomeRepository.create(actor, input)).rejects.toMatchObject({ code: "INSUFFICIENT_STOCK", status: 409, message: expect.stringContaining("Gel") });

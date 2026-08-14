@@ -44,6 +44,7 @@ const customer: Customer = {
   visits: 0,
   createdAt: "2026-08-11T14:00:00.000Z",
   fixedSchedule: null,
+  fixedScheduleVersion: null,
 };
 
 describe("dashboard recent activity", () => {

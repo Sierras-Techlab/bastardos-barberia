@@ -466,6 +466,22 @@ begin
     return existing_income.id;
   end if;
 
+  -- Lock every potentially involved user in UUID order so role/eligibility cannot
+  -- change after authorization and two cross-attributed sales cannot deadlock.
+  perform 1
+  from public.users
+  where id = actor_user_id or id = responsible_employee_id
+  order by id
+  for share;
+
+  select id, role_id into actor_record
+  from public.users
+  where id = actor_user_id and is_active and deleted_at is null;
+
+  if not found then
+    raise exception using errcode = '22023', message = 'INVALID_ACTOR';
+  end if;
+
   effective_employee_id := case
     when actor_record.role_id = 3 then actor_user_id
     else responsible_employee_id
@@ -485,17 +501,11 @@ begin
     raise exception using errcode = 'P0001', message = 'COMMISSION_RATE_OUT_OF_RANGE';
   end if;
 
-  if selected_customer_id is not null and not exists (
-    select 1 from public.customers
-    where id = selected_customer_id and deleted_at is null
-  ) then
-    raise exception using errcode = 'P0001', message = 'CUSTOMER_NOT_FOUND';
-  end if;
-
   if selected_service_id is not null then
     select id, name, price into service_record
     from public.services
-    where id = selected_service_id and is_active and deleted_at is null;
+    where id = selected_service_id and is_active and deleted_at is null
+    for share;
     if not found then
       raise exception using errcode = 'P0001', message = 'SERVICE_NOT_AVAILABLE';
     end if;
@@ -541,6 +551,18 @@ begin
   sale_total := sale_total + product_base;
   if payment_total <> sale_total then
     raise exception using errcode = 'P0001', message = 'PAYMENT_ALLOCATION_MISMATCH';
+  end if;
+
+  -- Products are already locked above. Lock the customer afterwards to preserve
+  -- the same product -> customer order used by void_income.
+  if selected_customer_id is not null then
+    perform 1
+    from public.customers
+    where id = selected_customer_id and deleted_at is null
+    for share;
+    if not found then
+      raise exception using errcode = 'P0001', message = 'CUSTOMER_NOT_FOUND';
+    end if;
   end if;
 
   if full_service and (
@@ -796,6 +818,45 @@ begin
 end;
 $$;
 
+create or replace function public.list_income_responsible_users(
+  requesting_user_id uuid
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  result jsonb;
+begin
+  if not exists (
+    select 1
+    from public.users
+    where id = requesting_user_id
+      and role_id in (1, 2)
+      and is_active
+      and deleted_at is null
+  ) then
+    raise exception using errcode = '42501', message = 'MANAGER_REQUIRED';
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', responsible.id,
+    'firstName', responsible.first_name,
+    'lastName', responsible.last_name
+  ) order by responsible.last_name, responsible.first_name, responsible.id), '[]'::jsonb)
+  into result
+  from (
+    select distinct employee.id, employee.first_name, employee.last_name
+    from public.incomes income
+    join public.users employee on employee.id = income.employee_id
+  ) responsible;
+
+  return result;
+end;
+$$;
+
 drop function if exists public.create_income(uuid, uuid, uuid, uuid, jsonb, text);
 
 alter table public.income_payments enable row level security;
@@ -808,6 +869,7 @@ revoke execute on function public.income_as_json(uuid) from public, anon, authen
 revoke execute on function public.get_income_detail(uuid, boolean, uuid) from public, anon, authenticated;
 revoke execute on function public.list_incomes(uuid, boolean, uuid, date, date, text, text, text, text, integer, integer)
   from public, anon, authenticated;
+revoke execute on function public.list_income_responsible_users(uuid) from public, anon, authenticated;
 
 grant execute on function public.create_income_v2(uuid, uuid, uuid, uuid, uuid, jsonb, jsonb, boolean)
   to service_role;
@@ -815,6 +877,7 @@ grant execute on function public.income_as_json(uuid) to service_role;
 grant execute on function public.get_income_detail(uuid, boolean, uuid) to service_role;
 grant execute on function public.list_incomes(uuid, boolean, uuid, date, date, text, text, text, text, integer, integer)
   to service_role;
+grant execute on function public.list_income_responsible_users(uuid) to service_role;
 
 notify pgrst, 'reload schema';
 

@@ -13,6 +13,7 @@ const customer: Customer = {
   visits: 2,
   createdAt: "2026-08-01T00:00:00.000Z",
   fixedSchedule: null,
+  fixedScheduleVersion: null,
 };
 
 it("loads dates and purchased service/product details", async () => {

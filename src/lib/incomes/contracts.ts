@@ -30,10 +30,12 @@ export const paginatedIncomesSchema = z.object({
   metrics: z.object({ grossTotal: z.number().nonnegative(), commissionTotal: z.number().nonnegative(), barbershopNet: z.number().nonnegative(), count: z.number().int().nonnegative(), average: z.number().nonnegative(), cashTotal: z.number().nonnegative(), transferTotal: z.number().nonnegative() }).strict(),
   pagination: z.object({ page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict(),
 }).strict();
+export const incomeResponsibleEmployeesSchema = z.array(employeeSchema);
 export type IncomeScope = { requestingUserId: string; canViewAll: boolean; userId: string | null };
 export type IncomeRepository = {
   create(actor: SafeUser, input: CreateIncomeInput): Promise<Income>;
   list(scope: IncomeScope, query: IncomeListQuery): Promise<PaginatedIncomes>;
+  listResponsibleEmployees(requestingUserId: string): Promise<Array<{ id: string; firstName: string; lastName: string }>>;
   findById(scope: IncomeScope, id: string): Promise<IncomeListItem | null>;
   void(id: string, actorId: string): Promise<IncomeListItem | null>;
 };

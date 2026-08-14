@@ -1,6 +1,6 @@
 import "server-only";
 import { AppError } from "@/lib/auth/errors";
-import { incomeResponseSchema, paginatedIncomesSchema, type IncomeRepository, type IncomeScope } from "@/lib/incomes/contracts";
+import { incomeResponseSchema, incomeResponsibleEmployeesSchema, paginatedIncomesSchema, type IncomeRepository, type IncomeScope } from "@/lib/incomes/contracts";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { IncomeListQuery } from "@/types/income";
 
@@ -46,6 +46,13 @@ export const incomeRepository: IncomeRepository = {
     const { data, error } = await getSupabaseAdmin().rpc("list_incomes", listParams(scope, query));
     if (error) rpcFailure("list incomes", error); const parsed = paginatedIncomesSchema.safeParse(data);
     if (!parsed.success) return databaseFailure("validate incomes", parsed.error); return parsed.data;
+  },
+  async listResponsibleEmployees(requestingUserId) {
+    const { data, error } = await getSupabaseAdmin().rpc("list_income_responsible_users", { requesting_user_id: requestingUserId });
+    if (error) rpcFailure("list income responsible users", error);
+    const parsed = incomeResponsibleEmployeesSchema.safeParse(data);
+    if (!parsed.success) return databaseFailure("validate income responsible users", parsed.error);
+    return parsed.data;
   },
   findById: detail,
   async void(id, actorId) {

@@ -43,7 +43,8 @@ create index fixed_occurrences_pending_date_idx
   on public.fixed_customer_occurrences(occurrence_date, scheduled_time)
   where status = 'pending';
 
-create or replace function public.ensure_fixed_customer_occurrences(
+create or replace function public.ensure_fixed_customer_occurrences_for_customer(
+  target_customer_id uuid,
   date_from date,
   date_to date
 )
@@ -53,6 +54,46 @@ security definer
 set search_path = ''
 as $$
 begin
+  if target_customer_id is null
+    or date_from is null or date_to is null
+    or date_to < date_from
+    or date_to - date_from > 70
+  then
+    raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_RANGE';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('fixed-customer-schedule:' || target_customer_id::text, 0)
+  );
+
+  insert into public.fixed_customer_occurrences (
+    schedule_customer_id, schedule_version, customer_id,
+    occurrence_date, scheduled_time
+  )
+  select s.customer_id, s.version, s.customer_id, day_series.day_value::date, s.local_time
+  from public.customer_fixed_schedules s
+  join public.customers c on c.id = s.customer_id and c.deleted_at is null
+  cross join generate_series(date_from, date_to, interval '1 day') as day_series(day_value)
+  where s.customer_id = target_customer_id
+    and s.is_active
+    and day_series.day_value::date >= s.effective_from
+    and extract(isodow from day_series.day_value)::smallint = s.weekday
+  on conflict (schedule_customer_id, schedule_version, occurrence_date) do nothing;
+end;
+$$;
+
+create or replace function public.ensure_fixed_customer_occurrences(
+  date_from date,
+  date_to date
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  schedule_customer_id uuid;
+begin
   if date_from is null or date_to is null
     or date_to < date_from
     or date_to - date_from > 70
@@ -60,23 +101,19 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_RANGE';
   end if;
 
-  with active_schedules as materialized (
-    select s.customer_id, s.version, s.weekday, s.local_time, s.effective_from
+  -- Generate one customer at a time in UUID order. The per-customer helper takes
+  -- the same advisory lock as schedule mutation before touching either table.
+  for schedule_customer_id in
+    select s.customer_id
     from public.customer_fixed_schedules s
     join public.customers c on c.id = s.customer_id and c.deleted_at is null
     where s.is_active
-    for share of s
-  )
-  insert into public.fixed_customer_occurrences (
-    schedule_customer_id, schedule_version, customer_id,
-    occurrence_date, scheduled_time
-  )
-  select s.customer_id, s.version, s.customer_id, day_series.day_value::date, s.local_time
-  from active_schedules s
-  cross join generate_series(date_from, date_to, interval '1 day') as day_series(day_value)
-  where day_series.day_value::date >= s.effective_from
-    and extract(isodow from day_series.day_value)::smallint = s.weekday
-  on conflict (schedule_customer_id, schedule_version, occurrence_date) do nothing;
+    order by s.customer_id
+  loop
+    perform public.ensure_fixed_customer_occurrences_for_customer(
+      schedule_customer_id, date_from, date_to
+    );
+  end loop;
 end;
 $$;
 
@@ -101,6 +138,10 @@ declare
   generation_from date;
   schedule_exists boolean;
 begin
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('fixed-customer-schedule:' || target_customer_id::text, 0)
+  );
+
   select * into current_schedule
   from public.customer_fixed_schedules
   where customer_id = target_customer_id
@@ -115,7 +156,7 @@ begin
   end if;
 
   if new_fixed_schedule is null or new_fixed_schedule = 'null'::jsonb then
-    if schedule_exists then
+    if schedule_exists and current_schedule.is_active then
       update public.customer_fixed_schedules
       set is_active = false,
           version = current_schedule.version + 1,
@@ -165,6 +206,29 @@ begin
     set updated_by = actor_user_id, updated_at = now()
     where customer_id = target_customer_id;
     generation_from := greatest(business_date, current_schedule.effective_from);
+  elsif not current_schedule.is_active then
+    next_version := current_schedule.version + 1;
+    generation_from := case when exists (
+      select 1
+      from public.fixed_customer_occurrences
+      where schedule_customer_id = target_customer_id
+        and occurrence_date = business_date
+    ) then business_date + 1 else business_date end;
+
+    delete from public.fixed_customer_occurrences
+    where schedule_customer_id = target_customer_id
+      and occurrence_date > business_date
+      and status = 'pending';
+
+    update public.customer_fixed_schedules
+    set weekday = parsed_weekday,
+        local_time = parsed_time,
+        is_active = true,
+        version = next_version,
+        effective_from = generation_from,
+        updated_by = actor_user_id,
+        updated_at = now()
+    where customer_id = target_customer_id;
   else
     next_version := current_schedule.version + 1;
     delete from public.fixed_customer_occurrences
@@ -184,7 +248,9 @@ begin
     generation_from := business_date + 1;
   end if;
 
-  perform public.ensure_fixed_customer_occurrences(generation_from, business_date + 56);
+  perform public.ensure_fixed_customer_occurrences_for_customer(
+    target_customer_id, generation_from, business_date + 56
+  );
 end;
 $$;
 
@@ -253,6 +319,12 @@ begin
     where id = actor_user_id and is_active and deleted_at is null
   ) then
     raise exception using errcode = '22023', message = 'INVALID_ACTOR';
+  end if;
+
+  if set_fixed_schedule then
+    perform pg_catalog.pg_advisory_xact_lock(
+      pg_catalog.hashtextextended('fixed-customer-schedule:' || target_customer_id::text, 0)
+    );
   end if;
 
   perform 1 from public.customers
@@ -470,6 +542,7 @@ grant select, insert, update, delete on table public.customer_fixed_schedules to
 grant select, insert, update, delete on table public.fixed_customer_occurrences to service_role;
 
 revoke execute on function public.ensure_fixed_customer_occurrences(date, date) from public, anon, authenticated;
+revoke execute on function public.ensure_fixed_customer_occurrences_for_customer(uuid, date, date) from public, anon, authenticated, service_role;
 revoke execute on function public.sync_customer_fixed_schedule(uuid, uuid, jsonb, integer, date) from public, anon, authenticated;
 revoke execute on function public.create_customer_v2(uuid, text, text, text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.update_customer_v2(uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text, boolean, jsonb, integer) from public, anon, authenticated;
