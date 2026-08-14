@@ -49,12 +49,12 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Product stock changes are atomic, cannot produce negative stock and append an actor-linked inventory movement.
 - Services are logically deleted, preserve sales-history references and may be mutated only by owner/admin; employees receive active services only.
 - Customer names may duplicate. Normalized phone is required and unique, email is optional and unique when present, every authenticated role may create/edit, and only owner/admin may logically delete.
-- A customer may have one active ISO-weekday/local-time schedule. Audited occurrences are generated idempotently for bounded windows; attendance is independent from sales. Visit history is a sanitized projection of active sale item snapshots.
+- A customer may have one active ISO-weekday/local-time schedule. Schedule versions have effective dates, mutations and generation serialize per customer, and audited occurrences are generated idempotently for bounded windows; attendance is independent from sales. Visit history is a sanitized projection of active sale item snapshots.
 - User service/product commission rates are manager-configurable integers from 0 through 100 and default to zero.
 - Incomes distinguish the authenticated `registered_by` actor from the responsible `employee_id`. Employees are always responsible for themselves; owner/admin may select an active user and may exceptionally grant 100% of a service to a different employee.
 - Income payments are normalized allocations whose positive cash/transfer amounts exactly equal the authoritative sale total. Commission bases, rates, component amounts, total and barbershop net are immutable sale snapshots.
-- Income history is scoped by responsible employee: owner/admin can read/filter all and employees can read only their own. Browser payloads never choose the actor, prices, total, commission amounts, timestamp or business date.
-- Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, split payments, product stock, inventory movements and customer visits. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
+- Income history is scoped by responsible employee: owner/admin can read/filter every historical responsible user, including inactive or logically deleted accounts with retained sales, and employees can read only their own. Browser payloads never choose the actor, prices, total, commission amounts, timestamp or business date.
+- Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, split payments, product stock, inventory movements and customer visits. New-sale authorization/catalog rows remain locked through commit so concurrent role or lifecycle changes cannot invalidate the snapshot. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
 
 ## Repository map
 

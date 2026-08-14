@@ -21,7 +21,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
 | Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance. |
 | Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, configured rates, immutable commission/net snapshots and audited 100% service exception. |
-| Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering, V2 metrics, payments, commissions, registrant audit and full detail. |
+| Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
