@@ -22,6 +22,10 @@ describe("product category boundary schemas", () => {
       .toBe(false);
     expect(updateProductCategorySchema.safeParse({}).success).toBe(false);
     expect(updateProductCategorySchema.safeParse({ deletedAt: null }).success).toBe(false);
+    expect(updateProductCategorySchema.safeParse({ isActive: false }).success).toBe(false);
+    expect(updateProductCategorySchema.parse({ isActive: true })).toEqual({
+      isActive: true,
+    });
     expect(updateProductCategorySchema.safeParse({ name: "  Fragancias  " })).toMatchObject({
       success: true,
       data: { name: "Fragancias" },

@@ -8,5 +8,5 @@ export type ProductCategoryInput = { name: string };
 
 export type ProductCategoryUpdate = {
   name?: string;
-  isActive?: boolean;
+  isActive?: true;
 };

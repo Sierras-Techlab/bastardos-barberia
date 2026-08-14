@@ -70,9 +70,9 @@ describe("product category repository", () => {
       updated_by: row.created_by,
     });
 
-    await productCategoryRepository.update(row.updated_by, row.id, { isActive: false });
+    await productCategoryRepository.update(row.updated_by, row.id, { isActive: true });
     expect(query.update).toHaveBeenCalledWith({
-      is_active: false,
+      is_active: true,
       updated_by: row.updated_by,
     });
   });

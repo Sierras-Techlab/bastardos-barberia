@@ -16,6 +16,16 @@ const categoryNotFound = () =>
     404,
   );
 
+const assertNotDeactivationAttempt = (input: ProductCategoryUpdate) => {
+  if ((input as { isActive?: boolean }).isActive === false) {
+    throw new AppError(
+      "PRODUCT_CATEGORY_DEACTIVATION_REQUIRED",
+      "Para desactivar una categoría, usá la acción correspondiente.",
+      400,
+    );
+  }
+};
+
 const defaultDependencies: ProductCategoryServiceDependencies = {
   categories: productCategoryRepository,
 };
@@ -55,6 +65,7 @@ export const updateProductCategory = async (
   dependencies: ProductCategoryServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
+  assertNotDeactivationAttempt(input);
   const category = await dependencies.categories.update(actor.id, id, input);
   if (!category) throw categoryNotFound();
   return category;

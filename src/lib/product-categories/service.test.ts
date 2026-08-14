@@ -12,7 +12,10 @@ import {
   listProductCategories,
   updateProductCategory,
 } from "@/lib/product-categories/service";
-import type { ProductCategory } from "@/types/product-category";
+import type {
+  ProductCategory,
+  ProductCategoryUpdate,
+} from "@/types/product-category";
 
 const manager: SafeUser = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -84,16 +87,31 @@ describe("product category domain", () => {
     const deps = dependencies();
 
     await createProductCategory(manager, { name: category.name }, deps);
-    await updateProductCategory(manager, category.id, { isActive: false }, deps);
+    await updateProductCategory(manager, category.id, { isActive: true }, deps);
     await deactivateProductCategory(manager, category.id, deps);
 
     expect(deps.categories.create).toHaveBeenCalledWith(manager.id, {
       name: category.name,
     });
     expect(deps.categories.update).toHaveBeenCalledWith(manager.id, category.id, {
-      isActive: false,
+      isActive: true,
     });
     expect(deps.categories.deactivate).toHaveBeenCalledWith(manager.id, category.id);
+  });
+
+  it("rejects direct deactivation attempts before repository persistence", async () => {
+    const deps = dependencies();
+
+    await expect(
+      updateProductCategory(
+        manager,
+        category.id,
+        { isActive: false } as unknown as ProductCategoryUpdate,
+        deps,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(deps.categories.update).not.toHaveBeenCalled();
   });
 
   it("does not expose missing or inactive categories to employees", async () => {
