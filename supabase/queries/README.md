@@ -16,6 +16,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 10. `010_income_commissions_and_split_payments.sql`
 11. `011_customer_visits_and_fixed_schedules.sql`
 12. `012_owner_commission_rules.sql`
+13. `013_customer_visit_financials.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -222,7 +223,7 @@ select routine_name
 from information_schema.routines
 where routine_schema = 'public'
   and routine_name in (
-    'create_customer_v2', 'update_customer_v2', 'list_customer_visits',
+    'create_customer', 'update_customer', 'list_customer_visits',
     'ensure_fixed_customer_occurrences',
     'ensure_fixed_customer_occurrences_for_customer',
     'list_fixed_customer_occurrences',
@@ -267,6 +268,127 @@ where o.occurrence_date < s.effective_from;
 ```
 
 Both tables must report RLS enabled, all seven routines must be present, the schedule table must have its customer primary key plus non-null `version` and `effective_from`, occurrences must have their schedule-version-date uniqueness constraint, and neither `PUBLIC`, `anon` nor `authenticated` may have table grants. The per-customer occurrence helper must also have no direct `service_role` execute grant. The final query must return zero rows: a schedule version may never generate occurrences before its effective date.
+
+After script `013` is installed, verify the canonical customer RPCs and the financial visit projection without retaining changes. This block identifies the most recent active customer sale; create one first if the database has none.
+
+```sql
+begin;
+
+do $$
+declare
+  actor_id uuid;
+  target_customer_id uuid;
+  target_income_id uuid;
+  visits jsonb;
+  checked_routine_name text;
+begin
+  if exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('create_customer_v2', 'update_customer_v2')
+  ) then
+    raise exception 'CUSTOMER_V2_RPC_STILL_PRESENT';
+  end if;
+
+  foreach checked_routine_name in array array['create_customer', 'update_customer', 'list_customer_visits']
+  loop
+    if not exists (
+      select 1
+      from information_schema.routine_privileges rp
+      where rp.routine_schema = 'public'
+        and rp.routine_name = checked_routine_name
+        and grantee = 'service_role'
+        and privilege_type = 'EXECUTE'
+    ) then
+      raise exception 'CUSTOMER_RPC_SERVICE_ROLE_GRANT_MISSING:%', checked_routine_name;
+    end if;
+
+    if exists (
+      select 1
+      from information_schema.routine_privileges rp
+      where rp.routine_schema = 'public'
+        and rp.routine_name = checked_routine_name
+        and grantee in ('PUBLIC', 'anon', 'authenticated')
+        and privilege_type = 'EXECUTE'
+    ) then
+      raise exception 'CUSTOMER_RPC_UNSAFE_EXECUTE_GRANT:%', checked_routine_name;
+    end if;
+  end loop;
+
+  select id into actor_id
+  from public.users
+  where is_active and deleted_at is null
+  order by created_at, id
+  limit 1;
+
+  select i.customer_id, i.id
+  into target_customer_id, target_income_id
+  from public.incomes i
+  where i.status = 'active' and i.customer_id is not null
+  order by i.created_at desc, i.id desc
+  limit 1;
+
+  if actor_id is null or target_customer_id is null then
+    raise exception 'CUSTOMER_VISIT_FINANCIAL_VERIFICATION_REQUIRES_ACTIVE_SALE';
+  end if;
+
+  visits := public.list_customer_visits(actor_id, target_customer_id, 1, 100);
+
+  if not exists (
+    select 1
+    from jsonb_array_elements(visits->'items') as visit(value)
+    where (visit.value->>'id')::uuid = target_income_id
+  ) then
+    raise exception 'CUSTOMER_VISIT_EXPECTED_ACTIVE_SALE_MISSING';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(visits->'items') as visit(value)
+    cross join lateral jsonb_array_elements(visit.value->'items') as item(value)
+    where not exists (
+      select 1
+      from public.income_items ii
+      where ii.income_id = (visit.value->>'id')::uuid
+        and ii.item_type = item.value->>'type'
+        and ii.name_snapshot = item.value->>'name'
+        and ii.quantity = (item.value->>'quantity')::integer
+        and ii.unit_price = (item.value->>'unitPrice')::integer
+        and ii.unit_price * ii.quantity = (item.value->>'subtotal')::integer
+    )
+  ) then
+    raise exception 'CUSTOMER_VISIT_SUBTOTAL_MISMATCH';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(visits->'items') as visit(value)
+    where not exists (
+      select 1
+      from public.incomes i
+      where i.id = (visit.value->>'id')::uuid
+        and i.status = 'active'
+        and i.total = (visit.value->>'totalSpent')::integer
+    )
+  ) then
+    raise exception 'CUSTOMER_VISIT_TOTAL_MISMATCH_OR_VOIDED_SALE_EXPOSED';
+  end if;
+
+  if jsonb_path_exists(visits, '$.**.employee')
+    or jsonb_path_exists(visits, '$.**.payments')
+    or jsonb_path_exists(visits, '$.**.commission')
+  then
+    raise exception 'CUSTOMER_VISIT_PRIVATE_DATA_EXPOSED';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+The block must complete successfully. Each returned line subtotal is matched to its immutable `income_items` snapshot, each `totalSpent` is matched to `incomes.total`, and every returned income must remain active. It also rejects `employee`, `payments` and `commission` keys in the JSON. The rollback leaves the database unchanged.
 
 After an active customer has a schedule, verify idempotent occurrence generation without retaining changes. Replace the dates with a range of at most 70 days:
 

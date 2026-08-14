@@ -6,7 +6,7 @@ Captured: 2026-08-14
 
 - Active branch: `feat/backend-models` in the primary checkout. Commercial operations V2 and the dashboard agenda correction are integrated directly on this branch for the user's GitHub push and pull request.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
-- Commercial operations V2 is implemented locally through migrations `010` and `011`; neither migration was applied to the configured Supabase project.
+- Commercial operations V2 is implemented locally through migrations `010` through `013`; none has been applied to the configured Supabase project.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 
 ## Delivered behavior
@@ -30,12 +30,14 @@ Captured: 2026-08-14
 
 - `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation, normalized bigint payments, overflow-safe immutable commission snapshots, locked catalog authorization and a manager-only historical-responsible projection.
 - `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains effective-dated weekly schedules, per-customer serialized occurrence generation/resolution, optimistic schedule concurrency, transactional customer V2 functions and sanitized visit projection.
-- `supabase/queries/README.md` documents ordered installation `001` through `011` and transaction-wrapped post-install acceptance checks.
-- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` then `011` manually and run the documented checks before considering these features live.
+- `supabase/queries/012_owner_commission_rules.sql` enforces owner-zero commission rates and snapshots, and promotes `update_user_profile` to its canonical RPC.
+- `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
+- `supabase/queries/README.md` documents ordered installation `001` through `013` and transaction-wrapped post-install acceptance checks.
+- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `013` manually and run the documented checks before considering these features live.
 
 ## Verification
 
-- Full suite: 119 test files / 410 tests passed.
+- Full suite: 119 test files / 418 tests passed.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.
@@ -45,14 +47,13 @@ Captured: 2026-08-14
 ## Known boundaries
 
 - SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010`/`011` still require manual PostgreSQL execution and verification.
-- The SQL counterpart for owner commission enforcement and the canonical `update_user_profile` signature is pending in unit 012-B; until it is applied, the app-side RPC rename must not be deployed independently.
-- Migration 013 still needs to expose the strict financial customer-visit projection and canonical customer RPC names before this application contract can be deployed.
+- Migrations `012` and `013` now provide the owner-safe and customer-visit RPC contracts required by the application, but they remain unapplied remotely; deploy `010` through `013` as one ordered manual SQL installation.
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 
 ## Recommended next task
 
-Implement and verify unit 012-B's database enforcement before deploying the owner-safe application changes; then install migrations `010` through `012` in order and run their SQL Editor acceptance checks.
+Manually install migrations `010` through `013` in order and run their SQL Editor acceptance checks before deploying the locally verified application changes.
 
 ## Context maintenance rule
 

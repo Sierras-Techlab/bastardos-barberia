@@ -1,3 +1,4 @@
+import type { CustomerVisitProjection } from "@/lib/supabase/database.types";
 import type { FixedSchedule } from "@/types/fixed-customer";
 
 export type Customer = {
@@ -23,19 +24,7 @@ export type UpdateCustomerInput = Partial<CustomerEditorInput & {
   expectedScheduleVersion: number;
 }>;
 
-export type CustomerVisit = {
-  id: string;
-  occurredAt: string;
-  businessDate: string;
-  totalSpent: number;
-  items: Array<{
-    type: "service" | "product";
-    name: string;
-    quantity: number;
-    unitPrice: number;
-    subtotal: number;
-  }>;
-};
+export type CustomerVisit = CustomerVisitProjection;
 
 export type PaginatedCustomerVisits = {
   items: CustomerVisit[];

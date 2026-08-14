@@ -18,9 +18,9 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Module | State | Current result / objective |
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
-| User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner rates are normalized to 0 in the application while database enforcement is pending migration 012. |
+| User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner rates are authoritatively normalized to 0 by migration 012, pending manual installation. |
 | Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
-| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, owner-safe application previews, configured rates, immutable commission/net snapshots and audited 100% service exception; migration 012 remains required for database enforcement. |
+| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, owner-safe application previews, configured rates, immutable commission/net snapshots and audited 100% service exception; migration 012 remains pending manual installation. |
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
@@ -28,12 +28,12 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
 | Products | Implemented | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements; inactive items show `No disponible` regardless of retained stock. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
-| Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail from immutable active-sale snapshots, and audited attended/missed occurrences. |
+| Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, and audited attended/missed occurrences; migration 013 remains pending manual installation. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
 
-Complete migration `012` for owner commission enforcement and the canonical profile RPC, then manually install migrations `010` through `012` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
+Manually install migrations `010` through `013` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 

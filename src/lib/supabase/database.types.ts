@@ -181,3 +181,19 @@ export type IncomeItemRow = {
   subtotal: number;
   created_at: string;
 };
+
+export type CustomerVisitItemProjection = {
+  type: IncomeItemType;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+};
+
+export type CustomerVisitProjection = {
+  id: string;
+  occurredAt: string;
+  businessDate: string;
+  totalSpent: number;
+  items: CustomerVisitItemProjection[];
+};
