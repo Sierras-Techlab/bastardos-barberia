@@ -3,6 +3,27 @@
 
 begin;
 
+-- Older installations can retain the pre-schedule canonical overloads. Remove
+-- them before creating the final names so PostgREST never has an ambiguous RPC.
+do $$
+begin
+  if to_regprocedure('public.create_customer(uuid,text,text,text,text)') is not null then
+    revoke execute on function public.create_customer(uuid, text, text, text, text)
+      from public, anon, authenticated, service_role;
+    drop function public.create_customer(uuid, text, text, text, text);
+  end if;
+
+  if to_regprocedure('public.update_customer(uuid,uuid,boolean,text,boolean,text,boolean,text,boolean,text)') is not null then
+    revoke execute on function public.update_customer(
+      uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text
+    ) from public, anon, authenticated, service_role;
+    drop function public.update_customer(
+      uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text
+    );
+  end if;
+end;
+$$;
+
 -- Promote the schedule-aware customer mutations without changing their V2
 -- signatures or bodies. The application already calls these canonical names.
 create or replace function public.create_customer(

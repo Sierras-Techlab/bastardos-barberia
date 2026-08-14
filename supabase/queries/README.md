@@ -269,7 +269,7 @@ where o.occurrence_date < s.effective_from;
 
 Both tables must report RLS enabled, all seven routines must be present, the schedule table must have its customer primary key plus non-null `version` and `effective_from`, occurrences must have their schedule-version-date uniqueness constraint, and neither `PUBLIC`, `anon` nor `authenticated` may have table grants. The per-customer occurrence helper must also have no direct `service_role` execute grant. The final query must return zero rows: a schedule version may never generate occurrences before its effective date.
 
-After script `013` is installed, verify the canonical customer RPCs and the financial visit projection without retaining changes. This block identifies the most recent active customer sale; create one first if the database has none.
+After script `013` is installed, verify the canonical customer RPCs and the financial visit projection without retaining changes. The block creates a temporary active sale plus a temporary voided sale through the installed contracts, so it also works on an otherwise new database.
 
 ```sql
 begin;
@@ -278,7 +278,9 @@ do $$
 declare
   actor_id uuid;
   target_customer_id uuid;
-  target_income_id uuid;
+  service_id uuid;
+  active_income_id uuid;
+  voided_income_id uuid;
   visits jsonb;
   checked_routine_name text;
 begin
@@ -290,6 +292,14 @@ begin
       and p.proname in ('create_customer_v2', 'update_customer_v2')
   ) then
     raise exception 'CUSTOMER_V2_RPC_STILL_PRESENT';
+  end if;
+
+  if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'create_customer') <> 1
+    or (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'update_customer') <> 1
+  then
+    raise exception 'CUSTOMER_CANONICAL_RPC_OVERLOAD_PRESENT';
   end if;
 
   foreach checked_routine_name in array array['create_customer', 'update_customer', 'list_customer_visits']
@@ -317,31 +327,61 @@ begin
     end if;
   end loop;
 
-  select id into actor_id
-  from public.users
-  where is_active and deleted_at is null
-  order by created_at, id
-  limit 1;
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Verificacion', 'Visitas',
+    'verificacion.' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    '$argon2id$verification', 1, 0, 0
+  ) returning id into actor_id;
 
-  select i.customer_id, i.id
-  into target_customer_id, target_income_id
-  from public.incomes i
-  where i.status = 'active' and i.customer_id is not null
-  order by i.created_at desc, i.id desc
-  limit 1;
+  target_customer_id := public.create_customer(
+    actor_id,
+    'Cliente',
+    'Temporal',
+    '351' || pg_catalog.lpad((pg_catalog.floor(pg_catalog.random() * 100000000)::integer)::text, 8, '0'),
+    null,
+    null
+  );
 
-  if actor_id is null or target_customer_id is null then
-    raise exception 'CUSTOMER_VISIT_FINANCIAL_VERIFICATION_REQUIRES_ACTIVE_SALE';
-  end if;
+  insert into public.services (name, normalized_name, price, created_by, updated_by)
+  values (
+    'Servicio visita ' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    '', 10000, actor_id, actor_id
+  ) returning id into service_id;
+
+  active_income_id := public.create_income_v2(
+    actor_id, actor_id, extensions.gen_random_uuid(), target_customer_id, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10000)),
+    false
+  );
+
+  voided_income_id := public.create_income_v2(
+    actor_id, actor_id, extensions.gen_random_uuid(), target_customer_id, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10000)),
+    false
+  );
+  perform public.void_income(voided_income_id, actor_id);
 
   visits := public.list_customer_visits(actor_id, target_customer_id, 1, 100);
 
   if not exists (
     select 1
     from jsonb_array_elements(visits->'items') as visit(value)
-    where (visit.value->>'id')::uuid = target_income_id
+    where (visit.value->>'id')::uuid = active_income_id
   ) then
     raise exception 'CUSTOMER_VISIT_EXPECTED_ACTIVE_SALE_MISSING';
+  end if;
+
+  if exists (
+    select 1
+    from jsonb_array_elements(visits->'items') as visit(value)
+    where (visit.value->>'id')::uuid = voided_income_id
+  ) then
+    raise exception 'CUSTOMER_VISIT_VOIDED_SALE_EXPOSED';
   end if;
 
   if exists (
@@ -377,8 +417,29 @@ begin
   end if;
 
   if jsonb_path_exists(visits, '$.**.employee')
+    or jsonb_path_exists(visits, '$.**.employeeId')
+    or jsonb_path_exists(visits, '$.**.employee_id')
+    or jsonb_path_exists(visits, '$.**.registeredBy')
+    or jsonb_path_exists(visits, '$.**.registered_by')
+    or jsonb_path_exists(visits, '$.**.registrant')
+    or jsonb_path_exists(visits, '$.**.payment')
     or jsonb_path_exists(visits, '$.**.payments')
+    or jsonb_path_exists(visits, '$.**.paymentMethod')
+    or jsonb_path_exists(visits, '$.**.payment_method')
+    or jsonb_path_exists(visits, '$.**.paymentItems')
+    or jsonb_path_exists(visits, '$.**.payment_items')
     or jsonb_path_exists(visits, '$.**.commission')
+    or jsonb_path_exists(visits, '$.**.commissionTotal')
+    or jsonb_path_exists(visits, '$.**.commission_total')
+    or jsonb_path_exists(visits, '$.**.commissionAmount')
+    or jsonb_path_exists(visits, '$.**.commission_amount')
+    or jsonb_path_exists(visits, '$.**.fullServiceCommission')
+    or jsonb_path_exists(visits, '$.**.full_service_commission')
+    or jsonb_path_exists(visits, '$.**.authorizedBy')
+    or jsonb_path_exists(visits, '$.**.authorized_by')
+    or jsonb_path_exists(visits, '$.**.authorizer')
+    or jsonb_path_exists(visits, '$.**.fullServiceCommissionAuthorizedBy')
+    or jsonb_path_exists(visits, '$.**.full_service_commission_authorized_by')
   then
     raise exception 'CUSTOMER_VISIT_PRIVATE_DATA_EXPOSED';
   end if;
@@ -388,7 +449,7 @@ $$;
 rollback;
 ```
 
-The block must complete successfully. Each returned line subtotal is matched to its immutable `income_items` snapshot, each `totalSpent` is matched to `incomes.total`, and every returned income must remain active. It also rejects `employee`, `payments` and `commission` keys in the JSON. The rollback leaves the database unchanged.
+The block must complete successfully. Each returned line subtotal is matched to its immutable `income_items` snapshot, each `totalSpent` is matched to `incomes.total`, and the created voided sale must be absent. It also rejects employee, registrant, payment, commission and authorizer key variants in the JSON. The rollback leaves the database unchanged.
 
 After an active customer has a schedule, verify idempotent occurrence generation without retaining changes. Replace the dates with a range of at most 70 days:
 
