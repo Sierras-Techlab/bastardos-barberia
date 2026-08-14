@@ -12,6 +12,8 @@ Captured: 2026-08-14
 ## Delivered behavior
 
 - User administration persists integer service/product commission rates from 0 through 100, initially zero.
+- The responsive user directory exposes each employee's service and product commission percentages, and commission inputs can be cleared and replaced without retaining a leading zero while still rejecting empty or invalid values on submit.
+- Authenticated sessions hydrate both commission rates, so an employee loading `/incomes/new` receives the same persisted commission configuration used by manager-selected employees.
 - `/incomes/new` enforces role-aware responsible employees: employees are forced to themselves; owner/admin may choose any active user, loading every result page rather than truncating the selector at 100 users.
 - A sale accepts one or two distinct positive cash/transfer allocations whose exact sum is validated against server-authoritative prices and total.
 - PostgreSQL snapshots service/product commission bases, configured rates, independently rounded amounts, total commission, barbershop net and the optional manager-authorized 100% service exception.
@@ -19,6 +21,7 @@ Captured: 2026-08-14
 - `/incomes` scopes employees by responsible `employee_id`; owner/admin can view and filter all historical responsible users, including inactive and logically deleted accounts with retained sales. V2 metrics expose gross, commission, net, count, average and exact payment totals while excluding voids.
 - Income detail shows responsible employee, registering actor for managers, split payments, commission bases/rates/amounts, net and 100% authorizer. The confirmation flow shows the complete estimated sale before submission.
 - `/customers` persists one optional ISO-weekday/local-time habitual schedule in the same transaction as customer create/update.
+- The customer directory can combine text search and ordering with a fixed-schedule filter for all customers, habitual customers or customers without a habitual schedule.
 - Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Versioned effective dates prevent historical fabrication; same-day reprogramming preserves today's prior appointment; reactivation starts today unless a preserved occurrence already exists; per-customer advisory locks and optimistic versions prevent deadlocks and lost updates.
 - The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. The response intentionally excludes prices, totals, payments, commissions and user identities.
 - Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
@@ -30,16 +33,18 @@ Captured: 2026-08-14
 - `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation, normalized bigint payments, overflow-safe immutable commission snapshots, locked catalog authorization and a manager-only historical-responsible projection.
 - `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains effective-dated weekly schedules, per-customer serialized occurrence generation/resolution, optimistic schedule concurrency, transactional customer V2 functions and sanitized visit projection.
 - `supabase/queries/README.md` documents ordered installation `001` through `011` and transaction-wrapped post-install acceptance checks.
-- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` then `011` manually and run the documented checks before considering these features live.
+- The configured Supabase project now exposes the commission columns and `update_user_profile_v2` behavior from `010`; the complete `010`/`011` acceptance checklist has not been rerun, so deployment verification remains pending.
 
 ## Verification
 
-- Full suite: 119 test files / 410 tests passed.
+- Full suite: 119 test files / 415 tests passed.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.
 - Local runtime was Node 24.17/npm 11.13; repository target remains Node 24.18/npm 11.16.
 - The workweek correction also has 15 focused passing tests covering calendar boundaries, server query scope and card behavior.
+- Session commission hydration has a red/green regression test, and the focused session, income-page and commission-preview suite passes 10 tests.
+- The focused user, customer and role-scoped dashboard verification passes 45 tests.
 
 ## Known boundaries
 
