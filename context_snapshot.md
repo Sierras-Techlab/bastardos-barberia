@@ -20,7 +20,7 @@ Captured: 2026-08-14
 - Income detail shows responsible employee, registering actor for managers, split payments, commission bases/rates/amounts, net and 100% authorizer. The confirmation flow shows the complete estimated sale before submission.
 - `/customers` persists one optional ISO-weekday/local-time habitual schedule in the same transaction as customer create/update.
 - Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Versioned effective dates prevent historical fabrication; same-day reprogramming preserves today's prior appointment; reactivation starts today unless a preserved occurrence already exists; per-customer advisory locks and optimistic versions prevent deadlocks and lost updates.
-- The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. The response intentionally excludes prices, totals, payments, commissions and user identities.
+- The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. Its strict financial contract includes immutable visit total plus historical item unit price and subtotal; the dialog shows those ARS values while excluding user identities, payments, commissions and authorizations.
 - Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
 - Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
@@ -46,6 +46,7 @@ Captured: 2026-08-14
 
 - SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010`/`011` still require manual PostgreSQL execution and verification.
 - The SQL counterpart for owner commission enforcement and the canonical `update_user_profile` signature is pending in unit 012-B; until it is applied, the app-side RPC rename must not be deployed independently.
+- Migration 013 still needs to expose the strict financial customer-visit projection and canonical customer RPC names before this application contract can be deployed.
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 

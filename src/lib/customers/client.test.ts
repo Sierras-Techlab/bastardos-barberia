@@ -30,7 +30,19 @@ it("preserves the explicit null used to disable a schedule", async () => {
 });
 
 it("loads paginated visit details without caching", async () => {
-  const visits = { items: [], pagination: { page: 2, pageSize: 20, total: 22, totalPages: 2 } };
+  const visits = {
+    items: [{
+      id: "20000000-0000-4000-8000-000000000001",
+      occurredAt: "2026-08-13T14:00:00.000Z",
+      businessDate: "2026-08-13",
+      totalSpent: 49000,
+      items: [
+        { type: "service", name: "Corte", quantity: 1, unitPrice: 19000, subtotal: 19000 },
+        { type: "product", name: "Cera mate", quantity: 2, unitPrice: 15000, subtotal: 30000 },
+      ],
+    }],
+    pagination: { page: 2, pageSize: 20, total: 22, totalPages: 2 },
+  };
   fetchMock.mockResolvedValueOnce(Response.json({ data: visits }));
   const controller = new AbortController();
 

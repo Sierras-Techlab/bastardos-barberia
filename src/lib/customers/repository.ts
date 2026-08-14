@@ -12,10 +12,13 @@ const paginatedCustomerVisitsSchema = z.object({
     id: z.uuid(),
     occurredAt: z.iso.datetime({ offset: true }),
     businessDate: z.iso.date(),
+    totalSpent: z.number().int().nonnegative(),
     items: z.array(z.object({
       type: z.enum(["service", "product"]),
       name: z.string().min(1),
       quantity: z.number().int().positive(),
+      unitPrice: z.number().int().nonnegative(),
+      subtotal: z.number().int().nonnegative(),
     }).strict()).min(1),
   }).strict()),
   pagination: z.object({
@@ -92,7 +95,7 @@ export const customerRepository: CustomerRepository = {
     return data ? toCustomer(data as unknown as CustomerWithScheduleRow) : null;
   },
   async create(input) {
-    const { data, error } = await getSupabaseAdmin().rpc("create_customer_v2", {
+    const { data, error } = await getSupabaseAdmin().rpc("create_customer", {
       actor_user_id: input.createdBy,
       new_first_name: input.firstName,
       new_last_name: input.lastName,
@@ -107,7 +110,7 @@ export const customerRepository: CustomerRepository = {
     return customer;
   },
   async update(id, changes) {
-    const { data, error } = await getSupabaseAdmin().rpc("update_customer_v2", {
+    const { data, error } = await getSupabaseAdmin().rpc("update_customer", {
       target_customer_id: id,
       actor_user_id: changes.updatedBy,
       set_first_name: changes.firstName !== undefined,

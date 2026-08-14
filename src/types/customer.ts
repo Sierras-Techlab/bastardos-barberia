@@ -27,10 +27,13 @@ export type CustomerVisit = {
   id: string;
   occurredAt: string;
   businessDate: string;
+  totalSpent: number;
   items: Array<{
     type: "service" | "product";
     name: string;
     quantity: number;
+    unitPrice: number;
+    subtotal: number;
   }>;
 };
 

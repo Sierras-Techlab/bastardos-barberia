@@ -83,7 +83,8 @@ it("opens visit details from desktop and mobile visit controls", async () => {
       id: "20000000-0000-4000-8000-000000000001",
       occurredAt: "2026-08-13T14:00:00.000Z",
       businessDate: "2026-08-13",
-      items: [{ type: "service", name: "Corte clásico", quantity: 1 }],
+      totalSpent: 19000,
+      items: [{ type: "service", name: "Corte clásico", quantity: 1, unitPrice: 19000, subtotal: 19000 }],
     }],
     pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
   });
@@ -92,5 +93,5 @@ it("opens visit details from desktop and mobile visit controls", async () => {
   const controls = screen.getAllByRole("button", { name: "Ver 18 visitas de Lucas Ferreyra" });
   expect(controls).toHaveLength(2);
   await user.click(controls[0]);
-  expect(await screen.findByText("Corte clásico")).toBeVisible();
+  expect(await screen.findByText("1 × Corte clásico")).toBeVisible();
 });

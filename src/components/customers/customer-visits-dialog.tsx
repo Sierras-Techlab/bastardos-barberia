@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { customerClient, type CustomerClient } from "@/lib/customers/client";
+import { formatArs } from "@/lib/incomes/income-calculations";
 import type { Customer, PaginatedCustomerVisits } from "@/types/customer";
 
 type Props = {
@@ -90,10 +91,12 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
                   {visit.items.map((item, index) => (
                     <li key={`${visit.id}-${index}`} className="flex items-center gap-2">
                       {item.type === "service" ? <Scissors className="size-4 text-primary" /> : <Package className="size-4 text-primary" />}
-                      {item.quantity > 1 ? `${item.quantity} × ` : ""}{item.name}
+                      <span>{item.quantity} × {item.name}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{formatArs(item.unitPrice)} c/u · {formatArs(item.subtotal)}</span>
                     </li>
                   ))}
                 </ul>
+                <p className="mt-4 border-t border-black/5 pt-3 text-right text-sm font-semibold">Total de la visita {formatArs(visit.totalSpent)}</p>
               </li>
             ))}
           </ol>

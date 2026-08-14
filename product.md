@@ -28,7 +28,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
 | Products | Implemented | Persistent role-aware catalog, manager CRUD/lifecycle operations and atomic audited inventory movements; inactive items show `No disponible` regardless of retained stock. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
-| Customers | Implemented locally | Persistent directory, optional weekly schedule, sanitized visit detail and audited attended/missed occurrences. |
+| Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail from immutable active-sale snapshots, and audited attended/missed occurrences. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
@@ -47,7 +47,7 @@ Each sale records both the authenticated registrant and responsible employee. Em
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 
-Dashboard home now loads live fixed-customer occurrences only from the current Buenos Aires date through Saturday. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates and purchased item snapshots without financial or employee data.
+Dashboard home now loads live fixed-customer occurrences only from the current Buenos Aires date through Saturday. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates, immutable item prices/subtotals and active-sale totals without employee, registrant, payment, commission or authorization data.
 
 ## Accepted authentication decisions
 

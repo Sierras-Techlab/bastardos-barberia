@@ -48,7 +48,7 @@ describe("customer repository", () => {
     await expect(customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: "3515559999", email: "ana@mail.com", fixedSchedule: null, createdBy: row.created_by })).rejects.toMatchObject({ code: "CUSTOMER_EMAIL_EXISTS" });
   });
 
-  it("persists customer and weekly schedule through atomic V2 RPCs", async () => {
+  it("persists customer and weekly schedule through canonical atomic RPCs", async () => {
     const rpc = vi.fn()
       .mockResolvedValueOnce({ data: row.id, error: null })
       .mockResolvedValueOnce({ data: row.id, error: null });
@@ -62,7 +62,7 @@ describe("customer repository", () => {
     await customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" }, createdBy: row.created_by });
     await customerRepository.update(row.id, { fixedSchedule: null, expectedScheduleVersion: 1, updatedBy: row.updated_by });
 
-    expect(rpc).toHaveBeenNthCalledWith(1, "create_customer_v2", {
+    expect(rpc).toHaveBeenNthCalledWith(1, "create_customer", {
       actor_user_id: row.created_by,
       new_first_name: "Ana",
       new_last_name: "Pérez",
@@ -70,7 +70,7 @@ describe("customer repository", () => {
       new_email: null,
       fixed_schedule: { weekday: 4, time: "10:00" },
     });
-    expect(rpc).toHaveBeenNthCalledWith(2, "update_customer_v2", expect.objectContaining({
+    expect(rpc).toHaveBeenNthCalledWith(2, "update_customer", expect.objectContaining({
       target_customer_id: row.id,
       actor_user_id: row.updated_by,
       set_fixed_schedule: true,
@@ -79,13 +79,17 @@ describe("customer repository", () => {
     }));
   });
 
-  it("returns a sanitized paginated visit projection", async () => {
+  it("returns the strict financial projection for active customer visits", async () => {
     const response = {
       items: [{
         id: "20000000-0000-4000-8000-000000000001",
         occurredAt: "2026-08-13T14:00:00.000Z",
         businessDate: "2026-08-13",
-        items: [{ type: "service", name: "Corte", quantity: 1 }],
+        totalSpent: 49000,
+        items: [
+          { type: "service", name: "Corte", quantity: 1, unitPrice: 19000, subtotal: 19000 },
+          { type: "product", name: "Cera mate", quantity: 2, unitPrice: 15000, subtotal: 30000 },
+        ],
       }],
       pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     };
@@ -99,6 +103,25 @@ describe("customer repository", () => {
       page_number: 1,
       page_size: 20,
     });
-    expect(JSON.stringify(response)).not.toMatch(/totalAmount|payment|commission|employee|registeredBy/i);
+    expect(JSON.stringify(response)).not.toMatch(/payment|commission|employee|registeredBy/i);
+  });
+
+  it("rejects financial or internal keys outside the public visit projection", async () => {
+    const response = {
+      items: [{
+        id: "20000000-0000-4000-8000-000000000001",
+        occurredAt: "2026-08-13T14:00:00.000Z",
+        businessDate: "2026-08-13",
+        totalSpent: 49000,
+        commissionTotal: 0,
+        employeeName: "No debe exponerse",
+        items: [{ type: "service", name: "Corte", quantity: 1, unitPrice: 19000, subtotal: 19000 }],
+      }],
+      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+    };
+    getSupabaseAdmin.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: response, error: null }) });
+
+    await expect(customerRepository.listVisits(row.created_by, row.id, { page: 1, pageSize: 20 }))
+      .rejects.toThrow("No se pudo completar la operación en la base de datos.");
   });
 });
