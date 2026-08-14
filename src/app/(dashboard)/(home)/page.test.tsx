@@ -4,13 +4,15 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 
-const { listFixedOccurrences, listIncomes, requirePageUser } = vi.hoisted(() => ({
+const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser } = vi.hoisted(() => ({
+  getBuenosAiresRemainingWorkweekRange: vi.fn(),
   listFixedOccurrences: vi.fn(),
   listIncomes: vi.fn(),
   requirePageUser: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
+vi.mock("@/lib/dashboard/workweek-range", () => ({ getBuenosAiresRemainingWorkweekRange }));
 vi.mock("@/lib/fixed-customers/service", () => ({ listFixedOccurrences }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
 
@@ -49,6 +51,7 @@ const renderHome = async () => render(<SidebarProvider>{await Home()}</SidebarPr
 beforeEach(() => {
   vi.clearAllMocks();
   requirePageUser.mockResolvedValue({ user });
+  getBuenosAiresRemainingWorkweekRange.mockReturnValue({ dateFrom: "2026-08-13", dateTo: "2026-08-15" });
   listIncomes.mockResolvedValue(incomePage);
   listFixedOccurrences.mockResolvedValue([]);
 });
@@ -63,9 +66,19 @@ it("revalidates the session and requests only the role-scoped seven-day income w
     page: 1,
     pageSize: 100,
   });
-  expect(listFixedOccurrences).toHaveBeenCalledWith(user, expect.objectContaining({
-    dateFrom: currentRange.dateTo,
-  }));
+  expect(listFixedOccurrences).toHaveBeenCalledWith(user, {
+    dateFrom: "2026-08-13",
+    dateTo: "2026-08-15",
+  });
+});
+
+it("renders an empty fixed-customer agenda without querying occurrences on Sunday", async () => {
+  getBuenosAiresRemainingWorkweekRange.mockReturnValueOnce(null);
+
+  await renderHome();
+
+  expect(screen.getByRole("heading", { name: "Clientes fijos" })).toBeVisible();
+  expect(listFixedOccurrences).not.toHaveBeenCalled();
 });
 
 it("renders only the three approved dashboard blocks", async () => {
