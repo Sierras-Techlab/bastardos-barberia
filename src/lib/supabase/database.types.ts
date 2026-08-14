@@ -137,6 +137,7 @@ export type IncomeRow = {
   request_id: string;
   registered_by: string;
   employee_id: string;
+  responsible_role_snapshot: RoleName;
   request_fingerprint: string;
   customer_id: string | null;
   payment_method: IncomePaymentMethod | null;

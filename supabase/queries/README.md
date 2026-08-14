@@ -15,6 +15,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 9. `009_sales_domain.sql`
 10. `010_income_commissions_and_split_payments.sql`
 11. `011_customer_visits_and_fixed_schedules.sql`
+12. `012_owner_commission_rules.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -102,6 +103,7 @@ where table_schema = 'public'
     ))
     or (table_name = 'incomes' and column_name in (
       'registered_by', 'employee_id', 'request_fingerprint',
+      'responsible_role_snapshot',
       'service_commission_base', 'product_commission_base',
       'service_commission_rate', 'product_commission_rate',
       'service_commission_amount', 'product_commission_amount',
@@ -117,6 +119,8 @@ where conrelid in ('public.users'::regclass, 'public.incomes'::regclass)
   and conname in (
     'users_service_commission_rate_check',
     'users_product_commission_rate_check',
+    'users_owner_commission_zero_check',
+    'incomes_responsible_role_snapshot_check',
     'incomes_commission_bases_check',
     'incomes_commission_rates_check',
     'incomes_commission_amounts_check',
@@ -145,7 +149,45 @@ where table_schema = 'public'
   and column_name = 'amount';
 ```
 
-Every listed V2 data column except the optional authorizer must report `NO`; all eight constraints must be present; the historical allocation query must return zero rows; and `income_payments.amount` must report `bigint`. `income_payments` must have RLS enabled and no grants to `PUBLIC`, `anon` or `authenticated`.
+Every listed V2 data column except the optional authorizer must report `NO`; all ten constraints must be present; the historical allocation query must return zero rows; and `income_payments.amount` must report `bigint`. `income_payments` must have RLS enabled and no grants to `PUBLIC`, `anon` or `authenticated`.
+
+Verify migration `012`'s canonical profile RPC and the one-time owner correction:
+
+```sql
+select p.proname, pg_get_function_identity_arguments(p.oid) as arguments
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('update_user_profile', 'update_user_profile_v2')
+order by p.proname, arguments;
+
+select routine_name, grantee, privilege_type
+from information_schema.routine_privileges
+where routine_schema = 'public'
+  and routine_name in ('update_user_profile', 'update_user_profile_v2')
+order by routine_name, grantee, privilege_type;
+
+select id
+from public.users
+where role_id = 1
+  and (service_commission_rate <> 0 or product_commission_rate <> 0);
+
+select id
+from public.incomes
+where responsible_role_snapshot = 'owner'
+  and (
+    service_commission_rate <> 0
+    or product_commission_rate <> 0
+    or service_commission_amount <> 0
+    or product_commission_amount <> 0
+    or commission_total <> 0
+    or barbershop_net <> total
+    or full_service_commission
+    or full_service_commission_authorized_by is not null
+  );
+```
+
+The first query must return exactly one `update_user_profile` overload with the thirteen arguments used by the server repository and no `_v2` row. The privilege query must list only `service_role` for that function. Both owner-correction queries must return zero rows.
 
 Verify weekly schedules, attendance and their server-only routines:
 
@@ -264,7 +306,7 @@ rollback;
 
 The block must complete successfully and `rollback` ensures that the temporary product and movements are not retained.
 
-After scripts `008` through `010` are installed and an active manager exists, verify a split-payment sale, commission snapshot and void without retaining sample data. Replace the actor UUID before running this block:
+Immediately after script `010` (before applying `012`) and with an active manager, verify a split-payment sale, commission snapshot and void without retaining sample data. Replace the actor UUID before running this block:
 
 ```sql
 begin;
@@ -372,5 +414,116 @@ rollback;
 ```
 
 The block must complete successfully. It verifies the database timestamp-derived Buenos Aires business date, atomic stock and visit changes, the manager void, and both linked inventory movements. `rollback` removes every temporary row.
+
+After script `012` is installed, verify the authoritative owner rule and the preserved manager-to-employee behavior without retaining sample data:
+
+```sql
+begin;
+
+do $$
+declare
+  owner_id uuid;
+  employee_id uuid;
+  owner_service_id uuid;
+  employee_service_id uuid;
+  owner_income_id uuid;
+  employee_income_id uuid;
+  owner_snapshot record;
+  employee_snapshot record;
+begin
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Owner', 'Temporal', 'owner.temporal', '$argon2id$verification', 1, 0, 0
+  ) returning id into owner_id;
+
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Empleado', 'Temporal', 'empleado.temporal', '$argon2id$verification', 3, 50, 10
+  ) returning id into employee_id;
+
+  insert into public.services (name, normalized_name, price, created_by, updated_by)
+  values ('Servicio owner temporal', '', 10000, owner_id, owner_id)
+  returning id into owner_service_id;
+
+  insert into public.services (name, normalized_name, price, created_by, updated_by)
+  values ('Servicio empleado temporal', '', 10000, owner_id, owner_id)
+  returning id into employee_service_id;
+
+  owner_income_id := public.create_income_v2(
+    owner_id, owner_id, extensions.gen_random_uuid(), null, owner_service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10000)),
+    false
+  );
+
+  select responsible_role_snapshot, service_commission_rate,
+    product_commission_rate, service_commission_amount,
+    product_commission_amount, commission_total, barbershop_net, total
+  into owner_snapshot
+  from public.incomes
+  where id = owner_income_id;
+
+  if owner_snapshot.responsible_role_snapshot <> 'owner'
+    or owner_snapshot.service_commission_rate <> 0
+    or owner_snapshot.product_commission_rate <> 0
+    or owner_snapshot.service_commission_amount <> 0
+    or owner_snapshot.product_commission_amount <> 0
+    or owner_snapshot.commission_total <> 0
+    or owner_snapshot.barbershop_net <> owner_snapshot.total
+  then
+    raise exception 'OWNER_COMMISSION_VERIFICATION_FAILED';
+  end if;
+
+  employee_income_id := public.create_income_v2(
+    owner_id, employee_id, extensions.gen_random_uuid(), null, employee_service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10000)),
+    false
+  );
+
+  select responsible_role_snapshot, service_commission_rate,
+    product_commission_rate, service_commission_amount,
+    product_commission_amount, commission_total, barbershop_net, total
+  into employee_snapshot
+  from public.incomes
+  where id = employee_income_id;
+
+  if employee_snapshot.responsible_role_snapshot <> 'employee'
+    or employee_snapshot.service_commission_rate <> 50
+    or employee_snapshot.product_commission_rate <> 10
+    or employee_snapshot.service_commission_amount <> 5000
+    or employee_snapshot.product_commission_amount <> 0
+    or employee_snapshot.commission_total <> 5000
+    or employee_snapshot.barbershop_net <> 5000
+    or employee_snapshot.total <> 10000
+  then
+    raise exception 'EMPLOYEE_COMMISSION_VERIFICATION_FAILED';
+  end if;
+
+  begin
+    perform public.create_income_v2(
+      owner_id, owner_id, extensions.gen_random_uuid(), null, owner_service_id,
+      '[]'::jsonb,
+      jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10000)),
+      true
+    );
+    raise exception 'OWNER_OVERRIDE_VERIFICATION_FAILED';
+  exception
+    when insufficient_privilege then
+      if sqlerrm <> 'INVALID_COMMISSION_OVERRIDE' then
+        raise;
+      end if;
+  end;
+end;
+$$;
+
+rollback;
+```
+
+The block must complete successfully. It proves that owner-responsible sales snapshot zero rates and commission, manager attribution to an employee retains that employee's configured rate, and an owner-targeted full-service override fails with `INVALID_COMMISSION_OVERRIDE`. `rollback` removes the temporary users, services and sales.
 
 Then configure `.env`, temporarily add the three `BOOTSTRAP_OWNER_*` values, and run `npm run bootstrap:owner`. Remove the temporary password value immediately afterward.
