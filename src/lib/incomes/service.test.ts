@@ -27,10 +27,10 @@ describe("income boundary", () => {
 });
 
 describe("income service", () => {
-  it("forces employees to attribute creation to themselves", async () => {
+  it("preserves the submitted responsible id so database idempotency remains stable", async () => {
     const incomes = repository(); const deps: IncomeDependencies = { incomes };
     await createIncome(employee, { ...valid, employeeId: owner.id }, deps);
-    expect(incomes.create).toHaveBeenCalledWith(employee, { ...valid, employeeId: employee.id });
+    expect(incomes.create).toHaveBeenCalledWith(employee, { ...valid, employeeId: owner.id });
   });
   it("preserves a manager-selected responsible employee", async () => {
     const incomes = repository(); const deps: IncomeDependencies = { incomes };

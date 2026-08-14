@@ -418,6 +418,8 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  occurrence_customer_id uuid;
 begin
   if not exists (
     select 1 from public.users
@@ -429,15 +431,22 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_STATUS';
   end if;
 
-  perform 1
-  from public.fixed_customer_occurrences o
-  join public.customers c on c.id = o.customer_id and c.deleted_at is null
+  select c.id into occurrence_customer_id
+  from public.customers c
+  join public.fixed_customer_occurrences o on o.customer_id = c.id
   where o.id = target_occurrence_id
-  for update of o, c;
+    and c.deleted_at is null
+  for update of c;
 
   if not found then
     raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_NOT_FOUND';
   end if;
+
+  perform 1
+  from public.fixed_customer_occurrences o
+  where o.id = target_occurrence_id
+    and o.customer_id = occurrence_customer_id
+  for update;
 
   update public.fixed_customer_occurrences as occurrence
   set status = new_status,
