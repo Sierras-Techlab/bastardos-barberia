@@ -1,3 +1,5 @@
+import type { ProductCategory } from "@/types/product-category";
+
 export type ProductStockStatus =
   | "available"
   | "low-stock"
@@ -6,12 +8,6 @@ export type ProductStockStatus =
 export type ProductAvailabilityStatus =
   | ProductStockStatus
   | "unavailable";
-
-export type ProductCategory =
-  | "hair-care"
-  | "styling"
-  | "beard-care"
-  | "fragrance";
 
 export type ProductActiveState = "all" | "active" | "inactive";
 
@@ -37,14 +33,14 @@ export type ProductCatalogData = {
 
 export type ProductCatalogFilters = {
   query: string;
-  category: ProductCategory | "all";
+  categoryId: string | "all";
   stockStatus: ProductStockStatus | "all";
   activeState: ProductActiveState;
 };
 
 export type ProductEditorInput = {
   name: string;
-  category: ProductCategory;
+  categoryId: string;
   price: number;
   stock: number;
 };
@@ -52,8 +48,8 @@ export type ProductEditorInput = {
 export type CreateProductInput = ProductEditorInput;
 
 export type UpdateProductInput = Partial<
-  Pick<CatalogProduct, "name" | "category" | "price" | "isActive">
->;
+  Pick<CatalogProduct, "name" | "price" | "isActive">
+> & { categoryId?: string };
 
 export type StockAdjustment = {
   kind: "entry" | "exit";

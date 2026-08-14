@@ -1,18 +1,12 @@
 import { z } from "zod";
 
-export const productCategorySchema = z.enum([
-  "hair-care",
-  "styling",
-  "beard-care",
-  "fragrance",
-]);
-
 export const productIdSchema = z.uuid("El producto no es válido.");
+export const productCategoryIdSchema = z.uuid("La categoría no es válida.");
 
 export const createProductSchema = z
   .object({
     name: z.string().trim().min(1, "Ingresá el nombre del producto."),
-    category: productCategorySchema,
+    categoryId: productCategoryIdSchema,
     price: z
       .number({ error: "Ingresá un precio válido." })
       .int("Ingresá un precio válido.")
@@ -27,7 +21,7 @@ export const createProductSchema = z
 export const updateProductSchema = z
   .object({
     name: z.string().trim().min(1, "Ingresá el nombre del producto.").optional(),
-    category: productCategorySchema.optional(),
+    categoryId: productCategoryIdSchema.optional(),
     price: z
       .number({ error: "Ingresá un precio válido." })
       .int("Ingresá un precio válido.")

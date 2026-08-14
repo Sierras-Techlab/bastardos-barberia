@@ -16,7 +16,7 @@ describe("product editor validation", () => {
   it("rejects missing names and invalid numeric values", () => {
     const result = productEditorSchema.safeParse({
       name: "",
-      category: "styling",
+      categoryId: "not-a-uuid",
       price: -1,
       stock: -2,
     });

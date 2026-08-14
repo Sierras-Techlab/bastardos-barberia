@@ -2,7 +2,6 @@ import { ProductActions } from "@/components/products/product-actions";
 import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
-  formatProductCategory,
   getProductAvailabilityStatus,
 } from "@/lib/products/product-catalog";
 import type { CatalogProduct } from "@/types/product";
@@ -41,7 +40,7 @@ export const ProductMobileList = ({
             )}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {formatProductCategory(product.category)}
+            {product.category.name}
           </p>
         </div>
         <div className="flex shrink-0 items-start gap-1 text-right">

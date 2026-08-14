@@ -24,7 +24,7 @@ Captured: 2026-08-14
 - The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. Its strict financial contract includes immutable visit total plus historical item unit price and subtotal; the dialog shows those ARS values while excluding user identities, payments, commissions and authorizations.
 - Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
 - Product categories now have a server-only domain boundary with audited create/update records, atomic logical deactivation, normalized-name/in-use conflict mappings and active-only employee reads. Product editor contracts, UI, migration and SQL remain pending.
-- Product categories expose authenticated list/detail routes, manager-only create/rename/reactivation/deactivation routes, and a browser-only API client that preserves structured server errors. Product editor contracts, UI and migration/SQL remain pending.
+- Product categories expose authenticated list/detail routes, manager-only create/rename/reactivation/deactivation routes, and a browser-only API client that preserves structured server errors. Products now carry complete category objects, use category UUIDs for mutations and filters, and managers have a dynamic category administration dialog; migration/SQL remains pending.
 - Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
 - Owner commission handling is application-safe: owner creation, promotion and updates normalize both configured rates to zero; owner editor controls are fixed at zero; previews derive the responsible employee role and neutralize owner rates plus the 100% service preview override. User profile persistence now calls the canonical `update_user_profile` RPC.
@@ -56,7 +56,7 @@ Captured: 2026-08-14
 
 ## Recommended next task
 
-Manually install migrations `010` through `013` in order and run their SQL Editor acceptance checks before deploying the locally verified application changes.
+Implement migration `014_product_categories.sql` and its SQL Editor acceptance checks before deploying the local category contracts and UI. The prior migrations `010` through `013` must remain installed first.
 
 ## Context maintenance rule
 

@@ -17,7 +17,7 @@ import { GET, POST } from "./route";
 const actor = { id: "00000000-0000-4000-8000-000000000001" };
 const input = {
   name: "Gel",
-  category: "styling",
+  categoryId: "20000000-0000-4000-8000-000000000002",
   price: 9900,
   stock: 4,
 };

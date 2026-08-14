@@ -8,11 +8,14 @@ import productsMock from "@/data/products.mock.json";
 import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
 
 const data = authorizeProductCatalogData(productsMock);
+const categories = Array.from(
+  new Map(data.products.map((product) => [product.category.id, product.category])).values(),
+);
 const expectToast = (message: string) =>
   expect(screen.getByText(message).closest("[data-sonner-toast]")).not.toBeNull();
 
 it("shows the catalog summary in desktop and mobile representations", () => {
-  render(<ProductsView data={data} canManage />);
+  render(<ProductsView data={data} categories={categories} canManage />);
 
   expect(
     screen.getByRole("region", { name: /resumen de productos/i }),
@@ -33,7 +36,7 @@ it("shows the catalog summary in desktop and mobile representations", () => {
 
 it("filters by product name and restores the complete catalog", async () => {
   const user = userEvent.setup();
-  render(<ProductsView data={data} canManage />);
+  render(<ProductsView data={data} categories={categories} canManage />);
 
   await user.type(
     screen.getByRole("searchbox", { name: /buscar productos/i }),
@@ -52,9 +55,12 @@ it("filters by product name and restores the complete catalog", async () => {
 
 it("combines filters and clears an empty result", async () => {
   const user = userEvent.setup();
-  render(<ProductsView data={data} canManage />);
+  render(<ProductsView data={data} categories={categories} canManage />);
 
-  await user.selectOptions(screen.getByLabelText("Categoría"), "fragrance");
+  await user.selectOptions(
+    screen.getByLabelText("Categoría"),
+    "20000000-0000-4000-8000-000000000004",
+  );
   await user.selectOptions(screen.getByLabelText("Estado de stock"), "available");
 
   expect(screen.getByText(/no encontramos productos/i)).toBeVisible();
@@ -70,7 +76,7 @@ it("combines filters and clears an empty result", async () => {
 
 it("sorts desktop stock through ascending, descending and original order", async () => {
   const user = userEvent.setup();
-  render(<ProductsView data={data} canManage />);
+  render(<ProductsView data={data} categories={categories} canManage />);
   const table = screen.getByRole("table", { name: /catálogo de productos/i });
   const names = () =>
     within(table)
@@ -93,7 +99,7 @@ it("sorts desktop stock through ascending, descending and original order", async
 
 it("sorts the mobile catalog by price", async () => {
   const user = userEvent.setup();
-  render(<ProductsView data={data} canManage />);
+  render(<ProductsView data={data} categories={categories} canManage />);
 
   await user.selectOptions(screen.getByLabelText("Ordenar por"), "price-desc");
 
@@ -108,13 +114,13 @@ it("sorts the mobile catalog by price", async () => {
 });
 
 it("keeps inactive products for managers and hides them from employees", () => {
-  const { rerender } = render(<ProductsView data={data} canManage />);
+  const { rerender } = render(<ProductsView data={data} categories={categories} canManage />);
 
   expect(screen.getAllByText("Perfume").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Inactivo").length).toBeGreaterThan(0);
   expect(screen.getByLabelText("Estado del producto")).toBeVisible();
 
-  rerender(<ProductsView data={data} canManage={false} />);
+  rerender(<ProductsView data={data} categories={categories} canManage={false} />);
 
   expect(screen.queryByText("Perfume")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Estado del producto")).not.toBeInTheDocument();
@@ -125,7 +131,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
   const createdProduct = {
     id: "10000000-0000-4000-8000-000000000099",
     name: "Pomada mate",
-    category: "styling" as const,
+    category: categories[0]!,
     price: 14500,
     stock: 6,
     isActive: true,
@@ -137,14 +143,14 @@ it("creates and edits products in memory, then resets on remount", async () => {
     ),
     adjustStock: vi.fn(),
   };
-  const { unmount } = render(<><ProductsView data={data} canManage productClient={productClient} /><DashboardToaster /></>);
+  const { unmount } = render(<><ProductsView data={data} categories={categories} canManage productClient={productClient} /><DashboardToaster /></>);
 
   await user.click(screen.getByRole("button", { name: "Nuevo producto" }));
   const createDialog = screen.getByRole("dialog");
   await user.type(within(createDialog).getByLabelText("Nombre"), "Pomada mate");
   await user.selectOptions(
     within(createDialog).getByLabelText("Categoría"),
-    "styling",
+    "20000000-0000-4000-8000-000000000002",
   );
   await user.type(within(createDialog).getByLabelText("Precio"), "14500");
   await user.type(within(createDialog).getByLabelText("Stock inicial"), "6");
@@ -154,7 +160,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
 
   expect(productClient.create).toHaveBeenCalledWith({
     name: "Pomada mate",
-    category: "styling",
+    categoryId: "20000000-0000-4000-8000-000000000002",
     price: 14500,
     stock: 6,
   });
@@ -179,7 +185,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
 
   expect(productClient.update).toHaveBeenCalledWith(createdProduct.id, {
     name: "Pomada mate premium",
-    category: "styling",
+    categoryId: "20000000-0000-4000-8000-000000000002",
     price: 14500,
   });
   expectToast("Producto actualizado correctamente.");
@@ -187,7 +193,7 @@ it("creates and edits products in memory, then resets on remount", async () => {
   expect(screen.getAllByText("6 unidades")).toHaveLength(2);
 
   unmount();
-  render(<ProductsView data={data} canManage />);
+  render(<ProductsView data={data} categories={categories} canManage />);
   expect(screen.queryByText("Pomada mate premium")).not.toBeInTheDocument();
 });
 
@@ -199,7 +205,7 @@ it("adjusts stock and deactivates products in memory", async () => {
     update: vi.fn().mockResolvedValue({ ...hunter, isActive: false }),
     adjustStock: vi.fn().mockResolvedValue({ ...hunter, stock: 10 }),
   };
-  render(<><ProductsView data={data} canManage productClient={productClient} /><DashboardToaster /></>);
+  render(<><ProductsView data={data} categories={categories} canManage productClient={productClient} /><DashboardToaster /></>);
 
   await user.click(
     screen.getAllByRole("button", { name: "Gestionar Hunter Cream" })[0],
@@ -242,4 +248,14 @@ it("adjusts stock and deactivates products in memory", async () => {
   expect(
     within(hunterMobileItem!).queryByText("Disponible"),
   ).not.toBeInTheDocument();
+});
+
+it("only exposes category administration to managers", () => {
+  const { rerender } = render(
+    <ProductsView data={data} categories={categories} canManage />,
+  );
+  expect(screen.getByRole("button", { name: "Administrar categorías" })).toBeVisible();
+
+  rerender(<ProductsView data={data} categories={categories} canManage={false} />);
+  expect(screen.queryByRole("button", { name: "Administrar categorías" })).not.toBeInTheDocument();
 });

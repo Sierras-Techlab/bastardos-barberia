@@ -2,7 +2,6 @@ import { ProductActions } from "@/components/products/product-actions";
 import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
-  formatProductCategory,
   getProductAvailabilityStatus,
 } from "@/lib/products/product-catalog";
 import type { CatalogProduct, ProductSort } from "@/types/product";
@@ -102,7 +101,7 @@ export const ProductTable = ({
                 </div>
               </td>
               <td className="px-5 py-4 text-muted-foreground">
-                {formatProductCategory(product.category)}
+                {product.category.name}
               </td>
               <td className="px-5 py-4">
                 <div className="flex items-center gap-2">

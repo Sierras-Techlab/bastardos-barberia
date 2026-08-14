@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
   ProductCatalogFilters as ProductFiltersValue,
-  ProductCategory,
   ProductSort,
   ProductStockStatus,
 } from "@/types/product";
+import type { ProductCategory } from "@/types/product-category";
 
 type ProductFiltersProps = {
   value: ProductFiltersValue;
@@ -15,6 +15,7 @@ type ProductFiltersProps = {
   onClear: () => void;
   canClear: boolean;
   canManage: boolean;
+  categories: ProductCategory[];
   sort: ProductSort;
   onSortChange: (sort: ProductSort) => void;
 };
@@ -28,6 +29,7 @@ export const ProductFilters = ({
   onClear,
   canClear,
   canManage,
+  categories,
   sort,
   onSortChange,
 }: ProductFiltersProps) => (
@@ -50,20 +52,22 @@ export const ProductFilters = ({
 
       <select
         aria-label="Categoría"
-        value={value.category}
+        value={value.categoryId}
         onChange={(event) =>
           onChange({
             ...value,
-            category: event.target.value as ProductCategory | "all",
+            categoryId: event.target.value,
           })
         }
         className={selectClassName}
       >
         <option value="all">Todas las categorías</option>
-        <option value="hair-care">Cuidado capilar</option>
-        <option value="styling">Peinado y fijación</option>
-        <option value="beard-care">Cuidado de barba</option>
-        <option value="fragrance">Fragancias</option>
+        {categories.map((category) => (
+          <option key={category.id} value={category.id}>
+            {category.name}
+            {!category.isActive ? " (inactiva)" : ""}
+          </option>
+        ))}
       </select>
 
       {canManage && (

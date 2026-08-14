@@ -7,6 +7,11 @@ import productsMock from "@/data/products.mock.json";
 import { authorizeProductCatalogData } from "@/lib/products/product-catalog";
 
 const products = authorizeProductCatalogData(productsMock).products;
+const categories = [
+  { id: "20000000-0000-4000-8000-000000000001", name: "Cuidado capilar", isActive: true },
+  { id: "20000000-0000-4000-8000-000000000002", name: "Peinado y styling", isActive: true },
+  { id: "20000000-0000-4000-8000-000000000004", name: "Fragancias", isActive: false },
+];
 
 it("submits a valid new product with numeric values", async () => {
   const user = userEvent.setup();
@@ -16,20 +21,24 @@ it("submits a valid new product with numeric values", async () => {
       mode="create"
       product={null}
       products={products}
+      categories={categories}
       onClose={vi.fn()}
       onSave={onSave}
     />,
   );
 
   await user.type(screen.getByLabelText("Nombre"), "Pomada mate");
-  await user.selectOptions(screen.getByLabelText("Categoría"), "styling");
+  await user.selectOptions(
+    screen.getByLabelText("Categoría"),
+    "20000000-0000-4000-8000-000000000002",
+  );
   await user.type(screen.getByLabelText("Precio"), "14500");
   await user.type(screen.getByLabelText("Stock inicial"), "6");
   await user.click(screen.getByRole("button", { name: "Crear producto" }));
 
   expect(onSave).toHaveBeenCalledWith({
     name: "Pomada mate",
-    category: "styling",
+    categoryId: "20000000-0000-4000-8000-000000000002",
     price: 14500,
     stock: 6,
   });
@@ -42,6 +51,7 @@ it("rejects a normalized duplicate product name", async () => {
       mode="create"
       product={null}
       products={products}
+      categories={categories}
       onClose={vi.fn()}
       onSave={vi.fn()}
     />,
@@ -65,6 +75,7 @@ it("edits catalog fields while preserving stock", async () => {
       mode="edit"
       product={products[0]}
       products={products}
+      categories={categories}
       onClose={vi.fn()}
       onSave={onSave}
     />,
@@ -90,6 +101,7 @@ it("preserves the draft and displays asynchronous save failures", async () => {
       mode="create"
       product={null}
       products={products}
+      categories={categories}
       onClose={vi.fn()}
       onSave={onSave}
     />,
@@ -104,4 +116,20 @@ it("preserves the draft and displays asynchronous save failures", async () => {
     "No se pudo guardar.",
   );
   expect(screen.getByLabelText("Nombre")).toHaveValue("Pomada mate");
+});
+
+it("only offers active categories for product creation", () => {
+  render(
+    <ProductEditorDialog
+      mode="create"
+      product={null}
+      products={products}
+      categories={categories}
+      onClose={vi.fn()}
+      onSave={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("option", { name: "Cuidado capilar" })).toBeVisible();
+  expect(screen.queryByRole("option", { name: "Fragancias" })).not.toBeInTheDocument();
 });

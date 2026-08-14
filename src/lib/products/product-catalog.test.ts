@@ -5,7 +5,6 @@ import {
   authorizeProductCatalogData,
   calculateProductMetrics,
   filterProducts,
-  formatProductCategory,
   getProductAvailabilityStatus,
   getProductStockStatus,
 } from "@/lib/products/product-catalog";
@@ -19,7 +18,11 @@ describe("product catalog boundary", () => {
     expect(data.products[0]).toMatchObject({
       id: expect.any(String),
       name: expect.any(String),
-      category: expect.any(String),
+      category: {
+        id: expect.any(String),
+        name: expect.any(String),
+        isActive: expect.any(Boolean),
+      },
       price: expect.any(Number),
       stock: expect.any(Number),
       isActive: expect.any(Boolean),
@@ -43,7 +46,7 @@ describe("product catalog filtering", () => {
     expect(
       filterProducts(products, {
         query: "  BARBA ",
-        category: "all",
+        categoryId: "all",
         stockStatus: "all",
         activeState: "all",
       }),
@@ -55,7 +58,7 @@ describe("product catalog filtering", () => {
   it("combines category and stock-status filters", () => {
     const filtered = filterProducts(products, {
       query: "",
-      category: "hair-care",
+      categoryId: "20000000-0000-4000-8000-000000000001",
       stockStatus: "low-stock",
       activeState: "active",
     });
@@ -64,7 +67,7 @@ describe("product catalog filtering", () => {
     expect(
       filtered.every(
         (product) =>
-          product.category === "hair-care" &&
+          product.category.id === "20000000-0000-4000-8000-000000000001" &&
           product.stock > 0 &&
           product.stock <= 3,
       ),
@@ -74,7 +77,7 @@ describe("product catalog filtering", () => {
   it("filters inactive products for manager views", () => {
     const inactive = filterProducts(products, {
       query: "",
-      category: "all",
+      categoryId: "all",
       stockStatus: "all",
       activeState: "inactive",
     });
@@ -96,10 +99,6 @@ describe("product catalog presentation data", () => {
       categoryCount: 4,
       averagePrice: 10208,
     });
-  });
-
-  it("formats category labels for the interface", () => {
-    expect(formatProductCategory("beard-care")).toBe("Cuidado de barba");
   });
 
   it("derives stock status from the exact quantity", () => {

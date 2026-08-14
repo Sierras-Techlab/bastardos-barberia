@@ -2,15 +2,15 @@ import type { CatalogProduct, StockAdjustment } from "@/types/product";
 
 export type ProductCreateRecord = {
   name: string;
-  category: CatalogProduct["category"];
+  categoryId: string;
   price: number;
   stock: number;
   createdBy: string;
 };
 
 export type ProductUpdateRecord = Partial<
-  Pick<CatalogProduct, "name" | "category" | "price" | "isActive">
-> & {
+  Pick<CatalogProduct, "name" | "price" | "isActive">
+> & { categoryId?: string;
   updatedBy: string;
 };
 
