@@ -18,7 +18,13 @@ const NewIncomePage = async () => {
     serviceRepository.list(false), productRepository.list(false), customerRepository.list(),
     user.role.name === "employee" ? Promise.resolve(null) : userRepository.list({ page: 1, pageSize: 100, status: "active" }),
   ]);
-  const availableUsers = users?.items ?? [user];
+  const remainingUserPages = users && users.totalPages > 1
+    ? await Promise.all(Array.from({ length: users.totalPages - 1 }, (_, index) =>
+        userRepository.list({ page: index + 2, pageSize: 100, status: "active" })))
+    : [];
+  const availableUsers = users
+    ? [users.items, ...remainingUserPages.map((page) => page.items)].flat()
+    : [user];
   const data: IncomeFormData = {
     currentUser: { id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role.name },
     services: services.map(({ id, name, price }) => ({ id, name, price })),

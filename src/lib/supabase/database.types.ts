@@ -109,6 +109,7 @@ export type CustomerFixedScheduleRow = {
   local_time: string;
   is_active: boolean;
   version: number;
+  effective_from: string;
   created_by: string;
   updated_by: string;
   created_at: string;

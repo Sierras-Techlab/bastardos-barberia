@@ -56,11 +56,11 @@ describe("customer repository", () => {
     query.select.mockReturnValue(query);
     query.eq.mockReturnValue(query);
     query.is.mockReturnValue(query);
-    query.maybeSingle.mockResolvedValue({ data: { ...row, fixed_schedule: [{ weekday: 4, local_time: "10:00:00", is_active: true }] }, error: null });
+    query.maybeSingle.mockResolvedValue({ data: { ...row, fixed_schedule: [{ weekday: 4, local_time: "10:00:00", is_active: true, version: 1 }] }, error: null });
     getSupabaseAdmin.mockReturnValue({ rpc, from: vi.fn().mockReturnValue(query) });
 
     await customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" }, createdBy: row.created_by });
-    await customerRepository.update(row.id, { fixedSchedule: null, updatedBy: row.updated_by });
+    await customerRepository.update(row.id, { fixedSchedule: null, expectedScheduleVersion: 1, updatedBy: row.updated_by });
 
     expect(rpc).toHaveBeenNthCalledWith(1, "create_customer_v2", {
       actor_user_id: row.created_by,
@@ -75,6 +75,7 @@ describe("customer repository", () => {
       actor_user_id: row.updated_by,
       set_fixed_schedule: true,
       new_fixed_schedule: null,
+      expected_schedule_version: 1,
     }));
   });
 

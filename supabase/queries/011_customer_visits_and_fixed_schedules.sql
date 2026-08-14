@@ -9,6 +9,7 @@ create table public.customer_fixed_schedules (
   local_time time not null,
   is_active boolean not null default true,
   version integer not null default 1 check (version > 0),
+  effective_from date not null,
   created_by uuid not null references public.users(id) on delete restrict,
   updated_by uuid not null references public.users(id) on delete restrict,
   created_at timestamptz not null default now(),
@@ -59,15 +60,21 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_RANGE';
   end if;
 
+  with active_schedules as materialized (
+    select s.customer_id, s.version, s.weekday, s.local_time, s.effective_from
+    from public.customer_fixed_schedules s
+    join public.customers c on c.id = s.customer_id and c.deleted_at is null
+    where s.is_active
+    for share of s
+  )
   insert into public.fixed_customer_occurrences (
     schedule_customer_id, schedule_version, customer_id,
     occurrence_date, scheduled_time
   )
   select s.customer_id, s.version, s.customer_id, day_series.day_value::date, s.local_time
-  from public.customer_fixed_schedules s
-  join public.customers c on c.id = s.customer_id and c.deleted_at is null
+  from active_schedules s
   cross join generate_series(date_from, date_to, interval '1 day') as day_series(day_value)
-  where s.is_active
+  where day_series.day_value::date >= s.effective_from
     and extract(isodow from day_series.day_value)::smallint = s.weekday
   on conflict (schedule_customer_id, schedule_version, occurrence_date) do nothing;
 end;
@@ -77,6 +84,7 @@ create or replace function public.sync_customer_fixed_schedule(
   target_customer_id uuid,
   actor_user_id uuid,
   new_fixed_schedule jsonb,
+  expected_schedule_version integer,
   business_date date
 )
 returns void
@@ -89,16 +97,30 @@ declare
   parsed_weekday smallint;
   parsed_time time;
   next_version integer;
+  actual_version integer;
+  generation_from date;
+  schedule_exists boolean;
 begin
   select * into current_schedule
   from public.customer_fixed_schedules
   where customer_id = target_customer_id
   for update;
 
+  schedule_exists := found;
+  actual_version := case when schedule_exists then current_schedule.version else 0 end;
+  if expected_schedule_version is not null
+    and expected_schedule_version <> actual_version
+  then
+    raise exception using errcode = 'P0001', message = 'FIXED_SCHEDULE_CONFLICT';
+  end if;
+
   if new_fixed_schedule is null or new_fixed_schedule = 'null'::jsonb then
-    if found then
+    if schedule_exists then
       update public.customer_fixed_schedules
-      set is_active = false, updated_by = actor_user_id, updated_at = now()
+      set is_active = false,
+          version = current_schedule.version + 1,
+          updated_by = actor_user_id,
+          updated_at = now()
       where customer_id = target_customer_id;
 
       delete from public.fixed_customer_occurrences
@@ -128,12 +150,13 @@ begin
       raise exception using errcode = '22023', message = 'FIXED_SCHEDULE_INVALID';
   end;
 
-  if current_schedule.customer_id is null then
+  if not schedule_exists then
     insert into public.customer_fixed_schedules (
-      customer_id, weekday, local_time, created_by, updated_by
+      customer_id, weekday, local_time, effective_from, created_by, updated_by
     ) values (
-      target_customer_id, parsed_weekday, parsed_time, actor_user_id, actor_user_id
+      target_customer_id, parsed_weekday, parsed_time, business_date, actor_user_id, actor_user_id
     );
+    generation_from := business_date;
   elsif current_schedule.is_active
     and current_schedule.weekday = parsed_weekday
     and current_schedule.local_time = parsed_time
@@ -141,6 +164,7 @@ begin
     update public.customer_fixed_schedules
     set updated_by = actor_user_id, updated_at = now()
     where customer_id = target_customer_id;
+    generation_from := greatest(business_date, current_schedule.effective_from);
   else
     next_version := current_schedule.version + 1;
     delete from public.fixed_customer_occurrences
@@ -153,12 +177,14 @@ begin
         local_time = parsed_time,
         is_active = true,
         version = next_version,
+        effective_from = business_date + 1,
         updated_by = actor_user_id,
         updated_at = now()
     where customer_id = target_customer_id;
+    generation_from := business_date + 1;
   end if;
 
-  perform public.ensure_fixed_customer_occurrences(business_date, business_date + 56);
+  perform public.ensure_fixed_customer_occurrences(generation_from, business_date + 56);
 end;
 $$;
 
@@ -193,7 +219,7 @@ begin
   ) returning id into created_customer_id;
 
   perform public.sync_customer_fixed_schedule(
-    created_customer_id, actor_user_id, fixed_schedule, business_date
+    created_customer_id, actor_user_id, fixed_schedule, null, business_date
   );
   return created_customer_id;
 end;
@@ -211,7 +237,8 @@ create or replace function public.update_customer_v2(
   set_email boolean,
   new_email text,
   set_fixed_schedule boolean,
-  new_fixed_schedule jsonb
+  new_fixed_schedule jsonb,
+  expected_schedule_version integer
 )
 returns uuid
 language plpgsql
@@ -243,7 +270,8 @@ begin
 
   if set_fixed_schedule then
     perform public.sync_customer_fixed_schedule(
-      target_customer_id, actor_user_id, new_fixed_schedule, business_date
+      target_customer_id, actor_user_id, new_fixed_schedule,
+      expected_schedule_version, business_date
     );
   end if;
   return target_customer_id;
@@ -401,16 +429,24 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_STATUS';
   end if;
 
-  update public.fixed_customer_occurrences
+  perform 1
+  from public.fixed_customer_occurrences o
+  join public.customers c on c.id = o.customer_id and c.deleted_at is null
+  where o.id = target_occurrence_id
+  for update of o, c;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_NOT_FOUND';
+  end if;
+
+  update public.fixed_customer_occurrences as occurrence
   set status = new_status,
       status_changed_by = actor_user_id,
       status_changed_at = now()
-  where id = target_occurrence_id and status = expected_status;
+  where occurrence.id = target_occurrence_id
+    and occurrence.status = expected_status;
 
   if not found then
-    if not exists (select 1 from public.fixed_customer_occurrences where id = target_occurrence_id) then
-      raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_NOT_FOUND';
-    end if;
     raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_ALREADY_RESOLVED';
   end if;
   return public.fixed_customer_occurrence_as_json(target_occurrence_id);
@@ -419,24 +455,24 @@ $$;
 
 alter table public.customer_fixed_schedules enable row level security;
 alter table public.fixed_customer_occurrences enable row level security;
-revoke all on table public.customer_fixed_schedules from anon, authenticated;
-revoke all on table public.fixed_customer_occurrences from anon, authenticated;
+revoke all on table public.customer_fixed_schedules from public, anon, authenticated;
+revoke all on table public.fixed_customer_occurrences from public, anon, authenticated;
 grant select, insert, update, delete on table public.customer_fixed_schedules to service_role;
 grant select, insert, update, delete on table public.fixed_customer_occurrences to service_role;
 
 revoke execute on function public.ensure_fixed_customer_occurrences(date, date) from public, anon, authenticated;
-revoke execute on function public.sync_customer_fixed_schedule(uuid, uuid, jsonb, date) from public, anon, authenticated;
+revoke execute on function public.sync_customer_fixed_schedule(uuid, uuid, jsonb, integer, date) from public, anon, authenticated;
 revoke execute on function public.create_customer_v2(uuid, text, text, text, text, jsonb) from public, anon, authenticated;
-revoke execute on function public.update_customer_v2(uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text, boolean, jsonb) from public, anon, authenticated;
+revoke execute on function public.update_customer_v2(uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text, boolean, jsonb, integer) from public, anon, authenticated;
 revoke execute on function public.list_customer_visits(uuid, uuid, integer, integer) from public, anon, authenticated;
 revoke execute on function public.fixed_customer_occurrence_as_json(uuid) from public, anon, authenticated;
 revoke execute on function public.list_fixed_customer_occurrences(uuid, date, date, text) from public, anon, authenticated;
 revoke execute on function public.resolve_fixed_customer_occurrence(uuid, uuid, text, text) from public, anon, authenticated;
 
 grant execute on function public.ensure_fixed_customer_occurrences(date, date) to service_role;
-grant execute on function public.sync_customer_fixed_schedule(uuid, uuid, jsonb, date) to service_role;
+grant execute on function public.sync_customer_fixed_schedule(uuid, uuid, jsonb, integer, date) to service_role;
 grant execute on function public.create_customer_v2(uuid, text, text, text, text, jsonb) to service_role;
-grant execute on function public.update_customer_v2(uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text, boolean, jsonb) to service_role;
+grant execute on function public.update_customer_v2(uuid, uuid, boolean, text, boolean, text, boolean, text, boolean, text, boolean, jsonb, integer) to service_role;
 grant execute on function public.list_customer_visits(uuid, uuid, integer, integer) to service_role;
 grant execute on function public.fixed_customer_occurrence_as_json(uuid) to service_role;
 grant execute on function public.list_fixed_customer_occurrences(uuid, date, date, text) to service_role;

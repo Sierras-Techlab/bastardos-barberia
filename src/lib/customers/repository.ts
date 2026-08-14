@@ -26,9 +26,9 @@ const paginatedCustomerVisitsSchema = z.object({
   }).strict(),
 }).strict();
 
-const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active)";
+const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version)";
 type CustomerWithScheduleRow = CustomerRow & {
-  fixed_schedule?: { weekday: number; local_time: string; is_active: boolean } | Array<{ weekday: number; local_time: string; is_active: boolean }> | null;
+  fixed_schedule?: { weekday: number; local_time: string; is_active: boolean; version: number } | Array<{ weekday: number; local_time: string; is_active: boolean; version: number }> | null;
 };
 export const normalizeCustomerPhone = (value: string) => value.replace(/\D/g, "");
 export const toCustomer = (row: CustomerWithScheduleRow): Customer => {
@@ -37,6 +37,7 @@ export const toCustomer = (row: CustomerWithScheduleRow): Customer => {
   id: row.id, firstName: row.first_name, lastName: row.last_name, phone: row.phone,
   email: row.email, visits: row.visits, createdAt: row.created_at,
   fixedSchedule: schedule?.is_active ? { weekday: schedule.weekday as 1 | 2 | 3 | 4 | 5 | 6 | 7, time: schedule.local_time.slice(0, 5) } : null,
+  fixedScheduleVersion: schedule?.version ?? null,
   });
 };
 const databaseFailure = (operation: string, error: unknown): never => {
@@ -119,6 +120,7 @@ export const customerRepository: CustomerRepository = {
       new_email: changes.email ?? null,
       set_fixed_schedule: changes.fixedSchedule !== undefined,
       new_fixed_schedule: changes.fixedSchedule ?? null,
+      expected_schedule_version: changes.expectedScheduleVersion ?? null,
     });
     if (error) mutationFailure("update customer", error);
     return typeof data === "string" ? readById(data) : null;

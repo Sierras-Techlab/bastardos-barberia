@@ -1,7 +1,7 @@
 # Commercial Operations V2 Backend Design
 
-**Status:** Approved 2026-08-13  
-**Base branch:** `origin/dev` at `05b479f`  
+**Status:** Approved 2026-08-13
+**Base branch:** `origin/dev` at `05b479f`
 **Timezone:** `America/Argentina/Buenos_Aires`
 
 ## Objective

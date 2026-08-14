@@ -86,6 +86,36 @@ it("forwards the persisted commission rates to the sale preview", async () => {
   expect(screen.getByText(/Servicio 45%.*Productos 12%/)).toBeVisible();
 });
 
+it("loads every active-user page for the responsible employee selector", async () => {
+  const baseUser = {
+    id: "00000000-0000-4000-8000-000000000001",
+    firstName: "Owner",
+    lastName: "Bastardos",
+    username: "owner.bastardos",
+    role: { id: 1, name: "owner" as const },
+    isActive: true,
+    serviceCommissionRate: 0,
+    productCommissionRate: 0,
+    lastLoginAt: null,
+    createdAt: "2026-08-07T00:00:00.000Z",
+    updatedAt: "2026-08-07T00:00:00.000Z",
+  };
+  listUsers
+    .mockResolvedValueOnce({ items: [baseUser], page: 1, pageSize: 100, total: 101, totalPages: 2 })
+    .mockResolvedValueOnce({
+      items: [{ ...baseUser, id: "00000000-0000-4000-8000-000000000101", firstName: "Empleado", lastName: "Ciento Uno", username: "empleado.101", role: { id: 3, name: "employee" as const } }],
+      page: 2,
+      pageSize: 100,
+      total: 101,
+      totalPages: 2,
+    });
+
+  render(await DashboardLayout({ children: await NewIncomePage() }));
+
+  expect(listUsers).toHaveBeenCalledWith({ page: 2, pageSize: 100, status: "active" });
+  expect(screen.getByRole("option", { name: "Empleado Ciento Uno" })).toBeVisible();
+});
+
 it("does not render the income form after session revocation", async () => {
   requirePageUser.mockRejectedValueOnce(new Error("revoked session"));
 

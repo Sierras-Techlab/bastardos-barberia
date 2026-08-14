@@ -1,5 +1,5 @@
 import type { FrontendCustomerEditorInput } from "@/lib/customers/frontend-customer-contracts";
-import type { Customer, PaginatedCustomerVisits } from "@/types/customer";
+import type { Customer, PaginatedCustomerVisits, UpdateCustomerInput } from "@/types/customer";
 
 type ErrorBody = { error?: { code?: string; message?: string; fields?: Record<string, string[]> } };
 export class CustomerApiError extends Error {
@@ -18,7 +18,7 @@ const json = (method: "POST" | "PATCH", body: unknown) => ({ method, headers: { 
 
 export type CustomerClient = {
   create(input: FrontendCustomerEditorInput): Promise<Customer>;
-  update(id: string, input: Partial<FrontendCustomerEditorInput>): Promise<Customer>;
+  update(id: string, input: UpdateCustomerInput): Promise<Customer>;
   remove(id: string): Promise<{ id: string }>;
   listVisits(id: string, query: { page: number; pageSize: number }, signal?: AbortSignal): Promise<PaginatedCustomerVisits>;
 };

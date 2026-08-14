@@ -36,8 +36,12 @@ export const updateCustomerSchema = z.object({
   phone: phoneSchema.optional(),
   email: optionalEmailSchema.optional(),
   fixedSchedule: fixedScheduleSchema.nullable().optional(),
+  expectedScheduleVersion: z.number().int().nonnegative().optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, {
   message: "Indicá al menos un cambio para el cliente.",
+}).refine((value) => value.fixedSchedule === undefined || value.expectedScheduleVersion !== undefined, {
+  message: "La versión del horario es obligatoria.",
+  path: ["expectedScheduleVersion"],
 });
 
 export const customerVisitQuerySchema = z.object({

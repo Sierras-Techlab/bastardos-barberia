@@ -142,7 +142,7 @@ create table if not exists public.income_payments (
   id uuid primary key default extensions.gen_random_uuid(),
   income_id uuid not null references public.incomes(id) on delete restrict,
   method text not null,
-  amount integer not null,
+  amount bigint not null,
   created_at timestamptz not null default now(),
   constraint income_payments_method_check check (method in ('cash', 'transfer')),
   constraint income_payments_amount_check check (amount > 0),
@@ -386,25 +386,6 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_REQUEST_ID';
   end if;
 
-  effective_employee_id := case
-    when actor_record.role_id = 3 then actor_user_id
-    else responsible_employee_id
-  end;
-
-  select id, role_id, service_commission_rate, product_commission_rate
-  into employee_record
-  from public.users
-  where id = effective_employee_id and is_active and deleted_at is null;
-
-  if not found then
-    raise exception using errcode = 'P0001', message = 'EMPLOYEE_NOT_ELIGIBLE';
-  end if;
-  if employee_record.service_commission_rate not between 0 and 100
-    or employee_record.product_commission_rate not between 0 and 100
-  then
-    raise exception using errcode = 'P0001', message = 'COMMISSION_RATE_OUT_OF_RANGE';
-  end if;
-
   product_items := coalesce(product_items, '[]'::jsonb);
   payment_items := coalesce(payment_items, '[]'::jsonb);
   if jsonb_typeof(product_items) <> 'array' then
@@ -437,12 +418,12 @@ begin
 
   begin
     select count(*)::integer,
-      coalesce(sum((item->>'amount')::integer), 0),
+      coalesce(sum((item->>'amount')::bigint), 0),
       coalesce(jsonb_agg(item order by item->>'method'), '[]'::jsonb)
     into requested_payment_count, payment_total, normalized_payments
     from jsonb_array_elements(payment_items) item
     where item->>'method' in ('cash', 'transfer')
-      and (item->>'amount')::integer > 0;
+      and (item->>'amount')::bigint > 0;
 
     if requested_payment_count not between 1 and 2
       or requested_payment_count <> jsonb_array_length(payment_items)
@@ -460,7 +441,7 @@ begin
 
   fingerprint := pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
     jsonb_build_object(
-      'employeeId', effective_employee_id,
+      'responsibleEmployeeId', responsible_employee_id,
       'customerId', selected_customer_id,
       'serviceId', selected_service_id,
       'products', normalized_products,
@@ -483,6 +464,25 @@ begin
       raise exception using errcode = 'P0001', message = 'INCOME_REQUEST_CONFLICT';
     end if;
     return existing_income.id;
+  end if;
+
+  effective_employee_id := case
+    when actor_record.role_id = 3 then actor_user_id
+    else responsible_employee_id
+  end;
+
+  select id, role_id, service_commission_rate, product_commission_rate
+  into employee_record
+  from public.users
+  where id = effective_employee_id and is_active and deleted_at is null;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'EMPLOYEE_NOT_ELIGIBLE';
+  end if;
+  if employee_record.service_commission_rate not between 0 and 100
+    or employee_record.product_commission_rate not between 0 and 100
+  then
+    raise exception using errcode = 'P0001', message = 'COMMISSION_RATE_OUT_OF_RANGE';
   end if;
 
   if selected_customer_id is not null and not exists (
@@ -555,8 +555,8 @@ begin
     when full_service then 100
     else employee_record.service_commission_rate
   end;
-  service_amount := round(service_base * effective_service_rate / 100.0)::integer;
-  product_amount := round(product_base * employee_record.product_commission_rate / 100.0)::integer;
+  service_amount := round(service_base::numeric * effective_service_rate::numeric / 100)::integer;
+  product_amount := round(product_base::numeric * employee_record.product_commission_rate::numeric / 100)::integer;
   total_commission := service_amount + product_amount;
   net_amount := sale_total - total_commission;
 
@@ -620,7 +620,7 @@ begin
   end loop;
 
   insert into public.income_payments (income_id, method, amount, created_at)
-  select created_income_id, item->>'method', (item->>'amount')::integer, sale_created_at
+  select created_income_id, item->>'method', (item->>'amount')::bigint, sale_created_at
   from jsonb_array_elements(payment_items) item;
 
   if selected_customer_id is not null then
@@ -799,7 +799,7 @@ $$;
 drop function if exists public.create_income(uuid, uuid, uuid, uuid, jsonb, text);
 
 alter table public.income_payments enable row level security;
-revoke all on table public.income_payments from anon, authenticated;
+revoke all on table public.income_payments from public, anon, authenticated;
 grant select, insert on table public.income_payments to service_role;
 
 revoke execute on function public.create_income_v2(uuid, uuid, uuid, uuid, uuid, jsonb, jsonb, boolean)

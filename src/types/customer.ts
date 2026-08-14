@@ -9,6 +9,7 @@ export type Customer = {
   visits: number;
   createdAt: string;
   fixedSchedule: FixedSchedule | null;
+  fixedScheduleVersion?: number | null;
 };
 
 export type CustomerCatalogData = { customers: Customer[] };
@@ -17,7 +18,10 @@ export type CustomerSort = "original" | "visits-desc" | "visits-asc" | "newest" 
 
 export type CustomerEditorInput = Pick<Customer, "firstName" | "lastName" | "email" | "phone">;
 export type CreateCustomerInput = CustomerEditorInput & { fixedSchedule: FixedSchedule | null };
-export type UpdateCustomerInput = Partial<CustomerEditorInput & { fixedSchedule: FixedSchedule | null }>;
+export type UpdateCustomerInput = Partial<CustomerEditorInput & {
+  fixedSchedule: FixedSchedule | null;
+  expectedScheduleVersion: number;
+}>;
 
 export type CustomerVisit = {
   id: string;

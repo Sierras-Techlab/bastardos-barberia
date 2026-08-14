@@ -18,6 +18,7 @@ const customerSchema = z.object({
   visits: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   fixedSchedule: fixedScheduleSchema.nullable().default(null),
+  fixedScheduleVersion: z.number().int().positive().nullable().default(null),
 }).strict();
 
 const customerCatalogFixtureSchema = z.object({

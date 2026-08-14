@@ -30,7 +30,10 @@ export const CustomersView = ({ data, canDelete, customerClient = defaultCustome
 
   const save = async (input: FrontendCustomerEditorInput) => {
     const saved = editor?.mode === "edit" && editor.customer
-      ? await customerClient.update(editor.customer.id, input)
+      ? await customerClient.update(editor.customer.id, {
+          ...input,
+          expectedScheduleVersion: editor.customer.fixedScheduleVersion ?? 0,
+        })
       : await customerClient.create(input);
     setCustomers((current) => editor?.mode === "edit"
       ? current.map((customer) => customer.id === saved.id ? saved : customer)

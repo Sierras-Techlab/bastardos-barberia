@@ -134,9 +134,15 @@ from information_schema.role_table_grants
 where table_schema = 'public'
   and table_name = 'income_payments'
 order by grantee, privilege_type;
+
+select data_type
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'income_payments'
+  and column_name = 'amount';
 ```
 
-Every listed V2 data column except the optional authorizer must report `NO`; all eight constraints must be present; the historical allocation query must return zero rows. `income_payments` must have RLS enabled and no grants to `anon` or `authenticated`.
+Every listed V2 data column except the optional authorizer must report `NO`; all eight constraints must be present; the historical allocation query must return zero rows; and `income_payments.amount` must report `bigint`. `income_payments` must have RLS enabled and no grants to `PUBLIC`, `anon` or `authenticated`.
 
 Verify weekly schedules, attendance and their server-only routines:
 
@@ -171,9 +177,23 @@ from information_schema.role_table_grants
 where table_schema = 'public'
   and table_name in ('customer_fixed_schedules', 'fixed_customer_occurrences')
 order by grantee, table_name, privilege_type;
+
+select column_name, is_nullable, data_type
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'customer_fixed_schedules'
+  and column_name in ('version', 'effective_from')
+order by column_name;
+
+select o.id, o.occurrence_date, s.effective_from
+from public.fixed_customer_occurrences o
+join public.customer_fixed_schedules s
+  on s.customer_id = o.schedule_customer_id
+ and s.version = o.schedule_version
+where o.occurrence_date < s.effective_from;
 ```
 
-Both tables must report RLS enabled, all six routines must be present, the schedule table must have its customer primary key, occurrences must have their schedule-version-date uniqueness constraint, and neither `anon` nor `authenticated` may have table grants.
+Both tables must report RLS enabled, all six routines must be present, the schedule table must have its customer primary key plus non-null `version` and `effective_from`, occurrences must have their schedule-version-date uniqueness constraint, and neither `PUBLIC`, `anon` nor `authenticated` may have table grants. The final query must return zero rows: a schedule version may never generate occurrences before its effective date.
 
 After an active customer has a schedule, verify idempotent occurrence generation without retaining changes. Replace the dates with a range of at most 70 days:
 

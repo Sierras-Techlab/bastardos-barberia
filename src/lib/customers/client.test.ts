@@ -24,9 +24,9 @@ it("sends a configured schedule and preserves the server error", async () => {
 
 it("preserves the explicit null used to disable a schedule", async () => {
   fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "VALIDATION_ERROR", message: "Revisá los datos ingresados." } }, { status: 400 }));
-  const promise = customerClient.update(customer.id, { fixedSchedule: null });
+  const promise = customerClient.update(customer.id, { fixedSchedule: null, expectedScheduleVersion: 1 });
   await expect(promise).rejects.toThrow("Revisá los datos ingresados.");
-  expect(fetchMock).toHaveBeenCalledWith(`/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ fixedSchedule: null }) }));
+  expect(fetchMock).toHaveBeenCalledWith(`/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ fixedSchedule: null, expectedScheduleVersion: 1 }) }));
 });
 
 it("loads paginated visit details without caching", async () => {
