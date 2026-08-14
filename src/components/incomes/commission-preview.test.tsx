@@ -17,4 +17,5 @@ it("neutralizes owner commission rates and overrides for the responsible employe
   expect(preview).toHaveTextContent("Servicio 0% · Productos 0%");
   expect(preview).toHaveTextContent("$ 0");
   expect(preview).toHaveTextContent("$ 26.000");
+  expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument();
 });

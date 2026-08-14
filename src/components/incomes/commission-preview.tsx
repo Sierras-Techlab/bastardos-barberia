@@ -12,7 +12,7 @@ export const CommissionPreview = ({ values, data, onGrantFullServiceCommission }
   const total = calculateIncomeTotal(values, data.services, data.products);
   const preview = calculateCommissionPreview({ responsibleRole: employee?.role ?? "employee", serviceBase, productBase: total - serviceBase, serviceRate: employee?.serviceCommissionRate ?? 0, productRate: employee?.productCommissionRate ?? 0, grantFullServiceCommission: values.grantFullServiceCommission });
   const manager = data.currentUser.role === "owner" || data.currentUser.role === "admin";
-  const eligible = manager && Boolean(service) && employee?.id !== data.currentUser.id;
+  const eligible = manager && employee?.role !== "owner" && Boolean(service) && employee?.id !== data.currentUser.id;
   if (!employee) return null;
   return <section aria-label="Comisión estimada" className="rounded-[1.6rem] bg-white p-5 shadow-sm">
     <div className="flex items-center gap-2"><BadgePercent className="size-4 text-primary"/><h3 className="font-semibold">Comisión estimada</h3></div>
