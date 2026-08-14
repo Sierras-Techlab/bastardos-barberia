@@ -15,7 +15,6 @@ describe("UserEditorDialog", () => {
   it("clears the plaintext password as soon as creation succeeds", async () => {
     const browser = userEvent.setup();
     const onCreate = vi.fn(async () => true);
-
     render(
       <UserEditorDialog
         mode="create"
@@ -40,5 +39,46 @@ describe("UserEditorDialog", () => {
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     expect(screen.getByLabelText(/Contrase.a inicial/)).toHaveValue("");
+  });
+
+  it("forces owner commission inputs to zero and prevents editing them", async () => {
+    const browser = userEvent.setup();
+    const onCreate = vi.fn(async () => true);
+
+    render(
+      <UserEditorDialog
+        mode="create"
+        user={null}
+        roles={roles}
+        createdUser={null}
+        pending={false}
+        error={null}
+        onClose={vi.fn()}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    const serviceRate = screen.getByLabelText("Comisión por servicios (%)");
+    const productRate = screen.getByLabelText("Comisión por productos (%)");
+    await browser.clear(serviceRate);
+    await browser.type(serviceRate, "45");
+    await browser.selectOptions(screen.getByLabelText("Rol del usuario"), "1");
+
+    expect(serviceRate).toBeDisabled();
+    expect(productRate).toBeDisabled();
+    expect(serviceRate).toHaveValue(0);
+    expect(productRate).toHaveValue(0);
+
+    await browser.type(screen.getByLabelText("Nombre"), "Lucía");
+    await browser.type(screen.getByLabelText("Apellido"), "Ferreyra");
+    await browser.type(screen.getByLabelText(/Contrase.a inicial/), "Bastardos-2026");
+    await browser.click(screen.getByRole("button", { name: "Crear usuario" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      roleId: 1,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    })));
   });
 });

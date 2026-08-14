@@ -40,13 +40,14 @@ export const getUser = async (actor: SafeUser, id: string, dependencies = defaul
 export const createUser = async (actor: SafeUser, input: CreateUserInput, dependencies = defaultDependencies) => {
   assertManager(actor);
   const passwordHash = await dependencies.hashPassword(input.password);
+  const isOwner = input.roleId === 1;
   return dependencies.users.create({
     firstName: input.firstName,
     lastName: input.lastName,
     passwordHash,
     roleId: input.roleId,
-    serviceCommissionRate: input.serviceCommissionRate,
-    productCommissionRate: input.productCommissionRate,
+    serviceCommissionRate: isOwner ? 0 : input.serviceCommissionRate,
+    productCommissionRate: isOwner ? 0 : input.productCommissionRate,
     createdBy: actor.id,
   });
 };
@@ -72,7 +73,9 @@ export const updateUser = async (
     throw new AppError("LAST_OWNER_REQUIRED", "Debe quedar al menos un owner activo.", 409);
   }
 
-  const updated = await dependencies.users.update(id, changes);
+  const updated = await dependencies.users.update(id, (changes.roleId ?? target.role.id) === 1
+    ? { ...changes, serviceCommissionRate: 0, productCommissionRate: 0 }
+    : changes);
   if (!updated) throw new AppError("USER_NOT_FOUND", "Usuario no encontrado.", 404);
   if (changes.isActive === false) {
     await dependencies.sessions.revokeAllForUser(id, now.toISOString());

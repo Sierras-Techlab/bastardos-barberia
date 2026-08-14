@@ -8,17 +8,19 @@ import type { IncomeStatus } from "@/types/income";
 export const calculateCommissionPreview = (
   input: CommissionPreviewInput,
 ): IncomeCommissionSnapshot => {
-  const fullServiceCommission = input.grantFullServiceCommission && input.serviceBase > 0;
-  const serviceRate = fullServiceCommission ? 100 : input.serviceRate;
+  const isOwner = input.responsibleRole === "owner";
+  const fullServiceCommission = !isOwner && input.grantFullServiceCommission && input.serviceBase > 0;
+  const serviceRate = isOwner ? 0 : fullServiceCommission ? 100 : input.serviceRate;
   const serviceAmount = Math.round((input.serviceBase * serviceRate) / 100);
-  const productAmount = Math.round((input.productBase * input.productRate) / 100);
+  const productRate = isOwner ? 0 : input.productRate;
+  const productAmount = Math.round((input.productBase * productRate) / 100);
   const total = serviceAmount + productAmount;
 
   return {
     serviceBase: input.serviceBase,
     productBase: input.productBase,
     serviceRate,
-    productRate: input.productRate,
+    productRate,
     serviceAmount,
     productAmount,
     total,

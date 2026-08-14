@@ -143,7 +143,7 @@ export const userRepository: UserRepository = {
     }
 
     if (hasProfileChanges) {
-      const { error } = await getSupabaseAdmin().rpc("update_user_profile_v2", {
+      const { error } = await getSupabaseAdmin().rpc("update_user_profile", {
         target_user_id: id,
         set_first_name: changes.firstName !== undefined,
         new_first_name: changes.firstName ?? null,

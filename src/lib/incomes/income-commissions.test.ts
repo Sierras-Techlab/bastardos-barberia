@@ -8,6 +8,7 @@ import {
 
 it("calculates separate service and product commissions", () => {
   expect(calculateCommissionPreview({
+    responsibleRole: "employee",
     serviceBase: 19000,
     productBase: 30000,
     serviceRate: 45,
@@ -28,6 +29,7 @@ it("calculates separate service and product commissions", () => {
 
 it("applies 100 percent only to the service and rounds whole pesos", () => {
   expect(calculateCommissionPreview({
+    responsibleRole: "employee",
     serviceBase: 19001,
     productBase: 10005,
     serviceRate: 45,
@@ -37,7 +39,26 @@ it("applies 100 percent only to the service and rounds whole pesos", () => {
 });
 
 it("keeps product-only and zero-rate sales safe", () => {
-  expect(calculateCommissionPreview({ serviceBase: 0, productBase: 12000, serviceRate: 0, productRate: 0, grantFullServiceCommission: true })).toMatchObject({ serviceAmount: 0, productAmount: 0, total: 0, barbershopNet: 12000, fullServiceCommission: false });
+  expect(calculateCommissionPreview({ responsibleRole: "employee", serviceBase: 0, productBase: 12000, serviceRate: 0, productRate: 0, grantFullServiceCommission: true })).toMatchObject({ serviceAmount: 0, productAmount: 0, total: 0, barbershopNet: 12000, fullServiceCommission: false });
+});
+
+it("keeps owner previews commission-free even when an override is requested", () => {
+  expect(calculateCommissionPreview({
+    responsibleRole: "owner",
+    serviceBase: 19000,
+    productBase: 30000,
+    serviceRate: 45,
+    productRate: 10,
+    grantFullServiceCommission: true,
+  })).toMatchObject({
+    serviceRate: 0,
+    productRate: 0,
+    serviceAmount: 0,
+    productAmount: 0,
+    total: 0,
+    barbershopNet: 49000,
+    fullServiceCommission: false,
+  });
 });
 
 it("reports exact, missing and excess payment allocation", () => {

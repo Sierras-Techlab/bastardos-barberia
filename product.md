@@ -18,9 +18,9 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Module | State | Current result / objective |
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
-| User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
+| User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner rates are normalized to 0 in the application while database enforcement is pending migration 012. |
 | Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
-| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, configured rates, immutable commission/net snapshots and audited 100% service exception. |
+| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, owner-safe application previews, configured rates, immutable commission/net snapshots and audited 100% service exception; migration 012 remains required for database enforcement. |
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
@@ -33,7 +33,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Review and manually install migrations `010` and `011`, run their SQL Editor acceptance checks, then design daily cash. The complete commercial operations V2 workflow is implemented and verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
+Complete migration `012` for owner commission enforcement and the canonical profile RPC, then manually install migrations `010` through `012` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 

@@ -12,6 +12,7 @@ export type CommissionUser = {
 };
 
 export type CommissionPreviewInput = {
+  responsibleRole: UserRole;
   serviceBase: number;
   productBase: number;
   serviceRate: number;

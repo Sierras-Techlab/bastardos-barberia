@@ -10,7 +10,7 @@ export const CommissionPreview = ({ values, data, onGrantFullServiceCommission }
   const service = data.services.find((item) => item.id === values.serviceId);
   const serviceBase = service?.price ?? 0;
   const total = calculateIncomeTotal(values, data.services, data.products);
-  const preview = calculateCommissionPreview({ serviceBase, productBase: total - serviceBase, serviceRate: employee?.serviceCommissionRate ?? 0, productRate: employee?.productCommissionRate ?? 0, grantFullServiceCommission: values.grantFullServiceCommission });
+  const preview = calculateCommissionPreview({ responsibleRole: employee?.role ?? "employee", serviceBase, productBase: total - serviceBase, serviceRate: employee?.serviceCommissionRate ?? 0, productRate: employee?.productCommissionRate ?? 0, grantFullServiceCommission: values.grantFullServiceCommission });
   const manager = data.currentUser.role === "owner" || data.currentUser.role === "admin";
   const eligible = manager && Boolean(service) && employee?.id !== data.currentUser.id;
   if (!employee) return null;

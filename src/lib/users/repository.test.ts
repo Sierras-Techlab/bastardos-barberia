@@ -20,8 +20,8 @@ const row = {
   last_name: "Pérez",
   username: "juan.perez",
   password_hash: "$argon2id$v=19$hash",
-  role_id: 1,
-  role: { id: 1, name: "owner" },
+  role_id: 3,
+  role: { id: 3, name: "employee" },
   is_active: true,
   service_commission_rate: 45,
   product_commission_rate: 12,
@@ -47,7 +47,7 @@ describe("user repository mappers", () => {
       firstName: "Juan",
       lastName: "Pérez",
       username: "juan.perez",
-      role: { id: 1, name: "owner" },
+      role: { id: 3, name: "employee" },
       isActive: true,
       serviceCommissionRate: 45,
       productCommissionRate: 12,
@@ -199,7 +199,7 @@ describe("user repository mappers", () => {
       firstName: "Juan",
       lastName: "Pérez",
       passwordHash: row.password_hash,
-      roleId: 1,
+      roleId: 3,
       serviceCommissionRate: 45,
       productCommissionRate: 12,
       createdBy: null,
@@ -229,18 +229,18 @@ describe("user repository mappers", () => {
 
     await userRepository.update(row.id, {
       firstName: "Juana",
-      serviceCommissionRate: 50,
-      productCommissionRate: 15,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
     });
 
-    expect(rpc).toHaveBeenCalledWith("update_user_profile_v2", expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith("update_user_profile", expect.objectContaining({
       target_user_id: row.id,
       set_first_name: true,
       new_first_name: "Juana",
       set_service_commission_rate: true,
-      new_service_commission_rate: 50,
+      new_service_commission_rate: 0,
       set_product_commission_rate: true,
-      new_product_commission_rate: 15,
+      new_product_commission_rate: 0,
     }));
   });
 

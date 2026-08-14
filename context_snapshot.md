@@ -24,6 +24,7 @@ Captured: 2026-08-14
 - Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
 - Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
+- Owner commission handling is application-safe: owner creation, promotion and updates normalize both configured rates to zero; owner editor controls are fixed at zero; previews derive the responsible employee role and neutralize owner rates plus the 100% service preview override. User profile persistence now calls the canonical `update_user_profile` RPC.
 
 ## SQL and deployment state
 
@@ -44,12 +45,13 @@ Captured: 2026-08-14
 ## Known boundaries
 
 - SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010`/`011` still require manual PostgreSQL execution and verification.
+- The SQL counterpart for owner commission enforcement and the canonical `update_user_profile` signature is pending in unit 012-B; until it is applied, the app-side RPC rename must not be deployed independently.
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 
 ## Recommended next task
 
-Review and manually execute migrations `010` and `011` in order, run every corresponding README verification query, then perform live owner/admin/employee smoke tests before integrating the branch.
+Implement and verify unit 012-B's database enforcement before deploying the owner-safe application changes; then install migrations `010` through `012` in order and run their SQL Editor acceptance checks.
 
 ## Context maintenance rule
 
