@@ -553,13 +553,13 @@ begin
     raise exception using errcode = 'P0001', message = 'PAYMENT_ALLOCATION_MISMATCH';
   end if;
 
-  -- Products are already locked above. Lock the customer afterwards to preserve
-  -- the same product -> customer order used by void_income.
+  -- Products are already locked above. Serialize the eventual visit increment
+  -- without a shared-lock upgrade, preserving void_income's product -> customer order.
   if selected_customer_id is not null then
     perform 1
     from public.customers
     where id = selected_customer_id and deleted_at is null
-    for share;
+    for no key update;
     if not found then
       raise exception using errcode = 'P0001', message = 'CUSTOMER_NOT_FOUND';
     end if;
