@@ -69,6 +69,8 @@ The application and database will finish with these canonical names:
 
 The existing `update_user_profile_v2`, `create_customer_v2`, `update_customer_v2` and `create_income_v2` functions are removed after their TypeScript repositories use the canonical functions. No compatibility aliases remain in the final development schema.
 
+Application identifiers and user-facing fallback copy are cleaned at the same time: aliases such as `CreateIncomeV2Input` and `createIncomeV2InputSchema`, test descriptions and “Disponible al integrar V2” messages are replaced by canonical names or removed.
+
 ## Owner commission policy
 
 `create_income` locks and re-reads the authenticated actor and responsible employee before pricing or commission calculation. It snapshots the responsible role on `incomes.responsible_role_snapshot`.
@@ -77,6 +79,8 @@ For new sales:
 
 - `owner`: effective service and product rates are zero; all item commission amounts and aggregate commission totals are zero; `barbershop_net` equals the sale total.
 - `admin` or `employee`: configured service and product rates apply unless a valid manager exception changes a selected item to 100%.
+
+Owner user records are also normalized to configured service/product rates of zero. A database check constraint requires both rates to equal zero whenever `role_id = 1`; user creation, role changes and `update_user_profile` normalize any owner rate to zero, and the manager editor displays the owner fields as fixed at 0%. The sale RPC still enforces zero independently so correctness never depends on the UI or stored configuration alone.
 
 Any service or product exception is invalid when:
 
@@ -143,6 +147,8 @@ The four existing values are mapped to seeded canonical rows:
 Every product receives a non-null `category_id` foreign key with `ON DELETE RESTRICT`. After validation, the old text column and enum-like check constraint are dropped. Product reads return a category object rather than a hardcoded TypeScript union.
 
 Owner/admin may create, rename, deactivate and reactivate categories. Every authenticated role may list active categories; managers may include inactive categories for administration. A duplicate normalized name returns conflict. Deactivation returns conflict while active products reference the category.
+
+Canonical `create_product` and `update_product` functions lock and validate the selected active category before writing a product. Category deactivation and product category assignment use a consistent category-first lock order so a concurrent product mutation cannot create an active-product/inactive-category state.
 
 HTTP endpoints:
 
