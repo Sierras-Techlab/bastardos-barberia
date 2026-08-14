@@ -340,8 +340,10 @@ declare
   requested_payment_count integer;
   payment_total bigint;
   normalized_products jsonb;
+  legacy_normalized_products jsonb;
   normalized_payments jsonb;
   fingerprint text;
+  legacy_fingerprint text;
   full_service boolean := coalesce(grant_full_service_commission, false);
   any_full_product boolean;
 begin
@@ -402,6 +404,19 @@ begin
       raise exception using errcode = '22023', message = 'INVALID_PRODUCT_ITEMS';
   end;
 
+  -- Pre-015 requests contained only productId/quantity. Rebuild exactly that
+  -- normalized product array for a narrow, read-only idempotency comparison.
+  select
+    coalesce(jsonb_agg(
+      jsonb_build_object(
+        'productId', item->'productId',
+        'quantity', item->'quantity'
+      ) order by item->>'productId'
+    ), '[]'::jsonb),
+    coalesce(bool_or((item->>'grantFullCommission')::boolean), false)
+  into legacy_normalized_products, any_full_product
+  from jsonb_array_elements(normalized_products) item;
+
   begin
     select
       count(*)::integer,
@@ -438,6 +453,18 @@ begin
     'UTF8'
   ), 'sha256'), 'hex');
 
+  legacy_fingerprint := pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
+    jsonb_build_object(
+      'responsibleEmployeeId', responsible_employee_id,
+      'customerId', selected_customer_id,
+      'serviceId', selected_service_id,
+      'products', legacy_normalized_products,
+      'payments', normalized_payments,
+      'grantFullServiceCommission', full_service
+    )::text,
+    'UTF8'
+  ), 'sha256'), 'hex');
+
   perform pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(
       actor_user_id::text || ':' || income_request_id::text,
@@ -450,7 +477,14 @@ begin
   where registered_by = actor_user_id and request_id = income_request_id;
 
   if found then
-    if existing_income.request_fingerprint <> fingerprint then
+    -- A pre-015 hash is equivalent only when every newly required product flag
+    -- is false. Keep the original audit hash unchanged on that compatible retry.
+    if existing_income.request_fingerprint <> fingerprint
+      and (
+        any_full_product
+        or existing_income.request_fingerprint <> legacy_fingerprint
+      )
+    then
       raise exception using errcode = 'P0001', message = 'INCOME_REQUEST_CONFLICT';
     end if;
     return existing_income.id;
@@ -584,12 +618,6 @@ begin
       raise exception using errcode = 'P0001', message = 'CUSTOMER_NOT_FOUND';
     end if;
   end if;
-
-  select coalesce(bool_or(
-    (item->>'grantFullCommission')::boolean
-  ), false)
-  into any_full_product
-  from jsonb_array_elements(normalized_products) item;
 
   if full_service and (
     actor_record.role_id not in (1, 2)

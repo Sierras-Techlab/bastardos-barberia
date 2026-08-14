@@ -35,6 +35,7 @@ Captured: 2026-08-14
 - Commission previews calculate service and product lines independently. Persisted-income contracts require immutable commission snapshots inside the service and every product item, while the aggregate exposes exact commission total and barbershop net; confirmation and detail views render the itemized amounts without positional coupling.
 - The persisted income and metrics types now mirror the strict response schemas: payments, registering actor, aggregate commission, gross total, commission total and barbershop net are mandatory. Income UI and dashboard consumers no longer fabricate legacy payment data or show pending-backend fallbacks.
 - Migration `015_product_item_commissions.sql` backfills immutable service/product item snapshots with exact parent reconciliation, calculates new product lines independently, fingerprints strict product exception flags and promotes the sole canonical `create_income` RPC. It preserves category-first product locks, stock/payments/customer visits, scoped history and idempotent retries while removing `create_income_v2`.
+- Canonical income idempotency dual-compares the exact pre-015 product fingerprint only when every newly required product exception flag is false. It preserves the historical audit hash, accepts a semantically identical cross-migration retry and still conflicts when any flag changes to true.
 
 ## SQL and deployment state
 
@@ -49,9 +50,9 @@ Captured: 2026-08-14
 
 ## Verification
 
-- Full suite: 127 test files / 468 tests passed.
+- Last full suite before Fix Round 1: 127 test files / 468 tests passed.
 - Fix Round 1 focused coverage: 15 test files / 60 tests passed, including service exception reset on deselect/change, singular/plural whole-line product copy and a manager-to-other-employee submission combining full service plus two full product lines.
-- The Tasks 1–3 focused groups passed with 22 domain/contract tests, 18 repository/service/client tests and 29 UI tests. Task 4 adds four migration/type contract checks; the wider income slice passed 31 files / 126 tests.
+- The Tasks 1–3 focused groups passed with 22 domain/contract tests, 18 repository/service/client tests and 29 UI tests. Task 4 now has five migration/type contract checks; Fix Round 1 passed the focused income slice with 13 files / 66 tests.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.

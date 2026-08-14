@@ -52,6 +52,16 @@ describe("migration 015 item commission contract", () => {
     expect(sql).toMatch(/drop function public\.create_income_v2\s*\(/);
   });
 
+  it("accepts only all-false retries that match the pre-015 fingerprint", () => {
+    const sql = migration();
+
+    expect(sql).toContain("legacy_normalized_products jsonb");
+    expect(sql).toContain("legacy_fingerprint text");
+    expect(sql).toMatch(
+      /existing_income\.request_fingerprint <> fingerprint\s+and \(\s*any_full_product\s+or existing_income\.request_fingerprint <> legacy_fingerprint\s*\)/,
+    );
+  });
+
   it("returns itemized commission JSON and grants only the canonical RPC", () => {
     const sql = migration();
 

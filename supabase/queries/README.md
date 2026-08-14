@@ -974,15 +974,23 @@ declare
   normal_income_id uuid;
   full_income_id uuid;
   retry_income_id uuid;
+  legacy_income_id uuid;
+  legacy_retry_income_id uuid;
   multi_full_income_id uuid;
   owner_income_id uuid;
   full_request_id uuid := extensions.gen_random_uuid();
+  legacy_request_id uuid := extensions.gen_random_uuid();
+  simulated_legacy_fingerprint text;
+  stored_fingerprint_after_retry text;
   normal_json jsonb;
   multi_full_json jsonb;
   snapshot record;
   matching_item_count integer;
   full_stock_after_first integer;
   full_stock_after_retry integer;
+  legacy_stock_before integer;
+  legacy_stock_after_first integer;
+  legacy_stock_after_retry integer;
 begin
   insert into public.users (
     first_name, last_name, username, password_hash, role_id,
@@ -1167,6 +1175,89 @@ begin
       false
     );
     raise exception 'CHANGED_PRODUCT_FLAG_RETRY_ACCEPTED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'INCOME_REQUEST_CONFLICT' then
+        raise;
+      end if;
+  end;
+
+  -- Simulate the exact product fingerprint emitted by create_income_v2 before
+  -- grantFullCommission existed. An all-false retry crosses the migration
+  -- boundary without rewriting audit state; changing that flag still conflicts.
+  select stock into legacy_stock_before
+  from public.products where id = round_product_b_id;
+
+  legacy_income_id := public.create_income(
+    manager_id, employee_id, legacy_request_id, null, null,
+    jsonb_build_array(jsonb_build_object(
+      'productId', round_product_b_id,
+      'quantity', 1,
+      'grantFullCommission', false
+    )),
+    jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10005)),
+    false
+  );
+  select stock into legacy_stock_after_first
+  from public.products where id = round_product_b_id;
+
+  simulated_legacy_fingerprint := pg_catalog.encode(extensions.digest(
+    pg_catalog.convert_to(jsonb_build_object(
+      'responsibleEmployeeId', employee_id,
+      'customerId', null,
+      'serviceId', null,
+      'products', jsonb_build_array(jsonb_build_object(
+        'productId', round_product_b_id,
+        'quantity', 1
+      )),
+      'payments', jsonb_build_array(jsonb_build_object(
+        'method', 'cash',
+        'amount', 10005
+      )),
+      'grantFullServiceCommission', false
+    )::text, 'UTF8'),
+    'sha256'
+  ), 'hex');
+
+  update public.incomes
+  set request_fingerprint = simulated_legacy_fingerprint
+  where id = legacy_income_id;
+
+  legacy_retry_income_id := public.create_income(
+    manager_id, employee_id, legacy_request_id, null, null,
+    jsonb_build_array(jsonb_build_object(
+      'productId', round_product_b_id,
+      'quantity', 1,
+      'grantFullCommission', false
+    )),
+    jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10005)),
+    false
+  );
+  select stock into legacy_stock_after_retry
+  from public.products where id = round_product_b_id;
+  select request_fingerprint into stored_fingerprint_after_retry
+  from public.incomes where id = legacy_income_id;
+
+  if legacy_retry_income_id <> legacy_income_id
+    or legacy_stock_after_first <> legacy_stock_before - 1
+    or legacy_stock_after_retry <> legacy_stock_after_first
+    or stored_fingerprint_after_retry <> simulated_legacy_fingerprint
+  then
+    raise exception 'LEGACY_FALSE_FLAG_RETRY_VERIFICATION_FAILED';
+  end if;
+
+  begin
+    perform public.create_income(
+      manager_id, employee_id, legacy_request_id, null, null,
+      jsonb_build_array(jsonb_build_object(
+        'productId', round_product_b_id,
+        'quantity', 1,
+        'grantFullCommission', true
+      )),
+      jsonb_build_array(jsonb_build_object('method', 'cash', 'amount', 10005)),
+      false
+    );
+    raise exception 'LEGACY_TRUE_FLAG_RETRY_ACCEPTED';
   exception
     when raise_exception then
       if sqlerrm <> 'INCOME_REQUEST_CONFLICT' then
@@ -1360,8 +1451,10 @@ The block must complete successfully. It covers independently rounded normal
 lines, a full two-unit product line, simultaneous full service/product lines,
 employee/self/owner rejection, owner-zero snapshots, strict boolean input,
 idempotent stock handling and same-request conflict when only a product flag
-changes. It also validates the exact itemized JSON contract and reconciles every
-temporary item's bases and commission amounts to its parent. The rollback leaves
-the database unchanged.
+changes. It explicitly simulates a fingerprint created before script `015`,
+accepts its all-false retry without mutating the stored audit hash, and rejects
+the same legacy request when its product flag changes to true. It also validates
+the exact itemized JSON contract and reconciles every temporary item's bases and
+commission amounts to its parent. The rollback leaves the database unchanged.
 
 Then configure `.env`, temporarily add the three `BOOTSTRAP_OWNER_*` values, and run `npm run bootstrap:owner`. Remove the temporary password value immediately afterward.
