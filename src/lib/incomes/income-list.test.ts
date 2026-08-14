@@ -29,6 +29,7 @@ const serviceOnly: IncomeListItem = {
   createdAt: "2026-08-07T14:00:00.000Z",
   businessDate: "2026-08-07",
   employee: employeeLautaro,
+  registeredBy: employeeLautaro,
   customer: { id: "customer-lucas", firstName: "Lucas", lastName: "Romero" },
   service: {
     id: "service-haircut-eyebrows",
@@ -38,6 +39,8 @@ const serviceOnly: IncomeListItem = {
   },
   products: [],
   paymentMethod: "cash",
+  payments: [{ method: "cash", amount: 16000 }],
+  commission: { total: 0, barbershopNet: 16000 },
   total: 16000,
   status: "active",
 };
@@ -47,12 +50,15 @@ const productsOnly: IncomeListItem = {
   createdAt: "2026-08-06T18:00:00.000Z",
   businessDate: "2026-08-06",
   employee: employeeFer,
+  registeredBy: employeeFer,
   customer: null,
   service: null,
   products: [
     { id: "product-gel", name: "Gel", unitPrice: 9900, quantity: 2, commission: { subtotal: 19800, rate: 0, amount: 0, fullCommission: false, authorizedBy: null } },
   ],
   paymentMethod: "transfer",
+  payments: [{ method: "transfer", amount: 19800 }],
+  commission: { total: 0, barbershopNet: 19800 },
   total: 19800,
   status: "active",
 };
@@ -62,6 +68,7 @@ const combined: IncomeListItem = {
   createdAt: "2026-08-05T16:00:00.000Z",
   businessDate: "2026-08-05",
   employee: employeeLautaro,
+  registeredBy: employeeLautaro,
   customer: {
     id: "customer-tomas",
     firstName: "Tomás",
@@ -83,6 +90,8 @@ const combined: IncomeListItem = {
     },
   ],
   paymentMethod: "cash",
+  payments: [{ method: "cash", amount: 49000 }],
+  commission: { total: 0, barbershopNet: 49000 },
   total: 49000,
   status: "active",
 };
@@ -193,16 +202,18 @@ describe("income list domain", () => {
     };
 
     expect(calculateIncomeMetrics([serviceOnly, productsOnly, voided])).toEqual({
-      total: 35800,
       grossTotal: 35800,
+      commissionTotal: 0,
+      barbershopNet: 35800,
       count: 2,
       average: 17900,
       cashTotal: 16000,
       transferTotal: 19800,
     });
     expect(calculateIncomeMetrics([voided])).toEqual({
-      total: 0,
       grossTotal: 0,
+      commissionTotal: 0,
+      barbershopNet: 0,
       count: 0,
       average: 0,
       cashTotal: 0,

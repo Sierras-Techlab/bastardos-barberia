@@ -8,10 +8,13 @@ import { IncomeSuccessState } from "./income-success-state";
 const income: Income = {
   id: "20000000-0000-4000-8000-000000000001",
   employee: { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez" },
+  registeredBy: { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez" },
   customer: null,
   service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte", price: 16000, commission: { subtotal: 16000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null } },
   products: [],
   paymentMethod: "cash",
+  payments: [{ method: "cash", amount: 16000 }],
+  commission: { total: 0, barbershopNet: 16000 },
   total: 16000,
   createdAt: "2026-08-07T12:00:00.000Z",
   businessDate: "2026-08-07",

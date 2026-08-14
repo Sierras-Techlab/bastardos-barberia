@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-import mock from "@/data/incomes.mock.json";
+import mock from "@/data/incomes.mock";
 import type { IncomeListData } from "@/types/income";
 import { IncomeDetailSheet } from "./income-detail-sheet";
 
@@ -27,7 +27,7 @@ it("shows the complete read-only income detail", () => {
   expect(screen.getByText(income?.service?.name ?? "")).toBeVisible();
   expect(screen.getByText(/19\.000/)).toBeVisible();
   expect(
-    screen.getByText(new RegExp(income?.products[0].name ?? "", "i")),
+    screen.getByText(`1 × ${income?.products[0].name}`),
   ).toBeVisible();
   expect(screen.getByText(/transferencia|efectivo/i)).toBeVisible();
   expect(
@@ -64,7 +64,8 @@ it("hides manager-only net and registrator from employees", () => {
   render(<IncomeDetailSheet income={income} open viewerRole="employee" onOpenChange={vi.fn()} />);
   expect(screen.queryByText("Registrado por")).not.toBeInTheDocument();
   expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
-  expect(screen.getByText("Pendiente de backend")).toBeVisible();
+  expect(screen.queryByText("Pendiente de backend")).not.toBeInTheDocument();
+  expect(screen.getByText("Comisión devengada")).toBeVisible();
 });
 
 it("shows itemized commission amounts and the manager who authorized a full service", () => {

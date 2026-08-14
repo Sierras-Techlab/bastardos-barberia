@@ -17,6 +17,11 @@ const income: IncomeListItem = {
     firstName: "Fer",
     lastName: "Pérez",
   },
+  registeredBy: {
+    id: "00000000-0000-4000-8000-000000000003",
+    firstName: "Fer",
+    lastName: "Pérez",
+  },
   customer: null,
   service: {
     id: "30000000-0000-4000-8000-000000000001",
@@ -34,6 +39,8 @@ const income: IncomeListItem = {
     },
   ],
   paymentMethod: "cash",
+  payments: [{ method: "cash", amount: 15000 }],
+  commission: { total: 0, barbershopNet: 15000 },
   total: 15000,
   status: "active",
 };

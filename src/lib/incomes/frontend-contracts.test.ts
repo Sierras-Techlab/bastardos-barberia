@@ -1,6 +1,8 @@
-import { expect, it } from "vitest";
+import { expect, expectTypeOf, it } from "vitest";
 
 import { createIncomeInputSchema } from "@/lib/incomes/frontend-contracts";
+import type { IncomeCommissionSnapshot } from "@/types/income-commissions";
+import type { Employee, IncomeListItem, IncomeListMetrics, IncomePayment } from "@/types/income";
 
 const valid = {
   requestId: "00000000-0000-4000-8000-000000000001",
@@ -31,4 +33,13 @@ it("rejects authoritative and malformed browser fields", () => {
     ...valid,
     products: [{ productId: "00000000-0000-4000-8000-000000000010", quantity: 2, grantFullCommission: true, rate: 100 }],
   })).toThrow();
+});
+
+it("keeps the persisted response type aligned with the strict parser", () => {
+  expectTypeOf<IncomeListItem["payments"]>().toEqualTypeOf<IncomePayment[]>();
+  expectTypeOf<IncomeListItem["registeredBy"]>().toEqualTypeOf<Employee>();
+  expectTypeOf<IncomeListItem["commission"]>().toEqualTypeOf<IncomeCommissionSnapshot>();
+  expectTypeOf<IncomeListMetrics["grossTotal"]>().toEqualTypeOf<number>();
+  expectTypeOf<IncomeListMetrics["commissionTotal"]>().toEqualTypeOf<number>();
+  expectTypeOf<IncomeListMetrics["barbershopNet"]>().toEqualTypeOf<number>();
 });

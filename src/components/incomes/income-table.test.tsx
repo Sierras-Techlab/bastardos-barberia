@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
-import mock from "@/data/incomes.mock.json";
+import mock from "@/data/incomes.mock";
 import type { IncomeListData } from "@/types/income";
 import { IncomeTable } from "./income-table";
 
@@ -48,10 +48,10 @@ it("keeps rows semantic and exposes one explicit action", () => {
   ).toBeVisible();
 });
 
-it("shows combined payment and commission with a legacy fallback", () => {
+it("shows combined payment and canonical commission", () => {
   const incomeWithCommission = { ...data.incomes[0], payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { total: 11550, barbershopNet: 37450 } };
   render(<IncomeTable incomes={[incomeWithCommission, data.incomes[1]]} onSelect={vi.fn()} />);
   expect(screen.getByText("Combinado")).toBeVisible();
   expect(screen.getByText(/11\.550/)).toBeVisible();
-  expect(screen.getByText("Pendiente de backend")).toBeVisible();
+  expect(screen.queryByText("Pendiente de backend")).not.toBeInTheDocument();
 });

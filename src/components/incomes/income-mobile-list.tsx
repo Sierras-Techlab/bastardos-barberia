@@ -7,7 +7,7 @@ import {
   formatIncomeDateTime,
 } from "@/lib/incomes/income-list";
 import type { IncomeListItem } from "@/types/income";
-import { getIncomeCommissionState, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
+import { getIncomeCommissionAmount, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
 
 type IncomeMobileListProps = {
   incomes: IncomeListItem[];
@@ -19,10 +19,7 @@ export const IncomeMobileList = ({
   onSelect,
 }: IncomeMobileListProps) => (
   <div className="space-y-3" aria-label="Historial de ingresos móvil">
-    {incomes.map((income) => {
-      const commission = getIncomeCommissionState(income);
-
-      return (
+    {incomes.map((income) => (
         <button
           key={income.id}
           type="button"
@@ -53,7 +50,7 @@ export const IncomeMobileList = ({
                 <CreditCard className="size-3.5" />
                 {getIncomePaymentLabel(income)}
               </p>
-              <p>Comisión: {commission.available ? formatArs(commission.amount) : "Pendiente de backend"}</p>
+              <p>Comisión: {formatArs(getIncomeCommissionAmount(income))}</p>
             </div>
             <div className="text-right">
               {income.status === "voided" && (
@@ -76,7 +73,6 @@ export const IncomeMobileList = ({
             </div>
           </div>
         </button>
-      );
-    })}
+    ))}
   </div>
 );

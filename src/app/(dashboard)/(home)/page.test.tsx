@@ -36,14 +36,17 @@ const incomePage = {
     createdAt: new Date().toISOString(),
     businessDate: currentRange.dateTo,
     employee: { id: user.id, firstName: user.firstName, lastName: user.lastName },
+    registeredBy: { id: user.id, firstName: user.firstName, lastName: user.lastName },
     customer: null,
-    service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte real", price: 16000 },
+    service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte real", price: 16000, commission: { subtotal: 16000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null } },
     products: [],
     paymentMethod: "cash",
+    payments: [{ method: "cash", amount: 16000 }],
+    commission: { total: 0, barbershopNet: 16000 },
     total: 16000,
     status: "active",
   }],
-  metrics: { total: 16000, count: 1, average: 16000, cashTotal: 16000, transferTotal: 0 },
+  metrics: { grossTotal: 16000, commissionTotal: 0, barbershopNet: 16000, count: 1, average: 16000, cashTotal: 16000, transferTotal: 0 },
   pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
 };
 const renderHome = async () => render(<SidebarProvider>{await Home()}</SidebarProvider>);
@@ -112,7 +115,7 @@ it("loads every result page before deriving the seven-day summary", async () => 
     .mockResolvedValueOnce({ ...incomePage, pagination: { page: 1, pageSize: 100, total: 101, totalPages: 2 } })
     .mockResolvedValueOnce({
       ...incomePage,
-      items: [{ ...incomePage.items[0], id: "20000000-0000-4000-8000-000000000002", total: 19000, paymentMethod: "transfer" }],
+      items: [{ ...incomePage.items[0], id: "20000000-0000-4000-8000-000000000002", total: 19000, paymentMethod: "transfer", payments: [{ method: "transfer", amount: 19000 }], commission: { total: 0, barbershopNet: 19000 } }],
       pagination: { page: 2, pageSize: 100, total: 101, totalPages: 2 },
     });
   await renderHome();

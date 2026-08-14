@@ -31,7 +31,9 @@ Captured: 2026-08-14
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
 - Owner commission handling is application-safe: owner creation, promotion and updates normalize both configured rates to zero; owner editor controls are fixed at zero; previews derive the responsible employee role and neutralize owner rates plus the 100% service preview override. User profile persistence now calls the canonical `update_user_profile` RPC.
 - Income drafts now carry a strict boolean product exception per selected line. Only a manager attributing the sale to a different non-owner may see exception controls; switching to self or an owner clears service and every product flag, while employees receive no controls. Full product exceptions cover the complete selected quantity and may coexist across products and with a full-service exception.
+- Changing or removing the selected service also clears its full-commission exception, so an invisible stale flag can never reach confirmation or submission. Product exception copy states explicitly that 100% covers the value of the complete line quantity.
 - Commission previews calculate service and product lines independently. Persisted-income contracts require immutable commission snapshots inside the service and every product item, while the aggregate exposes exact commission total and barbershop net; confirmation and detail views render the itemized amounts without positional coupling.
+- The persisted income and metrics types now mirror the strict response schemas: payments, registering actor, aggregate commission, gross total, commission total and barbershop net are mandatory. Income UI and dashboard consumers no longer fabricate legacy payment data or show pending-backend fallbacks.
 
 ## SQL and deployment state
 
@@ -46,7 +48,8 @@ Captured: 2026-08-14
 
 ## Verification
 
-- Full suite: 126 test files / 460 tests passed.
+- Full suite: 126 test files / 464 tests passed.
+- Fix Round 1 focused coverage: 15 test files / 60 tests passed, including service exception reset on deselect/change, singular/plural whole-line product copy and a manager-to-other-employee submission combining full service plus two full product lines.
 - The Tasks 1–3 focused groups passed with 22 domain/contract tests, 18 repository/service/client tests and 29 UI tests; the wider income slice passed 30 files / 118 tests.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.

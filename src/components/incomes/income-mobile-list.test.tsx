@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
-import mock from "@/data/incomes.mock.json";
+import mock from "@/data/incomes.mock";
 import type { IncomeListData } from "@/types/income";
 import { IncomeMobileList } from "./income-mobile-list";
 

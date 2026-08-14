@@ -82,7 +82,7 @@ describe("ProductSelector", () => {
     const user = userEvent.setup();
     render(<ProductSelector products={products} value={[{ productId: "product-pomade", quantity: 2, grantFullCommission: false }]} canGrantFullCommission onChange={onChange} />);
 
-    const checkbox = screen.getByRole("checkbox", { name: /otorgar comisión completa.*2 unidades.*pomada/i });
+    const checkbox = screen.getByRole("checkbox", { name: "Regalar el 100% del valor de las 2 unidades de Pomada" });
     await user.click(checkbox);
     expect(onChange).toHaveBeenCalledWith([{ productId: "product-pomade", quantity: 2, grantFullCommission: true }]);
   });
@@ -100,7 +100,7 @@ describe("ProductSelector", () => {
       onChange={onChange}
     />);
 
-    await user.click(screen.getByRole("checkbox", { name: /otorgar comisión completa.*1 unidad.*shampoo/i }));
+    await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Shampoo" }));
     expect(onChange).toHaveBeenCalledWith([
       { productId: "product-pomade", quantity: 2, grantFullCommission: true },
       { productId: "product-shampoo", quantity: 1, grantFullCommission: true },
@@ -109,6 +109,6 @@ describe("ProductSelector", () => {
 
   it("hides full-commission controls when attribution is ineligible", () => {
     render(<ProductSelector products={products} value={[{ productId: "product-pomade", quantity: 2, grantFullCommission: false }]} canGrantFullCommission={false} onChange={vi.fn()} />);
-    expect(screen.queryByRole("checkbox", { name: /otorgar comisión completa/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /regalar el 100% del valor/i })).not.toBeInTheDocument();
   });
 });

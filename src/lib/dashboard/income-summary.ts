@@ -41,11 +41,7 @@ export const buildDashboardIncomeSummary = (incomes: IncomeListItem[], dateTo: s
   const todayIncomes = activeIncomes.filter(({ businessDate }) => businessDate === dateTo);
   const todayTotal = todayIncomes.reduce((total, income) => total + income.total, 0);
   const paymentTotals = todayIncomes.reduce((totals, income) => {
-    if (income.payments?.length) {
-      for (const payment of income.payments) totals[payment.method] += payment.amount;
-    } else {
-      totals[income.paymentMethod] += income.total;
-    }
+    for (const payment of income.payments) totals[payment.method] += payment.amount;
     return totals;
   }, { cash: 0, transfer: 0 });
   const dates = datesEndingAt(dateTo);

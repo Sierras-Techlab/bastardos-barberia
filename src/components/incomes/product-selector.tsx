@@ -131,6 +131,10 @@ export const ProductSelector = ({
               return null;
             }
 
+            const fullCommissionLabel = item.quantity === 1
+              ? `Regalar el 100% del valor de 1 unidad de ${product.name}`
+              : `Regalar el 100% del valor de las ${item.quantity} unidades de ${product.name}`;
+
             return (
               <div
                 key={item.productId}
@@ -174,10 +178,10 @@ export const ProductSelector = ({
                       type="checkbox"
                       checked={item.grantFullCommission}
                       onChange={(event) => setFullCommission(item.productId, event.target.checked)}
-                      aria-label={`Otorgar comisión completa para ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"} de ${product.name}`}
+                      aria-label={fullCommissionLabel}
                       className="size-4 accent-red-600"
                     />
-                    Otorgar el 100% de la comisión por las {item.quantity} {item.quantity === 1 ? "unidad" : "unidades"} seleccionadas
+                    {fullCommissionLabel}
                   </label>
                 )}
                 <Button

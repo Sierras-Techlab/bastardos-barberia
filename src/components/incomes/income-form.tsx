@@ -215,7 +215,10 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                 <ServiceSelector
                   services={data.services}
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={(serviceId) => {
+                    field.onChange(serviceId);
+                    form.setValue("grantFullServiceCommission", false);
+                  }}
                   error={fieldState.error?.message}
                 />
               )}

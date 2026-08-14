@@ -15,8 +15,7 @@ const normalize = (value: string) =>
 const productQuantity = (item: IncomeListItem) =>
   item.products.reduce((total, product) => total + product.quantity, 0);
 
-const incomePayments = (item: IncomeListItem) =>
-  item.payments ?? [{ method: item.paymentMethod, amount: item.total }];
+const incomePayments = (item: IncomeListItem) => item.payments;
 
 export const getIncomeKind = (item: IncomeListItem): IncomeKind => {
   if (item.service && item.products.length > 0) {
@@ -118,6 +117,14 @@ export const calculateIncomeMetrics = (
 ): IncomeListMetrics => {
   const activeItems = items.filter((item) => item.status === "active");
   const total = activeItems.reduce((sum, item) => sum + item.total, 0);
+  const commissionTotal = activeItems.reduce(
+    (sum, item) => sum + item.commission.total,
+    0,
+  );
+  const barbershopNet = activeItems.reduce(
+    (sum, item) => sum + item.commission.barbershopNet,
+    0,
+  );
   const paymentTotals = activeItems
     .flatMap(incomePayments)
     .reduce(
@@ -129,8 +136,9 @@ export const calculateIncomeMetrics = (
     );
 
   return {
-    total,
     grossTotal: total,
+    commissionTotal,
+    barbershopNet,
     count: activeItems.length,
     average: activeItems.length > 0 ? total / activeItems.length : 0,
     cashTotal: paymentTotals.cash,

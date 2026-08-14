@@ -3,19 +3,28 @@ import { expect, it } from "vitest";
 import { buildDashboardIncomeSummary, getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 import type { IncomeListItem } from "@/types/income";
 
-const income = (overrides: Partial<IncomeListItem>): IncomeListItem => ({
-  id: crypto.randomUUID(),
-  createdAt: "2026-08-12T15:00:00.000Z",
-  businessDate: "2026-08-12",
-  employee: { id: "employee-1", firstName: "Uriel", lastName: "Alessandro" },
-  customer: null,
-  service: null,
-  products: [],
-  paymentMethod: "cash",
-  total: 16000,
-  status: "active",
-  ...overrides,
-});
+const income = (overrides: Partial<IncomeListItem>): IncomeListItem => {
+  const item = {
+    id: crypto.randomUUID(),
+    createdAt: "2026-08-12T15:00:00.000Z",
+    businessDate: "2026-08-12",
+    employee: { id: "employee-1", firstName: "Uriel", lastName: "Alessandro" },
+    customer: null,
+    service: null,
+    products: [],
+    paymentMethod: "cash" as const,
+    total: 16000,
+    status: "active" as const,
+    ...overrides,
+  };
+
+  return {
+    ...item,
+    registeredBy: overrides.registeredBy ?? item.employee,
+    payments: overrides.payments ?? [{ method: item.paymentMethod, amount: item.total }],
+    commission: overrides.commission ?? { total: 0, barbershopNet: item.total },
+  };
+};
 
 it("builds an exact seven-day Buenos Aires range", () => {
   expect(getBuenosAiresSevenDayRange(new Date("2026-08-13T01:30:00.000Z"))).toEqual({

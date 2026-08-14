@@ -3,12 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import { IncomesView } from "@/components/incomes/incomes-view";
 import { DashboardToaster } from "@/components/ui/dashboard-toaster";
-import mock from "@/data/incomes.mock.json";
+import mock from "@/data/incomes.mock";
 import type { IncomeClient } from "@/lib/incomes/client";
 import type { IncomeListItem, PaginatedIncomes } from "@/types/income";
 
 const items = mock.incomes.slice(0, 2).map((item) => ({ ...item, businessDate: item.createdAt.slice(0, 10) })) as IncomeListItem[];
-const data: PaginatedIncomes = { items, metrics: { total: items.reduce((sum, item) => sum + item.total, 0), count: 2, average: 32500, cashTotal: 16000, transferTotal: 49000 }, pagination: { page: 1, pageSize: 10, total: 2, totalPages: 1 } };
+const grossTotal = items.reduce((sum, item) => sum + item.total, 0);
+const data: PaginatedIncomes = { items, metrics: { grossTotal, commissionTotal: 0, barbershopNet: grossTotal, count: 2, average: 32500, cashTotal: 16000, transferTotal: 49000 }, pagination: { page: 1, pageSize: 10, total: 2, totalPages: 1 } };
 const currentUser = { id: items[0].employee.id, firstName: "Lautaro", lastName: "Bastardos", role: "owner" as const };
 const initialQuery = { dateFrom: "2026-08-01", dateTo: "2026-08-31", page: 1, pageSize: 10 };
 const client = (): Pick<IncomeClient, "list" | "void"> => ({ list: vi.fn().mockResolvedValue(data), void: vi.fn(async (id) => ({ ...items.find((item) => item.id === id)!, status: "voided" as const })) });

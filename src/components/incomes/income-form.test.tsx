@@ -12,7 +12,24 @@ const data: IncomeFormData = {
   customers: [], services: [{ id: serviceId, name: "Barba", price: 13000 }], products: [],
   employees: [{ id: "00000000-0000-4000-8000-000000000003", firstName: "Fernanda", lastName: "Pérez", role: "employee", isActive: true, serviceCommissionRate: 45, productCommissionRate: 10 }],
 };
-const result = (input: CreateIncomeInput): Income => ({ id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: data.currentUser, customer: null, service: { ...data.services[0], commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], paymentMethod: input.payments[0].method, commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" });
+const managerData: IncomeFormData = {
+  ...data,
+  currentUser: { ...data.currentUser, id: "00000000-0000-4000-8000-000000000001", role: "admin" },
+  services: [
+    ...data.services,
+    { id: "30000000-0000-4000-8000-000000000002", name: "Corte", price: 16000 },
+  ],
+  products: [
+    { id: "product", name: "Pomada", price: 10000, stock: 3 },
+    { id: "shampoo", name: "Shampoo", price: 12000, stock: 3 },
+  ],
+  employees: [
+    { id: "00000000-0000-4000-8000-000000000001", firstName: "Fernanda", lastName: "Pérez", role: "admin", isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 },
+    { id: "00000000-0000-4000-8000-000000000002", firstName: "Diego", lastName: "Gómez", role: "employee", isActive: true, serviceCommissionRate: 45, productCommissionRate: 10 },
+    { id: "00000000-0000-4000-8000-000000000004", firstName: "Sofía", lastName: "Dueña", role: "owner", isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 },
+  ],
+};
+const result = (input: CreateIncomeInput): Income => ({ id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: data.currentUser, registeredBy: data.currentUser, customer: null, service: { ...data.services[0], commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], paymentMethod: input.payments[0].method, payments: input.payments, commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" });
 const client = (create = vi.fn(async (input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
 const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /efectivo/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 
@@ -52,17 +69,16 @@ describe("IncomeForm", () => {
     ["their own account", "00000000-0000-4000-8000-000000000001"],
     ["an owner", "00000000-0000-4000-8000-000000000004"],
   ])("clears all overrides when a manager changes attribution to %s", async (_label, targetEmployeeId) => {
-    const managerData: IncomeFormData = { ...data, currentUser: { ...data.currentUser, id: "00000000-0000-4000-8000-000000000001", role: "admin" }, products: [{ id: "product", name: "Pomada", price: 10000, stock: 3 }], employees: [{ id: "00000000-0000-4000-8000-000000000001", firstName: "Fernanda", lastName: "Pérez", role: "admin", isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }, { id: "00000000-0000-4000-8000-000000000002", firstName: "Diego", lastName: "Gómez", role: "employee", isActive: true, serviceCommissionRate: 45, productCommissionRate: 10 }, { id: "00000000-0000-4000-8000-000000000004", firstName: "Sofía", lastName: "Dueña", role: "owner", isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }] };
     const create = vi.fn(async (input: CreateIncomeInput) => result(input));
     const user = userEvent.setup();
     render(<IncomeForm data={managerData} incomeClient={client(create)} />);
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), "00000000-0000-4000-8000-000000000002");
     await user.click(screen.getByRole("button", { name: /barba/i }));
     await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
-    await user.click(screen.getByRole("checkbox", { name: /otorgar comisión completa/i }));
-    await user.click(screen.getByRole("checkbox", { name: /regalar el 100%/i }));
+    await user.click(screen.getByRole("checkbox", { name: /regalar el 100% del valor/i }));
+    await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), targetEmployeeId);
-    expect(screen.queryByRole("checkbox", { name: /otorgar comisión completa/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /regalar el 100% del valor/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /regalar el 100%/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /efectivo/i }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
@@ -74,12 +90,62 @@ describe("IncomeForm", () => {
     }));
   });
 
+  it.each([
+    ["removes", serviceId],
+    ["changes", "30000000-0000-4000-8000-000000000002"],
+  ])("clears the hidden service override when a manager %s the selected service", async (_label, nextServiceId) => {
+    const create = vi.fn(async (input: CreateIncomeInput) => result(input));
+    const user = userEvent.setup();
+    render(<IncomeForm data={managerData} incomeClient={client(create)} />);
+    await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), "00000000-0000-4000-8000-000000000002");
+    await user.click(screen.getByRole("button", { name: /barba/i }));
+    await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
+    await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
+    await user.click(screen.getByRole("button", { name: nextServiceId === serviceId ? /barba/i : /corte/i }));
+    await user.click(screen.getByRole("button", { name: /efectivo/i }));
+    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
+    await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      serviceId: nextServiceId === serviceId ? null : nextServiceId,
+      grantFullServiceCommission: false,
+    }));
+  });
+
+  it("submits simultaneous full service and product lines for another non-owner", async () => {
+    const create = vi.fn(async (input: CreateIncomeInput) => result(input));
+    const user = userEvent.setup();
+    render(<IncomeForm data={managerData} incomeClient={client(create)} />);
+    await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), "00000000-0000-4000-8000-000000000002");
+    await user.click(screen.getByRole("button", { name: /barba/i }));
+    await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
+    await user.click(screen.getByRole("button", { name: /agregar shampoo/i }));
+    await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
+    await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Pomada" }));
+    await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Shampoo" }));
+    await user.click(screen.getByRole("button", { name: /efectivo/i }));
+    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
+    const dialog = screen.getByRole("dialog", { name: /confirmar ingreso/i });
+    expect(dialog).toHaveTextContent("Barba · 100%");
+    expect(dialog).toHaveTextContent("Pomada · 100%");
+    expect(dialog).toHaveTextContent("Shampoo · 100%");
+    await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      employeeId: "00000000-0000-4000-8000-000000000002",
+      serviceId,
+      grantFullServiceCommission: true,
+      products: [
+        { productId: "product", quantity: 1, grantFullCommission: true },
+        { productId: "shampoo", quantity: 1, grantFullCommission: true },
+      ],
+    }));
+  });
+
   it("never shows exception controls to an authenticated employee", async () => {
     const user = userEvent.setup();
     render(<IncomeForm data={{ ...data, products: [{ id: "product", name: "Pomada", price: 10000, stock: 3 }] }} incomeClient={client()} />);
     await user.click(screen.getByRole("button", { name: /barba/i }));
     await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
-    expect(screen.queryByRole("checkbox", { name: /otorgar comisión completa/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /regalar el 100% del valor/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /regalar el 100%/i })).not.toBeInTheDocument();
   });
 });

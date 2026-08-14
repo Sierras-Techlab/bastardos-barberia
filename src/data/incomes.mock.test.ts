@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 
 import { getIncomeKind } from "@/lib/incomes/income-list";
 import type { IncomeListData } from "@/types/income";
-import mock from "./incomes.mock.json";
+import mock from "./incomes.mock";
 
 it("covers the income-list scenarios", () => {
   const data = mock as IncomeListData;
