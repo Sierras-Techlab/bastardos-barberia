@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, CreditCard, Package, Scissors, UserRound } from "lucide-react";
+import { Package, Scissors, UserRound, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,9 +47,6 @@ export const IncomeDetailSheet = ({
     : "Sin cliente";
   const manager = viewerRole === "owner" || viewerRole === "admin";
   const payments = income.payments;
-  const PaymentIcon = payments.some((payment) => payment.method === "cash")
-    ? Banknote
-    : CreditCard;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -114,12 +111,12 @@ export const IncomeDetailSheet = ({
               />
               {manager && <DetailRow label="Registrado por" value={`${income.registeredBy.firstName} ${income.registeredBy.lastName}`} />}
               <DetailRow label="Cliente" value={customerName} />
-              {payments.map((payment) => <DetailRow key={payment.method} label={payment.method === "cash" ? "Efectivo" : "Transferencia"} value={formatArs(payment.amount)} />)}
+              {payments.map((payment) => <DetailRow key={payment.paymentMethodId} label={payment.methodName} value={formatArs(payment.amount)} />)}
             </dl>
           </section>
 
           <section>
-            <h3 className="mb-2 flex items-center gap-2 font-semibold"><PaymentIcon className="size-4 text-primary" />Comisión</h3>
+            <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-primary" />Comisión</h3>
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
               <DetailRow label="Comisión devengada" value={formatArs(income.commission.total)} />
               {income.service && <DetailRow label={`${income.service.name} (${income.service.commission.rate}%)`} value={formatArs(income.service.commission.amount)} />}

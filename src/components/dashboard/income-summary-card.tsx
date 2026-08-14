@@ -1,4 +1,4 @@
-import { ArrowUpRight, Banknote, CircleDollarSign, CreditCard, ReceiptText } from "lucide-react";
+import { ArrowUpRight, Banknote, CircleDollarSign, ReceiptText, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -55,9 +55,12 @@ export const IncomeSummaryCard = ({ summary, isEmployee }: Props) => {
         <p className="mt-1 text-xs text-muted-foreground">Promedio por venta</p>
       </article>
       <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-        <CreditCard className="size-4 text-primary" />
-        <p className="mt-5 text-sm font-semibold">Efectivo {currencyFormatter.format(summary.today.cashTotal)}</p>
-        <p className="mt-1 text-sm font-semibold">Transferencia {currencyFormatter.format(summary.today.transferTotal)}</p>
+        <WalletCards className="size-4 text-primary" />
+        <div className="mt-4 space-y-1.5">
+          {summary.today.paymentTotals.length > 0
+            ? summary.today.paymentTotals.map((payment) => <p key={payment.paymentMethodId} className="text-sm font-semibold">{payment.name} {currencyFormatter.format(payment.amount)}</p>)
+            : <p className="text-sm text-muted-foreground">Sin pagos registrados</p>}
+        </div>
       </article>
     </div>
 

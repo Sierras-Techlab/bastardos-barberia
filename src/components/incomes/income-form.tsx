@@ -64,7 +64,6 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      paymentMode: null,
       payments: [],
       grantFullServiceCommission: false,
     },
@@ -77,7 +76,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     const total = calculateIncomeTotal(validValues, data.services, data.products);
     const balance = calculatePaymentBalance(total, validValues.payments);
     if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => payment.amount <= 0)) {
-      form.setError("paymentMode", { message: "Distribuí el importe total entre medios de pago válidos." });
+      form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
       return;
     }
     setReviewValues(validValues);
@@ -86,7 +85,6 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const handleConfirm = async () => {
     if (
       !reviewValues ||
-      !reviewValues.paymentMode ||
       submittingRef.current
     ) {
       return;
@@ -129,7 +127,6 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      paymentMode: null,
       payments: [],
       grantFullServiceCommission: false,
     });
@@ -259,13 +256,13 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           <CardContent>
             <Controller
               control={form.control}
-              name="paymentMode"
+              name="payments"
               render={({ field, fieldState }) => (
                 <PaymentMethodSelector
-                  mode={field.value}
-                  payments={values.payments}
+                  methods={data.paymentMethods}
+                  payments={field.value}
                   total={calculateIncomeTotal(values, data.services, data.products)}
-                  onChange={(mode, payments) => { field.onChange(mode); form.setValue("payments", payments, { shouldValidate: true }); }}
+                  onChange={field.onChange}
                   error={fieldState.error?.message}
                 />
               )}

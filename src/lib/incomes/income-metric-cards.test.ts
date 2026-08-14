@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { buildIncomeMetricCards } from "./income-metric-cards";
 
-const metrics = { grossTotal: 100000, count: 4, average: 25000, cashTotal: 50000, transferTotal: 50000, commissionTotal: 42000, barbershopNet: 58000 };
+const metrics = { grossTotal: 100000, count: 4, average: 25000, paymentTotals: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", name: "Efectivo", amount: 100000 }], commissionTotal: 42000, barbershopNet: 58000 };
 
 it("uses the authoritative gross total", () => {
   const cards = buildIncomeMetricCards(metrics, "owner");

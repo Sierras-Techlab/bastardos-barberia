@@ -6,7 +6,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type {
   PaymentMethod,
   PaymentMethodInput,
-  PaymentMethodUpdate,
 } from "@/types/payment-method";
 
 const PAYMENT_METHOD_SELECT =

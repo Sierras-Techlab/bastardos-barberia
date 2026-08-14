@@ -82,9 +82,9 @@ it("keeps owner previews commission-free even when an override is requested", ()
 });
 
 it("reports exact, missing and excess payment allocation", () => {
-  expect(calculatePaymentBalance(19000, [{ method: "cash", amount: 10000 }, { method: "transfer", amount: 9000 }])).toEqual({ allocated: 19000, remaining: 0, excess: 0 });
-  expect(calculatePaymentBalance(19000, [{ method: "cash", amount: 10000 }])).toEqual({ allocated: 10000, remaining: 9000, excess: 0 });
-  expect(calculatePaymentBalance(19000, [{ method: "cash", amount: 20000 }])).toEqual({ allocated: 20000, remaining: 0, excess: 1000 });
+  expect(calculatePaymentBalance(19000, [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 10000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 9000 }])).toEqual({ allocated: 19000, remaining: 0, excess: 0 });
+  expect(calculatePaymentBalance(19000, [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 10000 }])).toEqual({ allocated: 10000, remaining: 9000, excess: 0 });
+  expect(calculatePaymentBalance(19000, [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 20000 }])).toEqual({ allocated: 20000, remaining: 0, excess: 1000 });
 });
 
 it("excludes voided sales from active economics", () => {

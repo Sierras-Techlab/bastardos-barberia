@@ -97,9 +97,9 @@ export const filterIncomeItems = (
       createdAt >= from &&
       createdAt <= to &&
       (!filters.employeeId || item.employee.id === filters.employeeId) &&
-      (filters.paymentMethod === "all" ||
+      (filters.paymentMethodId === "all" ||
         incomePayments(item).some(
-          (payment) => payment.method === filters.paymentMethod,
+          (payment) => payment.paymentMethodId === filters.paymentMethodId,
         )) &&
       (filters.kind === "all" || getIncomeKind(item) === filters.kind)
     );
@@ -125,15 +125,15 @@ export const calculateIncomeMetrics = (
     (sum, item) => sum + item.commission.barbershopNet,
     0,
   );
-  const paymentTotals = activeItems
-    .flatMap(incomePayments)
-    .reduce(
-      (totals, payment) => ({
-        ...totals,
-        [payment.method]: totals[payment.method] + payment.amount,
-      }),
-      { cash: 0, transfer: 0 },
-    );
+  const paymentTotalsById = new Map<string, { paymentMethodId: string; name: string; amount: number }>();
+  for (const payment of activeItems.flatMap(incomePayments)) {
+    const current = paymentTotalsById.get(payment.paymentMethodId);
+    paymentTotalsById.set(payment.paymentMethodId, {
+      paymentMethodId: payment.paymentMethodId,
+      name: payment.methodName,
+      amount: (current?.amount ?? 0) + payment.amount,
+    });
+  }
 
   return {
     grossTotal: total,
@@ -141,7 +141,6 @@ export const calculateIncomeMetrics = (
     barbershopNet,
     count: activeItems.length,
     average: activeItems.length > 0 ? total / activeItems.length : 0,
-    cashTotal: paymentTotals.cash,
-    transferTotal: paymentTotals.transfer,
+    paymentTotals: [...paymentTotalsById.values()],
   };
 };

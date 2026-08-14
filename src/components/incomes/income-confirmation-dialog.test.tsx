@@ -13,8 +13,7 @@ const values: IncomeFormValues = {
   customerId: null,
   serviceId: "service-haircut-eyebrows",
   products: [{ productId: "product-hair-wax", quantity: 2, grantFullCommission: false }],
-  paymentMode: "cash",
-  payments: [{ method: "cash", amount: 39800 }],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 39800 }],
   grantFullServiceCommission: false,
 };
 

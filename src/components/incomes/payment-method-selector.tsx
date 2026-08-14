@@ -1,25 +1,134 @@
-import { Banknote, Landmark, Split } from "lucide-react";
+"use client";
+
+import { Plus, Trash2, WalletCards } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
 import { cn } from "@/lib/utils";
-import type { IncomePayment } from "@/types/income-commissions";
+import type { IncomePaymentInput, PaymentMethod } from "@/types/payment-method";
 
-export type PaymentMode = "cash" | "transfer" | "combined";
-type Props = { mode: PaymentMode | null; payments: IncomePayment[]; total: number; onChange: (mode: PaymentMode, payments: IncomePayment[]) => void; error?: string };
-const options = [{ value: "cash" as const, label: "Efectivo", icon: Banknote }, { value: "transfer" as const, label: "Transferencia", icon: Landmark }, { value: "combined" as const, label: "Combinado", icon: Split }];
+type Props = {
+  methods: PaymentMethod[];
+  payments: IncomePaymentInput[];
+  total: number;
+  onChange: (payments: IncomePaymentInput[]) => void;
+  error?: string;
+};
 
-export const PaymentMethodSelector = ({ mode, payments, total, onChange, error }: Props) => {
-  const select = (next: PaymentMode) => onChange(next, next === "combined" ? [{ method: "cash", amount: 0 }, { method: "transfer", amount: total }] : [{ method: next, amount: total }]);
-  const update = (method: "cash" | "transfer", amount: number) => {
-    const safe = Math.max(0, Math.trunc(amount || 0));
-    const next = payments.map((payment) => payment.method === method ? { ...payment, amount: safe } : payment);
-    if (method === "cash") next.splice(1, 1, { method: "transfer", amount: Math.max(total - safe, 0) });
-    onChange("combined", next);
-  };
+const selectClassName =
+  "h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30";
+
+export const PaymentMethodSelector = ({ methods, payments, total, onChange, error }: Props) => {
+  const activeMethods = useMemo(() => methods.filter((method) => method.isActive), [methods]);
+  const activeIds = useMemo(() => new Set(activeMethods.map((method) => method.id)), [activeMethods]);
+  const activeKey = activeMethods.map((method) => method.id).join(":");
+  const previousTotal = useRef(total);
+
+  useEffect(() => {
+    const seen = new Set<string>();
+    const valid = payments.filter((payment) => {
+      if (!activeIds.has(payment.paymentMethodId) || seen.has(payment.paymentMethodId)) return false;
+      seen.add(payment.paymentMethodId);
+      return true;
+    });
+    const next = valid.length > 0
+      ? valid.length === 1 && payments.length > 1
+        ? [{ ...valid[0], amount: total }]
+        : valid
+      : activeMethods[0]
+        ? [{ paymentMethodId: activeMethods[0].id, amount: total }]
+        : [];
+
+    if (JSON.stringify(next) !== JSON.stringify(payments)) onChange(next);
+  }, [activeKey, activeIds, activeMethods, onChange, payments, total]);
+
+  useEffect(() => {
+    const oldTotal = previousTotal.current;
+    previousTotal.current = total;
+    if (oldTotal !== total && payments.length === 1 && payments[0].amount === oldTotal) {
+      onChange([{ ...payments[0], amount: total }]);
+    }
+  }, [onChange, payments, total]);
+
+  const selectedIds = new Set(payments.map((payment) => payment.paymentMethodId));
+  const available = activeMethods.filter((method) => !selectedIds.has(method.id));
   const balance = calculatePaymentBalance(total, payments);
-  return <div className="space-y-3">
-    <div className="grid grid-cols-3 gap-2">{options.map((option) => <button key={option.value} type="button" aria-pressed={mode === option.value} onClick={() => select(option.value)} className={cn("flex min-h-20 flex-col items-start justify-between rounded-2xl p-3 text-left ring-1 transition-all hover:-translate-y-0.5", mode === option.value ? "bg-primary text-white ring-primary shadow-lg" : "bg-[#f6f5f2] ring-black/5 hover:bg-white hover:shadow-md")}><option.icon className="size-5"/><span className="text-xs font-semibold">{option.label}</span></button>)}</div>
-    {mode === "combined" && <div className="grid gap-3 rounded-2xl bg-[#f6f5f2] p-3 sm:grid-cols-2"><label className="text-xs font-medium">Efectivo<Input aria-label="Monto en efectivo" type="number" min="0" value={payments.find((p) => p.method === "cash")?.amount || ""} onChange={(e) => update("cash", Number(e.target.value))}/></label><label className="text-xs font-medium">Transferencia<Input aria-label="Monto por transferencia" type="number" min="0" value={payments.find((p) => p.method === "transfer")?.amount || ""} onChange={(e) => onChange("combined", payments.map((p) => p.method === "transfer" ? { ...p, amount: Math.max(0, Math.trunc(Number(e.target.value) || 0)) } : p))}/></label><p role="status" className={cn("text-xs sm:col-span-2", balance.remaining === 0 && balance.excess === 0 ? "text-emerald-700" : "text-destructive")}>{balance.remaining > 0 ? `Faltan $ ${balance.remaining.toLocaleString("es-AR")}` : balance.excess > 0 ? `Sobran $ ${balance.excess.toLocaleString("es-AR")}` : "Importe distribuido correctamente"}</p></div>}
-    {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-  </div>;
+
+  const update = (index: number, patch: Partial<IncomePaymentInput>) => {
+    onChange(payments.map((payment, current) => current === index ? { ...payment, ...patch } : payment));
+  };
+
+  const remove = (index: number) => {
+    const next = payments.filter((_, current) => current !== index);
+    onChange(next.length === 1 ? [{ ...next[0], amount: total }] : next);
+  };
+
+  if (activeMethods.length === 0) {
+    return <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error ?? "No hay medios de pago activos disponibles."}</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {payments.map((payment, index) => {
+          const method = activeMethods.find((candidate) => candidate.id === payment.paymentMethodId);
+          const options = activeMethods.filter((candidate) => candidate.id === payment.paymentMethodId || !selectedIds.has(candidate.id));
+          return (
+            <div key={`${payment.paymentMethodId}-${index}`} className="grid gap-2 rounded-2xl border border-black/5 bg-[#f6f5f2] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,0.55fr)_auto] sm:items-end">
+              <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                Medio de pago
+                <select
+                  aria-label={`Medio de pago ${index + 1}`}
+                  value={payment.paymentMethodId}
+                  onChange={(event) => update(index, { paymentMethodId: event.target.value })}
+                  className={selectClassName}
+                >
+                  {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                Importe
+                <Input
+                  aria-label={`Monto con ${method?.name ?? `medio ${index + 1}`}`}
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={payment.amount || ""}
+                  onChange={(event) => update(index, { amount: Math.max(0, Math.trunc(Number(event.target.value) || 0)) })}
+                  className="h-10 rounded-xl border-black/10 bg-white shadow-none"
+                />
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Quitar ${method?.name ?? "medio de pago"}`}
+                disabled={payments.length === 1}
+                onClick={() => remove(index)}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button type="button" variant="outline" className="rounded-xl" disabled={available.length === 0} onClick={() => onChange([...payments, { paymentMethodId: available[0].id, amount: 0 }])}>
+          <Plus /> Agregar medio
+        </Button>
+        <p role="status" className={cn("flex items-center gap-1.5 text-xs font-medium", balance.remaining === 0 && balance.excess === 0 ? "text-emerald-700" : "text-destructive")}>
+          <WalletCards className="size-3.5" />
+          {balance.remaining > 0
+            ? `Faltan $ ${balance.remaining.toLocaleString("es-AR")}`
+            : balance.excess > 0
+              ? `Sobran $ ${balance.excess.toLocaleString("es-AR")}`
+              : "Importe distribuido correctamente"}
+        </p>
+      </div>
+      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+    </div>
+  );
 };

@@ -47,15 +47,17 @@ it("does not render content without a selected income", () => {
   expect(screen.queryByText(/detalle del ingreso/i)).not.toBeInTheDocument();
 });
 
-it("shows split payments and manager-only audit economics", () => {
-  const income = { ...data.incomes[0], registeredBy: { id: "manager", firstName: "Ana", lastName: "Admin" }, payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], service: data.incomes[0].service ? { ...data.incomes[0].service, commission: { subtotal: 19000, rate: 45, amount: 8550, fullCommission: false, authorizedBy: null } } : null, products: data.incomes[0].products.map((product) => ({ ...product, commission: { subtotal: product.unitPrice * product.quantity, rate: 10, amount: 3000, fullCommission: false, authorizedBy: null } })), commission: { total: 11550, barbershopNet: 37450 } };
+it("shows three payment snapshots including an inactive historical name and manager-only economics", () => {
+  const income = { ...data.incomes[0], registeredBy: { id: "manager", firstName: "Ana", lastName: "Admin" }, payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 20000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000002", methodName: "Transferencia", amount: 19000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000003", methodName: "Crédito histórico", amount: 10000 }], service: data.incomes[0].service ? { ...data.incomes[0].service, commission: { subtotal: 19000, rate: 45, amount: 8550, fullCommission: false, authorizedBy: null } } : null, products: data.incomes[0].products.map((product) => ({ ...product, commission: { subtotal: product.unitPrice * product.quantity, rate: 10, amount: 3000, fullCommission: false, authorizedBy: null } })), commission: { total: 11550, barbershopNet: 37450 } };
   render(<IncomeDetailSheet income={income} open viewerRole="owner" onOpenChange={vi.fn()} />);
   expect(screen.getByText("Registrado por")).toBeVisible();
   expect(screen.getByText("Ana Admin")).toBeVisible();
   expect(screen.getByText("Efectivo")).toBeVisible();
   expect(screen.getByText("Transferencia")).toBeVisible();
-  expect(screen.getByText(/20\.000/)).toBeVisible();
-  expect(screen.getByText(/29\.000/)).toBeVisible();
+  expect(screen.getByText("Crédito histórico")).toBeVisible();
+  expect(screen.getByText("Efectivo").parentElement).toHaveTextContent(/20\.000/);
+  expect(screen.getByText("Transferencia").parentElement).toHaveTextContent(/19\.000/);
+  expect(screen.getByText("Crédito histórico").parentElement).toHaveTextContent(/10\.000/);
   expect(screen.getByText("Neto barbería")).toBeVisible();
 });
 
@@ -72,7 +74,7 @@ it("shows itemized commission amounts and the manager who authorized a full serv
   const income = {
     ...data.incomes[0],
     registeredBy: { id: "manager", firstName: "Ana", lastName: "Admin" },
-    payments: [{ method: "cash" as const, amount: 49000 }],
+    payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 49000 }],
     service: data.incomes[0].service ? {
       ...data.incomes[0].service,
       commission: { subtotal: 19000, rate: 100, amount: 19000, fullCommission: true, authorizedBy: { id: "manager", firstName: "Ana", lastName: "Admin" } },

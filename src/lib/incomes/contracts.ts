@@ -3,7 +3,7 @@ import type { SafeUser } from "@/lib/auth/types";
 import type { CreateIncomeInput, Income, IncomeListItem, IncomeListQuery, PaginatedIncomes } from "@/types/income";
 
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
-const paymentSchema = z.object({ method: z.enum(["cash", "transfer"]), amount: z.number().int().positive() }).strict();
+const paymentSchema = z.object({ paymentMethodId: z.uuid(), methodName: z.string().min(1), amount: z.number().int().positive() }).strict();
 const itemCommissionSchema = z.object({
   subtotal: z.number().int().nonnegative(),
   rate: z.number().int().min(0).max(100),
@@ -21,12 +21,12 @@ export const incomeResponseSchema = z.object({
   registeredBy: employeeSchema,
   customer: employeeSchema.nullable(), service: serviceSchema.nullable(),
   products: z.array(z.object({ id: z.uuid(), name: z.string(), unitPrice: z.number().int().positive(), quantity: z.number().int().positive(), commission: itemCommissionSchema }).strict()),
-  paymentMethod: z.enum(["cash", "transfer"]), payments: z.array(paymentSchema).min(1).max(2), commission: commissionSchema,
+  payments: z.array(paymentSchema).min(1), commission: commissionSchema,
   total: z.number().int().positive(), status: z.enum(["active", "voided"]),
 }).strict();
 export const paginatedIncomesSchema = z.object({
   items: z.array(incomeResponseSchema),
-  metrics: z.object({ grossTotal: z.number().nonnegative(), commissionTotal: z.number().nonnegative(), barbershopNet: z.number().nonnegative(), count: z.number().int().nonnegative(), average: z.number().nonnegative(), cashTotal: z.number().nonnegative(), transferTotal: z.number().nonnegative() }).strict(),
+  metrics: z.object({ grossTotal: z.number().nonnegative(), commissionTotal: z.number().nonnegative(), barbershopNet: z.number().nonnegative(), count: z.number().int().nonnegative(), average: z.number().nonnegative(), paymentTotals: z.array(z.object({ paymentMethodId: z.uuid(), name: z.string().min(1), amount: z.number().int().nonnegative() }).strict()) }).strict(),
   pagination: z.object({ page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict(),
 }).strict();
 export const incomeResponsibleEmployeesSchema = z.array(employeeSchema);

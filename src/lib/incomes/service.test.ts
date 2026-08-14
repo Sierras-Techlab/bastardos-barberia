@@ -6,15 +6,15 @@ import { createIncome, getIncome, listIncomeResponsibleEmployees, listIncomes, v
 
 const owner: SafeUser = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García", username: "ana.garcia", role: { id: 1, name: "owner" }, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0, lastLoginAt: null, createdAt: "2026-08-07T00:00:00.000Z", updatedAt: "2026-08-07T00:00:00.000Z" };
 const employee: SafeUser = { ...owner, id: "00000000-0000-4000-8000-000000000003", username: "fer.perez", role: { id: 3, name: "employee" } };
-const income = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: employee.id, firstName: "Fer", lastName: "Pérez" }, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], paymentMethod: "cash" as const, commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" as const };
-const repository = (): IncomeRepository => ({ create: vi.fn().mockResolvedValue(income), list: vi.fn().mockResolvedValue({ items: [income], metrics: { total: 13000, count: 1, average: 13000, cashTotal: 13000, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }), listResponsibleEmployees: vi.fn().mockResolvedValue([income.employee]), findById: vi.fn().mockResolvedValue(income), void: vi.fn().mockResolvedValue({ ...income, status: "voided" }) });
+const income = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: employee.id, firstName: "Fer", lastName: "Pérez" }, registeredBy: { id: employee.id, firstName: "Fer", lastName: "Pérez" }, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 13000 }], commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" as const };
+const repository = (): IncomeRepository => ({ create: vi.fn().mockResolvedValue(income), list: vi.fn().mockResolvedValue({ items: [income], metrics: { grossTotal: 13000, commissionTotal: 5850, barbershopNet: 7150, count: 1, average: 13000, paymentTotals: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", name: "Efectivo", amount: 13000 }] }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }), listResponsibleEmployees: vi.fn().mockResolvedValue([income.employee]), findById: vi.fn().mockResolvedValue(income), void: vi.fn().mockResolvedValue({ ...income, status: "voided" }) });
 const valid = {
   requestId: "40000000-0000-4000-8000-000000000001",
   employeeId: employee.id,
   customerId: null,
   serviceId: "30000000-0000-4000-8000-000000000001",
   products: [],
-  payments: [{ method: "cash" as const, amount: 13000 }],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }],
   grantFullServiceCommission: false,
 };
 

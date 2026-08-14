@@ -11,16 +11,19 @@ const base: IncomeListItem = {
   customer: null,
   service: null,
   products: [],
-  paymentMethod: "cash",
-  payments: [{ method: "cash", amount: 10000 }],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000003", methodName: "Crédito histórico", amount: 10000 }],
   commission: { total: 4500, barbershopNet: 5500 },
   total: 10000,
   status: "active",
 };
 
 it("labels simple and combined payments", () => {
-  expect(getIncomePaymentLabel(base)).toBe("Efectivo");
-  expect(getIncomePaymentLabel({ ...base, payments: [{ method: "cash", amount: 5000 }, { method: "transfer", amount: 5000 }] })).toBe("Combinado");
+  expect(getIncomePaymentLabel(base)).toBe("Crédito histórico");
+  expect(getIncomePaymentLabel({ ...base, payments: [
+    { paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 4000 },
+    { paymentMethodId: "60000000-0000-4000-8000-000000000002", methodName: "Transferencia", amount: 3000 },
+    { paymentMethodId: "60000000-0000-4000-8000-000000000003", methodName: "Crédito histórico", amount: 3000 },
+  ] })).toBe("Combinado (3 medios)");
 });
 
 it("returns the canonical commission amount", () => {

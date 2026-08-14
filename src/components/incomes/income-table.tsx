@@ -79,7 +79,7 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
             : "Sin cliente",
         }),
         columnHelper.display({
-        id: "paymentMethod",
+        id: "payments",
         header: "Pago",
         cell: ({ row }) => getIncomePaymentLabel(row.original),
         }),

@@ -4,25 +4,26 @@ import type {
   CurrentUser,
   Employee,
   IncomeListData,
-  PaymentMethod,
 } from "@/types/income";
+import type { IncomePayment, PaymentMethod } from "@/types/payment-method";
 
-type LegacyMockIncome = {
+type MockIncome = {
   id: string;
   createdAt: string;
   employee: Employee;
   customer: Employee | null;
   service: { id: string; name: string; price: number } | null;
   products: { id: string; name: string; unitPrice: number; quantity: number }[];
-  paymentMethod: PaymentMethod;
+  payments: IncomePayment[];
   total: number;
   status: "active" | "voided";
 };
 
-type LegacyMockData = {
+type MockData = {
   currentUser: CurrentUser;
   employees: Employee[];
-  incomes: LegacyMockIncome[];
+  paymentMethods: PaymentMethod[];
+  incomes: MockIncome[];
 };
 
 const itemCommission = (subtotal: number) => ({
@@ -33,16 +34,16 @@ const itemCommission = (subtotal: number) => ({
   authorizedBy: null,
 });
 
-const legacyMock = rawMock as LegacyMockData;
+const data = rawMock as MockData;
 
 const mock: IncomeListData = {
-  currentUser: legacyMock.currentUser,
-  employees: legacyMock.employees,
-  incomes: legacyMock.incomes.map((income) => ({
+  currentUser: data.currentUser,
+  employees: data.employees,
+  paymentMethods: data.paymentMethods,
+  incomes: data.incomes.map((income) => ({
     ...income,
     businessDate: income.createdAt.slice(0, 10),
     registeredBy: income.employee,
-    payments: [{ method: income.paymentMethod, amount: income.total }],
     service: income.service
       ? { ...income.service, commission: itemCommission(income.service.price) }
       : null,

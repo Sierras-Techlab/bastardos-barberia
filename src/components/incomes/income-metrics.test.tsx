@@ -12,8 +12,7 @@ it("shows canonical manager economics", () => {
         barbershopNet: 699200,
         count: 42,
         average: 20810,
-        cashTotal: 524000,
-        transferTotal: 350000,
+        paymentTotals: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", name: "Efectivo", amount: 874000 }],
       }}
     />,
   );
@@ -25,7 +24,7 @@ it("shows canonical manager economics", () => {
 });
 
 it("shows commission and barbershop net", () => {
-  render(<IncomeMetrics metrics={{ grossTotal: 100000, count: 4, average: 25000, cashTotal: 50000, transferTotal: 50000, commissionTotal: 42000, barbershopNet: 58000 }} />);
+  render(<IncomeMetrics metrics={{ grossTotal: 100000, count: 4, average: 25000, paymentTotals: [], commissionTotal: 42000, barbershopNet: 58000 }} />);
   expect(screen.getByText(/42\.000/)).toBeVisible();
   expect(screen.getByText(/58\.000/)).toBeVisible();
 });
@@ -39,8 +38,7 @@ it("shows zero sales when there are no active incomes", () => {
         barbershopNet: 0,
         count: 0,
         average: 0,
-        cashTotal: 0,
-        transferTotal: 0,
+        paymentTotals: [],
       }}
     />,
   );
@@ -50,7 +48,7 @@ it("shows zero sales when there are no active incomes", () => {
 });
 
 it("shows employee metrics without barbershop net", () => {
-  render(<IncomeMetrics role="employee" metrics={{ grossTotal: 50000, count: 2, average: 25000, cashTotal: 50000, transferTotal: 0, commissionTotal: 22500, barbershopNet: 27500 }} />);
+  render(<IncomeMetrics role="employee" metrics={{ grossTotal: 50000, count: 2, average: 25000, paymentTotals: [], commissionTotal: 22500, barbershopNet: 27500 }} />);
   expect(screen.getByText("Total vendido")).toBeVisible();
   expect(screen.getByText("Mi comisión")).toBeVisible();
   expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();

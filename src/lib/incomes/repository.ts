@@ -32,7 +32,7 @@ const detail = async (scope: IncomeScope, id: string) => {
 const listParams = (scope: IncomeScope, query: IncomeListQuery) => ({
   requesting_user_id: scope.requestingUserId, can_view_all: scope.canViewAll, filter_user_id: scope.userId,
   filter_date_from: query.dateFrom ?? null, filter_date_to: query.dateTo ?? null,
-  filter_payment_method: query.paymentMethod ?? null, filter_kind: query.kind ?? null, filter_status: query.status ?? null,
+  filter_payment_method_id: query.paymentMethodId ?? null, filter_kind: query.kind ?? null, filter_status: query.status ?? null,
   filter_query: query.query ?? null, page_number: query.page, page_size: query.pageSize,
 });
 export const incomeRepository: IncomeRepository = {

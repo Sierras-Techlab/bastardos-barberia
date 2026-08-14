@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser, listIncomes, listIncomeResponsibleEmployees } = vi.hoisted(() => ({
+const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymentMethods } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -15,14 +15,16 @@ const { requirePageUser, listIncomes, listIncomeResponsibleEmployees } = vi.hois
       updatedAt: "2026-08-07T00:00:00.000Z",
     },
   }),
-  listIncomes: vi.fn().mockResolvedValue({ items: [], metrics: { total: 0, count: 0, average: 0, cashTotal: 0, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
+  listIncomes: vi.fn().mockResolvedValue({ items: [], metrics: { grossTotal: 0, commissionTotal: 0, barbershopNet: 0, count: 0, average: 0, paymentTotals: [] }, pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
   listIncomeResponsibleEmployees: vi.fn().mockResolvedValue([]),
+  listPaymentMethods: vi.fn().mockResolvedValue([{ id: "60000000-0000-4000-8000-000000000002", name: "Transferencia histórica", isActive: false }]),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
   requirePageUser,
 }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes, listIncomeResponsibleEmployees }));
+vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: listPaymentMethods } }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes",
@@ -74,6 +76,11 @@ it("loads historical responsible users for the manager filter", async () => {
 
   expect(listIncomeResponsibleEmployees).toHaveBeenCalledWith(expect.objectContaining({ id: "00000000-0000-4000-8000-000000000001" }));
   expect(screen.getByRole("option", { name: "Empleado Histórico" })).toBeVisible();
+});
+
+it("loads active and inactive payment methods for history and administration", async () => {
+  await IncomesPage();
+  expect(listPaymentMethods).toHaveBeenCalledWith(true);
 });
 
 it("does not render income history after session revocation", async () => {

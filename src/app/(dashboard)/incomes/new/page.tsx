@@ -7,6 +7,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePageUser } from "@/lib/auth/authorization";
 import { customerRepository } from "@/lib/customers/repository";
 import { productRepository } from "@/lib/products/repository";
+import { paymentMethodRepository } from "@/lib/payment-methods/repository";
 import { serviceRepository } from "@/lib/services/repository";
 import { userRepository } from "@/lib/users/repository";
 import type { IncomeFormData } from "@/types/income";
@@ -14,8 +15,8 @@ import type { IncomeFormData } from "@/types/income";
 export const metadata: Metadata = { title: "Cargar ingreso", description: "Registrá una venta de Bastardos Barbería." };
 const NewIncomePage = async () => {
   const { user } = await requirePageUser();
-  const [services, products, customers, users] = await Promise.all([
-    serviceRepository.list(false), productRepository.list(false), customerRepository.list(),
+  const [services, products, customers, paymentMethods, users] = await Promise.all([
+    serviceRepository.list(false), productRepository.list(false), customerRepository.list(), paymentMethodRepository.list(false),
     user.role.name === "employee" ? Promise.resolve(null) : userRepository.list({ page: 1, pageSize: 100, status: "active" }),
   ]);
   const remainingUserPages = users && users.totalPages > 1
@@ -30,6 +31,7 @@ const NewIncomePage = async () => {
     services: services.map(({ id, name, price }) => ({ id, name, price })),
     products: products.map(({ id, name, price, stock }) => ({ id, name, price, stock })),
     customers,
+    paymentMethods,
     employees: availableUsers.map((candidate) => ({
       id: candidate.id,
       firstName: candidate.firstName,

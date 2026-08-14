@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser, listServices, listProducts, listCustomers, listUsers } = vi.hoisted(() => ({
+const { requirePageUser, listServices, listProducts, listCustomers, listUsers, listPaymentMethods } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -20,6 +20,7 @@ const { requirePageUser, listServices, listProducts, listCustomers, listUsers } 
   listProducts: vi.fn().mockResolvedValue([]),
   listCustomers: vi.fn().mockResolvedValue([]),
   listUsers: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0, totalPages: 0 }),
+  listPaymentMethods: vi.fn().mockResolvedValue([{ id: "60000000-0000-4000-8000-000000000001", name: "Efectivo", isActive: true }]),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -29,6 +30,7 @@ vi.mock("@/lib/services/repository", () => ({ serviceRepository: { list: listSer
 vi.mock("@/lib/products/repository", () => ({ productRepository: { list: listProducts } }));
 vi.mock("@/lib/customers/repository", () => ({ customerRepository: { list: listCustomers } }));
 vi.mock("@/lib/users/repository", () => ({ userRepository: { list: listUsers } }));
+vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: listPaymentMethods } }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes/new",
@@ -59,6 +61,11 @@ it("revalidates the session at the income form boundary", async () => {
   await NewIncomePage();
 
   expect(requirePageUser).toHaveBeenCalledOnce();
+});
+
+it("loads only active payment methods for sale creation", async () => {
+  await NewIncomePage();
+  expect(listPaymentMethods).toHaveBeenCalledWith(false);
 });
 
 it("forwards the persisted commission rates to the sale preview", async () => {

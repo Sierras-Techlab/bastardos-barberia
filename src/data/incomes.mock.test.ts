@@ -13,9 +13,10 @@ it("covers the income-list scenarios", () => {
   expect(new Set(data.incomes.map(getIncomeKind))).toEqual(
     new Set(["service", "products", "combined"]),
   );
-  expect(new Set(data.incomes.map((item) => item.paymentMethod))).toEqual(
-    new Set(["cash", "transfer"]),
+  expect(new Set(data.incomes.flatMap((item) => item.payments.map((payment) => payment.methodName)))).toEqual(
+    new Set(["Efectivo", "Transferencia"]),
   );
+  expect(data.incomes.every((item) => item.payments.every((payment) => payment.paymentMethodId))).toBe(true);
   expect(data.incomes.some((item) => item.customer === null)).toBe(true);
   expect(data.incomes.some((item) => item.status === "voided")).toBe(true);
   expect(

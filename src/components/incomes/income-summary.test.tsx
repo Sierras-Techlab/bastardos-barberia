@@ -19,6 +19,7 @@ const data: IncomeFormData = {
   products: [
     { id: "product-1", name: "Pomada", price: 10000, stock: 5 },
   ],
+  paymentMethods: [{ id: "60000000-0000-4000-8000-000000000002", name: "Transferencia", isActive: true }],
 };
 
 const values: IncomeFormValues = {
@@ -26,8 +27,7 @@ const values: IncomeFormValues = {
   customerId: "customer-1",
   serviceId: "service-1",
   products: [{ productId: "product-1", quantity: 2, grantFullCommission: false }],
-  paymentMode: "transfer",
-  payments: [{ method: "transfer", amount: 36000 }],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 36000 }],
   grantFullServiceCommission: false,
 };
 

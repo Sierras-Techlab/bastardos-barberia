@@ -13,12 +13,6 @@ type IncomeSummaryProps = {
   data: IncomeFormData;
 };
 
-const paymentLabels = {
-  cash: "Efectivo",
-  transfer: "Transferencia",
-  combined: "Combinado",
-};
-
 export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
   const employee = data.employees?.find((candidate) => candidate.id === values.employeeId) ?? data.currentUser;
   const customer = data.customers.find(
@@ -32,6 +26,9 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
     data.services,
     data.products,
   );
+  const paymentLabel = values.payments.length > 1
+    ? `Combinado (${values.payments.length} medios)`
+    : data.paymentMethods.find((method) => method.id === values.payments[0]?.paymentMethodId)?.name ?? "Sin seleccionar";
 
   return (
     <Card
@@ -117,9 +114,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
           <div className="mb-4 flex items-center justify-between gap-4 text-xs text-white/55">
             <span>Medio de pago</span>
             <span className="font-medium text-white">
-              {values.paymentMode
-                ? paymentLabels[values.paymentMode]
-                : "Sin seleccionar"}
+              {paymentLabel}
             </span>
           </div>
           <div className="flex items-end justify-between gap-4">

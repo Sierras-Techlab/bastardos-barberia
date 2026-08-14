@@ -7,8 +7,7 @@ const validBase = {
   customerId: null,
   serviceId: "service-1",
   products: [],
-  paymentMode: "cash" as const,
-  payments: [{ method: "cash" as const, amount: 16000 }],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 16000 }],
   grantFullServiceCommission: false,
 };
 
@@ -47,10 +46,10 @@ describe("incomeFormSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a missing payment method", () => {
+  it("rejects a missing payment allocation", () => {
     const result = incomeFormSchema.safeParse({
       ...validBase,
-      paymentMode: null,
+      payments: [],
     });
 
     expect(result.success).toBe(false);
@@ -63,18 +62,19 @@ const publicInput = {
   customerId: null,
   serviceId: "00000000-0000-4000-8000-000000000020",
   products: [],
-  payments: [{ method: "cash" as const, amount: 16000 }],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 16000 }],
   grantFullServiceCommission: false,
 };
 
 describe("createIncomeSchema", () => {
-  it("accepts one or two distinct positive payment allocations", () => {
+  it("accepts one or more distinct positive payment allocations", () => {
     expect(createIncomeSchema.parse(publicInput)).toEqual(publicInput);
     expect(createIncomeSchema.safeParse({
       ...publicInput,
       payments: [
-        { method: "cash", amount: 8000 },
-        { method: "transfer", amount: 8000 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 20000 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 19000 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000003", amount: 10000 },
       ],
     }).success).toBe(true);
   });
@@ -83,10 +83,17 @@ describe("createIncomeSchema", () => {
     expect(createIncomeSchema.safeParse({
       ...publicInput,
       payments: [
-        { method: "cash", amount: 8000 },
-        { method: "cash", amount: 8000 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 8000 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 8000 },
       ],
     }).success).toBe(false);
+  });
+
+  it.each([
+    [{ paymentMethodId: "not-a-uuid", amount: 16000 }],
+    [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 0 }],
+  ])("rejects malformed payment allocations: %o", (payments) => {
+    expect(createIncomeSchema.safeParse({ ...publicInput, payments }).success).toBe(false);
   });
 
   it("requires a strict full-commission flag for every product line", () => {

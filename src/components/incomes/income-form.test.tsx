@@ -7,9 +7,15 @@ import type { Income, IncomeFormData } from "@/types/income";
 import type { CreateIncomeInput } from "@/types/income";
 
 const serviceId = "30000000-0000-4000-8000-000000000001";
+const paymentMethods = [
+  { id: "60000000-0000-4000-8000-000000000001", name: "Efectivo", isActive: true },
+  { id: "60000000-0000-4000-8000-000000000002", name: "Transferencia", isActive: true },
+  { id: "60000000-0000-4000-8000-000000000003", name: "Tarjeta", isActive: true },
+];
 const data: IncomeFormData = {
   currentUser: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fernanda", lastName: "Pérez", role: "employee" },
   customers: [], services: [{ id: serviceId, name: "Barba", price: 13000 }], products: [],
+  paymentMethods,
   employees: [{ id: "00000000-0000-4000-8000-000000000003", firstName: "Fernanda", lastName: "Pérez", role: "employee", isActive: true, serviceCommissionRate: 45, productCommissionRate: 10 }],
 };
 const managerData: IncomeFormData = {
@@ -29,9 +35,9 @@ const managerData: IncomeFormData = {
     { id: "00000000-0000-4000-8000-000000000004", firstName: "Sofía", lastName: "Dueña", role: "owner", isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 },
   ],
 };
-const result = (input: CreateIncomeInput): Income => ({ id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: data.currentUser, registeredBy: data.currentUser, customer: null, service: { ...data.services[0], commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], paymentMethod: input.payments[0].method, payments: input.payments, commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" });
+const result = (input: CreateIncomeInput): Income => ({ id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: data.currentUser, registeredBy: data.currentUser, customer: null, service: { ...data.services[0], commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], payments: input.payments.map((payment) => ({ ...payment, methodName: paymentMethods.find((method) => method.id === payment.paymentMethodId)?.name ?? "Desconocido" })), commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" });
 const client = (create = vi.fn(async (input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
-const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /efectivo/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
+const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 
 describe("IncomeForm", () => {
   it("lets a manager select the responsible employee", () => {
@@ -40,7 +46,7 @@ describe("IncomeForm", () => {
     expect(screen.getAllByText("Fernanda Pérez")).not.toHaveLength(0);
   });
   it("validates an item and payment before review", async () => {
-    const user = userEvent.setup(); render(<IncomeForm data={data} incomeClient={client()} />);
+    const user = userEvent.setup(); render(<IncomeForm data={{ ...data, paymentMethods: [] }} incomeClient={client()} />);
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     expect(await screen.findByText("Seleccioná un servicio o agregá al menos un producto.")).toBeVisible();
     expect(screen.getByText("Seleccioná un medio de pago.")).toBeVisible();
@@ -80,7 +86,6 @@ describe("IncomeForm", () => {
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), targetEmployeeId);
     expect(screen.queryByRole("checkbox", { name: /regalar el 100% del valor/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /regalar el 100%/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /efectivo/i }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
@@ -102,7 +107,6 @@ describe("IncomeForm", () => {
     await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
     await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
     await user.click(screen.getByRole("button", { name: nextServiceId === serviceId ? /barba/i : /corte/i }));
-    await user.click(screen.getByRole("button", { name: /efectivo/i }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
@@ -122,7 +126,6 @@ describe("IncomeForm", () => {
     await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
     await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Pomada" }));
     await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Shampoo" }));
-    await user.click(screen.getByRole("button", { name: /efectivo/i }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     const dialog = screen.getByRole("dialog", { name: /confirmar ingreso/i });
     expect(dialog).toHaveTextContent("Barba · 100%");

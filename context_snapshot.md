@@ -10,16 +10,16 @@ Captured: 2026-08-14
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016`, Tasks 1–2 are implemented locally: the strict server-only catalog domain/browser client and authenticated Route Handlers. Income-contract migration, UI and SQL `016` remain separate pending tasks.
+- Dynamic payment methods plan `016`, Tasks 1–5 are implemented locally: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters and dashboard presentation. SQL migration `016` remains the pending task.
 
 ## Delivered behavior
 
 - User administration persists integer service/product commission rates from 0 through 100, initially zero.
 - `/incomes/new` enforces role-aware responsible employees: employees are forced to themselves; owner/admin may choose any active user, loading every result page rather than truncating the selector at 100 users.
-- A sale accepts one or two distinct positive cash/transfer allocations whose exact sum is validated against server-authoritative prices and total.
+- A sale accepts one or more distinct payment-method UUID allocations with positive integer amounts whose exact sum is validated against server-authoritative prices and total; responses retain immutable method-name snapshots.
 - PostgreSQL snapshots service/product commission bases, configured rates, independently rounded amounts, total commission, barbershop net and the optional manager-authorized 100% service exception.
 - Income creation remains idempotent and atomic with catalog snapshots, stock, inventory movements, payments and customer visits. Semantic request conflicts are rejected, while an identical retry still succeeds after mutable responsible-user state changes. User, service, product and customer rows remain locked through each new sale so concurrent deactivation or demotion cannot invalidate its authority snapshot.
-- `/incomes` scopes employees by responsible `employee_id`; owner/admin can view and filter all historical responsible users, including inactive and logically deleted accounts with retained sales. V2 metrics expose gross, commission, net, count, average and exact payment totals while excluding voids.
+- `/incomes` scopes employees by responsible `employee_id`; owner/admin can view and filter all historical responsible users, including inactive and logically deleted accounts with retained sales. Metrics expose gross, commission, net, count, average and dynamic per-method totals while excluding voids.
 - Income detail shows responsible employee, registering actor for managers, split payments, commission bases/rates/amounts, net and 100% authorizer. The confirmation flow shows the complete estimated sale before submission.
 - `/customers` persists one optional ISO-weekday/local-time habitual schedule in the same transaction as customer create/update.
 - Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Versioned effective dates prevent historical fabrication; same-day reprogramming preserves today's prior appointment; reactivation starts today unless a preserved occurrence already exists; per-customer advisory locks and optimistic versions prevent deadlocks and lost updates.
@@ -39,6 +39,8 @@ Captured: 2026-08-14
 - Canonical income idempotency dual-compares the exact pre-015 product fingerprint only when every newly required product exception flag is false. It preserves the historical audit hash, accepts a semantically identical cross-migration retry and still conflicts when any flag changes to true.
 - Payment methods now have strict trimmed 1–80-character names, manager-only create/update/deactivate operations, canonical lifecycle RPC adapters and stable duplicate/last-active conflicts. Authenticated catalog reads and detail lookup include inactive methods so historical payment filters and receipts can keep their labels; absent IDs return the safe payment-method 404.
 - `/api/payment-methods` now authorizes catalog reads for every authenticated user and create mutations for managers; `/api/payment-methods/[id]` safely fetches active/inactive historical methods, permits only manager rename/reactivation and uses a dedicated manager-only deactivation action. Route authorization occurs before body or path validation.
+- `/incomes/new` loads only active payment methods and provides a distinct allocation-row selector with one-method autofill, arbitrary multi-method splits and exact remaining/excess feedback. The history page loads active and inactive methods for stable filtering and manager lifecycle administration.
+- Income list, mobile/detail and dashboard presentation render saved payment names dynamically; one allocation uses its snapshot name and multiple allocations use `Combinado (N medios)`. No UI or metric contract branches on fixed cash/transfer values.
 
 ## SQL and deployment state
 
@@ -63,6 +65,8 @@ Captured: 2026-08-14
 - The workweek correction also has 15 focused passing tests covering calendar boundaries, server query scope and card behavior.
 - Payment-method Task 1 passed 4 focused files / 14 tests, TypeScript and `git diff --check`; its prior full suite passed 131 files / 481 tests.
 - Payment-method Task 2 passed 2 focused route files / 11 tests, TypeScript and `git diff --check`; the full suite passed 133 files / 494 tests.
+- Payment-method Tasks 3–5 passed their RED/GREEN contract, UI and presentation groups; the combined affected-domain slice passed 46 files / 176 tests.
+- After Tasks 3–5, the full suite passed 134 files / 504 tests, ESLint passed with no warnings, TypeScript and `git diff --check` passed, and the Next.js 16.3 production build completed successfully.
 
 ## Known boundaries
 
@@ -71,11 +75,11 @@ Captured: 2026-08-14
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- Payment methods are not connected to incomes, UI or database SQL yet; their domain, API client and authenticated Route Handlers are covered locally for the upcoming migration `016`.
+- Dynamic payment methods are connected throughout the application contracts and UI, but the current SQL/database types still expose the legacy payment shape until Task 6 implements migration `016`; do not deploy this application slice before that ordered migration is installed.
 
 ## Recommended next task
 
-Implement plan `016`, Task 3: generalize income schemas and repository contracts for payment-method IDs and dynamic allocations.
+Implement plan `016`, Task 6: add migration `016`, regenerate the hand-maintained database types and document the ordered SQL acceptance checks.
 
 ## Context maintenance rule
 

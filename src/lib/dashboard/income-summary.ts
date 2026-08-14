@@ -2,7 +2,7 @@ import type { IncomeListItem } from "@/types/income";
 
 export type DashboardIncomeDay = { date: string; label: string; total: number; count: number };
 export type DashboardIncomeSummary = {
-  today: { total: number; count: number; average: number; cashTotal: number; transferTotal: number };
+  today: { total: number; count: number; average: number; paymentTotals: Array<{ paymentMethodId: string; name: string; amount: number }> };
   series: DashboardIncomeDay[];
 };
 
@@ -40,10 +40,15 @@ export const buildDashboardIncomeSummary = (incomes: IncomeListItem[], dateTo: s
   const activeIncomes = incomes.filter(({ status }) => status === "active");
   const todayIncomes = activeIncomes.filter(({ businessDate }) => businessDate === dateTo);
   const todayTotal = todayIncomes.reduce((total, income) => total + income.total, 0);
-  const paymentTotals = todayIncomes.reduce((totals, income) => {
-    for (const payment of income.payments) totals[payment.method] += payment.amount;
-    return totals;
-  }, { cash: 0, transfer: 0 });
+  const paymentTotalsById = new Map<string, { paymentMethodId: string; name: string; amount: number }>();
+  for (const payment of todayIncomes.flatMap((income) => income.payments)) {
+    const current = paymentTotalsById.get(payment.paymentMethodId);
+    paymentTotalsById.set(payment.paymentMethodId, {
+      paymentMethodId: payment.paymentMethodId,
+      name: payment.methodName,
+      amount: (current?.amount ?? 0) + payment.amount,
+    });
+  }
   const dates = datesEndingAt(dateTo);
 
   return {
@@ -51,8 +56,7 @@ export const buildDashboardIncomeSummary = (incomes: IncomeListItem[], dateTo: s
       total: todayTotal,
       count: todayIncomes.length,
       average: todayIncomes.length > 0 ? todayTotal / todayIncomes.length : 0,
-      cashTotal: paymentTotals.cash,
-      transferTotal: paymentTotals.transfer,
+      paymentTotals: [...paymentTotalsById.values()],
     },
     series: dates.map((date) => {
       const dayIncomes = activeIncomes.filter(({ businessDate }) => businessDate === date);

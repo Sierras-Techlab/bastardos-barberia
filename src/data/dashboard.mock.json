@@ -54,20 +54,23 @@
       "share": 7
     }
   ],
-  "paymentMethods": [
+  "paymentTotals": [
     {
+      "paymentMethodId": "60000000-0000-4000-8000-000000000002",
       "name": "Transferencia",
       "transactions": 24,
       "amount": 398000,
       "share": 46
     },
     {
+      "paymentMethodId": "60000000-0000-4000-8000-000000000001",
       "name": "Efectivo",
       "transactions": 19,
       "amount": 301000,
       "share": 34
     },
     {
+      "paymentMethodId": "60000000-0000-4000-8000-000000000003",
       "name": "Débito",
       "transactions": 9,
       "amount": 175000,

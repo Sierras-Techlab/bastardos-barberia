@@ -7,7 +7,7 @@ export const toRoleSafeIncomeQuery = (filters: IncomeListFilters, role: UserRole
   ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
   ...(filters.dateTo && { dateTo: filters.dateTo }),
   ...(role !== "employee" && filters.employeeId && { userId: filters.employeeId }),
-  ...(filters.paymentMethod !== "all" && { paymentMethod: filters.paymentMethod }),
+  ...(filters.paymentMethodId !== "all" && { paymentMethodId: filters.paymentMethodId }),
   ...(filters.kind !== "all" && { kind: filters.kind }),
   ...(filters.status && filters.status !== "all" && { status: filters.status }),
 });

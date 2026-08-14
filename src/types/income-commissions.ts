@@ -1,5 +1,5 @@
 import type { UserRole } from "@/types/income";
-export type { CreateIncomeInput, IncomePayment } from "@/types/income";
+export type { CreateIncomeInput, IncomePaymentInput as IncomePayment } from "@/types/income";
 
 export type CommissionUser = {
   id: string;
