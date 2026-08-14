@@ -20,7 +20,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner rates are authoritatively normalized to 0 by migration 012, pending manual installation. |
 | Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
-| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, owner-safe application previews, configured rates, immutable commission/net snapshots and audited 100% service exception; migration 012 remains pending manual installation. |
+| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, independently rounded item snapshots, owner-safe previews and audited 100% service/product-line exceptions; migrations 010 through 015 remain pending manual installation. |
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
@@ -33,7 +33,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Manually install migrations `010` through `014` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
+Manually install migrations `010` through `015` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 
@@ -43,7 +43,7 @@ The service catalog and sale form now share persistent active services. Manager 
 
 The approved backend design makes customer phone the unique operational identity while allowing duplicate names and optional email. Every authenticated role may create and edit customers; only owner/admin may logically delete them.
 
-Each sale records both the authenticated registrant and responsible employee. Employees are forced to themselves; owner/admin may select an active user. Exact payment allocations and immutable commission/net snapshots are calculated atomically with items, inventory and visits. History and metrics scope employees to their responsible sales.
+Each sale records both the authenticated registrant and responsible employee. Employees are forced to themselves; owner/admin may select an active user. Exact payment allocations and immutable per-item commission/net snapshots are calculated atomically with items, inventory and visits. Valid manager-to-other-non-owner exceptions may cover a service and multiple complete product quantities in the same sale. History and metrics scope employees to their responsible sales.
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 

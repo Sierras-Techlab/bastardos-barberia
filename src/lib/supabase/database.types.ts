@@ -184,6 +184,11 @@ export type IncomeItemRow = {
   unit_price: number;
   quantity: number;
   subtotal: number;
+  line_subtotal: number;
+  commission_rate: number;
+  commission_amount: number;
+  full_commission: boolean;
+  full_commission_authorized_by: string | null;
   created_at: string;
 };
 
