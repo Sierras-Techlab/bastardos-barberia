@@ -161,11 +161,31 @@ where n.nspname = 'public'
   and p.proname in ('update_user_profile', 'update_user_profile_v2')
 order by p.proname, arguments;
 
-select routine_name, grantee, privilege_type
-from information_schema.routine_privileges
-where routine_schema = 'public'
-  and routine_name in ('update_user_profile', 'update_user_profile_v2')
-order by routine_name, grantee, privilege_type;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.routine_privileges
+    where routine_schema = 'public'
+      and routine_name = 'update_user_profile'
+      and grantee = 'service_role'
+      and privilege_type = 'EXECUTE'
+  ) then
+    raise exception 'UPDATE_USER_PROFILE_SERVICE_ROLE_GRANT_MISSING';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.routine_privileges
+    where routine_schema = 'public'
+      and routine_name = 'update_user_profile'
+      and grantee in ('PUBLIC', 'anon', 'authenticated')
+      and privilege_type = 'EXECUTE'
+  ) then
+    raise exception 'UPDATE_USER_PROFILE_UNSAFE_EXECUTE_GRANT';
+  end if;
+end;
+$$;
 
 select id
 from public.users
@@ -187,7 +207,7 @@ where responsible_role_snapshot = 'owner'
   );
 ```
 
-The first query must return exactly one `update_user_profile` overload with the thirteen arguments used by the server repository and no `_v2` row. The privilege query must list only `service_role` for that function. Both owner-correction queries must return zero rows.
+The first query must return exactly one `update_user_profile` overload with the thirteen arguments used by the server repository and no `_v2` row. The privilege block must complete: it requires an explicit `service_role` `EXECUTE` grant and rejects retained `PUBLIC`, `anon` or `authenticated` execution, while permitting the PostgreSQL function owner. Both owner-correction queries must return zero rows.
 
 Verify weekly schedules, attendance and their server-only routines:
 
