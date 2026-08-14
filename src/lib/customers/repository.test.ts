@@ -124,4 +124,21 @@ describe("customer repository", () => {
     await expect(customerRepository.listVisits(row.created_by, row.id, { page: 1, pageSize: 20 }))
       .rejects.toThrow("No se pudo completar la operación en la base de datos.");
   });
+
+  it("rejects a visit item whose subtotal differs from unit price times quantity", async () => {
+    const response = {
+      items: [{
+        id: "20000000-0000-4000-8000-000000000001",
+        occurredAt: "2026-08-13T14:00:00.000Z",
+        businessDate: "2026-08-13",
+        totalSpent: 30000,
+        items: [{ type: "product", name: "Cera mate", quantity: 2, unitPrice: 15000, subtotal: 29999 }],
+      }],
+      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+    };
+    getSupabaseAdmin.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: response, error: null }) });
+
+    await expect(customerRepository.listVisits(row.created_by, row.id, { page: 1, pageSize: 20 }))
+      .rejects.toThrow("No se pudo completar la operación en la base de datos.");
+  });
 });

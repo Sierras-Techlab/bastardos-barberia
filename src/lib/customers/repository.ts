@@ -19,7 +19,10 @@ const paginatedCustomerVisitsSchema = z.object({
       quantity: z.number().int().positive(),
       unitPrice: z.number().int().nonnegative(),
       subtotal: z.number().int().nonnegative(),
-    }).strict()).min(1),
+    }).strict().refine(
+      ({ quantity, unitPrice, subtotal }) => subtotal === unitPrice * quantity,
+      { message: "Invalid customer visit subtotal" },
+    )).min(1),
   }).strict()),
   pagination: z.object({
     page: z.number().int().positive(),
