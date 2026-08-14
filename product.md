@@ -27,6 +27,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
 | Products | Implemented locally | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic manager category administration. Migration `014` is implemented locally and pending manual installation; inactive items show `No disponible` regardless of retained stock. |
+| Payment methods | In progress locally | Task 1 supplies the audited lifecycle domain and browser client for a dynamic payment-method catalog; Route Handlers, dynamic incomes/UI and migration `016` remain pending. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
 | Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, and audited attended/missed occurrences; migration 013 remains pending manual installation. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
@@ -36,6 +37,8 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 Manually install migrations `010` through `015` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
+
+The payment-method catalog domain validates trimmed names, manager-only lifecycle operations and last-active protection. Its upcoming migration will enforce normalized uniqueness across active and inactive records; authenticated reads already include inactive methods for historical payment labels. It is not yet wired to routes, sales or SQL migration `016`.
 
 The customer directory persists required normalized phones and optional emails. Exact names may repeat, all authenticated roles can create/edit, only managers can logically delete, and associated active sales increment visits atomically.
 
