@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Role } from "@/lib/auth/types";
+import type { Role, SafeUser } from "@/lib/auth/types";
 import { UserEditorDialog } from "./user-editor-dialog";
 
 const roles: Role[] = [
@@ -10,6 +10,20 @@ const roles: Role[] = [
   { id: 2, name: "admin" },
   { id: 3, name: "employee" },
 ];
+
+const employee: SafeUser = {
+  id: "00000000-0000-4000-8000-000000000002",
+  firstName: "Lucía",
+  lastName: "Ferreyra",
+  username: "lucia.ferreyra",
+  role: roles[2],
+  isActive: true,
+  serviceCommissionRate: 45,
+  productCommissionRate: 0,
+  lastLoginAt: null,
+  createdAt: "2026-08-08T12:00:00.000Z",
+  updatedAt: "2026-08-08T12:00:00.000Z",
+};
 
 describe("UserEditorDialog", () => {
   it("clears the plaintext password as soon as creation succeeds", async () => {
@@ -40,5 +54,59 @@ describe("UserEditorDialog", () => {
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     expect(screen.getByLabelText(/Contrase.a inicial/)).toHaveValue("");
+  });
+
+  it("allows replacing a zero product commission with a numeric percentage", async () => {
+    const browser = userEvent.setup();
+    const onUpdate = vi.fn(async () => undefined);
+
+    render(
+      <UserEditorDialog
+        mode="edit"
+        user={employee}
+        roles={roles}
+        createdUser={null}
+        pending={false}
+        error={null}
+        onClose={vi.fn()}
+        onCreate={vi.fn()}
+        onUpdate={onUpdate}
+      />,
+    );
+
+    const input = screen.getByLabelText("Comisión por productos (%)");
+    await browser.clear(input);
+    expect(input).toHaveValue(null);
+    await browser.type(input, "20");
+    await browser.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(onUpdate).toHaveBeenCalledWith({ productCommissionRate: 20 });
+  });
+
+  it("rejects an empty commission on submission", async () => {
+    const browser = userEvent.setup();
+    const onUpdate = vi.fn(async () => undefined);
+
+    render(
+      <UserEditorDialog
+        mode="edit"
+        user={employee}
+        roles={roles}
+        createdUser={null}
+        pending={false}
+        error={null}
+        onClose={vi.fn()}
+        onCreate={vi.fn()}
+        onUpdate={onUpdate}
+      />,
+    );
+
+    await browser.clear(screen.getByLabelText("Comisión por productos (%)"));
+    await browser.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Las comisiones deben ser porcentajes enteros entre 0 y 100.",
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 });
