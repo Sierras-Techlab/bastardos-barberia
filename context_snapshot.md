@@ -10,7 +10,7 @@ Captured: 2026-08-14
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016`, Task 1 is implemented locally: a server-only catalog domain, strict schemas, conflict mappings and a browser-only API client. Route Handlers, income-contract migration, UI and SQL `016` remain separate pending tasks.
+- Dynamic payment methods plan `016`, Tasks 1–2 are implemented locally: the strict server-only catalog domain/browser client and authenticated Route Handlers. Income-contract migration, UI and SQL `016` remain separate pending tasks.
 
 ## Delivered behavior
 
@@ -38,6 +38,7 @@ Captured: 2026-08-14
 - Migration `015_product_item_commissions.sql` backfills immutable service/product item snapshots with exact parent reconciliation, calculates new product lines independently, fingerprints strict product exception flags and promotes the sole canonical `create_income` RPC. It preserves category-first product locks, stock/payments/customer visits, scoped history and idempotent retries while removing `create_income_v2`.
 - Canonical income idempotency dual-compares the exact pre-015 product fingerprint only when every newly required product exception flag is false. It preserves the historical audit hash, accepts a semantically identical cross-migration retry and still conflicts when any flag changes to true.
 - Payment methods now have strict trimmed 1–80-character names, manager-only create/update/deactivate operations, canonical lifecycle RPC adapters and stable duplicate/last-active conflicts. Authenticated catalog reads and detail lookup include inactive methods so historical payment filters and receipts can keep their labels; absent IDs return the safe payment-method 404.
+- `/api/payment-methods` now authorizes catalog reads for every authenticated user and create mutations for managers; `/api/payment-methods/[id]` safely fetches active/inactive historical methods, permits only manager rename/reactivation and uses a dedicated manager-only deactivation action. Route authorization occurs before body or path validation.
 
 ## SQL and deployment state
 
@@ -61,6 +62,7 @@ Captured: 2026-08-14
 - Local runtime was Node 24.17/npm 11.13; repository target remains Node 24.18/npm 11.16.
 - The workweek correction also has 15 focused passing tests covering calendar boundaries, server query scope and card behavior.
 - Payment-method Task 1 passed 4 focused files / 14 tests, TypeScript and `git diff --check`; its prior full suite passed 131 files / 481 tests.
+- Payment-method Task 2 passed 2 focused route files / 11 tests, TypeScript and `git diff --check`; the full suite passed 133 files / 494 tests.
 
 ## Known boundaries
 
@@ -69,11 +71,11 @@ Captured: 2026-08-14
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- Payment methods are not connected to Route Handlers, incomes, UI or database SQL yet; the RPC names and argument contracts are covered locally for the upcoming migration `016`.
+- Payment methods are not connected to incomes, UI or database SQL yet; their domain, API client and authenticated Route Handlers are covered locally for the upcoming migration `016`.
 
 ## Recommended next task
 
-Implement plan `016`, Task 2: authenticated payment-method Route Handlers over the completed domain.
+Implement plan `016`, Task 3: generalize income schemas and repository contracts for payment-method IDs and dynamic allocations.
 
 ## Context maintenance rule
 
