@@ -11,5 +11,5 @@ it("labels simple and combined payments", () => {
 
 it("distinguishes an available commission from a legacy response", () => {
   expect(getIncomeCommissionState(base)).toEqual({ available: false, amount: null });
-  expect(getIncomeCommissionState({ ...base, commission: { serviceBase: 10000, productBase: 0, serviceRate: 45, productRate: 0, serviceAmount: 4500, productAmount: 0, total: 4500, barbershopNet: 5500, fullServiceCommission: false } })).toEqual({ available: true, amount: 4500 });
+  expect(getIncomeCommissionState({ ...base, commission: { total: 4500, barbershopNet: 5500 } })).toEqual({ available: true, amount: 4500 });
 });

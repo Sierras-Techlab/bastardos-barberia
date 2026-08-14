@@ -7,7 +7,7 @@ export type Product = { id: string; name: string; price: number; stock: number }
 export type CurrentUser = Employee & { role: UserRole };
 export type IncomeFormEmployee = CurrentUser & { isActive: boolean; serviceCommissionRate: number; productCommissionRate: number };
 export type IncomeFormData = { currentUser: CurrentUser; customers: Customer[]; services: Service[]; products: Product[]; employees?: IncomeFormEmployee[] };
-export type IncomeProductInput = { productId: string; quantity: number };
+export type IncomeProductInput = { productId: string; quantity: number; grantFullCommission: boolean };
 export type IncomePayment = { method: PaymentMethod; amount: number };
 export type CreateIncomeInput = {
   requestId: string;
@@ -20,10 +20,11 @@ export type CreateIncomeInput = {
 };
 export type IncomeStatus = "active" | "voided";
 export type IncomeKind = "service" | "products" | "combined";
-export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number };
+export type IncomeListService = Service & { commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
+export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number; commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
 export type IncomeListItem = {
   id: string; createdAt: string; businessDate: string; employee: Employee; customer: Employee | null;
-  service: Service | null; products: IncomeListProduct[]; paymentMethod: PaymentMethod; payments?: IncomePayment[]; registeredBy?: Employee; commission?: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; status: IncomeStatus;
+  service: IncomeListService | null; products: IncomeListProduct[]; paymentMethod: PaymentMethod; payments?: IncomePayment[]; registeredBy?: Employee; commission?: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; status: IncomeStatus;
 };
 export type Income = IncomeListItem;
 export type IncomeService = { create(input: CreateIncomeInput): Promise<Income> };

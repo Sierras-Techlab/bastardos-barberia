@@ -17,11 +17,11 @@ it("shows manager totals and explicit pending backend economics", () => {
   );
 
   expect(screen.getByText(/874\.000/)).toBeVisible();
-  expect(screen.getAllByText("Pendiente de backend")).toHaveLength(2);
+  expect(screen.getAllByText("Pendiente de backend")).toHaveLength(4);
   expect(screen.getByText("42")).toBeVisible();
 });
 
-it("shows commission and barbershop net when the V2 backend provides them", () => {
+it("shows commission and barbershop net when the backend provides them", () => {
   render(<IncomeMetrics metrics={{ total: 100000, count: 4, average: 25000, cashTotal: 50000, transferTotal: 50000, commissionTotal: 42000, barbershopNet: 58000 }} />);
   expect(screen.getByText(/42\.000/)).toBeVisible();
   expect(screen.getByText(/58\.000/)).toBeVisible();

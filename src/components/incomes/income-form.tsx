@@ -22,8 +22,7 @@ import {
   formatArs,
 } from "@/lib/incomes/income-calculations";
 import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
-import type { Income, IncomeFormData } from "@/types/income";
-import type { CreateIncomeV2Input } from "@/types/income-commissions";
+import type { CreateIncomeInput, Income, IncomeFormData } from "@/types/income";
 import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
@@ -93,7 +92,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       return;
     }
 
-    const input: CreateIncomeV2Input = {
+    const input: CreateIncomeInput = {
       requestId: requestIdRef.current,
       employeeId: reviewValues.employeeId,
       customerId: reviewValues.customerId,
@@ -166,7 +165,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
               >
                 Empleado responsable
               </label>
-              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); }} error={fieldState.error?.message} />} />
+              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
             </div>
 
             <div className="space-y-2">
@@ -240,6 +239,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   products={data.products}
                   value={field.value}
                   onChange={field.onChange}
+                  canGrantFullCommission={(data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
                 />
               )}
             />

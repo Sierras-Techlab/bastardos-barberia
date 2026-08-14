@@ -4,15 +4,18 @@ vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin }));
 import { incomeRepository } from "@/lib/incomes/repository";
 import type { SafeUser } from "@/lib/auth/types";
 
-const item = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" }, registeredBy: { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García" }, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000 }, products: [], paymentMethod: "cash", payments: [{ method: "cash", amount: 13000 }], commission: { serviceBase: 13000, productBase: 0, serviceRate: 50, productRate: 10, serviceAmount: 6500, productAmount: 0, total: 6500, barbershopNet: 6500, fullServiceCommission: false, authorizedBy: null }, total: 13000, status: "active" };
+const manager = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García" };
+const serviceCommission = { subtotal: 13000, rate: 50, amount: 6500, fullCommission: false, authorizedBy: null };
+const productCommission = { subtotal: 20000, rate: 100, amount: 20000, fullCommission: true, authorizedBy: manager };
+const item = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" }, registeredBy: manager, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, commission: serviceCommission }, products: [{ id: "50000000-0000-4000-8000-000000000001", name: "Cera", unitPrice: 10000, quantity: 2, commission: productCommission }], paymentMethod: "cash", payments: [{ method: "cash", amount: 33000 }], commission: { total: 26500, barbershopNet: 6500 }, total: 33000, status: "active" };
 const actor: SafeUser = { ...item.employee, username: "fer.perez", role: { id: 3, name: "employee" }, isActive: true, serviceCommissionRate: 45, productCommissionRate: 10, lastLoginAt: null, createdAt: "2026-08-01T00:00:00Z", updatedAt: "2026-08-01T00:00:00Z" };
-const input = { requestId: "40000000-0000-4000-8000-000000000001", employeeId: actor.id, customerId: null, serviceId: item.service.id, products: [], payments: [{ method: "cash" as const, amount: 13000 }], grantFullServiceCommission: false };
+const input = { requestId: "40000000-0000-4000-8000-000000000001", employeeId: actor.id, customerId: null, serviceId: item.service.id, products: [{ productId: item.products[0].id, quantity: 2, grantFullCommission: true }], payments: [{ method: "cash" as const, amount: 33000 }], grantFullServiceCommission: false };
 beforeEach(() => vi.clearAllMocks());
 it("maps create and list to exact RPC parameters and validates JSON", async () => {
-  const rpc = vi.fn().mockResolvedValueOnce({ data: item.id, error: null }).mockResolvedValueOnce({ data: item, error: null }).mockResolvedValueOnce({ data: { items: [item], metrics: { grossTotal: 13000, commissionTotal: 6500, barbershopNet: 6500, count: 1, average: 13000, cashTotal: 13000, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }, error: null });
+  const rpc = vi.fn().mockResolvedValueOnce({ data: item.id, error: null }).mockResolvedValueOnce({ data: item, error: null }).mockResolvedValueOnce({ data: { items: [item], metrics: { grossTotal: 33000, commissionTotal: 26500, barbershopNet: 6500, count: 1, average: 33000, cashTotal: 33000, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }, error: null });
   getSupabaseAdmin.mockReturnValue({ rpc });
   await incomeRepository.create(actor, input);
-  expect(rpc).toHaveBeenNthCalledWith(1, "create_income_v2", { actor_user_id: actor.id, responsible_employee_id: actor.id, income_request_id: input.requestId, selected_customer_id: null, selected_service_id: item.service.id, product_items: [], payment_items: input.payments, grant_full_service_commission: false });
+  expect(rpc).toHaveBeenNthCalledWith(1, "create_income", expect.objectContaining({ actor_user_id: actor.id, responsible_employee_id: actor.id, income_request_id: input.requestId, selected_customer_id: null, selected_service_id: item.service.id, product_items: [{ productId: item.products[0].id, quantity: 2, grantFullCommission: true }], payment_items: input.payments, grant_full_service_commission: false }));
   await incomeRepository.list({ requestingUserId: item.employee.id, canViewAll: false, userId: item.employee.id }, { page: 1, pageSize: 10 });
   expect(rpc).toHaveBeenLastCalledWith("list_incomes", expect.objectContaining({ requesting_user_id: item.employee.id, can_view_all: false, filter_user_id: item.employee.id, page_number: 1, page_size: 10 }));
 });
@@ -31,6 +34,21 @@ it("accepts the PostgreSQL timestamptz offset returned for createdAt", async () 
     incomeRepository.create(actor, input),
   ).resolves.toEqual(databaseItem);
 });
+it("rejects a response when a sale item omits its commission snapshot", async () => {
+  const serviceWithoutCommission = {
+    id: item.service.id,
+    name: item.service.name,
+    price: item.service.price,
+  };
+  const databaseItem = { ...item, service: serviceWithoutCommission };
+  const rpc = vi
+    .fn()
+    .mockResolvedValueOnce({ data: item.id, error: null })
+    .mockResolvedValueOnce({ data: databaseItem, error: null });
+  getSupabaseAdmin.mockReturnValue({ rpc });
+
+  await expect(incomeRepository.create(actor, input)).rejects.toThrow("No se pudo completar la operación en la base de datos.");
+});
 it("lists every historical responsible user through the dedicated RPC", async () => {
   const rpc = vi.fn().mockResolvedValue({ data: [item.employee], error: null });
   getSupabaseAdmin.mockReturnValue({ rpc });
@@ -47,6 +65,7 @@ it.each([
   ["EMPLOYEE_NOT_ELIGIBLE", "EMPLOYEE_NOT_ELIGIBLE", 409],
   ["PAYMENT_ALLOCATION_MISMATCH", "PAYMENT_ALLOCATION_MISMATCH", 409],
   ["INVALID_COMMISSION_OVERRIDE", "INVALID_COMMISSION_OVERRIDE", 403],
+  ["INVALID_PRODUCT_COMMISSION_OVERRIDE", "INVALID_PRODUCT_COMMISSION_OVERRIDE", 403],
   ["COMMISSION_RATE_OUT_OF_RANGE", "COMMISSION_RATE_OUT_OF_RANGE", 409],
   ["INCOME_REQUEST_CONFLICT", "INCOME_REQUEST_CONFLICT", 409],
 ])("maps %s to the public error contract", async (message, code, status) => {

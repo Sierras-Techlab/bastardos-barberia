@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 const { requirePageUser, listServices, listProducts, listCustomers, listUsers } = vi.hoisted(() => ({
@@ -61,6 +62,7 @@ it("revalidates the session at the income form boundary", async () => {
 });
 
 it("forwards the persisted commission rates to the sale preview", async () => {
+  listServices.mockResolvedValueOnce([{ id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000 }]);
   requirePageUser.mockResolvedValueOnce({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -79,7 +81,8 @@ it("forwards the persisted commission rates to the sale preview", async () => {
 
   render(await DashboardLayout({ children: await NewIncomePage() }));
 
-  expect(screen.getByText(/Servicio 45%.*Productos 12%/)).toBeVisible();
+  await userEvent.setup().click(screen.getByRole("button", { name: /barba/i }));
+  expect(screen.getByText(/Barba.*45%/)).toBeVisible();
 });
 
 it("loads every active-user page for the responsible employee selector", async () => {

@@ -11,18 +11,21 @@ import type { Product } from "@/types/income";
 export type ProductSelection = Array<{
   productId: string;
   quantity: number;
+  grantFullCommission: boolean;
 }>;
 
 type ProductSelectorProps = {
   products: Product[];
   value: ProductSelection;
   onChange: (products: ProductSelection) => void;
+  canGrantFullCommission?: boolean;
 };
 
 export const ProductSelector = ({
   products,
   value,
   onChange,
+  canGrantFullCommission = false,
 }: ProductSelectorProps) => {
   const [query, setQuery] = useState("");
   const filteredProducts = useMemo(() => {
@@ -51,7 +54,7 @@ export const ProductSelector = ({
       return;
     }
 
-    onChange([...value, { productId, quantity: 1 }]);
+    onChange([...value, { productId, quantity: 1, grantFullCommission: false }]);
   };
 
   const changeQuantity = (productId: string, delta: number) => {
@@ -72,6 +75,10 @@ export const ProductSelector = ({
 
   const removeProduct = (productId: string) => {
     onChange(value.filter((item) => item.productId !== productId));
+  };
+
+  const setFullCommission = (productId: string, grantFullCommission: boolean) => {
+    onChange(value.map((item) => item.productId === productId ? { ...item, grantFullCommission } : item));
   };
 
   return (
@@ -161,6 +168,18 @@ export const ProductSelector = ({
                 <p className="w-24 text-right text-sm font-semibold">
                   {formatArs(product.price * item.quantity)}
                 </p>
+                {canGrantFullCommission && (
+                  <label className="flex basis-full items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={item.grantFullCommission}
+                      onChange={(event) => setFullCommission(item.productId, event.target.checked)}
+                      aria-label={`Otorgar comisión completa para ${item.quantity} ${item.quantity === 1 ? "unidad" : "unidades"} de ${product.name}`}
+                      className="size-4 accent-red-600"
+                    />
+                    Otorgar el 100% de la comisión por las {item.quantity} {item.quantity === 1 ? "unidad" : "unidades"} seleccionadas
+                  </label>
+                )}
                 <Button
                   type="button"
                   variant="ghost"

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-const formProductSchema = z.object({ productId: z.string().min(1), quantity: z.number().int().positive() }).strict();
-const publicProductSchema = z.object({ productId: z.uuid(), quantity: z.number().int().positive().max(999) }).strict();
+const formProductSchema = z.object({ productId: z.string().min(1), quantity: z.number().int().positive(), grantFullCommission: z.boolean() }).strict();
+const publicProductSchema = z.object({ productId: z.uuid(), quantity: z.number().int().positive().max(999), grantFullCommission: z.boolean() }).strict();
 export const incomePaymentSchema = z.object({
   method: z.enum(["cash", "transfer"]),
   amount: z.number().int().positive(),

@@ -22,6 +22,7 @@ const income: IncomeListItem = {
     id: "30000000-0000-4000-8000-000000000001",
     name: "Barba",
     price: 5000,
+    commission: { subtotal: 5000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
   },
   products: [
     {
@@ -29,6 +30,7 @@ const income: IncomeListItem = {
       name: "Gel",
       unitPrice: 5000,
       quantity: 2,
+      commission: { subtotal: 10000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
     },
   ],
   paymentMethod: "cash",

@@ -3,25 +3,24 @@ import type { SafeUser } from "@/lib/auth/types";
 import type { CreateIncomeInput, Income, IncomeListItem, IncomeListQuery, PaginatedIncomes } from "@/types/income";
 
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
-const serviceSchema = z.object({ id: z.uuid(), name: z.string(), price: z.number().int().positive() }).strict();
 const paymentSchema = z.object({ method: z.enum(["cash", "transfer"]), amount: z.number().int().positive() }).strict();
+const itemCommissionSchema = z.object({
+  subtotal: z.number().int().nonnegative(),
+  rate: z.number().int().min(0).max(100),
+  amount: z.number().int().nonnegative(),
+  fullCommission: z.boolean(),
+  authorizedBy: employeeSchema.nullable(),
+}).strict();
+const serviceSchema = z.object({ id: z.uuid(), name: z.string(), price: z.number().int().positive(), commission: itemCommissionSchema }).strict();
 const commissionSchema = z.object({
-  serviceBase: z.number().int().nonnegative(),
-  productBase: z.number().int().nonnegative(),
-  serviceRate: z.number().int().min(0).max(100),
-  productRate: z.number().int().min(0).max(100),
-  serviceAmount: z.number().int().nonnegative(),
-  productAmount: z.number().int().nonnegative(),
   total: z.number().int().nonnegative(),
   barbershopNet: z.number().int().nonnegative(),
-  fullServiceCommission: z.boolean(),
-  authorizedBy: employeeSchema.nullable(),
 }).strict();
 export const incomeResponseSchema = z.object({
   id: z.uuid(), createdAt: z.iso.datetime({ offset: true }), businessDate: z.iso.date(), employee: employeeSchema,
   registeredBy: employeeSchema,
   customer: employeeSchema.nullable(), service: serviceSchema.nullable(),
-  products: z.array(z.object({ id: z.uuid(), name: z.string(), unitPrice: z.number().int().positive(), quantity: z.number().int().positive() }).strict()),
+  products: z.array(z.object({ id: z.uuid(), name: z.string(), unitPrice: z.number().int().positive(), quantity: z.number().int().positive(), commission: itemCommissionSchema }).strict()),
   paymentMethod: z.enum(["cash", "transfer"]), payments: z.array(paymentSchema).min(1).max(2), commission: commissionSchema,
   total: z.number().int().positive(), status: z.enum(["active", "voided"]),
 }).strict();

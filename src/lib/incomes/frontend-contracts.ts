@@ -1,4 +1,4 @@
 export {
-  createIncomeSchema as createIncomeV2InputSchema,
+  createIncomeSchema as createIncomeInputSchema,
   incomePaymentSchema,
 } from "@/lib/incomes/income-schema";

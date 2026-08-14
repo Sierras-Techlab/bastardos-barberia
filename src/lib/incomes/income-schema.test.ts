@@ -21,7 +21,7 @@ describe("incomeFormSchema", () => {
     const result = incomeFormSchema.safeParse({
       ...validBase,
       serviceId: null,
-      products: [{ productId: "product-1", quantity: 2 }],
+      products: [{ productId: "product-1", quantity: 2, grantFullCommission: false }],
     });
 
     expect(result.success).toBe(true);
@@ -41,7 +41,7 @@ describe("incomeFormSchema", () => {
     const result = incomeFormSchema.safeParse({
       ...validBase,
       serviceId: null,
-      products: [{ productId: "product-1", quantity: 0 }],
+      products: [{ productId: "product-1", quantity: 0, grantFullCommission: false }],
     });
 
     expect(result.success).toBe(false);
@@ -57,7 +57,7 @@ describe("incomeFormSchema", () => {
   });
 });
 
-const publicV2 = {
+const publicInput = {
   requestId: "00000000-0000-4000-8000-000000000010",
   employeeId: "00000000-0000-4000-8000-000000000001",
   customerId: null,
@@ -69,9 +69,9 @@ const publicV2 = {
 
 describe("createIncomeSchema", () => {
   it("accepts one or two distinct positive payment allocations", () => {
-    expect(createIncomeSchema.parse(publicV2)).toEqual(publicV2);
+    expect(createIncomeSchema.parse(publicInput)).toEqual(publicInput);
     expect(createIncomeSchema.safeParse({
-      ...publicV2,
+      ...publicInput,
       payments: [
         { method: "cash", amount: 8000 },
         { method: "transfer", amount: 8000 },
@@ -81,7 +81,7 @@ describe("createIncomeSchema", () => {
 
   it("rejects duplicate payment methods", () => {
     expect(createIncomeSchema.safeParse({
-      ...publicV2,
+      ...publicInput,
       payments: [
         { method: "cash", amount: 8000 },
         { method: "cash", amount: 8000 },
@@ -89,13 +89,49 @@ describe("createIncomeSchema", () => {
     }).success).toBe(false);
   });
 
+  it("requires a strict full-commission flag for every product line", () => {
+    const productId = "00000000-0000-4000-8000-000000000099";
+
+    expect(createIncomeSchema.safeParse({
+      ...publicInput,
+      products: [{ productId, quantity: 2 }],
+    }).success).toBe(false);
+    expect(createIncomeSchema.safeParse({
+      ...publicInput,
+      products: [{ productId, quantity: 2, grantFullCommission: "true" }],
+    }).success).toBe(false);
+  });
+
+  it("rejects duplicate products and browser-supplied product commission authority", () => {
+    const productId = "00000000-0000-4000-8000-000000000099";
+    expect(createIncomeSchema.safeParse({
+      ...publicInput,
+      products: [
+        { productId, quantity: 1, grantFullCommission: false },
+        { productId, quantity: 2, grantFullCommission: true },
+      ],
+    }).success).toBe(false);
+    expect(createIncomeSchema.safeParse({
+      ...publicInput,
+      products: [{ productId, quantity: 2, grantFullCommission: true, rate: 100 }],
+    }).success).toBe(false);
+    expect(createIncomeSchema.safeParse({
+      ...publicInput,
+      products: [{ productId, quantity: 2, grantFullCommission: true, amount: 30000 }],
+    }).success).toBe(false);
+    expect(createIncomeSchema.safeParse({
+      ...publicInput,
+      products: [{ productId, quantity: 2, grantFullCommission: true, authorizedBy: publicInput.employeeId }],
+    }).success).toBe(false);
+  });
+
   it.each([
     { total: 16000 },
-    { registeredBy: publicV2.employeeId },
+    { registeredBy: publicInput.employeeId },
     { serviceCommissionRate: 45 },
     { createdAt: "2026-08-13T10:00:00-03:00" },
   ])("rejects browser authority fields: %o", (authority) => {
-    expect(createIncomeSchema.safeParse({ ...publicV2, ...authority }).success)
+    expect(createIncomeSchema.safeParse({ ...publicInput, ...authority }).success)
       .toBe(false);
   });
 });

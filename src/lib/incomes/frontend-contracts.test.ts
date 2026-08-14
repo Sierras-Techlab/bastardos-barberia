@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { createIncomeV2InputSchema } from "@/lib/incomes/frontend-contracts";
+import { createIncomeInputSchema } from "@/lib/incomes/frontend-contracts";
 
 const valid = {
   requestId: "00000000-0000-4000-8000-000000000001",
@@ -12,19 +12,23 @@ const valid = {
   grantFullServiceCommission: false,
 };
 
-it("accepts the V2 browser payload", () => {
-  expect(createIncomeV2InputSchema.parse(valid)).toEqual(valid);
+it("accepts the canonical browser payload", () => {
+  expect(createIncomeInputSchema.parse(valid)).toEqual(valid);
 });
 
 it("rejects authoritative and malformed browser fields", () => {
-  expect(() => createIncomeV2InputSchema.parse({ ...valid, total: 19000 })).toThrow();
-  expect(() => createIncomeV2InputSchema.parse({ ...valid, payments: [{ method: "cash", amount: 0 }] })).toThrow();
-  expect(() => createIncomeV2InputSchema.parse({ ...valid, serviceCommissionRate: 45 })).toThrow();
-  expect(() => createIncomeV2InputSchema.parse({
+  expect(() => createIncomeInputSchema.parse({ ...valid, total: 19000 })).toThrow();
+  expect(() => createIncomeInputSchema.parse({ ...valid, payments: [{ method: "cash", amount: 0 }] })).toThrow();
+  expect(() => createIncomeInputSchema.parse({ ...valid, serviceCommissionRate: 45 })).toThrow();
+  expect(() => createIncomeInputSchema.parse({
     ...valid,
     payments: [
       { method: "cash", amount: 9000 },
       { method: "cash", amount: 10000 },
     ],
+  })).toThrow();
+  expect(() => createIncomeInputSchema.parse({
+    ...valid,
+    products: [{ productId: "00000000-0000-4000-8000-000000000010", quantity: 2, grantFullCommission: true, rate: 100 }],
   })).toThrow();
 });

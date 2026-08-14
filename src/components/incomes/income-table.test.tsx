@@ -49,8 +49,8 @@ it("keeps rows semantic and exposes one explicit action", () => {
 });
 
 it("shows combined payment and commission with a legacy fallback", () => {
-  const v2 = { ...data.incomes[0], payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { serviceBase: 19000, productBase: 30000, serviceRate: 45, productRate: 10, serviceAmount: 8550, productAmount: 3000, total: 11550, barbershopNet: 37450, fullServiceCommission: false } };
-  render(<IncomeTable incomes={[v2, data.incomes[1]]} onSelect={vi.fn()} />);
+  const incomeWithCommission = { ...data.incomes[0], payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { total: 11550, barbershopNet: 37450 } };
+  render(<IncomeTable incomes={[incomeWithCommission, data.incomes[1]]} onSelect={vi.fn()} />);
   expect(screen.getByText("Combinado")).toBeVisible();
   expect(screen.getByText(/11\.550/)).toBeVisible();
   expect(screen.getByText("Pendiente de backend")).toBeVisible();

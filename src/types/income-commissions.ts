@@ -1,5 +1,5 @@
 import type { UserRole } from "@/types/income";
-export type { CreateIncomeInput as CreateIncomeV2Input, IncomePayment } from "@/types/income";
+export type { CreateIncomeInput, IncomePayment } from "@/types/income";
 
 export type CommissionUser = {
   id: string;
@@ -14,21 +14,28 @@ export type CommissionUser = {
 export type CommissionPreviewInput = {
   responsibleRole: UserRole;
   serviceBase: number;
-  productBase: number;
   serviceRate: number;
   productRate: number;
   grantFullServiceCommission: boolean;
+  products: Array<{ productId: string; price: number; quantity: number; grantFullCommission: boolean }>;
+};
+
+export type IncomeItemCommissionSnapshot = {
+  subtotal: number;
+  rate: number;
+  amount: number;
+  fullCommission: boolean;
+  authorizedBy: import("@/types/income").Employee | null;
+};
+
+export type CommissionPreviewSnapshot = {
+  service: IncomeItemCommissionSnapshot | null;
+  products: IncomeItemCommissionSnapshot[];
+  total: number;
+  barbershopNet: number;
 };
 
 export type IncomeCommissionSnapshot = {
-  serviceBase: number;
-  productBase: number;
-  serviceRate: number;
-  productRate: number;
-  serviceAmount: number;
-  productAmount: number;
   total: number;
   barbershopNet: number;
-  fullServiceCommission: boolean;
-  authorizedBy?: import("@/types/income").Employee | null;
 };

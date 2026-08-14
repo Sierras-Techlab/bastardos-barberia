@@ -34,6 +34,7 @@ const serviceOnly: IncomeListItem = {
     id: "service-haircut-eyebrows",
     name: "Corte de pelo y perfilado de cejas",
     price: 16000,
+    commission: { subtotal: 16000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
   },
   products: [],
   paymentMethod: "cash",
@@ -49,7 +50,7 @@ const productsOnly: IncomeListItem = {
   customer: null,
   service: null,
   products: [
-    { id: "product-gel", name: "Gel", unitPrice: 9900, quantity: 2 },
+    { id: "product-gel", name: "Gel", unitPrice: 9900, quantity: 2, commission: { subtotal: 19800, rate: 0, amount: 0, fullCommission: false, authorizedBy: null } },
   ],
   paymentMethod: "transfer",
   total: 19800,
@@ -70,6 +71,7 @@ const combined: IncomeListItem = {
     id: "service-complete",
     name: "Corte, perfilado y barba",
     price: 19000,
+    commission: { subtotal: 19000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
   },
   products: [
     {
@@ -77,6 +79,7 @@ const combined: IncomeListItem = {
       name: "Hunter Cream",
       unitPrice: 30000,
       quantity: 1,
+      commission: { subtotal: 30000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
     },
   ],
   paymentMethod: "cash",

@@ -12,7 +12,7 @@ const values: IncomeFormValues = {
   employeeId: data.currentUser.id,
   customerId: null,
   serviceId: "service-haircut-eyebrows",
-  products: [{ productId: "product-hair-wax", quantity: 2 }],
+  products: [{ productId: "product-hair-wax", quantity: 2, grantFullCommission: false }],
   paymentMode: "cash",
   payments: [{ method: "cash", amount: 39800 }],
   grantFullServiceCommission: false,
@@ -37,6 +37,7 @@ it("reviews the exact draft before allowing confirmation", async () => {
   expect(screen.getByText("Corte de pelo y perfilado de cejas")).toBeVisible();
   expect(screen.getByText("Cera para pelo × 2")).toBeVisible();
   expect(screen.getAllByText(/39\.800/).length).toBeGreaterThan(0);
+  expect(screen.getByText(/Cera para pelo · 0%/)).toBeVisible();
 
   await user.click(screen.getByRole("button", { name: /volver y editar/i }));
   expect(onBack).toHaveBeenCalledOnce();

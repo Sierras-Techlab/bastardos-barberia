@@ -9,6 +9,7 @@ Captured: 2026-08-14
 - Commercial operations V2 is implemented locally through migrations `010` through `013`; none has been applied to the configured Supabase project.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
+- The application slice for item-level product commissions (plan `015`, Tasks 1–3) is implemented locally. Migration `015` is not implemented yet, so the canonical item-snapshot response and product exception behavior are not deployable until Task 4 is completed and installed.
 
 ## Delivered behavior
 
@@ -29,6 +30,8 @@ Captured: 2026-08-14
 - Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
 - Owner commission handling is application-safe: owner creation, promotion and updates normalize both configured rates to zero; owner editor controls are fixed at zero; previews derive the responsible employee role and neutralize owner rates plus the 100% service preview override. User profile persistence now calls the canonical `update_user_profile` RPC.
+- Income drafts now carry a strict boolean product exception per selected line. Only a manager attributing the sale to a different non-owner may see exception controls; switching to self or an owner clears service and every product flag, while employees receive no controls. Full product exceptions cover the complete selected quantity and may coexist across products and with a full-service exception.
+- Commission previews calculate service and product lines independently. Persisted-income contracts require immutable commission snapshots inside the service and every product item, while the aggregate exposes exact commission total and barbershop net; confirmation and detail views render the itemized amounts without positional coupling.
 
 ## SQL and deployment state
 
@@ -37,12 +40,14 @@ Captured: 2026-08-14
 - `supabase/queries/012_owner_commission_rules.sql` enforces owner-zero commission rates and snapshots, and promotes `update_user_profile` to its canonical RPC.
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
+- Migration `015` remains to be authored. Until then, the deployed database cannot satisfy the new per-item commission snapshot contract or validate per-product exception flags.
 - `supabase/queries/README.md` documents ordered installation `001` through `014` and transaction-wrapped post-install acceptance checks.
 - The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `014` manually and run the documented checks before considering these features live.
 
 ## Verification
 
-- Full suite: 126 test files / 448 tests passed.
+- Full suite: 126 test files / 460 tests passed.
+- The Tasks 1–3 focused groups passed with 22 domain/contract tests, 18 repository/service/client tests and 29 UI tests; the wider income slice passed 30 files / 118 tests.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.
@@ -54,11 +59,12 @@ Captured: 2026-08-14
 - SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010`/`011` still require manual PostgreSQL execution and verification.
 - Migrations `012` and `013` now provide the owner-safe and customer-visit RPC contracts required by the application, but they remain unapplied remotely; deploy `010` through `013` as one ordered manual SQL installation.
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
+- The application now calls canonical `create_income` with per-product exception flags, but Task 4 must install migration `015` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 
 ## Recommended next task
 
-Manually install migrations `010` through `014` in order and run their SQL Editor acceptance checks before deploying the local category contracts and UI.
+Implement migration `015_product_item_commissions.sql`, its database types and SQL acceptance checks, then install migrations `010` through `015` in order before deploying the local commercial changes.
 
 ## Context maintenance rule
 

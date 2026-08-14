@@ -9,7 +9,7 @@ const income: Income = {
   id: "20000000-0000-4000-8000-000000000001",
   employee: { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez" },
   customer: null,
-  service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte", price: 16000 },
+  service: { id: "30000000-0000-4000-8000-000000000001", name: "Corte", price: 16000, commission: { subtotal: 16000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null } },
   products: [],
   paymentMethod: "cash",
   total: 16000,

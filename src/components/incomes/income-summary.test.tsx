@@ -25,7 +25,7 @@ const values: IncomeFormValues = {
   employeeId: "employee-1",
   customerId: "customer-1",
   serviceId: "service-1",
-  products: [{ productId: "product-1", quantity: 2 }],
+  products: [{ productId: "product-1", quantity: 2, grantFullCommission: false }],
   paymentMode: "transfer",
   payments: [{ method: "transfer", amount: 36000 }],
   grantFullServiceCommission: false,

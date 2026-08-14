@@ -123,20 +123,19 @@ export const IncomeDetailSheet = ({
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
               <DetailRow label="Comisión devengada" value={income.commission ? formatArs(income.commission.total) : "Pendiente de backend"} />
               {income.commission && <>
-                <DetailRow label="Base servicios" value={formatArs(income.commission.serviceBase)} />
-                <DetailRow label={`Servicio (${income.commission.serviceRate}%)`} value={formatArs(income.commission.serviceAmount)} />
-                <DetailRow label="Base productos" value={formatArs(income.commission.productBase)} />
-                <DetailRow label={`Productos (${income.commission.productRate}%)`} value={formatArs(income.commission.productAmount)} />
-                {income.commission.authorizedBy && (
+                {income.service && <DetailRow label={`${income.service.name} (${income.service.commission.rate}%)`} value={formatArs(income.service.commission.amount)} />}
+                {income.products.map((product) => <DetailRow key={product.id} label={`${product.name} (${product.commission.rate}%)`} value={formatArs(product.commission.amount)} />)}
+                {[income.service?.commission, ...income.products.map((product) => product.commission)].filter((commission) => commission?.authorizedBy).map((commission, index) => (
                   <DetailRow
+                    key={`authorized-by-${index}`}
                     label="Autorizado por"
-                    value={`${income.commission.authorizedBy.firstName} ${income.commission.authorizedBy.lastName}`}
+                    value={`${commission?.authorizedBy?.firstName} ${commission?.authorizedBy?.lastName}`}
                   />
-                )}
+                ))}
               </>}
               {manager && <DetailRow label="Neto barbería" value={income.commission ? formatArs(income.commission.barbershopNet) : "Pendiente de backend"} />}
             </dl>
-            {income.commission?.fullServiceCommission && <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>}
+            {income.service?.commission?.fullCommission && <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>}
             {income.status === "voided" && <p className="mt-2 text-xs text-muted-foreground">Importes excluidos de las métricas activas.</p>}
           </section>
 
