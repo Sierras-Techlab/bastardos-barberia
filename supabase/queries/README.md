@@ -15,6 +15,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 9. `009_sales_domain.sql`
 10. `010_income_commissions_and_split_payments.sql`
 11. `011_customer_visits_and_fixed_schedules.sql`
+12. `012_owner_commission_invariant.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -146,6 +147,31 @@ where table_schema = 'public'
 ```
 
 Every listed V2 data column except the optional authorizer must report `NO`; all eight constraints must be present; the historical allocation query must return zero rows; and `income_payments.amount` must report `bigint`. `income_payments` must have RLS enabled and no grants to `PUBLIC`, `anon` or `authenticated`.
+
+Verify that owner accounts and future owner-attributed income cannot generate commissions:
+
+```sql
+select id, username, service_commission_rate, product_commission_rate
+from public.users
+where role_id = 1
+  and (service_commission_rate <> 0 or product_commission_rate <> 0);
+
+select conname
+from pg_constraint
+where conrelid = 'public.users'::regclass
+  and conname = 'users_owner_commission_rates_check';
+
+select tgname, tgenabled
+from pg_trigger
+where tgrelid in ('public.users'::regclass, 'public.incomes'::regclass)
+  and tgname in (
+    'enforce_owner_user_commission_rates',
+    'enforce_owner_income_commission'
+  )
+order by tgname;
+```
+
+The first query must return zero rows, the constraint must be present, and both triggers must report `tgenabled = 'O'`.
 
 Verify weekly schedules, attendance and their server-only routines:
 

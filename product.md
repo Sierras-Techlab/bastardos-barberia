@@ -9,6 +9,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 ## Users and permissions
 
 - Owner: full access. At least one active owner must always exist.
+- Owner sales belong entirely to the barbershop and never generate owner commission; future owner compensation must be modeled as a cash/expense movement.
 - Admin: full access for the current phase.
 - Employee: authenticated operational access; granular restrictions will be defined with future modules.
 - Accounts are created only by owner/admin. There is no self-registration or password recovery flow today.
@@ -20,7 +21,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
 | Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
-| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, configured rates, immutable commission/net snapshots and audited 100% service exception. |
+| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, configured employee/admin rates, zero owner commission, immutable commission/net snapshots and audited 100% service exception. |
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
@@ -33,7 +34,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Review and manually install migrations `010` and `011`, run their SQL Editor acceptance checks, then design daily cash. The complete commercial operations V2 workflow is implemented and verified locally; the configured project remains on scripts `001` through `009` until deployment is separately authorized.
+Review and manually install or verify migrations `010` through `012`, run their SQL Editor acceptance checks, then design daily cash. The complete commercial operations V2 workflow is implemented and verified locally; deployment remains separately authorized.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 
@@ -44,6 +45,8 @@ The service catalog and sale form now share persistent active services. Manager 
 The approved backend design makes customer phone the unique operational identity while allowing duplicate names and optional email. Every authenticated role may create and edit customers; only owner/admin may logically delete them.
 
 Each sale records both the authenticated registrant and responsible employee. Employees are forced to themselves; owner/admin may select an active user. Exact payment allocations and immutable commission/net snapshots are calculated atomically with items, inventory and visits. History and metrics scope employees to their responsible sales.
+
+An owner may remain the responsible person for a sale, but that sale records zero service/product commission and its full amount as barbershop net. The 100% commission exception is valid only for a non-owner responsible user.
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 

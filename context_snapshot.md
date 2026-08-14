@@ -13,10 +13,12 @@ Captured: 2026-08-14
 
 - User administration persists integer service/product commission rates from 0 through 100, initially zero.
 - The responsive user directory exposes each employee's service and product commission percentages, and commission inputs can be cleared and replaced without retaining a leading zero while still rejecting empty or invalid values on submit.
+- Owner commission configuration is displayed as `No aplica`; owner fields are hidden in the editor and both application services and PostgreSQL normalize owner service/product rates to zero.
 - Authenticated sessions hydrate both commission rates, so an employee loading `/incomes/new` receives the same persisted commission configuration used by manager-selected employees.
 - `/incomes/new` enforces role-aware responsible employees: employees are forced to themselves; owner/admin may choose any active user, loading every result page rather than truncating the selector at 100 users.
 - A sale accepts one or two distinct positive cash/transfer allocations whose exact sum is validated against server-authoritative prices and total.
 - PostgreSQL snapshots service/product commission bases, configured rates, independently rounded amounts, total commission, barbershop net and the optional manager-authorized 100% service exception.
+- Owner-attributed sales keep zero commission and the complete total as barbershop net; a future owner withdrawal belongs to cash/expenses rather than income commission.
 - Income creation remains idempotent and atomic with catalog snapshots, stock, inventory movements, payments and customer visits. Semantic request conflicts are rejected, while an identical retry still succeeds after mutable responsible-user state changes. User, service, product and customer rows remain locked through each new sale so concurrent deactivation or demotion cannot invalidate its authority snapshot.
 - `/incomes` scopes employees by responsible `employee_id`; owner/admin can view and filter all historical responsible users, including inactive and logically deleted accounts with retained sales. V2 metrics expose gross, commission, net, count, average and exact payment totals while excluding voids.
 - Income detail shows responsible employee, registering actor for managers, split payments, commission bases/rates/amounts, net and 100% authorizer. The confirmation flow shows the complete estimated sale before submission.
@@ -32,12 +34,13 @@ Captured: 2026-08-14
 
 - `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation, normalized bigint payments, overflow-safe immutable commission snapshots, locked catalog authorization and a manager-only historical-responsible projection.
 - `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains effective-dated weekly schedules, per-customer serialized occurrence generation/resolution, optimistic schedule concurrency, transactional customer V2 functions and sanitized visit projection.
-- `supabase/queries/README.md` documents ordered installation `001` through `011` and transaction-wrapped post-install acceptance checks.
-- The configured Supabase project now exposes the commission columns and `update_user_profile_v2` behavior from `010`; the complete `010`/`011` acceptance checklist has not been rerun, so deployment verification remains pending.
+- `supabase/queries/012_owner_commission_invariant.sql` normalizes owner rates, constrains future owner configuration and protects future owner-attributed income from commissions.
+- `supabase/queries/README.md` documents ordered installation `001` through `012` and transaction-wrapped post-install acceptance checks.
+- The configured Supabase project now exposes the commission columns and `update_user_profile_v2` behavior from `010`; the complete `010` through `012` acceptance checklist has not been rerun, and `012` has not been applied, so deployment verification remains pending.
 
 ## Verification
 
-- Full suite: 119 test files / 415 tests passed.
+- Full suite: 119 test files / 419 tests passed.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.
@@ -45,16 +48,18 @@ Captured: 2026-08-14
 - The workweek correction also has 15 focused passing tests covering calendar boundaries, server query scope and card behavior.
 - Session commission hydration has a red/green regression test, and the focused session, income-page and commission-preview suite passes 10 tests.
 - The focused user, customer and role-scoped dashboard verification passes 45 tests.
+- The focused owner-commission UI, service and income-form verification passes 36 tests.
 
 ## Known boundaries
 
-- SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010`/`011` still require manual PostgreSQL execution and verification.
+- SQL behavior is structurally covered by strict RPC adapter tests and documented executable SQL acceptance blocks, but migrations `010` through `012` still require manual PostgreSQL execution or verification.
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
+- The database owner-commission invariant requires manually executing `012_owner_commission_invariant.sql`; application-layer enforcement is already active locally.
 
 ## Recommended next task
 
-Review and manually execute migrations `010` and `011` in order, run every corresponding README verification query, then perform live owner/admin/employee smoke tests before integrating the branch.
+Review and manually execute or verify migrations `010` through `012` in order, run every corresponding README verification query, then perform live owner/admin/employee smoke tests before integrating the branch.
 
 ## Context maintenance rule
 

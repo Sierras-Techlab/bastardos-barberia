@@ -8,3 +8,24 @@ const data = { currentUser, employees: [employee], customers: [], services: [{ i
 const values = { employeeId: employee.id, customerId: null, serviceId: "service", products: [{ productId: "product", quantity: 1 }], paymentMode: "cash" as const, payments: [{ method: "cash" as const, amount: 26000 }], grantFullServiceCommission: false };
 it("previews separate service and product rates", () => { render(<CommissionPreview values={values} data={data} onGrantFullServiceCommission={vi.fn()} />); expect(screen.getByText(/Servicio 45% · Productos 10%/)).toBeVisible(); expect(screen.getByText(/Regalar el 100%/)).toBeVisible(); });
 it("hides the exceptional grant for the employee role", () => { render(<CommissionPreview values={values} data={{ ...data, currentUser: { ...currentUser, role: "employee" } }} onGrantFullServiceCommission={vi.fn()} />); expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument(); });
+it("treats an owner responsible for a sale as having no commission", () => {
+  const responsibleOwner = {
+    ...employee,
+    role: "owner" as const,
+    serviceCommissionRate: 45,
+    productCommissionRate: 10,
+  };
+
+  render(
+    <CommissionPreview
+      values={{ ...values, employeeId: responsibleOwner.id }}
+      data={{ ...data, employees: [responsibleOwner] }}
+      onGrantFullServiceCommission={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByText("Servicio 0% · Productos 0%")).toBeVisible();
+  expect(screen.getByText(/\$\s*0/)).toBeVisible();
+  expect(screen.getByText(/\$\s*26\.000/)).toBeVisible();
+  expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument();
+});

@@ -56,6 +56,7 @@ export const UserEditorDialog = ({
     String(commissionUser?.productCommissionRate ?? 0),
   );
   const [validationError, setValidationError] = useState<string | null>(null);
+  const ownerSelected = roleId === 1;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,8 +66,8 @@ export const UserEditorDialog = ({
       setValidationError("Completá nombre y apellido.");
       return;
     }
-    const parsedServiceCommissionRate = Number(serviceCommissionRate);
-    const parsedProductCommissionRate = Number(productCommissionRate);
+    const parsedServiceCommissionRate = ownerSelected ? 0 : Number(serviceCommissionRate);
+    const parsedProductCommissionRate = ownerSelected ? 0 : Number(productCommissionRate);
     const commissionRatesAreValid = [
       [serviceCommissionRate, parsedServiceCommissionRate],
       [productCommissionRate, parsedProductCommissionRate],
@@ -78,7 +79,7 @@ export const UserEditorDialog = ({
         Number(parsedRate) <= 100,
     );
 
-    if (!commissionRatesAreValid) {
+    if (!ownerSelected && !commissionRatesAreValid) {
       setValidationError("Las comisiones deben ser porcentajes enteros entre 0 y 100.");
       return;
     }
@@ -212,7 +213,12 @@ export const UserEditorDialog = ({
                 </select>
               </label>
 
-              <div className="grid gap-4 rounded-2xl bg-[#f7f6f3] p-4 sm:col-span-2 sm:grid-cols-2">
+              {ownerSelected ? (
+                <p className="rounded-2xl bg-[#f7f6f3] p-4 text-sm text-zinc-600 sm:col-span-2">
+                  Los ingresos del dueño pertenecen íntegramente a la barbería, por lo que sus comisiones no aplican.
+                </p>
+              ) : (
+                <div className="grid gap-4 rounded-2xl bg-[#f7f6f3] p-4 sm:col-span-2 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por servicios (%)
                   <Input
@@ -238,7 +244,8 @@ export const UserEditorDialog = ({
                   />
                 </label>
                 <p className="text-xs text-zinc-500 sm:col-span-2">Los cambios se aplicarán a ventas futuras y no modificarán el historial.</p>
-              </div>
+                </div>
+              )}
 
               {mode === "create" && (
                 <label className="space-y-1.5 text-sm font-medium sm:col-span-2">

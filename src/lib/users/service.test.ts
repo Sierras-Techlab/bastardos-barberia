@@ -55,6 +55,53 @@ describe("user lifecycle", () => {
     }));
   });
 
+  it("normalizes owner commission rates to zero when creating an account", async () => {
+    const deps = dependencies();
+
+    await createUser(owner, {
+      firstName: "Lautaro",
+      lastName: "Bastardos",
+      password: "password-2026",
+      roleId: 1,
+      serviceCommissionRate: 45,
+      productCommissionRate: 20,
+    }, deps);
+
+    expect(deps.users.create).toHaveBeenCalledWith(expect.objectContaining({
+      roleId: 1,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    }));
+  });
+
+  it("normalizes commission rates when a user becomes or remains an owner", async () => {
+    const employee = {
+      ...owner,
+      id: "00000000-0000-4000-8000-000000000002",
+      role: { id: 3 as const, name: "employee" as const },
+      serviceCommissionRate: 45,
+      productCommissionRate: 20,
+    };
+    const promoteDeps = dependencies();
+    vi.mocked(promoteDeps.users.findById).mockResolvedValue(employee);
+
+    await updateUser(owner, employee.id, { roleId: 1 }, promoteDeps);
+
+    expect(promoteDeps.users.update).toHaveBeenCalledWith(employee.id, {
+      roleId: 1,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    });
+
+    const ownerDeps = dependencies();
+    await updateUser(owner, owner.id, { serviceCommissionRate: 50 }, ownerDeps);
+
+    expect(ownerDeps.users.update).toHaveBeenCalledWith(owner.id, {
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    });
+  });
+
   it("prevents self-deactivation", async () => {
     const deps = dependencies();
     await expect(updateUser(owner, owner.id, { isActive: false }, deps))

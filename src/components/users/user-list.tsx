@@ -73,6 +73,13 @@ export const UserList = ({
         const fullName = user.firstName + " " + user.lastName;
         const isSelf = user.id === currentUserId;
         const selfRestrictionId = "self-action-restriction-" + user.id;
+        const commissionApplies = user.role.name !== "owner";
+        const serviceCommission = commissionApplies
+          ? `${user.serviceCommissionRate}%`
+          : "no aplica";
+        const productCommission = commissionApplies
+          ? `${user.productCommissionRate}%`
+          : "no aplica";
 
         return (
           <div
@@ -114,14 +121,14 @@ export const UserList = ({
                 </p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-zinc-500 md:hidden">
                   <span
-                    aria-label={`Comisión servicios de ${fullName}: ${user.serviceCommissionRate}%`}
+                    aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
                   >
-                    Servicios {user.serviceCommissionRate}%
+                    Servicios {commissionApplies ? serviceCommission : "No aplica"}
                   </span>
                   <span
-                    aria-label={`Comisión productos de ${fullName}: ${user.productCommissionRate}%`}
+                    aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
                   >
-                    Productos {user.productCommissionRate}%
+                    Productos {commissionApplies ? productCommission : "No aplica"}
                   </span>
                 </div>
               </div>
@@ -152,18 +159,18 @@ export const UserList = ({
 
             <div
               role="cell"
-              aria-label={`Comisión servicios de ${fullName}: ${user.serviceCommissionRate}%`}
+              aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
               className="hidden text-sm font-semibold text-zinc-700 md:block"
             >
-              {user.serviceCommissionRate}%
+              {commissionApplies ? serviceCommission : "No aplica"}
             </div>
 
             <div
               role="cell"
-              aria-label={`Comisión productos de ${fullName}: ${user.productCommissionRate}%`}
+              aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
               className="hidden text-sm font-semibold text-zinc-700 md:block"
             >
-              {user.productCommissionRate}%
+              {commissionApplies ? productCommission : "No aplica"}
             </div>
 
             <div role="cell" className="hidden text-xs text-zinc-500 md:block">

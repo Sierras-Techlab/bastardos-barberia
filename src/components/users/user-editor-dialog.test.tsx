@@ -109,4 +109,44 @@ describe("UserEditorDialog", () => {
     );
     expect(onUpdate).not.toHaveBeenCalled();
   });
+
+  it("hides owner commission fields and submits zero rates", async () => {
+    const browser = userEvent.setup();
+    const onCreate = vi.fn(async () => true);
+
+    render(
+      <UserEditorDialog
+        mode="create"
+        user={null}
+        roles={roles}
+        createdUser={null}
+        pending={false}
+        error={null}
+        onClose={vi.fn()}
+        onCreate={onCreate}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    await browser.type(screen.getByLabelText("Nombre"), "Lautaro");
+    await browser.type(screen.getByLabelText("Apellido"), "Bastardos");
+    await browser.clear(screen.getByLabelText("Comisión por servicios (%)"));
+    await browser.type(screen.getByLabelText("Comisión por servicios (%)"), "45");
+    await browser.clear(screen.getByLabelText("Comisión por productos (%)"));
+    await browser.type(screen.getByLabelText("Comisión por productos (%)"), "20");
+    await browser.selectOptions(screen.getByLabelText("Rol del usuario"), "1");
+
+    expect(screen.queryByLabelText("Comisión por servicios (%)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Comisión por productos (%)")).not.toBeInTheDocument();
+    expect(screen.getByText(/Los ingresos del dueño pertenecen íntegramente a la barbería/)).toBeVisible();
+
+    await browser.type(screen.getByLabelText("Contraseña inicial"), "Bastardos-2026");
+    await browser.click(screen.getByRole("button", { name: "Crear usuario" }));
+
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      roleId: 1,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    }));
+  });
 });
