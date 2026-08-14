@@ -5,6 +5,7 @@ import type { PaymentMethodUpdate } from "@/types/payment-method";
 import {
   createPaymentMethod,
   deactivatePaymentMethod,
+  getPaymentMethod,
   listPaymentMethods,
   updatePaymentMethod,
 } from "@/lib/payment-methods/service";
@@ -43,6 +44,28 @@ const dependencies = () => ({
 });
 
 describe("payment method domain", () => {
+  it("returns an inactive method to an authenticated history consumer", async () => {
+    const deps = dependencies();
+    const inactiveMethod = { ...method, isActive: false };
+    deps.methods.findById.mockResolvedValue(inactiveMethod);
+
+    await expect(getPaymentMethod(employee, method.id, deps)).resolves.toEqual(
+      inactiveMethod,
+    );
+
+    expect(deps.methods.findById).toHaveBeenCalledWith(method.id);
+  });
+
+  it("returns a safe not-found error when the requested method is absent", async () => {
+    const deps = dependencies();
+    deps.methods.findById.mockResolvedValue(null);
+
+    await expect(getPaymentMethod(manager, method.id, deps)).rejects.toMatchObject({
+      code: "PAYMENT_METHOD_NOT_FOUND",
+      status: 404,
+    });
+  });
+
   it("includes inactive methods for every authenticated history consumer", async () => {
     const managerDeps = dependencies();
     const employeeDeps = dependencies();

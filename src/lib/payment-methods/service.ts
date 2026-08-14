@@ -36,6 +36,16 @@ export const listPaymentMethods = async (
   paymentMethods: await dependencies.methods.list(true),
 });
 
+export const getPaymentMethod = async (
+  _actor: SafeUser,
+  id: string,
+  dependencies: PaymentMethodServiceDependencies = defaultDependencies,
+) => {
+  const method = await dependencies.methods.findById(id);
+  if (!method) throw paymentMethodNotFound();
+  return method;
+};
+
 export const createPaymentMethod = async (
   actor: SafeUser,
   input: PaymentMethodInput,
