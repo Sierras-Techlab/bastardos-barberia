@@ -47,7 +47,7 @@ end;
 $$;
 
 create trigger product_categories_set_fields
-before insert or update of name, is_active, updated_by
+before insert or update
 on public.product_categories
 for each row execute function public.set_product_category_fields();
 
@@ -120,6 +120,20 @@ alter table public.products drop column category;
 revoke execute on function public.create_product(text, text, integer, integer, uuid)
   from public, anon, authenticated, service_role;
 drop function public.create_product(text, text, integer, integer, uuid);
+
+-- Older development installations can retain the text category update
+-- overload. Remove it before the UUID contract is installed so PostgREST
+-- exposes exactly one canonical update_product signature.
+do $$
+begin
+  if to_regprocedure('public.update_product(uuid,text,text,integer,boolean,uuid)') is not null then
+    revoke execute on function public.update_product(
+      uuid, text, text, integer, boolean, uuid
+    ) from public, anon, authenticated, service_role;
+    drop function public.update_product(uuid, text, text, integer, boolean, uuid);
+  end if;
+end;
+$$;
 
 create function public.create_product(
   product_name text,

@@ -744,7 +744,20 @@ declare
   product_id uuid;
   seeded_category_count integer;
   orphan_count integer;
+  derived_normalized_name text;
 begin
+  if to_regprocedure('public.update_product(uuid,text,uuid,integer,boolean,uuid)') is null
+    or to_regprocedure('public.update_product(uuid,text,text,integer,boolean,uuid)') is not null
+    or (
+      select count(*)
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'update_product'
+    ) <> 1
+  then
+    raise exception 'PRODUCT_UPDATE_CANONICAL_RPC_OVERLOAD_PRESENT';
+  end if;
+
   select count(*) into seeded_category_count
   from public.product_categories
   where (normalized_name, name) in (
@@ -788,6 +801,21 @@ begin
   select id into target_category_id
   from public.product_categories
   where normalized_name = 'cuidado capilar';
+
+  update public.product_categories
+  set
+    name = '  Cuidado   capilar  ',
+    normalized_name = 'tampered',
+    updated_by = manager_id
+  where id = target_category_id;
+
+  select normalized_name into derived_normalized_name
+  from public.product_categories
+  where id = target_category_id;
+
+  if derived_normalized_name <> 'cuidado capilar' then
+    raise exception 'PRODUCT_CATEGORY_NORMALIZED_NAME_DESYNCHRONIZED';
+  end if;
 
   begin
     insert into public.product_categories (
@@ -841,8 +869,9 @@ rollback;
 ```
 
 The block must complete successfully. It verifies all four seeded mappings,
-zero null/orphan product references, global normalized-name uniqueness,
-manager-only mutation and the active-product deactivation conflict. The
-rollback preserves the pre-verification state.
+zero null/orphan product references, the sole canonical UUID `update_product`
+overload, normalized-name trigger integrity and global uniqueness, manager-only
+mutation and the active-product deactivation conflict. The rollback preserves
+the pre-verification state.
 
 Then configure `.env`, temporarily add the three `BOOTSTRAP_OWNER_*` values, and run `npm run bootstrap:owner`. Remove the temporary password value immediately afterward.
