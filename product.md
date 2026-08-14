@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-13
+Last updated: 2026-08-14
 
 ## Vision
 
@@ -19,7 +19,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Implemented | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner safety rules. |
-| Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance. |
+| Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
 | Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, configured rates, immutable commission/net snapshots and audited 100% service exception. |
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
@@ -47,7 +47,7 @@ Each sale records both the authenticated registrant and responsible employee. Em
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 
-Dashboard home now loads live weekly fixed-customer occurrences. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates and purchased item snapshots without financial or employee data.
+Dashboard home now loads live fixed-customer occurrences only from the current Buenos Aires date through Saturday. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates and purchased item snapshots without financial or employee data.
 
 ## Accepted authentication decisions
 

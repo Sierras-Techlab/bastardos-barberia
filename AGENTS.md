@@ -55,6 +55,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Income payments are normalized allocations whose positive cash/transfer amounts exactly equal the authoritative sale total. Commission bases, rates, component amounts, total and barbershop net are immutable sale snapshots.
 - Income history is scoped by responsible employee: owner/admin can read/filter every historical responsible user, including inactive or logically deleted accounts with retained sales, and employees can read only their own. Browser payloads never choose the actor, prices, total, commission amounts, timestamp or business date.
 - Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, split payments, product stock, inventory movements and customer visits. New-sale authorization/catalog rows remain locked through commit so concurrent role or lifecycle changes cannot invalidate the snapshot. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
+- Dashboard fixed-customer agenda dates use `America/Argentina/Buenos_Aires` and include only the current local date through Saturday; Sunday is empty and the range rotates on Monday.
 
 ## Repository map
 

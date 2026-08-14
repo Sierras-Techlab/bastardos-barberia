@@ -1,11 +1,11 @@
 # Context snapshot
 
-Captured: 2026-08-13
+Captured: 2026-08-14
 
 ## Repository state
 
-- Active isolated branch: `codex/commercial-operations-v2` in `.worktrees/commercial-operations-v2`, based on integrated `origin/dev` commit `05b479f`.
-- The primary checkout remains untouched on `feat/backend-models`.
+- Active branch: `feat/backend-models` in the primary checkout. Commercial operations V2 and the dashboard agenda correction are integrated directly on this branch for the user's GitHub push and pull request.
+- The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
 - Commercial operations V2 is implemented locally through migrations `010` and `011`; neither migration was applied to the configured Supabase project.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 
@@ -22,6 +22,7 @@ Captured: 2026-08-13
 - Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Versioned effective dates prevent historical fabrication; same-day reprogramming preserves today's prior appointment; reactivation starts today unless a preserved occurrence already exists; per-customer advisory locks and optimistic versions prevent deadlocks and lost updates.
 - The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. The response intentionally excludes prices, totals, payments, commissions and user identities.
 - Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
+- Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
 
 ## SQL and deployment state
@@ -33,11 +34,12 @@ Captured: 2026-08-13
 
 ## Verification
 
-- Full suite: 118 test files / 404 tests passed.
+- Full suite: 119 test files / 410 tests passed.
 - ESLint passed with no warnings.
 - Next.js 16.3 production build passed, including all new API routes.
 - TypeScript and `git diff --check` passed.
 - Local runtime was Node 24.17/npm 11.13; repository target remains Node 24.18/npm 11.16.
+- The workweek correction also has 15 focused passing tests covering calendar boundaries, server query scope and card behavior.
 
 ## Known boundaries
 
