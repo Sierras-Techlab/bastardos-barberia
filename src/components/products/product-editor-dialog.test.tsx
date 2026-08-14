@@ -133,3 +133,29 @@ it("only offers active categories for product creation", () => {
   expect(screen.getByRole("option", { name: "Cuidado capilar" })).toBeVisible();
   expect(screen.queryByRole("option", { name: "Fragancias" })).not.toBeInTheDocument();
 });
+
+it("replaces an inactive product category with the first active category before saving", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn();
+  const productWithInactiveCategory = {
+    ...products.find((product) => product.category.id === "20000000-0000-4000-8000-000000000004")!,
+    category: categories[2]!,
+  };
+  render(
+    <ProductEditorDialog
+      mode="edit"
+      product={productWithInactiveCategory}
+      products={products}
+      categories={categories}
+      onClose={vi.fn()}
+      onSave={onSave}
+    />,
+  );
+
+  expect(screen.getByLabelText("Categoría")).toHaveValue(categories[0]!.id);
+  await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({ categoryId: categories[0]!.id }),
+  );
+});

@@ -2,6 +2,7 @@
 
 import { Pencil, Plus, Tags } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,14 @@ const messageFor = (error: unknown) =>
     ? error.message
     : "No se pudo actualizar la categoría.";
 
+const hasCode = (error: unknown, code: string) =>
+  Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === code,
+  );
+
 export const ProductCategoriesDialog = ({
   categories: initialCategories,
   categoryClient,
@@ -43,6 +52,9 @@ export const ProductCategoriesDialog = ({
   const [editingName, setEditingName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [blockedDeactivationIds, setBlockedDeactivationIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const replaceCategories = (next: ProductCategory[]) => {
     setCategories(next);
@@ -58,6 +70,7 @@ export const ProductCategoriesDialog = ({
       const category = await categoryClient.create({ name: newName });
       replaceCategories([...categories, category]);
       setNewName("");
+      toast.success("Categoría creada correctamente.");
     } catch (caught) {
       setError(messageFor(caught));
     } finally {
@@ -76,6 +89,7 @@ export const ProductCategoriesDialog = ({
         categories.map((current) => current.id === category.id ? category : current),
       );
       setEditing(null);
+      toast.success("Categoría actualizada correctamente.");
     } catch (caught) {
       setError(messageFor(caught));
     } finally {
@@ -94,7 +108,15 @@ export const ProductCategoriesDialog = ({
       replaceCategories(
         categories.map((current) => current.id === updated.id ? updated : current),
       );
+      toast.success(
+        category.isActive
+          ? "Categoría desactivada correctamente."
+          : "Categoría reactivada correctamente.",
+      );
     } catch (caught) {
+      if (category.isActive && hasCode(caught, "PRODUCT_CATEGORY_IN_USE")) {
+        setBlockedDeactivationIds((current) => new Set(current).add(category.id));
+      }
       setError(messageFor(caught));
     } finally {
       setIsSaving(false);
@@ -176,7 +198,10 @@ export const ProductCategoriesDialog = ({
                   type="button"
                   variant={category.isActive ? "outline" : "default"}
                   className="rounded-xl"
-                  disabled={isSaving}
+                  disabled={
+                    isSaving ||
+                    (category.isActive && blockedDeactivationIds.has(category.id))
+                  }
                   onClick={() => setActive(category)}
                 >
                   {category.isActive ? `Desactivar ${category.name}` : `Reactivar ${category.name}`}

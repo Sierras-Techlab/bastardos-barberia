@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import { ProductCategoriesDialog } from "@/components/products/product-categories-dialog";
+import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 
 const active = {
   id: "20000000-0000-4000-8000-000000000001",
@@ -25,19 +26,13 @@ it("creates, renames and replaces category records from API responses", async ()
     deactivate: vi.fn(),
   };
   const onCategoriesChange = vi.fn();
-  render(
-    <ProductCategoriesDialog
-      categories={[active, inactive]}
-      categoryClient={categoryClient}
-      onCategoriesChange={onCategoriesChange}
-      onClose={vi.fn()}
-    />,
-  );
+  render(<><ProductCategoriesDialog categories={[active, inactive]} categoryClient={categoryClient} onCategoriesChange={onCategoriesChange} onClose={vi.fn()} /><DashboardToaster /></>);
 
   await user.type(screen.getByLabelText("Nueva categoría"), "Accesorios");
   await user.click(screen.getByRole("button", { name: "Agregar categoría" }));
   expect(categoryClient.create).toHaveBeenCalledWith({ name: "Accesorios" });
   expect(onCategoriesChange).toHaveBeenCalledWith([active, inactive, created]);
+  expect(await screen.findByText("Categoría creada correctamente.")).toBeVisible();
 
   await user.click(screen.getByRole("button", { name: "Renombrar Cuidado capilar" }));
   const dialog = screen.getByRole("dialog");
@@ -47,6 +42,7 @@ it("creates, renames and replaces category records from API responses", async ()
   await user.click(within(dialog).getByRole("button", { name: "Guardar nombre" }));
   expect(categoryClient.update).toHaveBeenCalledWith(active.id, { name: "Cuidado del cabello" });
   expect(onCategoriesChange).toHaveBeenLastCalledWith([renamed, inactive, created]);
+  expect(await screen.findByText("Categoría actualizada correctamente.")).toBeVisible();
 });
 
 it("shows a safe conflict and supports reactivation", async () => {
@@ -60,18 +56,16 @@ it("shows a safe conflict and supports reactivation", async () => {
       }),
     ),
   };
-  render(
-    <ProductCategoriesDialog
-      categories={[active, inactive]}
-      categoryClient={categoryClient}
-      onCategoriesChange={vi.fn()}
-      onClose={vi.fn()}
-    />,
-  );
+  render(<><ProductCategoriesDialog categories={[active, inactive]} categoryClient={categoryClient} onCategoriesChange={vi.fn()} onClose={vi.fn()} /><DashboardToaster /></>);
 
   await user.click(screen.getByRole("button", { name: "Desactivar Cuidado capilar" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("productos activos");
+  const deactivate = screen.getByRole("button", { name: "Desactivar Cuidado capilar" });
+  expect(deactivate).toBeDisabled();
+  await user.click(deactivate);
+  expect(categoryClient.deactivate).toHaveBeenCalledOnce();
 
   await user.click(screen.getByRole("button", { name: "Reactivar Fragancias" }));
   expect(categoryClient.update).toHaveBeenCalledWith(inactive.id, { isActive: true });
+  expect(await screen.findByText("Categoría reactivada correctamente.")).toBeVisible();
 });

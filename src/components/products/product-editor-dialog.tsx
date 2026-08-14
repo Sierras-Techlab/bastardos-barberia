@@ -45,8 +45,11 @@ export const ProductEditorDialog = ({
 }: ProductEditorDialogProps) => {
   const [name, setName] = useState(product?.name ?? "");
   const activeCategories = categories.filter((category) => category.isActive);
+  const currentCategory = product
+    ? categories.find((category) => category.id === product.category.id)
+    : null;
   const [categoryId, setCategoryId] = useState(
-    product?.category.id ?? activeCategories[0]?.id ?? "",
+    currentCategory?.isActive ? currentCategory.id : (activeCategories[0]?.id ?? ""),
   );
   const [price, setPrice] = useState(product ? String(product.price) : "");
   const [stock, setStock] = useState(product ? String(product.stock) : "");

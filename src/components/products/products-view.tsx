@@ -90,6 +90,15 @@ export const ProductsView = ({
     filters.activeState !== "all";
 
   const clearFilters = () => setFilters(initialFilters);
+  const replaceCategories = (next: ProductCategory[]) => {
+    setCategories(next);
+    setCatalogProducts((current) =>
+      current.map((product) => {
+        const category = next.find((item) => item.id === product.category.id);
+        return category ? { ...product, category } : product;
+      }),
+    );
+  };
   const replaceProduct = (updated: CatalogProduct) =>
     setCatalogProducts((current) =>
       current.map((product) =>
@@ -222,7 +231,7 @@ export const ProductsView = ({
         <ProductCategoriesDialog
           categories={categories}
           categoryClient={categoryClient}
-          onCategoriesChange={setCategories}
+          onCategoriesChange={replaceCategories}
           onClose={() => setIsCategoryDialogOpen(false)}
         />
       )}

@@ -259,3 +259,54 @@ it("only exposes category administration to managers", () => {
   rerender(<ProductsView data={data} categories={categories} canManage={false} />);
   expect(screen.queryByRole("button", { name: "Administrar categorías" })).not.toBeInTheDocument();
 });
+
+it("synchronizes renamed and deactivated categories into product cards and filters", async () => {
+  const user = userEvent.setup();
+  const fragrance = categories.find(
+    (category) => category.id === "20000000-0000-4000-8000-000000000004",
+  )!;
+  const renamed = { ...fragrance, name: "Perfumería" };
+  const categoryClient = {
+    create: vi.fn(),
+    update: vi.fn().mockResolvedValue(renamed),
+    deactivate: vi.fn().mockResolvedValue({ ...renamed, isActive: false }),
+  };
+  render(
+    <>
+      <ProductsView
+        data={data}
+        categories={categories}
+        canManage
+        categoryClient={categoryClient}
+      />
+      <DashboardToaster />
+    </>,
+  );
+
+  await user.click(screen.getByRole("button", { name: "Administrar categorías" }));
+  await user.click(screen.getByRole("button", { name: "Renombrar Fragancias" }));
+  const renameInput = screen.getByLabelText("Nombre de la categoría");
+  await user.clear(renameInput);
+  await user.type(renameInput, "Perfumería");
+  await user.click(screen.getByRole("button", { name: "Guardar nombre" }));
+  expect(await screen.findByText("Categoría actualizada correctamente.")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Desactivar Perfumería" }));
+  expect(await screen.findByText("Categoría desactivada correctamente.")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Cerrar" }));
+  await user.selectOptions(screen.getByLabelText("Categoría"), fragrance.id);
+  expect(screen.getByLabelText("Categoría")).toHaveValue(fragrance.id);
+  expect(screen.getByRole("option", { name: "Perfumería (inactiva)" })).toBeVisible();
+  expect(
+    within(screen.getByRole("table", { name: /catálogo de productos/i })).getByText(
+      "Perfumería",
+    ),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole("list", { name: /catálogo móvil de productos/i })).getByText(
+      "Perfumería",
+    ),
+  ).toBeVisible();
+  expect(screen.getAllByText("Perfume")).toHaveLength(2);
+});
