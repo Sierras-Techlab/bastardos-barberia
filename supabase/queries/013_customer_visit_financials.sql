@@ -1,5 +1,5 @@
 -- Bastardos Barberia: immutable financial detail in customer visit history.
--- Run after 012_owner_commission_rules.sql as one complete migration.
+-- Run after 012_owner_commission_invariant.sql as one complete migration.
 
 begin;
 

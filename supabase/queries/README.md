@@ -15,7 +15,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 9. `009_sales_domain.sql`
 10. `010_income_commissions_and_split_payments.sql`
 11. `011_customer_visits_and_fixed_schedules.sql`
-12. `012_owner_commission_rules.sql`
+12. `012_owner_commission_invariant.sql`
 13. `013_customer_visit_financials.sql`
 14. `014_product_categories.sql`
 15. `015_product_item_commissions.sql`
