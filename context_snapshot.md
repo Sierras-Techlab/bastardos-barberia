@@ -10,7 +10,7 @@ Captured: 2026-08-15
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016` is implemented locally end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The migration remains pending manual Supabase installation.
+- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The configured Supabase project has the payment catalog installed, but its canonical `create_income` function must be refreshed with the corrected `016` script before product-bearing sales can be recorded.
 
 ## Delivered behavior
 
@@ -73,6 +73,7 @@ Captured: 2026-08-15
 - Payment-method Tasks 3–5 passed their RED/GREEN contract, UI and presentation groups; the combined affected-domain slice passed 46 files / 176 tests.
 - After Tasks 3–5, the full suite passed 134 files / 504 tests, ESLint passed with no warnings, TypeScript and `git diff --check` passed, and the Next.js 16.3 production build completed successfully.
 - After restoring the card-based payment selector, the focused selector/form slice passed 2 files / 18 tests and the full suite passed 134 files / 510 tests. ESLint passed with no warnings, `git diff --check` passed, the Next.js 16.3 webpack production build succeeded and desktop/mobile browser validation found no console errors or layout overflow.
+- The migration `016` product-availability regression reproduced as a failing structural test and passed after projecting `p.is_active` into the locked product record consumed by `create_income`.
 
 ## Known boundaries
 
@@ -81,11 +82,11 @@ Captured: 2026-08-15
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- Dynamic payment methods are connected throughout the application contracts, UI and migration `016`, but the configured Supabase project still exposes the legacy payment shape until that migration is installed; do not deploy this application slice before the ordered `010` through `016` installation is completed.
+- The configured Supabase project exposes the dynamic payment catalog, but its installed `create_income` function still raises PostgreSQL `42703` for product-bearing sales until the corrected `016_payment_methods.sql` is run again in full.
 
 ## Recommended next task
 
-Apply migrations `010` through `016` manually in the configured Supabase project, run the documented structural and acceptance checks, and only then exercise the end-to-end commercial flow against that database.
+Run the corrected `016_payment_methods.sql` again in full in the configured Supabase project, then verify one product-only sale and one service-plus-product sale end to end.
 
 ## Context maintenance rule
 

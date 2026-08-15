@@ -482,7 +482,7 @@ begin
   end if;
 
   for product_record in
-    select p.id, p.name, p.price, p.stock, requested.quantity,
+    select p.id, p.name, p.price, p.stock, p.is_active, requested.quantity,
       coalesce((requested.item->>'grantFullCommission')::boolean, false) as grant_full_commission
     from public.products p
     join (

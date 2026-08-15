@@ -23,6 +23,8 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
+If `016_payment_methods.sql` was installed before the product-availability projection fix, run the current file again in full. The script is transactional and replaces the canonical `create_income` function; this refresh is required before recording any income that contains a product.
+
 ## Verify
 
 ```sql
