@@ -1,10 +1,11 @@
 "use client";
 
-import { Pencil, Plus, WalletCards } from "lucide-react";
+import { Pencil, Plus, Trash2, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { PaymentMethodDeleteDialog } from "@/components/incomes/payment-method-delete-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { PaymentMethodClient } from "@/lib/payment-methods/client";
@@ -12,7 +13,7 @@ import type { PaymentMethod } from "@/types/payment-method";
 
 type Props = {
   methods: PaymentMethod[];
-  paymentMethodClient: Pick<PaymentMethodClient, "create" | "update" | "deactivate">;
+  paymentMethodClient: Pick<PaymentMethodClient, "create" | "update" | "deactivate" | "remove">;
   onMethodsChange: (methods: PaymentMethod[]) => void;
   onClose: () => void;
 };
@@ -27,6 +28,11 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
   const [editingName, setEditingName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [deleting, setDeleting] = useState<PaymentMethod | null>(null);
+
+  const inactiveCount = methods.filter((method) => !method.isActive).length;
+  const visibleMethods = methods.filter((method) => method.isActive !== showInactive);
 
   const replace = (next: PaymentMethod[]) => {
     setMethods(next);
@@ -84,6 +90,12 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
     }
   };
 
+  const remove = async (method: PaymentMethod) => {
+    await paymentMethodClient.remove(method.id);
+    replace(methods.filter((current) => current.id !== method.id));
+    toast.success("Medio de pago eliminado correctamente.");
+  };
+
   return (
     <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-xl">
@@ -105,21 +117,57 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           </form>
         )}
 
-        <ul className="mt-4 divide-y divide-black/5 rounded-xl border border-black/5">
-          {methods.map((method) => (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium">{showInactive ? "Medios desactivados" : "Medios activos"}</p>
+            <p className="text-xs text-muted-foreground">
+              {showInactive ? "Podés restaurarlos o eliminarlos si nunca se usaron." : "Disponibles al momento de registrar una venta."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="shrink-0 rounded-xl"
+            onClick={() => {
+              setShowInactive((current) => !current);
+              setEditing(null);
+              setError(null);
+            }}
+            disabled={saving}
+          >
+            {showInactive ? "Volver a activos" : `Ver desactivados (${inactiveCount})`}
+          </Button>
+        </div>
+
+        {visibleMethods.length > 0 ? (
+          <ul className="divide-y divide-black/5 rounded-xl border border-black/5">
+          {visibleMethods.map((method) => (
             <li key={method.id} className="flex items-center justify-between gap-3 p-3">
               <div className="min-w-0"><p className="truncate font-medium">{method.name}</p><p className="text-xs text-muted-foreground">{method.isActive ? "Activo" : "Inactivo"}</p></div>
               <div className="flex shrink-0 gap-1">
                 <Button type="button" variant="ghost" size="icon" aria-label={`Renombrar ${method.name}`} disabled={saving} onClick={() => { setEditing(method); setEditingName(method.name); setError(null); }}><Pencil /></Button>
+                <Button type="button" variant="ghost" size="icon" aria-label={`Eliminar ${method.name}`} disabled={saving} onClick={() => { setDeleting(method); setError(null); }} className="text-destructive hover:bg-red-50 hover:text-destructive"><Trash2 /></Button>
                 <Button type="button" variant={method.isActive ? "outline" : "default"} className="rounded-xl" disabled={saving} onClick={() => setActive(method)}>{method.isActive ? `Desactivar ${method.name}` : `Reactivar ${method.name}`}</Button>
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        ) : (
+          <p className="rounded-xl border border-dashed border-black/10 bg-[#f7f6f3] px-4 py-6 text-center text-sm text-muted-foreground">
+            {showInactive ? "No hay medios de pago desactivados." : "Todavía no hay medios de pago activos."}
+          </p>
+        )}
 
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         <DialogFooter className="-mx-5 -mb-5 mt-5 p-5"><Button type="button" variant="outline" onClick={onClose} disabled={saving} className="rounded-xl">Cerrar</Button></DialogFooter>
       </DialogContent>
+      {deleting && (
+        <PaymentMethodDeleteDialog
+          method={deleting}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove(deleting)}
+        />
+      )}
     </Dialog>
   );
 };

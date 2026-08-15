@@ -17,7 +17,7 @@ import { toRoleSafeIncomeQuery } from "@/lib/incomes/income-view-query";
 import { paymentMethodClient as defaultPaymentMethodClient, type PaymentMethodClient } from "@/lib/payment-methods/client";
 import type { PaymentMethod } from "@/types/payment-method";
 
-type Props = { data: PaginatedIncomes; initialQuery: IncomeListQuery; currentUser: CurrentUser; employees: Employee[]; paymentMethods: PaymentMethod[]; canViewAll: boolean; canVoid: boolean; incomeClient?: Pick<IncomeClient, "list" | "void">; paymentMethodClient?: Pick<PaymentMethodClient, "create" | "update" | "deactivate"> };
+type Props = { data: PaginatedIncomes; initialQuery: IncomeListQuery; currentUser: CurrentUser; employees: Employee[]; paymentMethods: PaymentMethod[]; canViewAll: boolean; canVoid: boolean; incomeClient?: Pick<IncomeClient, "list" | "void">; paymentMethodClient?: Pick<PaymentMethodClient, "create" | "update" | "deactivate" | "remove"> };
 const asFilters = (query: IncomeListQuery): IncomeListFilters => ({ query: query.query ?? "", dateFrom: query.dateFrom ?? "", dateTo: query.dateTo ?? "", employeeId: query.userId ?? "", paymentMethodId: query.paymentMethodId ?? "all", kind: query.kind ?? "all", status: query.status ?? "all" });
 
 export const IncomesView = ({ data, initialQuery, currentUser, employees, paymentMethods: initialPaymentMethods, canViewAll, canVoid, incomeClient = defaultIncomeClient, paymentMethodClient = defaultPaymentMethodClient }: Props) => {
