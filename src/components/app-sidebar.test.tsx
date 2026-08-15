@@ -93,6 +93,22 @@ it("links managers to the active user administration page", () => {
   expect(link).toHaveAttribute("data-active");
 });
 
+it("keeps payment-method administration contextual to incomes", () => {
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={owner} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  expect(screen.queryByText("Medios de pago")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ingresos" })).toHaveAttribute(
+    "href",
+    "/incomes",
+  );
+});
+
 it("keeps incomes active on nested income routes", () => {
   pathname.value = "/incomes/new";
   render(
