@@ -5,7 +5,7 @@ import {
   updateProductCategorySchema,
 } from "@/lib/product-categories/schemas";
 import {
-  deactivateProductCategory,
+  deleteProductCategory,
   getProductCategory,
   updateProductCategory,
 } from "@/lib/product-categories/service";
@@ -46,7 +46,7 @@ export async function DELETE(
   try {
     const { user } = await requireManager();
     const id = productCategoryIdSchema.parse((await context.params).id);
-    return successResponse(await deactivateProductCategory(user, id));
+    return successResponse(await deleteProductCategory(user, id));
   } catch (error) {
     return errorResponse(error);
   }

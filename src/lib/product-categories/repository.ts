@@ -59,6 +59,16 @@ const mutationFailure = (
       409,
     );
   }
+  if (
+    error.message === "PRODUCT_CATEGORY_HAS_PRODUCTS" ||
+    (operation === "delete product category" && error.code === "23503")
+  ) {
+    throw new AppError(
+      "PRODUCT_CATEGORY_HAS_PRODUCTS",
+      "Esta categoría tiene productos asociados. Desactivala para conservar el catálogo y el historial.",
+      409,
+    );
+  }
   return databaseFailure(operation, error);
 };
 
@@ -137,5 +147,17 @@ export const productCategoryRepository: ProductCategoryRepository = {
     if (error) mutationFailure("deactivate product category", error);
     if (typeof data !== "string") return null;
     return findProductCategoryById(data);
+  },
+
+  async remove(actorId, id) {
+    const { data, error } = await getSupabaseAdmin().rpc(
+      "delete_product_category",
+      {
+        actor_user_id: actorId,
+        target_category_id: id,
+      },
+    );
+    if (error) mutationFailure("delete product category", error);
+    return typeof data === "string" ? data : null;
   },
 };

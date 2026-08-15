@@ -14,6 +14,7 @@ export type ProductCategoryRepository = {
     input: ProductCategoryUpdate,
   ): Promise<ProductCategory | null>;
   deactivate(actorId: string, id: string): Promise<ProductCategory | null>;
+  remove(actorId: string, id: string): Promise<string | null>;
 };
 
 export type ProductCategoryServiceDependencies = {

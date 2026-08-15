@@ -16,16 +16,6 @@ const categoryNotFound = () =>
     404,
   );
 
-const assertNotDeactivationAttempt = (input: ProductCategoryUpdate) => {
-  if ((input as { isActive?: boolean }).isActive === false) {
-    throw new AppError(
-      "PRODUCT_CATEGORY_DEACTIVATION_REQUIRED",
-      "Para desactivar una categoría, usá la acción correspondiente.",
-      400,
-    );
-  }
-};
-
 const defaultDependencies: ProductCategoryServiceDependencies = {
   categories: productCategoryRepository,
 };
@@ -65,8 +55,9 @@ export const updateProductCategory = async (
   dependencies: ProductCategoryServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
-  assertNotDeactivationAttempt(input);
-  const category = await dependencies.categories.update(actor.id, id, input);
+  const category = input.isActive === false
+    ? await dependencies.categories.deactivate(actor.id, id)
+    : await dependencies.categories.update(actor.id, id, input);
   if (!category) throw categoryNotFound();
   return category;
 };
@@ -80,4 +71,15 @@ export const deactivateProductCategory = async (
   const category = await dependencies.categories.deactivate(actor.id, id);
   if (!category) throw categoryNotFound();
   return category;
+};
+
+export const deleteProductCategory = async (
+  actor: SafeUser,
+  id: string,
+  dependencies: ProductCategoryServiceDependencies = defaultDependencies,
+) => {
+  assertManager(actor);
+  const deletedId = await dependencies.categories.remove(actor.id, id);
+  if (!deletedId) throw categoryNotFound();
+  return { id: deletedId };
 };

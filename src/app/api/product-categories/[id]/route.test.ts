@@ -6,12 +6,14 @@ const {
   getProductCategory,
   updateProductCategory,
   deactivateProductCategory,
+  deleteProductCategory,
 } = vi.hoisted(() => ({
   requireUser: vi.fn(),
   requireManager: vi.fn(),
   getProductCategory: vi.fn(),
   updateProductCategory: vi.fn(),
   deactivateProductCategory: vi.fn(),
+  deleteProductCategory: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requireUser, requireManager }));
@@ -19,6 +21,7 @@ vi.mock("@/lib/product-categories/service", () => ({
   getProductCategory,
   updateProductCategory,
   deactivateProductCategory,
+  deleteProductCategory,
 }));
 
 import { AppError } from "@/lib/auth/errors";
@@ -84,7 +87,8 @@ describe("/api/product-categories/:id", () => {
     expect(reactivated.status).toBe(200);
   });
 
-  it("rejects an invalid category id and direct deactivation patch", async () => {
+  it("rejects an invalid category id and accepts deactivation patch", async () => {
+    updateProductCategory.mockResolvedValue({ ...category, isActive: false });
     const invalidId = await GET(
       new Request("http://localhost/api/product-categories/not-a-uuid"),
       { params: Promise.resolve({ id: "not-a-uuid" }) },
@@ -98,16 +102,18 @@ describe("/api/product-categories/:id", () => {
     );
 
     expect(getProductCategory).not.toHaveBeenCalled();
-    expect(updateProductCategory).not.toHaveBeenCalled();
+    expect(updateProductCategory).toHaveBeenCalledWith(actor, id, {
+      isActive: false,
+    });
     expect(invalidId.status).toBe(400);
-    expect(invalidUpdate.status).toBe(400);
+    expect(invalidUpdate.status).toBe(200);
   });
 
-  it("deactivates through the dedicated service and propagates conflicts", async () => {
-    deactivateProductCategory.mockRejectedValue(
+  it("deletes through the dedicated service and propagates conflicts", async () => {
+    deleteProductCategory.mockRejectedValue(
       new AppError(
-        "PRODUCT_CATEGORY_IN_USE",
-        "No podés desactivar una categoría en uso.",
+        "PRODUCT_CATEGORY_HAS_PRODUCTS",
+        "Esta categoría tiene productos asociados. Desactivala para conservar el catálogo y el historial.",
         409,
       ),
     );
@@ -121,12 +127,13 @@ describe("/api/product-categories/:id", () => {
 
     expect(requireManager).toHaveBeenCalledTimes(1);
     expect(requireUser).not.toHaveBeenCalled();
-    expect(deactivateProductCategory).toHaveBeenCalledWith(actor, id);
+    expect(deleteProductCategory).toHaveBeenCalledWith(actor, id);
+    expect(deactivateProductCategory).not.toHaveBeenCalled();
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: {
-        code: "PRODUCT_CATEGORY_IN_USE",
-        message: "No podés desactivar una categoría en uso.",
+        code: "PRODUCT_CATEGORY_HAS_PRODUCTS",
+        message: "Esta categoría tiene productos asociados. Desactivala para conservar el catálogo y el historial.",
       },
     });
   });

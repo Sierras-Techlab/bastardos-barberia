@@ -15,11 +15,7 @@ export const createProductCategorySchema = z
 export const updateProductCategorySchema = z
   .object({
     name: categoryNameSchema.optional(),
-    isActive: z
-      .literal(true, {
-        error: "Para desactivar una categoría, usá la acción correspondiente.",
-      })
-      .optional(),
+    isActive: z.boolean().optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {

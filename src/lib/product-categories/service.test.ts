@@ -7,6 +7,7 @@ import type {
 } from "@/lib/product-categories/contracts";
 import {
   createProductCategory,
+  deleteProductCategory,
   deactivateProductCategory,
   getProductCategory,
   listProductCategories,
@@ -49,6 +50,7 @@ const dependencies = (): ProductCategoryServiceDependencies => ({
     create: vi.fn().mockResolvedValue(category),
     update: vi.fn().mockResolvedValue(category),
     deactivate: vi.fn().mockResolvedValue(category),
+    remove: vi.fn().mockResolvedValue(category.id),
   } satisfies ProductCategoryRepository,
 });
 
@@ -77,10 +79,13 @@ describe("product category domain", () => {
       .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
     await expect(deactivateProductCategory(employee, category.id, deps))
       .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(deleteProductCategory(employee, category.id, deps))
+      .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
 
     expect(deps.categories.create).not.toHaveBeenCalled();
     expect(deps.categories.update).not.toHaveBeenCalled();
     expect(deps.categories.deactivate).not.toHaveBeenCalled();
+    expect(deps.categories.remove).not.toHaveBeenCalled();
   });
 
   it("propagates the authenticated manager to every mutation", async () => {
@@ -89,6 +94,9 @@ describe("product category domain", () => {
     await createProductCategory(manager, { name: category.name }, deps);
     await updateProductCategory(manager, category.id, { isActive: true }, deps);
     await deactivateProductCategory(manager, category.id, deps);
+    await expect(deleteProductCategory(manager, category.id, deps)).resolves.toEqual({
+      id: category.id,
+    });
 
     expect(deps.categories.create).toHaveBeenCalledWith(manager.id, {
       name: category.name,
@@ -97,21 +105,21 @@ describe("product category domain", () => {
       isActive: true,
     });
     expect(deps.categories.deactivate).toHaveBeenCalledWith(manager.id, category.id);
+    expect(deps.categories.remove).toHaveBeenCalledWith(manager.id, category.id);
   });
 
-  it("rejects direct deactivation attempts before repository persistence", async () => {
+  it("routes false active updates through canonical deactivation", async () => {
     const deps = dependencies();
 
-    await expect(
-      updateProductCategory(
-        manager,
-        category.id,
-        { isActive: false } as unknown as ProductCategoryUpdate,
-        deps,
-      ),
-    ).rejects.toMatchObject({ status: 400 });
+    await expect(updateProductCategory(
+      manager,
+      category.id,
+      { isActive: false } as ProductCategoryUpdate,
+      deps,
+    )).resolves.toEqual(category);
 
     expect(deps.categories.update).not.toHaveBeenCalled();
+    expect(deps.categories.deactivate).toHaveBeenCalledWith(manager.id, category.id);
   });
 
   it("does not expose missing or inactive categories to employees", async () => {
@@ -134,6 +142,10 @@ describe("product category domain", () => {
     vi.mocked(deps.categories.update).mockResolvedValue(null);
 
     await expect(updateProductCategory(manager, category.id, { name: "Fragancias" }, deps))
+      .rejects.toMatchObject({ code: "PRODUCT_CATEGORY_NOT_FOUND", status: 404 });
+
+    vi.mocked(deps.categories.remove).mockResolvedValue(null);
+    await expect(deleteProductCategory(manager, category.id, deps))
       .rejects.toMatchObject({ code: "PRODUCT_CATEGORY_NOT_FOUND", status: 404 });
   });
 });

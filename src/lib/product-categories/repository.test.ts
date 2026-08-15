@@ -100,6 +100,19 @@ describe("product category repository", () => {
     });
   });
 
+  it("deletes through the canonical safe function", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: row.id, error: null });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+
+    await expect(productCategoryRepository.remove(row.updated_by, row.id))
+      .resolves.toBe(row.id);
+
+    expect(rpc).toHaveBeenCalledWith("delete_product_category", {
+      actor_user_id: row.updated_by,
+      target_category_id: row.id,
+    });
+  });
+
   it("maps duplicate names and categories in use to stable conflicts", async () => {
     const createQuery = {
       insert: vi.fn(),
@@ -125,5 +138,21 @@ describe("product category repository", () => {
       .rejects.toMatchObject({ code: "PRODUCT_CATEGORY_NAME_EXISTS", status: 409 });
     await expect(productCategoryRepository.deactivate(row.updated_by, row.id))
       .rejects.toMatchObject({ code: "PRODUCT_CATEGORY_IN_USE", status: 409 });
+  });
+
+  it("maps referenced category deletion to stable guidance", async () => {
+    getSupabaseAdmin.mockReturnValue({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "P0001", message: "PRODUCT_CATEGORY_HAS_PRODUCTS" },
+      }),
+    });
+
+    await expect(productCategoryRepository.remove(row.updated_by, row.id))
+      .rejects.toMatchObject({
+        code: "PRODUCT_CATEGORY_HAS_PRODUCTS",
+        status: 409,
+        message: "Esta categoría tiene productos asociados. Desactivala para conservar el catálogo y el historial.",
+      });
   });
 });

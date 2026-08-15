@@ -22,7 +22,9 @@ describe("product category boundary schemas", () => {
       .toBe(false);
     expect(updateProductCategorySchema.safeParse({}).success).toBe(false);
     expect(updateProductCategorySchema.safeParse({ deletedAt: null }).success).toBe(false);
-    expect(updateProductCategorySchema.safeParse({ isActive: false }).success).toBe(false);
+    expect(updateProductCategorySchema.parse({ isActive: false })).toEqual({
+      isActive: false,
+    });
     expect(updateProductCategorySchema.parse({ isActive: true })).toEqual({
       isActive: true,
     });

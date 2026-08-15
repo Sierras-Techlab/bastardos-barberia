@@ -30,13 +30,15 @@ describe("product category API client", () => {
       )
       .mockResolvedValueOnce(
         Response.json({ data: { ...category, isActive: false } }),
-      );
+      )
+      .mockResolvedValueOnce(Response.json({ data: { id: category.id } }));
 
     await expect(productCategoryClient.list()).resolves.toEqual([category]);
     await expect(productCategoryClient.get(category.id)).resolves.toEqual(category);
     await productCategoryClient.create({ name: category.name });
     await productCategoryClient.update(category.id, { name: "Fragancias" });
     await productCategoryClient.deactivate(category.id);
+    await productCategoryClient.remove(category.id);
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -64,6 +66,15 @@ describe("product category API client", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       5,
+      `/api/product-categories/${category.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: false }),
+      },
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
       `/api/product-categories/${category.id}`,
       { method: "DELETE" },
     );

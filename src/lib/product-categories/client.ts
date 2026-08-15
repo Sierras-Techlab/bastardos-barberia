@@ -52,6 +52,7 @@ export type ProductCategoryClient = {
   create(input: ProductCategoryInput): Promise<ProductCategory>;
   update(id: string, input: ProductCategoryUpdate): Promise<ProductCategory>;
   deactivate(id: string): Promise<ProductCategory>;
+  remove(id: string): Promise<{ id: string }>;
 };
 
 export const productCategoryClient: ProductCategoryClient = {
@@ -83,6 +84,13 @@ export const productCategoryClient: ProductCategoryClient = {
 
   deactivate(id) {
     return request<ProductCategory>(
+      `/api/product-categories/${encodeURIComponent(id)}`,
+      jsonRequest("PATCH", { isActive: false }),
+    );
+  },
+
+  remove(id) {
+    return request<{ id: string }>(
       `/api/product-categories/${encodeURIComponent(id)}`,
       { method: "DELETE" },
     );
