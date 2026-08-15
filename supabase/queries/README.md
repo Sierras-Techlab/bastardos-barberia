@@ -20,10 +20,13 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 14. `014_product_categories.sql`
 15. `015_product_item_commissions.sql`
 16. `016_payment_methods.sql`
+17. `017_product_category_deletion.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
 If `016_payment_methods.sql` was installed before the product-availability projection, responsible-role snapshot, legacy payment-column or safe-deletion fixes, run the current file again in full. The script is transactional: it repairs and backfills `incomes.responsible_role_snapshot`, releases the superseded `income_payments.method` requirement, restores the current integrity constraints and replaces the canonical income/payment-method functions. This refresh is required before recording another income or using permanent payment-method deletion.
+
+`017_product_category_deletion.sql` is an incremental migration for existing projects. Run it after the latest `016`; do not rerun the structural migration `014`. It replaces the unconditional category-delete trigger with a manager-only RPC that physically removes only categories without any product references.
 
 ## Verify
 
@@ -50,6 +53,17 @@ order by proname;
 ```
 
 The result must include `update_payment_method` and `delete_payment_method`, and must not include the superseded `deactivate_payment_method` function.
+
+Verify that safe product-category deletion is installed:
+
+```sql
+select routine_name
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name = 'delete_product_category';
+```
+
+The query must return exactly one row named `delete_product_category`.
 
 Verify the logical-deletion columns:
 
