@@ -93,6 +93,21 @@ it("links managers to the active user administration page", () => {
   expect(link).toHaveAttribute("data-active");
 });
 
+it("links only managers to the active cash workspace", () => {
+  pathname.value = "/cash";
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={owner} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  const link = screen.getByRole("link", { name: "Caja" });
+  expect(link).toHaveAttribute("href", "/cash");
+  expect(link).toHaveAttribute("data-active");
+});
+
 it("keeps payment-method administration contextual to incomes", () => {
   render(
     <TooltipProvider>

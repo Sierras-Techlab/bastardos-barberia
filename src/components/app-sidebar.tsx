@@ -43,7 +43,7 @@ const operationNavigation = [
 
 const administrationNavigation = [
   { label: "Usuarios", icon: UserCog, href: "/users" },
-  { label: "Caja", icon: WalletCards },
+  { label: "Caja", icon: WalletCards, href: "/cash" },
   { label: "Gastos", icon: ReceiptText },
   { label: "Reportes", icon: BarChart3 },
   { label: "Negocio", icon: Store },
