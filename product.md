@@ -9,6 +9,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 ## Users and permissions
 
 - Owner: full access. At least one active owner must always exist.
+- Owner sales belong entirely to the barbershop and never generate owner commission; future owner compensation must be modeled as a cash/expense movement.
 - Admin: full access for the current phase.
 - Employee: authenticated operational access; granular restrictions will be defined with future modules.
 - Accounts are created only by owner/admin. There is no self-registration or password recovery flow today.
@@ -24,7 +25,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
-| User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination and the complete supported user lifecycle. |
+| User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
 | Products | Implemented locally | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic manager category administration. Migration `014` is implemented locally and pending manual installation; inactive items show `No disponible` regardless of retained stock. |
 | Payment methods | In progress locally | Tasks 1–5 supply the audited catalog/API and dynamic sale allocations, manager UI, historical filters and dashboard totals; migration `016` remains pending. |
@@ -47,6 +48,8 @@ The service catalog and sale form now share persistent active services. Manager 
 The approved backend design makes customer phone the unique operational identity while allowing duplicate names and optional email. Every authenticated role may create and edit customers; only owner/admin may logically delete them.
 
 Each sale records both the authenticated registrant and responsible employee. Employees are forced to themselves; owner/admin may select an active user. Exact payment allocations and immutable per-item commission/net snapshots are calculated atomically with items, inventory and visits. Valid manager-to-other-non-owner exceptions may cover a service and multiple complete product quantities in the same sale. History and metrics scope employees to their responsible sales.
+
+An owner may remain the responsible person for a sale, but that sale records zero service/product commission and its full amount as barbershop net. The 100% commission exception is valid only for a non-owner responsible user.
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 

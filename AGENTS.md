@@ -36,6 +36,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `proxy.ts` is only an optimistic cookie-presence check. Every private page and API operation must authorize again at the server/data boundary.
 - Roles are fixed database records: `owner` (1), `admin` (2), `employee` (3).
 - Owner and admin are managers. Both currently have full administrative access.
+- Owner commission rates are always zero. Revenue from owner-attributed sales belongs entirely to the barbershop; owner withdrawals or compensation belong to future cash/expense flows, not sales commissions.
 - Accounts are created only by a manager. There is no public registration endpoint.
 - Usernames are database-generated from normalized `first_name.last_name`; collisions add `2`, `3`, and so on.
 - Login accepts username and password only. Inactive, locked, unknown and incorrect-password cases return the same public credential error.

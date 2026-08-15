@@ -30,6 +30,28 @@ describe("session repository", () => {
     expect(query.is).toHaveBeenCalledWith("user.deleted_at", null);
   });
 
+  it("loads commission rates for the authenticated user", async () => {
+    const query = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      is: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await sessionRepository.findByTokenHash("token-hash");
+
+    expect(query.select).toHaveBeenCalledWith(
+      expect.stringContaining("service_commission_rate"),
+    );
+    expect(query.select).toHaveBeenCalledWith(
+      expect.stringContaining("product_commission_rate"),
+    );
+  });
+
   it("maps the activity timestamp used to throttle session writes", async () => {
     const row = {
       id: "session-id",

@@ -4,9 +4,26 @@ import { calculateCommissionPreview } from "@/lib/incomes/income-commissions";
 import type { IncomeFormValues } from "@/lib/incomes/income-schema";
 import type { IncomeFormData } from "@/types/income";
 
-type Props = { values: IncomeFormValues; data: IncomeFormData; onGrantFullServiceCommission?: (checked: boolean) => void };
-export const CommissionPreview = ({ values, data, onGrantFullServiceCommission }: Props) => {
-  const employee = data.employees?.find((item) => item.id === values.employeeId) ?? (data.currentUser.id === values.employeeId ? { ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 } : undefined);
+type Props = {
+  values: IncomeFormValues;
+  data: IncomeFormData;
+  onGrantFullServiceCommission?: (checked: boolean) => void;
+};
+export const CommissionPreview = ({
+  values,
+  data,
+  onGrantFullServiceCommission,
+}: Props) => {
+  const employee =
+    data.employees?.find((item) => item.id === values.employeeId) ??
+    (data.currentUser.id === values.employeeId
+      ? {
+          ...data.currentUser,
+          isActive: true,
+          serviceCommissionRate: 0,
+          productCommissionRate: 0,
+        }
+      : undefined);
   const service = data.services.find((item) => item.id === values.serviceId);
   const serviceBase = service?.price ?? 0;
   const preview = calculateCommissionPreview({ responsibleRole: employee?.role ?? "employee", serviceBase, serviceRate: employee?.serviceCommissionRate ?? 0, productRate: employee?.productCommissionRate ?? 0, grantFullServiceCommission: values.grantFullServiceCommission, products: values.products.flatMap((item) => { const product = data.products.find((candidate) => candidate.id === item.productId); return product ? [{ ...item, price: product.price }] : []; }) });

@@ -32,6 +32,36 @@ it("searches customers and sorts by visits", async () => {
   expect(within(screen.getByRole("table")).getAllByRole("row")[1]).toHaveTextContent("Juan Córdoba");
 });
 
+it("filters customers with fixed schedules and clears the filter", async () => {
+  const user = userEvent.setup();
+  const fixedCustomer = {
+    ...data.customers[0],
+    fixedSchedule: { weekday: 4 as const, time: "10:00" },
+    fixedScheduleVersion: 1,
+  };
+  const regularCustomer = {
+    ...data.customers[1],
+    fixedSchedule: null,
+    fixedScheduleVersion: null,
+  };
+
+  render(
+    <CustomersView
+      data={{ customers: [fixedCustomer, regularCustomer] }}
+      canDelete
+    />,
+  );
+
+  await user.selectOptions(screen.getByLabelText("Filtrar clientes por horario"), "fixed");
+
+  expect(screen.getAllByText(`${fixedCustomer.firstName} ${fixedCustomer.lastName}`)).toHaveLength(2);
+  expect(screen.queryByText(`${regularCustomer.firstName} ${regularCustomer.lastName}`)).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Limpiar" }));
+
+  expect(screen.getAllByText(`${regularCustomer.firstName} ${regularCustomer.lastName}`)).toHaveLength(2);
+});
+
 it("creates and edits through persistence without editing visits", async () => {
   const user = userEvent.setup(); const customerClient = client();
   render(<><CustomersView data={data} canDelete customerClient={customerClient} /><DashboardToaster /></>);

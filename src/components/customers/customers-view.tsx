@@ -13,7 +13,12 @@ import { customerClient as defaultCustomerClient, type CustomerClient } from "@/
 import { calculateCustomerMetrics, filterCustomers, sortCustomers } from "@/lib/customers/customer-catalog";
 import { formatFixedSchedule } from "@/lib/customers/fixed-customers";
 import type { FrontendCustomerEditorInput } from "@/lib/customers/frontend-customer-contracts";
-import type { Customer, CustomerCatalogData, CustomerSort } from "@/types/customer";
+import type {
+  Customer,
+  CustomerCatalogData,
+  CustomerScheduleFilter,
+  CustomerSort,
+} from "@/types/customer";
 
 type Props = { data: CustomerCatalogData; canDelete: boolean; customerClient?: CustomerClient };
 const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(value));
@@ -21,11 +26,15 @@ const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2
 export const CustomersView = ({ data, canDelete, customerClient = defaultCustomerClient }: Props) => {
   const [customers, setCustomers] = useState(() => data.customers);
   const [query, setQuery] = useState("");
+  const [scheduleFilter, setScheduleFilter] = useState<CustomerScheduleFilter>("all");
   const [sort, setSort] = useState<CustomerSort>("original");
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; customer: Customer | null } | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
   const [visiting, setVisiting] = useState<Customer | null>(null);
-  const displayed = useMemo(() => sortCustomers(filterCustomers(customers, query), sort), [customers, query, sort]);
+  const displayed = useMemo(
+    () => sortCustomers(filterCustomers(customers, query, scheduleFilter), sort),
+    [customers, query, scheduleFilter, sort],
+  );
   const metrics = useMemo(() => calculateCustomerMetrics(customers), [customers]);
 
   const save = async (input: FrontendCustomerEditorInput) => {
@@ -67,10 +76,11 @@ export const CustomersView = ({ data, canDelete, customerClient = defaultCustome
     </section>
 
     <section aria-label="Filtros de clientes" className="rounded-[1.4rem] bg-white p-3 shadow-sm sm:p-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(16rem,1fr)_14rem_auto]">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(16rem,1fr)_12rem_12rem_auto]">
         <div className="relative min-w-0 sm:col-span-2 lg:col-span-1"><Search className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" /><Input type="search" aria-label="Buscar clientes" placeholder="Nombre, email o teléfono" value={query} onChange={(event) => setQuery(event.target.value)} className="h-11 rounded-xl bg-[#f6f5f2] pl-10 shadow-none" /></div>
+        <select aria-label="Filtrar clientes por horario" value={scheduleFilter} onChange={(event) => setScheduleFilter(event.target.value as CustomerScheduleFilter)} className="h-11 rounded-xl border border-black/10 bg-[#f6f5f2] px-3 text-sm"><option value="all">Todos los clientes</option><option value="fixed">Clientes fijos</option><option value="not-fixed">Sin horario fijo</option></select>
         <select aria-label="Ordenar clientes" value={sort} onChange={(event) => setSort(event.target.value as CustomerSort)} className="h-11 rounded-xl border border-black/10 bg-[#f6f5f2] px-3 text-sm"><option value="original">Orden original</option><option value="visits-desc">Más visitas</option><option value="visits-asc">Menos visitas</option><option value="newest">Más recientes</option><option value="oldest">Más antiguos</option></select>
-        <Button type="button" variant="ghost" disabled={!query && sort === "original"} onClick={() => { setQuery(""); setSort("original"); }} className="h-11 rounded-xl"><RotateCcw /> Limpiar</Button>
+        <Button type="button" variant="ghost" disabled={!query && scheduleFilter === "all" && sort === "original"} onClick={() => { setQuery(""); setScheduleFilter("all"); setSort("original"); }} className="h-11 rounded-xl"><RotateCcw /> Limpiar</Button>
       </div>
     </section>
 
