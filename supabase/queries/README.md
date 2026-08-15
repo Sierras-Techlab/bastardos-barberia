@@ -63,6 +63,158 @@ where jobname = 'bastardos-close-daily-cash';
 
 All five tables must report `rowsecurity = true`, all three public cash functions must exist, and the cron query must return one active hourly job whose command calls `public.close_pending_daily_cash()`.
 
+Validate closure idempotency, split payments, same-day void exclusion and one
+post-close adjustment without retaining the temporary records:
+
+```sql
+begin;
+
+do $$
+declare
+  manager_id uuid;
+  employee_id uuid;
+  service_id uuid;
+  cash_method_id uuid;
+  transfer_method_id uuid;
+  active_income_id uuid;
+  same_day_void_id uuid;
+  test_date date := ((clock_timestamp() at time zone 'America/Argentina/Buenos_Aires')::date - 2);
+  cash_id uuid;
+  first_close_count integer;
+begin
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Manager', 'Caja',
+    'manager.' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    '$argon2id$verification', 1, 0, 0
+  ) returning id into manager_id;
+
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate, created_by
+  ) values (
+    'Empleado', 'Caja',
+    'empleado.' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    '$argon2id$verification', 3, 50, 0, manager_id
+  ) returning id into employee_id;
+
+  insert into public.services (name, normalized_name, price, created_by, updated_by)
+  values (
+    'Servicio caja ' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    'servicio-caja-' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    10000, manager_id, manager_id
+  ) returning id into service_id;
+
+  insert into public.payment_methods (name, normalized_name, created_by, updated_by)
+  values (
+    'Efectivo caja ' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 8),
+    'efectivo-caja-' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    manager_id, manager_id
+  ) returning id into cash_method_id;
+
+  insert into public.payment_methods (name, normalized_name, created_by, updated_by)
+  values (
+    'Transferencia caja ' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 8),
+    'transferencia-caja-' || substring(replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12),
+    manager_id, manager_id
+  ) returning id into transfer_method_id;
+
+  active_income_id := public.create_income(
+    manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(
+      jsonb_build_object('paymentMethodId', cash_method_id, 'amount', 6000),
+      jsonb_build_object('paymentMethodId', transfer_method_id, 'amount', 4000)
+    ),
+    false
+  );
+
+  same_day_void_id := public.create_income(
+    manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(
+      jsonb_build_object('paymentMethodId', cash_method_id, 'amount', 10000)
+    ),
+    false
+  );
+  perform public.void_income(same_day_void_id, manager_id);
+
+  update public.incomes
+  set business_date = test_date,
+      created_at = created_at - interval '2 days'
+  where id in (active_income_id, same_day_void_id);
+
+  select public.close_pending_daily_cash() into first_close_count;
+  select id into cash_id from public.daily_cash_registers where business_date = test_date;
+
+  if first_close_count < 1 or cash_id is null then
+    raise exception 'DAILY_CASH_EXPECTED_CLOSE_MISSING';
+  end if;
+
+  if not exists (
+    select 1 from public.daily_cash_registers
+    where id = cash_id
+      and sales_gross_total = 10000
+      and sales_commission_total = 5000
+      and sales_barbershop_net = 5000
+      and service_sales_total = 10000
+      and product_sales_total = 0
+      and sale_count = 2
+      and active_sale_count = 1
+      and voided_sale_count = 1
+      and adjustment_count = 0
+  ) then
+    raise exception 'DAILY_CASH_TOTALS_MISMATCH';
+  end if;
+
+  if (select count(*) from public.daily_cash_sales where daily_cash_id = cash_id) <> 2
+    or (select coalesce(sum(sales_amount), 0) from public.daily_cash_payment_totals where daily_cash_id = cash_id) <> 10000
+  then
+    raise exception 'DAILY_CASH_AUDIT_SNAPSHOT_MISMATCH';
+  end if;
+
+  if public.close_pending_daily_cash() <> 0
+    or (select count(*) from public.daily_cash_registers where business_date = test_date) <> 1
+  then
+    raise exception 'DAILY_CASH_CLOSE_NOT_IDEMPOTENT';
+  end if;
+
+  perform public.void_income(active_income_id, manager_id);
+
+  if not exists (
+    select 1 from public.daily_cash_adjustments
+    where source_income_id = active_income_id
+      and original_daily_cash_id = cash_id
+      and gross_delta = -10000
+      and commission_delta = -5000
+      and barbershop_net_delta = -5000
+      and service_delta = -10000
+      and product_delta = 0
+  ) or (
+    select count(*) from public.daily_cash_adjustments
+    where source_income_id = active_income_id
+  ) <> 1 then
+    raise exception 'DAILY_CASH_POST_CLOSE_ADJUSTMENT_MISMATCH';
+  end if;
+
+  if (
+    select coalesce(sum(ap.amount), 0)
+    from public.daily_cash_adjustment_payments ap
+    join public.daily_cash_adjustments a on a.id = ap.adjustment_id
+    where a.source_income_id = active_income_id
+  ) <> -10000 then
+    raise exception 'DAILY_CASH_ADJUSTMENT_PAYMENTS_MISMATCH';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+The block must finish without an exception. It proves that an active split-payment sale is included, a same-day void remains visible only as excluded audit membership, repeating the closer is a no-op, and a later void creates one exact negative adjustment without changing the original closure. `rollback` removes every temporary user, catalog row, sale, closure and adjustment.
+
 ## Verify
 
 ```sql

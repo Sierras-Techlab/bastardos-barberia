@@ -4,14 +4,15 @@ Captured: 2026-08-15
 
 ## Repository state
 
-- Active branch: `feat/backend-models` in the primary checkout. Commercial operations V2 and the dashboard agenda correction are integrated directly on this branch for the user's GitHub push and pull request.
+- Active branch: `feat/cash` in the primary checkout. Automatic daily Caja is implemented locally in commits `6637a56`, `7217ace`, `4a393cf` and `87abf1a` after its approved spec/plan commits.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
-- Commercial operations V2 is implemented locally through migrations `010` through `013`; none has been applied to the configured Supabase project.
+- Commercial operations V2 is implemented locally through migrations `010` through `013`. The exact installed revision of the shared Supabase project must be verified before applying later migrations; this task did not mutate the remote database.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The latest local `016` also installs concurrency-safe permanent deletion for unused methods. Run that transactional file in full before using the current lifecycle contract against Supabase.
 - Safe product-category deletion is implemented locally through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Run `017` after the latest `016`; do not rerun structural migration `014`.
+- Automatic Caja is implemented locally through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. Migration `018` has not yet been applied or acceptance-tested against the target Supabase project in this task.
 
 ## Delivered behavior
 
@@ -49,6 +50,9 @@ Captured: 2026-08-15
 - The manager dialog shows active methods by default, moves deactivated methods into a separate recoverable view and requires an explicit destructive confirmation before deletion. A referenced method remains in place and receives guidance to deactivate it without losing history.
 - `/incomes/new` loads only active payment methods and presents them as responsive rounded selection cards. A dynamic `Combinado` card opens the arbitrary multi-method allocation editor with distinct methods and exact remaining/excess feedback; single-method cards assign the full total. The history page loads active and inactive methods for stable filtering and manager lifecycle administration.
 - Income list, mobile/detail and dashboard presentation render saved payment names dynamically; one allocation uses its snapshot name and multiple allocations use `Combinado (N medios)`. No UI or metric contract branches on fixed cash/transfer values.
+- `/cash` is manager-only and read-only. Today's Buenos Aires business date is calculated live; the workspace shows gross sales, commissions, barbershop net, service/product totals, dynamic payment allocations and sale-level audit with the existing income detail sheet.
+- Prior activity dates are selectable from a paginated history. Empty days are omitted. There is no cash opening, closing or CRUD control, and the only creation shortcut reuses `/incomes/new`.
+- Migration `018` materializes immutable daily registers plus sale/payment snapshots. Same-day voids are excluded at close; later voids preserve the original register and create one negative, actor-linked adjustment on the local void date. An hourly idempotent `pg_cron` job closes any missing prior activity date.
 
 ## SQL and deployment state
 
@@ -59,8 +63,9 @@ Captured: 2026-08-15
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
 - `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, idempotent compatibility repairs and serialized manager lifecycle functions. Its delete RPC protects the final active method and rejects referenced methods before physical deletion.
 - `supabase/queries/017_product_category_deletion.sql` incrementally replaces the unconditional category-delete trigger with a manager-only RPC that deletes only categories without product references.
-- `supabase/queries/README.md` documents ordered installation `001` through `017`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
-- Apply the latest `016`, then `017`, manually in Supabase SQL Editor before validating payment-method and category deletion.
+- `supabase/queries/018_automatic_daily_cash.sql` installs secured closure/snapshot/adjustment tables, the post-close void trigger, `close_pending_daily_cash`, `get_daily_cash`, `list_daily_cash` and the hourly recovery cron job.
+- `supabase/queries/README.md` documents ordered installation `001` through `018`, including cash object, RLS and cron verification.
+- Verify that the target project has the latest `016` and `017`, then apply `018` manually in Supabase SQL Editor before validating automatic Caja.
 
 ## Verification
 
@@ -87,19 +92,19 @@ Captured: 2026-08-15
 - A controlled RPC probe confirmed the installed function passes product availability validation; a read-only schema probe isolated its remaining `42703` to the missing `incomes.responsible_role_snapshot` column. The migration contract now requires both fresh installation in `010` and idempotent repair/backfill in `016`.
 - After the responsible-role repair, the migration regression test passed its red/green cycle, the complete Vitest suite exited successfully, ESLint reported no errors, `git diff --check` passed and the Next.js 16.3 webpack production build completed successfully.
 - End-to-end database probing then verified every column consumed by the sale transaction and traversed all validations preceding the first write. A controlled service-only sale isolated the next failure to PostgreSQL `23502`: dynamic payments omit the superseded `income_payments.method`, while the installed legacy column still required a value. PostgreSQL rolled the diagnostic transaction back completely. Migration `016` now drops only that legacy `NOT NULL` requirement before installing the dynamic RPC.
+- Automatic Caja final verification passed 150 test files / 559 tests, ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The SQL acceptance block is rollback-wrapped and ready for manual execution after installing `018`; this task did not apply the migration to the shared database.
 
 ## Known boundaries
 
-- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks, but migrations `010` through `017` still require manual PostgreSQL execution and verification as applicable to the target project.
-- Migrations `012` and `013` now provide the owner-safe and customer-visit RPC contracts required by the application, but they remain unapplied remotely; deploy `010` through `013` as one ordered manual SQL installation.
-- Sale editing, expenses, daily cash/register closure and reporting remain outside this milestone. Physical deletion is intentionally limited to unused payment methods and product categories with zero product references; product records, services, customers and users retain their existing lifecycle rules.
+- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks, but the installed revisions of migrations `010` through `017` must be verified against the target project before installing `018`.
+- Sale editing, expenses, counted-versus-expected cash reconciliation and reporting remain outside this milestone. Daily Caja and automatic historical closure are now implemented locally. Physical deletion remains intentionally limited to unused payment methods and product categories with zero product references; product records, services, customers and users retain their existing lifecycle rules.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- The configured Supabase project exposes the dynamic payment catalog and responsible-role snapshot, but income creation still raises PostgreSQL `23502` because the superseded `income_payments.method` column is still mandatory. The latest `016_payment_methods.sql` makes it nullable while retaining historical values.
+- The latest `016_payment_methods.sql` includes the legacy `income_payments.method` compatibility repair. Confirm that revision is installed before adding Caja migration `018`.
 
 ## Recommended next task
 
-Run the latest migration `016` and then incremental migration `017` in the Supabase SQL Editor. Validate one unused and one referenced deletion for both payment methods and product categories before deploying the UI.
+Verify the shared project has the latest migrations through `017`, then run `018_automatic_daily_cash.sql` in the Supabase SQL Editor. Confirm its tables, RLS and hourly cron job, execute the rollback-wrapped acceptance block documented in `supabase/queries/README.md`, and smoke-test `/cash` with one live and one historical activity date.
 
 ## Context maintenance rule
 

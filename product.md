@@ -26,7 +26,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
-| Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
+| Sales and cash | Implemented locally | Persistent sales feed a manager-only live daily cash view. Migration `018` automatically and idempotently closes active prior dates into immutable sale/payment snapshots; post-close voids become audited negative adjustments. Expenses remain separate. |
 | Products | Implemented locally | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic category administration with permanent deletion restricted to categories that were never assigned to a product. Migrations `014` and incremental `017` remain pending manual installation; inactive items show `No disponible` regardless of retained stock. |
 | Payment methods | Implemented locally | Audited dynamic catalog and allocations, manager create/rename/deactivate/reactivate UI, historical filters/dashboard totals and permanent deletion restricted to unused methods. Migration `016` must be rerun manually before using deletion against Supabase. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
@@ -35,7 +35,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Complete migrations `016` and `017`, then manually install migrations `010` through `017` and run their SQL Editor acceptance checks before designing daily cash. The application behavior is verified locally; the configured project still requires the separately authorized database deployment.
+Install and validate migration `018`, confirm its `pg_cron` job and exercise `/cash` against live and historical activity. Caja is intentionally read-only: it derives from incomes, exposes dynamic payment totals and sale-level audit, skips empty dates and never asks a manager to open or close the day. The next independent financial increment is Expenses; reports can later combine immutable cash closures with expense data.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Managers may permanently delete a category only while no product—active or inactive—references it; referenced categories remain recoverable through logical deactivation. The category dialog separates active and inactive records and requires destructive confirmation. Product physical deletion and purchase cost remain outside scope.
 
