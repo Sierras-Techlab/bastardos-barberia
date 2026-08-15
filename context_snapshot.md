@@ -89,7 +89,7 @@ Captured: 2026-08-15
 
 ## Recommended next task
 
-Review `docs/superpowers/specs/2026-08-15-payment-method-deletion-design.md`, then write the implementation plan for unused-method deletion, update-based deactivation and active/inactive administration views.
+Execute `docs/superpowers/plans/2026-08-15-payment-method-deletion.md` task by task with TDD, then rerun migration `016` and validate unused deletion plus referenced-method protection against the configured Supabase project.
 
 ## Context maintenance rule
 
