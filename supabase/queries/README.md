@@ -19,6 +19,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 13. `013_customer_visit_financials.sql`
 14. `014_product_categories.sql`
 15. `015_product_item_commissions.sql`
+16. `016_payment_methods.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 

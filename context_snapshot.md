@@ -54,9 +54,9 @@ Captured: 2026-08-14
 - `supabase/queries/012_owner_commission_invariant.sql` enforces owner-zero commission rates and snapshots on users and incomes tables.
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
-- `supabase/queries/015_product_item_commissions.sql` provides immutable item-level subtotal/rate/amount/exception snapshots, proportional legacy backfill, canonical sale creation and itemized income JSON.
-- `supabase/queries/README.md` documents ordered installation `001` through `015`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
-- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `015` manually and run the documented checks before considering these features live.
+- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, and generalized `create_income` / `list_incomes` RPCs.
+- `supabase/queries/README.md` documents ordered installation `001` through `016`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
+- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `016` manually in Supabase SQL Editor to support the dynamic payment methods feature.
 
 ## Verification
 
