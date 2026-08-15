@@ -13,4 +13,3 @@ it("offers a retry when cash loading fails", async () => {
   );
   expect(retry).toHaveBeenCalledOnce();
 });
-

@@ -46,4 +46,3 @@ describe("cash service", () => {
     expect(list).toHaveBeenCalledWith(manager.id, { page: 1, pageSize: 10 });
   });
 });
-

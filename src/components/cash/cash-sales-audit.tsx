@@ -101,4 +101,3 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
     )}
   </section>
 );
-

@@ -18,4 +18,3 @@ const CashError = ({ retry }: CashErrorProps) => (
 );
 
 export default CashError;
-

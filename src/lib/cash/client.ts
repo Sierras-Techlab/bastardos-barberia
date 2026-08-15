@@ -57,4 +57,3 @@ export const cashClient: CashClient = {
   getDay: (date) => request(`/api/cash?date=${encodeURIComponent(date)}`),
   list: (query) => request(`/api/cash/history?${historyQueryString(query)}`),
 };
-

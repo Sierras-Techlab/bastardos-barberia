@@ -11,4 +11,3 @@ const CashLoading = () => (
 );
 
 export default CashLoading;
-

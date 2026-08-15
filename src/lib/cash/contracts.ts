@@ -15,4 +15,3 @@ export type CashRepository = {
 export type CashDependencies = {
   cash: CashRepository;
 };
-

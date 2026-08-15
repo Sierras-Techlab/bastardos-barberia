@@ -184,4 +184,3 @@ export const paginatedCashHistorySchema = z
       .strict(),
   })
   .strict();
-

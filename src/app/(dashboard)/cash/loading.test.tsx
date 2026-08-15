@@ -10,4 +10,3 @@ it("centers the cash loading state", () => {
   ).toBeVisible();
   expect(screen.getByText("Calculando la caja")).toBeVisible();
 });
-

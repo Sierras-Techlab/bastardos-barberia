@@ -94,4 +94,3 @@ export type PaginatedCashHistory = {
   items: CashHistoryItem[];
   pagination: CashPagination;
 };
-

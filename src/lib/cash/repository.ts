@@ -84,4 +84,3 @@ export const cashRepository: CashRepository = {
     return parsed.data;
   },
 };
-

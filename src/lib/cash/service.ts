@@ -33,4 +33,3 @@ export const listCashHistory = (
   assertManager(actor);
   return dependencies.cash.list(actor.id, query);
 };
-

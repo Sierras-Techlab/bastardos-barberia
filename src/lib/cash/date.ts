@@ -9,4 +9,3 @@ const buenosAiresDateFormatter = new Intl.DateTimeFormat("en-CA", {
 
 export const getBuenosAiresToday = (now = new Date()): string =>
   buenosAiresDateFormatter.format(now);
-

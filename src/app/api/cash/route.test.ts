@@ -46,4 +46,3 @@ describe("GET /api/cash", () => {
     expect(getCashDay).toHaveBeenCalledTimes(1);
   });
 });
-

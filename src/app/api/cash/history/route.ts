@@ -20,4 +20,3 @@ export const GET = async (request: Request) => {
     return errorResponse(error);
   }
 };
-

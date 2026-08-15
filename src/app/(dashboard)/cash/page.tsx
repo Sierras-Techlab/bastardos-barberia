@@ -45,4 +45,3 @@ const CashPage = async () => {
 };
 
 export default CashPage;
-
