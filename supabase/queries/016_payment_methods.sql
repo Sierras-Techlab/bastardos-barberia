@@ -3,6 +3,32 @@
 
 begin;
 
+-- Repair installations where the canonical sale RPC was promoted before its
+-- immutable responsible-role snapshot column had been installed.
+alter table public.incomes
+  add column if not exists responsible_role_snapshot text;
+
+update public.incomes i
+set responsible_role_snapshot = case responsible.role_id
+  when 1 then 'owner'
+  when 2 then 'admin'
+  when 3 then 'employee'
+end
+from public.users responsible
+where responsible.id = i.employee_id
+  and i.responsible_role_snapshot is null;
+
+alter table public.incomes
+  alter column responsible_role_snapshot set not null;
+
+alter table public.incomes
+  drop constraint if exists incomes_responsible_role_snapshot_check;
+
+alter table public.incomes
+  add constraint incomes_responsible_role_snapshot_check check (
+    responsible_role_snapshot in ('owner', 'admin', 'employee')
+  );
+
 create table if not exists public.payment_methods (
   id uuid primary key default gen_random_uuid(),
   name text not null,

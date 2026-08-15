@@ -123,6 +123,7 @@ alter table public.incomes
 
 alter table public.incomes
   add column if not exists employee_id uuid references public.users(id) on delete restrict,
+  add column if not exists responsible_role_snapshot text,
   add column if not exists request_fingerprint text,
   add column if not exists service_commission_base integer,
   add column if not exists product_commission_base integer,
@@ -157,6 +158,11 @@ create index if not exists income_payments_method_income_idx
 update public.incomes i
 set
   employee_id = i.registered_by,
+  responsible_role_snapshot = case responsible.role_id
+    when 1 then 'owner'
+    when 2 then 'admin'
+    when 3 then 'employee'
+  end,
   request_fingerprint = pg_catalog.encode(
     extensions.digest(pg_catalog.convert_to('legacy:' || i.id::text, 'UTF8'), 'sha256'),
     'hex'
@@ -178,9 +184,14 @@ set
   commission_total = 0,
   barbershop_net = i.total,
   full_service_commission = false
-where i.employee_id is null
-   or i.request_fingerprint is null
-   or i.service_commission_base is null;
+from public.users responsible
+where responsible.id = coalesce(i.employee_id, i.registered_by)
+  and (
+    i.employee_id is null
+    or i.responsible_role_snapshot is null
+    or i.request_fingerprint is null
+    or i.service_commission_base is null
+  );
 
 insert into public.income_payments (income_id, method, amount, created_at)
 select i.id, i.payment_method, i.total, i.created_at
@@ -190,6 +201,7 @@ on conflict (income_id, method) do nothing;
 
 alter table public.incomes
   alter column employee_id set not null,
+  alter column responsible_role_snapshot set not null,
   alter column request_fingerprint set not null,
   alter column service_commission_base set not null,
   alter column product_commission_base set not null,
@@ -202,6 +214,7 @@ alter table public.incomes
   alter column full_service_commission set not null;
 
 alter table public.incomes
+  drop constraint if exists incomes_responsible_role_snapshot_check,
   drop constraint if exists incomes_commission_bases_check,
   drop constraint if exists incomes_commission_rates_check,
   drop constraint if exists incomes_commission_amounts_check,
@@ -210,6 +223,9 @@ alter table public.incomes
   drop constraint if exists incomes_full_service_commission_check;
 
 alter table public.incomes
+  add constraint incomes_responsible_role_snapshot_check check (
+    responsible_role_snapshot in ('owner', 'admin', 'employee')
+  ),
   add constraint incomes_commission_bases_check check (
     service_commission_base >= 0
     and product_commission_base >= 0

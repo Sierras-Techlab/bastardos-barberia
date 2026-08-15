@@ -10,7 +10,7 @@ Captured: 2026-08-15
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The configured Supabase project has the payment catalog installed, but its canonical `create_income` function must be refreshed with the corrected `016` script before product-bearing sales can be recorded.
+- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The configured Supabase project has the payment catalog and corrected product projection installed, but still lacks `incomes.responsible_role_snapshot`; run the latest transactional `016` in full to install/backfill that required audit column and refresh `create_income`.
 
 ## Delivered behavior
 
@@ -49,12 +49,12 @@ Captured: 2026-08-15
 
 ## SQL and deployment state
 
-- `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation, normalized bigint payments, overflow-safe immutable commission snapshots, locked catalog authorization and a manager-only historical-responsible projection.
+- `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation with immutable role snapshots, normalized bigint payments, overflow-safe immutable commission snapshots, locked catalog authorization and a manager-only historical-responsible projection.
 - `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains effective-dated weekly schedules, per-customer serialized occurrence generation/resolution, optimistic schedule concurrency, transactional customer V2 functions and sanitized visit projection.
 - `supabase/queries/012_owner_commission_invariant.sql` enforces owner-zero commission rates and snapshots on users and incomes tables.
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
-- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, and generalized `create_income` / `list_incomes` RPCs.
+- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs and an idempotent repair/backfill for the required responsible-role snapshot column.
 - `supabase/queries/README.md` documents ordered installation `001` through `016`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
 - The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `016` manually in Supabase SQL Editor to support the dynamic payment methods feature.
 
@@ -74,6 +74,8 @@ Captured: 2026-08-15
 - After Tasks 3–5, the full suite passed 134 files / 504 tests, ESLint passed with no warnings, TypeScript and `git diff --check` passed, and the Next.js 16.3 production build completed successfully.
 - After restoring the card-based payment selector, the focused selector/form slice passed 2 files / 18 tests and the full suite passed 134 files / 510 tests. ESLint passed with no warnings, `git diff --check` passed, the Next.js 16.3 webpack production build succeeded and desktop/mobile browser validation found no console errors or layout overflow.
 - The migration `016` product-availability regression reproduced as a failing structural test and passed after projecting `p.is_active` into the locked product record consumed by `create_income`.
+- A controlled RPC probe confirmed the installed function passes product availability validation; a read-only schema probe isolated its remaining `42703` to the missing `incomes.responsible_role_snapshot` column. The migration contract now requires both fresh installation in `010` and idempotent repair/backfill in `016`.
+- After the responsible-role repair, the migration regression test passed its red/green cycle, the complete Vitest suite exited successfully, ESLint reported no errors, `git diff --check` passed and the Next.js 16.3 webpack production build completed successfully.
 
 ## Known boundaries
 
@@ -82,11 +84,11 @@ Captured: 2026-08-15
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- The configured Supabase project exposes the dynamic payment catalog, but its installed `create_income` function still raises PostgreSQL `42703` for product-bearing sales until the corrected `016_payment_methods.sql` is run again in full.
+- The configured Supabase project exposes the dynamic payment catalog, but income creation still raises PostgreSQL `42703` because `incomes.responsible_role_snapshot` is absent. The latest `016_payment_methods.sql` repairs and backfills it when run again in full.
 
 ## Recommended next task
 
-Run the corrected `016_payment_methods.sql` again in full in the configured Supabase project, then verify one product-only sale and one service-plus-product sale end to end.
+Run the latest `016_payment_methods.sql` again in full in the configured Supabase project, verify that `incomes.responsible_role_snapshot` exists, then record one product-only sale and one service-plus-product sale end to end.
 
 ## Context maintenance rule
 
