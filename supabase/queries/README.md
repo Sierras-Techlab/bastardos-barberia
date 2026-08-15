@@ -21,12 +21,47 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 15. `015_product_item_commissions.sql`
 16. `016_payment_methods.sql`
 17. `017_product_category_deletion.sql`
+18. `018_automatic_daily_cash.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
 If `016_payment_methods.sql` was installed before the product-availability projection, responsible-role snapshot, legacy payment-column or safe-deletion fixes, run the current file again in full. The script is transactional: it repairs and backfills `incomes.responsible_role_snapshot`, releases the superseded `income_payments.method` requirement, restores the current integrity constraints and replaces the canonical income/payment-method functions. This refresh is required before recording another income or using permanent payment-method deletion.
 
 `017_product_category_deletion.sql` is an incremental migration for existing projects. Run it after the latest `016`; do not rerun the structural migration `014`. It replaces the unconditional category-delete trigger with a manager-only RPC that physically removes only categories without any product references.
+
+`018_automatic_daily_cash.sql` installs the manager-only automatic cash module. It creates immutable daily closures only for dates with sales or post-close adjustments, preserves sale and payment-method snapshots for audit, records later voids as negative adjustments, and schedules the idempotent closer hourly with `pg_cron`. Run it after `017`; there is no manual open or close operation.
+
+Verify the automatic cash objects and cron job:
+
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+  and tablename in (
+    'daily_cash_registers',
+    'daily_cash_sales',
+    'daily_cash_payment_totals',
+    'daily_cash_adjustments',
+    'daily_cash_adjustment_payments'
+  )
+order by tablename;
+
+select routine_name
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name in (
+    'close_pending_daily_cash',
+    'get_daily_cash',
+    'list_daily_cash'
+  )
+order by routine_name;
+
+select jobname, schedule, command, active
+from cron.job
+where jobname = 'bastardos-close-daily-cash';
+```
+
+All five tables must report `rowsecurity = true`, all three public cash functions must exist, and the cron query must return one active hourly job whose command calls `public.close_pending_daily_cash()`.
 
 ## Verify
 
