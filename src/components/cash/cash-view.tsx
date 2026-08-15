@@ -118,7 +118,7 @@ export const CashView = ({
           </div>
           <div className="flex flex-wrap gap-2">
             {day.businessDate !== initialDay.businessDate && (
-              <Button type="button" variant="outline" className="rounded-xl" disabled={loadingDay} onClick={() => setDay(initialDay)}>
+              <Button type="button" variant="outline" className="rounded-xl" disabled={loadingDay} onClick={() => void loadDay(initialDay.businessDate)}>
                 <ArrowLeft /> Volver a hoy
               </Button>
             )}

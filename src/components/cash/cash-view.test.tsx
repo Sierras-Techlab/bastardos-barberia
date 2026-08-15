@@ -122,6 +122,9 @@ describe("CashView", () => {
     expect(await screen.findByText("Caja cerrada")).toBeVisible();
     expect(screen.queryByText("Abrir caja")).not.toBeInTheDocument();
     expect(screen.queryByText("Cerrar caja")).not.toBeInTheDocument();
+
+    await browser.click(screen.getByRole("button", { name: "Volver a hoy" }));
+    expect(cashClient.getDay).toHaveBeenLastCalledWith("2026-08-15");
+    expect(cashClient.getDay).toHaveBeenCalledTimes(2);
   });
 });
-
