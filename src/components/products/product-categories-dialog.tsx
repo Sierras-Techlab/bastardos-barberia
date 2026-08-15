@@ -254,11 +254,12 @@ export const ProductCategoriesDialog = ({
                     setError(null);
                   }}
                 >
-                  <Pencil />
+                  <Pencil /> Editar
                 </Button>
                 <Button
                   type="button"
                   variant={category.isActive ? "outline" : "default"}
+                  aria-label={`${category.isActive ? "Desactivar" : "Reactivar"} ${category.name}`}
                   className={category.isActive ? "rounded-xl bg-white" : "rounded-xl"}
                   disabled={
                     isSaving ||
@@ -266,7 +267,7 @@ export const ProductCategoriesDialog = ({
                   }
                   onClick={() => setActive(category)}
                 >
-                  {category.isActive ? `Desactivar ${category.name}` : `Reactivar ${category.name}`}
+                  {category.isActive ? "Desactivar" : "Reactivar"}
                 </Button>
                 <Button
                   type="button"

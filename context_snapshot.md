@@ -11,6 +11,7 @@ Captured: 2026-08-15
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The latest local `016` also installs concurrency-safe permanent deletion for unused methods. Run that transactional file in full before using the current lifecycle contract against Supabase.
+- Safe product-category deletion is implemented locally through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Run `017` after the latest `016`; do not rerun structural migration `014`.
 
 ## Delivered behavior
 
@@ -33,6 +34,7 @@ Captured: 2026-08-15
 - Product categories now have a server-only domain boundary with audited create/update records, atomic logical deactivation, normalized-name/in-use conflict mappings and active-only employee reads. Products carry complete category objects, use category UUIDs for mutations and filters, and managers have a dynamic category administration dialog.
 - Migration `014_product_categories.sql` creates the secured canonical category catalog, seeds/backfills the four legacy categories, replaces `products.category` with `category_id`, and promotes category-locked product/category lifecycle RPCs with rollback-wrapped SQL acceptance checks.
 - Category UI state keeps catalog product snapshots synchronized after category rename/reactivation/deactivation, editors never submit an inactive hidden category ID, and an in-use deactivation conflict disables that category's action until the manager closes the dialog and refreshes its state.
+- Category administration now shows active records by default, moves inactive records into a separate recoverable view and requires explicit confirmation before physical deletion. Only categories with zero product references can be removed; referenced categories remain intact and receive guidance to deactivate them so catalog and historical links are preserved.
 - Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
 - The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
 - Owner commission handling is application-safe: owner creation, promotion and updates normalize both configured rates to zero; owner editor controls are fixed at zero; previews derive the responsible employee role and neutralize owner rates plus the 100% service preview override. User profile persistence now calls the canonical `update_user_profile` RPC.
@@ -56,8 +58,9 @@ Captured: 2026-08-15
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
 - `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, idempotent compatibility repairs and serialized manager lifecycle functions. Its delete RPC protects the final active method and rejects referenced methods before physical deletion.
-- `supabase/queries/README.md` documents ordered installation `001` through `016`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
-- The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `016` manually in Supabase SQL Editor to support the dynamic payment methods feature.
+- `supabase/queries/017_product_category_deletion.sql` incrementally replaces the unconditional category-delete trigger with a manager-only RPC that deletes only categories without product references.
+- `supabase/queries/README.md` documents ordered installation `001` through `017`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
+- Apply the latest `016`, then `017`, manually in Supabase SQL Editor before validating payment-method and category deletion.
 
 ## Verification
 
@@ -76,6 +79,8 @@ Captured: 2026-08-15
 - After restoring the card-based payment selector, the focused selector/form slice passed 2 files / 18 tests and the full suite passed 134 files / 510 tests. ESLint passed with no warnings, `git diff --check` passed, the Next.js 16.3 webpack production build succeeded and desktop/mobile browser validation found no console errors or layout overflow.
 - Safe payment-method deletion passed the complete affected slice with 10 files / 46 tests and the full repository suite with 136 files / 522 tests. ESLint, TypeScript, `git diff --check` and the Next.js 16.3 webpack production build passed. Authenticated browser validation covered active/inactive navigation and named confirmation; at 390×844 both nested dialogs matched their 358px available width with no document overflow or console errors.
 - Payment-method administration no longer places full-width inputs or method identity in competition with long horizontal actions. The create flow is vertically stable and each method is an independent card with a persistent name, colored state badge and compact edit/lifecycle/delete row. Authenticated validation at 1280×720 and 390×844 showed every label/action, zero document or dialog overflow and no browser warnings/errors; the inactive view remains equally readable and reactivation stays visually primary.
+- Product-category deletion passed 6 focused domain/API files with 22 tests and the affected product/category UI slice with 13 files and 50 tests. ESLint and `git diff --check` passed before the final repository-wide verification.
+- Final verification after category lifecycle and responsive UI polish passed 138 test files / 531 tests, ESLint, generated route types, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. Authenticated browser checks at the default desktop viewport and 390×844 confirmed readable active-category cards, compact actions and the named nested deletion confirmation without horizontal overflow.
 - Payment-method administration is now intentionally contextual to `/incomes`: the redundant non-navigating `Medios de pago` sidebar placeholder was removed for managers, while the manager-only modal, income link, API and lifecycle behavior remain unchanged. Tomorrow's external handoff is to run the latest migration `016` and validate one unused deletion plus one referenced-method conflict in Supabase.
 - The migration `016` product-availability regression reproduced as a failing structural test and passed after projecting `p.is_active` into the locked product record consumed by `create_income`.
 - A controlled RPC probe confirmed the installed function passes product availability validation; a read-only schema probe isolated its remaining `42703` to the missing `incomes.responsible_role_snapshot` column. The migration contract now requires both fresh installation in `010` and idempotent repair/backfill in `016`.
@@ -84,16 +89,16 @@ Captured: 2026-08-15
 
 ## Known boundaries
 
-- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks, but migrations `010` through `015` still require manual PostgreSQL execution and verification.
+- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks, but migrations `010` through `017` still require manual PostgreSQL execution and verification as applicable to the target project.
 - Migrations `012` and `013` now provide the owner-safe and customer-visit RPC contracts required by the application, but they remain unapplied remotely; deploy `010` through `013` as one ordered manual SQL installation.
-- Sale editing, expenses, daily cash/register closure and reporting remain outside this milestone. Physical deletion is intentionally limited to unused payment methods; product, service, customer and user lifecycle rules remain unchanged.
+- Sale editing, expenses, daily cash/register closure and reporting remain outside this milestone. Physical deletion is intentionally limited to unused payment methods and product categories with zero product references; product records, services, customers and users retain their existing lifecycle rules.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 - The configured Supabase project exposes the dynamic payment catalog and responsible-role snapshot, but income creation still raises PostgreSQL `23502` because the superseded `income_payments.method` column is still mandatory. The latest `016_payment_methods.sql` makes it nullable while retaining historical values.
 
 ## Recommended next task
 
-Rerun migration `016` in the Supabase SQL Editor, then validate one unused-method deletion and one referenced-method conflict against the configured project before deploying the UI.
+Run the latest migration `016` and then incremental migration `017` in the Supabase SQL Editor. Validate one unused and one referenced deletion for both payment methods and product categories before deploying the UI.
 
 ## Context maintenance rule
 
