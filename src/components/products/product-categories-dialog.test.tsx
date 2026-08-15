@@ -107,3 +107,27 @@ it("separates active categories and removes one only after confirmation", async 
   expect(onCategoriesChange).toHaveBeenCalledWith([active]);
   expect(await screen.findByText("Categoría eliminada correctamente.")).toBeVisible();
 });
+
+it("keeps the three category actions in one compact accessible group", () => {
+  const categoryClient = {
+    create: vi.fn(),
+    update: vi.fn(),
+    deactivate: vi.fn(),
+    remove: vi.fn(),
+  };
+
+  render(
+    <ProductCategoriesDialog
+      categories={[active]}
+      categoryClient={categoryClient}
+      onCategoriesChange={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  const actions = screen.getByRole("group", {
+    name: "Acciones para Cuidado capilar",
+  });
+  expect(within(actions).getAllByRole("button")).toHaveLength(3);
+  expect(actions).toHaveClass("flex");
+});

@@ -159,7 +159,10 @@ export const ProductCategoriesDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="mt-4 grid grid-cols-1 gap-2" onSubmit={create}>
+        <form
+          className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
+          onSubmit={create}
+        >
           <Input
             aria-label="Nueva categoría"
             value={newName}
@@ -167,7 +170,11 @@ export const ProductCategoriesDialog = ({
             placeholder="Nueva categoría"
             className={fieldClassName}
           />
-          <Button type="submit" className="h-10 w-full rounded-xl" disabled={isSaving}>
+          <Button
+            type="submit"
+            className="h-10 w-full rounded-xl sm:w-auto"
+            disabled={isSaving}
+          >
             <Plus /> Agregar categoría
           </Button>
         </form>
@@ -193,7 +200,7 @@ export const ProductCategoriesDialog = ({
           </form>
         )}
 
-        <div className="mt-4 flex flex-col items-start gap-3">
+        <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium">
               {showInactive ? "Categorías desactivadas" : "Categorías activas"}
@@ -227,7 +234,7 @@ export const ProductCategoriesDialog = ({
               <li
                 key={category.id}
                 data-testid={`product-category-card-${category.id}`}
-                className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-3"
+                className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-3 transition-colors hover:border-black/10 hover:bg-white"
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <p className="min-w-0 truncate font-medium">{category.name}</p>
@@ -241,12 +248,16 @@ export const ProductCategoriesDialog = ({
                     {category.isActive ? "Activa" : "Inactiva"}
                   </span>
                 </div>
-                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2">
+                <div
+                  role="group"
+                  aria-label={`Acciones para ${category.name}`}
+                  className="mt-3 flex items-center gap-2"
+                >
                 <Button
                   type="button"
                   variant="outline"
                   aria-label={`Editar ${category.name}`}
-                  className="rounded-xl bg-white"
+                  className="h-9 min-w-0 flex-1 rounded-xl bg-white px-2 text-xs sm:text-sm"
                   disabled={isSaving}
                   onClick={() => {
                     setEditing(category);
@@ -260,7 +271,11 @@ export const ProductCategoriesDialog = ({
                   type="button"
                   variant={category.isActive ? "outline" : "default"}
                   aria-label={`${category.isActive ? "Desactivar" : "Reactivar"} ${category.name}`}
-                  className={category.isActive ? "rounded-xl bg-white" : "rounded-xl"}
+                  className={
+                    category.isActive
+                      ? "h-9 min-w-0 flex-1 rounded-xl bg-white px-2 text-xs sm:text-sm"
+                      : "h-9 min-w-0 flex-1 rounded-xl px-2 text-xs sm:text-sm"
+                  }
                   disabled={
                     isSaving ||
                     (category.isActive && blockedDeactivationIds.has(category.id))
@@ -279,7 +294,7 @@ export const ProductCategoriesDialog = ({
                     setDeleting(category);
                     setError(null);
                   }}
-                  className="w-full rounded-xl text-destructive hover:bg-red-50 hover:text-destructive"
+                  className="size-9 shrink-0 rounded-xl text-destructive hover:bg-red-50 hover:text-destructive"
                 >
                   <Trash2 />
                 </Button>
