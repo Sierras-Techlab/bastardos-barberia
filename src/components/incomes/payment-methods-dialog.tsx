@@ -105,9 +105,9 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           <DialogDescription>Actualizá las opciones disponibles sin perder los nombres guardados en ventas anteriores.</DialogDescription>
         </DialogHeader>
 
-        <form className="mt-4 flex gap-2" onSubmit={create}>
+        <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={create}>
           <Input aria-label="Nuevo medio de pago" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Nuevo medio de pago" className={fieldClassName} />
-          <Button type="submit" className="h-10 rounded-xl" disabled={saving}><Plus /> Agregar medio</Button>
+          <Button type="submit" className="h-10 w-full rounded-xl sm:w-auto" disabled={saving}><Plus /> Agregar medio</Button>
         </form>
 
         {editing && (
@@ -117,7 +117,7 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           </form>
         )}
 
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div>
             <p className="font-medium">{showInactive ? "Medios desactivados" : "Medios activos"}</p>
             <p className="text-xs text-muted-foreground">
@@ -127,7 +127,7 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           <Button
             type="button"
             variant="ghost"
-            className="shrink-0 rounded-xl"
+            className="h-auto shrink-0 rounded-xl px-0 py-1 sm:px-2.5"
             onClick={() => {
               setShowInactive((current) => !current);
               setEditing(null);
@@ -142,9 +142,9 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
         {visibleMethods.length > 0 ? (
           <ul className="divide-y divide-black/5 rounded-xl border border-black/5">
           {visibleMethods.map((method) => (
-            <li key={method.id} className="flex items-center justify-between gap-3 p-3">
+            <li key={method.id} className="flex flex-col items-stretch gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0"><p className="truncate font-medium">{method.name}</p><p className="text-xs text-muted-foreground">{method.isActive ? "Activo" : "Inactivo"}</p></div>
-              <div className="flex shrink-0 gap-1">
+              <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
                 <Button type="button" variant="ghost" size="icon" aria-label={`Renombrar ${method.name}`} disabled={saving} onClick={() => { setEditing(method); setEditingName(method.name); setError(null); }}><Pencil /></Button>
                 <Button type="button" variant="ghost" size="icon" aria-label={`Eliminar ${method.name}`} disabled={saving} onClick={() => { setDeleting(method); setError(null); }} className="text-destructive hover:bg-red-50 hover:text-destructive"><Trash2 /></Button>
                 <Button type="button" variant={method.isActive ? "outline" : "default"} className="rounded-xl" disabled={saving} onClick={() => setActive(method)}>{method.isActive ? `Desactivar ${method.name}` : `Reactivar ${method.name}`}</Button>

@@ -10,7 +10,7 @@ Captured: 2026-08-15
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The configured Supabase project now has the required columns and corrected product projection, but its legacy `income_payments.method` column remains `NOT NULL`; run the latest transactional `016` in full to release that superseded requirement and refresh `create_income`.
+- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The latest local `016` also installs concurrency-safe permanent deletion for unused methods. Run that transactional file in full before using the current lifecycle contract against Supabase.
 
 ## Delivered behavior
 
@@ -42,8 +42,9 @@ Captured: 2026-08-15
 - The persisted income and metrics types now mirror the strict response schemas: payments, registering actor, aggregate commission, gross total, commission total and barbershop net are mandatory. Income UI and dashboard consumers no longer fabricate legacy payment data or show pending-backend fallbacks.
 - Migration `015_product_item_commissions.sql` backfills immutable service/product item snapshots with exact parent reconciliation, calculates new product lines independently, fingerprints strict product exception flags and promotes the sole canonical `create_income` RPC. It preserves category-first product locks, stock/payments/customer visits, scoped history and idempotent retries while removing `create_income_v2`.
 - Canonical income idempotency dual-compares the exact pre-015 product fingerprint only when every newly required product exception flag is false. It preserves the historical audit hash, accepts a semantically identical cross-migration retry and still conflicts when any flag changes to true.
-- Payment methods now have strict trimmed 1–80-character names, manager-only create/update/deactivate operations, canonical lifecycle RPC adapters and stable duplicate/last-active conflicts. Authenticated catalog reads and detail lookup include inactive methods so historical payment filters and receipts can keep their labels; absent IDs return the safe payment-method 404.
-- `/api/payment-methods` now authorizes catalog reads for every authenticated user and create mutations for managers; `/api/payment-methods/[id]` safely fetches active/inactive historical methods, permits only manager rename/reactivation and uses a dedicated manager-only deactivation action. Route authorization occurs before body or path validation.
+- Payment methods now have strict trimmed 1–80-character names, manager-only create/update/deactivate/delete operations, canonical lifecycle RPC adapters and stable duplicate/last-active/in-use conflicts. Authenticated catalog reads and detail lookup include inactive methods so historical payment filters and receipts keep their labels; absent IDs return the safe payment-method 404.
+- `/api/payment-methods` authorizes catalog reads for every authenticated user and create mutations for managers. `/api/payment-methods/[id]` safely fetches active/inactive historical methods; manager `PATCH` handles rename/deactivation/reactivation, while `DELETE` permanently removes only unused methods. Route authorization occurs before body or path validation.
+- The manager dialog shows active methods by default, moves deactivated methods into a separate recoverable view and requires an explicit destructive confirmation before deletion. A referenced method remains in place and receives guidance to deactivate it without losing history.
 - `/incomes/new` loads only active payment methods and presents them as responsive rounded selection cards. A dynamic `Combinado` card opens the arbitrary multi-method allocation editor with distinct methods and exact remaining/excess feedback; single-method cards assign the full total. The history page loads active and inactive methods for stable filtering and manager lifecycle administration.
 - Income list, mobile/detail and dashboard presentation render saved payment names dynamically; one allocation uses its snapshot name and multiple allocations use `Combinado (N medios)`. No UI or metric contract branches on fixed cash/transfer values.
 
@@ -54,7 +55,7 @@ Captured: 2026-08-15
 - `supabase/queries/012_owner_commission_invariant.sql` enforces owner-zero commission rates and snapshots on users and incomes tables.
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
-- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, an idempotent repair/backfill for the required responsible-role snapshot column and compatibility repair for the superseded legacy payment method column.
+- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, idempotent compatibility repairs and serialized manager lifecycle functions. Its delete RPC protects the final active method and rejects referenced methods before physical deletion.
 - `supabase/queries/README.md` documents ordered installation `001` through `016`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
 - The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `016` manually in Supabase SQL Editor to support the dynamic payment methods feature.
 
@@ -73,6 +74,7 @@ Captured: 2026-08-15
 - Payment-method Tasks 3–5 passed their RED/GREEN contract, UI and presentation groups; the combined affected-domain slice passed 46 files / 176 tests.
 - After Tasks 3–5, the full suite passed 134 files / 504 tests, ESLint passed with no warnings, TypeScript and `git diff --check` passed, and the Next.js 16.3 production build completed successfully.
 - After restoring the card-based payment selector, the focused selector/form slice passed 2 files / 18 tests and the full suite passed 134 files / 510 tests. ESLint passed with no warnings, `git diff --check` passed, the Next.js 16.3 webpack production build succeeded and desktop/mobile browser validation found no console errors or layout overflow.
+- Safe payment-method deletion passed the complete affected slice with 10 files / 46 tests and the full repository suite with 136 files / 522 tests. ESLint, TypeScript, `git diff --check` and the Next.js 16.3 webpack production build passed. Authenticated browser validation covered active/inactive navigation and named confirmation; at 390×844 both nested dialogs matched their 358px available width with no document overflow or console errors.
 - The migration `016` product-availability regression reproduced as a failing structural test and passed after projecting `p.is_active` into the locked product record consumed by `create_income`.
 - A controlled RPC probe confirmed the installed function passes product availability validation; a read-only schema probe isolated its remaining `42703` to the missing `incomes.responsible_role_snapshot` column. The migration contract now requires both fresh installation in `010` and idempotent repair/backfill in `016`.
 - After the responsible-role repair, the migration regression test passed its red/green cycle, the complete Vitest suite exited successfully, ESLint reported no errors, `git diff --check` passed and the Next.js 16.3 webpack production build completed successfully.
@@ -82,14 +84,14 @@ Captured: 2026-08-15
 
 - SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks, but migrations `010` through `015` still require manual PostgreSQL execution and verification.
 - Migrations `012` and `013` now provide the owner-safe and customer-visit RPC contracts required by the application, but they remain unapplied remotely; deploy `010` through `013` as one ordered manual SQL installation.
-- Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
+- Sale editing, expenses, daily cash/register closure and reporting remain outside this milestone. Physical deletion is intentionally limited to unused payment methods; product, service, customer and user lifecycle rules remain unchanged.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 - The configured Supabase project exposes the dynamic payment catalog and responsible-role snapshot, but income creation still raises PostgreSQL `23502` because the superseded `income_payments.method` column is still mandatory. The latest `016_payment_methods.sql` makes it nullable while retaining historical values.
 
 ## Recommended next task
 
-Execute `docs/superpowers/plans/2026-08-15-payment-method-deletion.md` task by task with TDD, then rerun migration `016` and validate unused deletion plus referenced-method protection against the configured Supabase project.
+Rerun migration `016` in the Supabase SQL Editor, then validate one unused-method deletion and one referenced-method conflict against the configured project before deploying the UI.
 
 ## Context maintenance rule
 

@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
 
 ## Vision
 
@@ -28,7 +28,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
 | Sales and cash | Sales implemented; cash planned | Persistent sales and item snapshots are ready; daily cash, expenses and register closures remain future work. |
 | Products | Implemented locally | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic manager category administration. Migration `014` is implemented locally and pending manual installation; inactive items show `No disponible` regardless of retained stock. |
-| Payment methods | In progress locally | The audited catalog/API, dynamic sale allocations, manager UI, historical filters and dashboard totals are implemented. The next increment adds permanent deletion for unused methods while referenced methods remain deactivatable and historically visible. |
+| Payment methods | Implemented locally | Audited dynamic catalog and allocations, manager create/rename/deactivate/reactivate UI, historical filters/dashboard totals and permanent deletion restricted to unused methods. Migration `016` must be rerun manually before using deletion against Supabase. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
 | Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, and audited attended/missed occurrences; migration 013 remains pending manual installation. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
@@ -39,9 +39,7 @@ Complete migration `016`, then manually install migrations `010` through `016` a
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Physical deletion and purchase cost remain outside scope.
 
-The payment-method catalog validates trimmed names, manager-only lifecycle operations and last-active protection. Authenticated Route Handlers expose active and inactive historical methods, safely return a 404 for unknown IDs, authorize manager mutations before parsing and accept only rename/reactivation through `PATCH`; `DELETE` deactivates. Sales now submit one or more distinct UUID allocations, history retains immutable method names, manager filters include inactive methods and dashboard totals are dynamic. Migration `016` is still required to enforce and persist this application contract.
-
-The approved deletion increment will make `DELETE` permanently remove only unused payment methods. Deactivation will move to `PATCH`, inactive methods will be hidden from the default administration list but remain recoverable, and referenced methods will retain restrictive foreign-key protection plus their immutable sale history.
+The payment-method catalog validates trimmed names, manager-only lifecycle operations and last-active protection. Authenticated Route Handlers expose active and inactive historical methods and safely return a 404 for unknown IDs. `PATCH` handles rename, deactivation and reactivation; `DELETE` permanently removes only unused methods. Referenced methods return a stable conflict and remain available for logical deactivation, preserving immutable sale history. The manager UI shows active methods by default and keeps inactive methods in a separate recoverable view. Sales submit one or more distinct UUID allocations, manager filters include historical methods and dashboard totals are dynamic. The latest migration `016` is required to enforce this contract.
 
 The customer directory persists required normalized phones and optional emails. Exact names may repeat, all authenticated roles can create/edit, only managers can logically delete, and associated active sales increment visits atomically.
 
