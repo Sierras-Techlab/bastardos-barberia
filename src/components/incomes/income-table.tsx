@@ -2,12 +2,10 @@
 
 import {
   createColumnHelper,
-  createPaginatedRowModel,
-  rowPaginationFeature,
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,10 +23,7 @@ type IncomeTableProps = {
   onSelect: (income: IncomeListItem) => void;
 };
 
-const features = tableFeatures({
-  rowPaginationFeature,
-  paginatedRowModel: createPaginatedRowModel(),
-});
+const features = tableFeatures({});
 
 const columnHelper = createColumnHelper<typeof features, IncomeListItem>();
 
@@ -129,12 +124,6 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
     features,
     data: incomes,
     columns,
-    initialState: {
-      pagination: {
-        pageIndex: 0,
-        pageSize: 10,
-      },
-    },
   });
 
   return (
@@ -170,35 +159,6 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="flex items-center justify-between border-t border-black/5 px-4 py-3">
-        <p className="text-xs text-muted-foreground">
-          Página {table.state.pagination.pageIndex + 1} de{" "}
-          {Math.max(table.getPageCount(), 1)}
-        </p>
-        <div className="flex gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!table.getCanPreviousPage()}
-            onClick={() => table.previousPage()}
-          >
-            <ChevronLeft />
-            Anterior
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!table.getCanNextPage()}
-            onClick={() => table.nextPage()}
-          >
-            Siguiente
-            <ChevronRight />
-          </Button>
-        </div>
       </div>
     </div>
   );

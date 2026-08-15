@@ -55,3 +55,43 @@ it("exposes payment-method administration only to managers", () => {
   render(<IncomesView data={data} initialQuery={initialQuery} currentUser={currentUser} employees={[currentUser]} paymentMethods={paymentMethods} canViewAll canVoid incomeClient={client()} />);
   expect(screen.getByRole("button", { name: /administrar medios de pago/i })).toBeVisible();
 });
+
+it("uses one server paginator for the income table", async () => {
+  const user = userEvent.setup();
+  const secondPage = {
+    ...data,
+    pagination: { page: 2, pageSize: 10, total: 12, totalPages: 2 },
+  };
+  const firstPage = {
+    ...data,
+    pagination: { page: 1, pageSize: 10, total: 12, totalPages: 2 },
+  };
+  const incomeClient = client();
+  vi.mocked(incomeClient.list).mockResolvedValueOnce(secondPage);
+
+  render(
+    <IncomesView
+      data={firstPage}
+      initialQuery={initialQuery}
+      currentUser={currentUser}
+      employees={[currentUser]}
+      paymentMethods={paymentMethods}
+      canViewAll
+      canVoid
+      incomeClient={incomeClient}
+    />,
+  );
+
+  expect(screen.getAllByRole("button", { name: "Anterior" })).toHaveLength(1);
+  expect(screen.getAllByRole("button", { name: "Siguiente" })).toHaveLength(1);
+  expect(screen.getAllByText("Página 1 de 2")).toHaveLength(1);
+
+  await user.click(screen.getByRole("button", { name: "Siguiente" }));
+
+  await waitFor(() =>
+    expect(incomeClient.list).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 2, pageSize: 10 }),
+    ),
+  );
+  expect(await screen.findByText("Página 2 de 2")).toBeVisible();
+});
