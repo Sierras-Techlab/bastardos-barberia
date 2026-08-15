@@ -43,4 +43,17 @@ describe("migration 016 dynamic payment contract", () => {
       );
     }
   });
+
+  it("releases the legacy payment method column before dynamic payment inserts", () => {
+    const sql = migration();
+    const compatibilityRepair = sql.indexOf(
+      "alter column method drop not null",
+    );
+    const dynamicIncomeFunction = sql.indexOf(
+      "create or replace function public.create_income(",
+    );
+
+    expect(compatibilityRepair).toBeGreaterThan(-1);
+    expect(compatibilityRepair).toBeLessThan(dynamicIncomeFunction);
+  });
 });

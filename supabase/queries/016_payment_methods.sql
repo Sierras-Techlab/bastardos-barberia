@@ -68,6 +68,7 @@ set payment_method_id = '60000000-0000-4000-8000-000000000002',
 where payment_method_id is null and method = 'transfer';
 
 alter table public.income_payments
+  alter column method drop not null,
   alter column payment_method_id set not null,
   alter column method_name_snapshot set not null;
 

@@ -23,7 +23,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
-If `016_payment_methods.sql` was installed before the product-availability projection or responsible-role snapshot fixes, run the current file again in full. The script is transactional: it repairs and backfills `incomes.responsible_role_snapshot`, restores its integrity constraint and replaces the canonical `create_income` function. This refresh is required before recording another income.
+If `016_payment_methods.sql` was installed before the product-availability projection, responsible-role snapshot or legacy payment-column fixes, run the current file again in full. The script is transactional: it repairs and backfills `incomes.responsible_role_snapshot`, releases the superseded `income_payments.method` requirement, restores the current integrity constraints and replaces the canonical `create_income` function. This refresh is required before recording another income.
 
 ## Verify
 

@@ -10,7 +10,7 @@ Captured: 2026-08-15
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The configured Supabase project has the payment catalog and corrected product projection installed, but still lacks `incomes.responsible_role_snapshot`; run the latest transactional `016` in full to install/backfill that required audit column and refresh `create_income`.
+- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The configured Supabase project now has the required columns and corrected product projection, but its legacy `income_payments.method` column remains `NOT NULL`; run the latest transactional `016` in full to release that superseded requirement and refresh `create_income`.
 
 ## Delivered behavior
 
@@ -54,7 +54,7 @@ Captured: 2026-08-15
 - `supabase/queries/012_owner_commission_invariant.sql` enforces owner-zero commission rates and snapshots on users and incomes tables.
 - `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
 - `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
-- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs and an idempotent repair/backfill for the required responsible-role snapshot column.
+- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, an idempotent repair/backfill for the required responsible-role snapshot column and compatibility repair for the superseded legacy payment method column.
 - `supabase/queries/README.md` documents ordered installation `001` through `016`, structural reconciliation/grant checks and rollback-wrapped normal/full/unauthorized/idempotency acceptance scenarios.
 - The configured Supabase project is known to have scripts `001` through `009`. Apply `010` through `016` manually in Supabase SQL Editor to support the dynamic payment methods feature.
 
@@ -76,6 +76,7 @@ Captured: 2026-08-15
 - The migration `016` product-availability regression reproduced as a failing structural test and passed after projecting `p.is_active` into the locked product record consumed by `create_income`.
 - A controlled RPC probe confirmed the installed function passes product availability validation; a read-only schema probe isolated its remaining `42703` to the missing `incomes.responsible_role_snapshot` column. The migration contract now requires both fresh installation in `010` and idempotent repair/backfill in `016`.
 - After the responsible-role repair, the migration regression test passed its red/green cycle, the complete Vitest suite exited successfully, ESLint reported no errors, `git diff --check` passed and the Next.js 16.3 webpack production build completed successfully.
+- End-to-end database probing then verified every column consumed by the sale transaction and traversed all validations preceding the first write. A controlled service-only sale isolated the next failure to PostgreSQL `23502`: dynamic payments omit the superseded `income_payments.method`, while the installed legacy column still required a value. PostgreSQL rolled the diagnostic transaction back completely. Migration `016` now drops only that legacy `NOT NULL` requirement before installing the dynamic RPC.
 
 ## Known boundaries
 
@@ -84,11 +85,11 @@ Captured: 2026-08-15
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- The configured Supabase project exposes the dynamic payment catalog, but income creation still raises PostgreSQL `42703` because `incomes.responsible_role_snapshot` is absent. The latest `016_payment_methods.sql` repairs and backfills it when run again in full.
+- The configured Supabase project exposes the dynamic payment catalog and responsible-role snapshot, but income creation still raises PostgreSQL `23502` because the superseded `income_payments.method` column is still mandatory. The latest `016_payment_methods.sql` makes it nullable while retaining historical values.
 
 ## Recommended next task
 
-Run the latest `016_payment_methods.sql` again in full in the configured Supabase project, verify that `incomes.responsible_role_snapshot` exists, then record one product-only sale and one service-plus-product sale end to end.
+Run the latest `016_payment_methods.sql` again in full in the configured Supabase project, verify that `income_payments.method` is nullable, then record one service-only, one product-only and one service-plus-product sale end to end.
 
 ## Context maintenance rule
 
