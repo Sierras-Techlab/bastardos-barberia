@@ -89,7 +89,7 @@ Captured: 2026-08-15
 
 ## Recommended next task
 
-Run the latest `016_payment_methods.sql` again in full in the configured Supabase project, verify that `income_payments.method` is nullable, then record one service-only, one product-only and one service-plus-product sale end to end.
+Review `docs/superpowers/specs/2026-08-15-payment-method-deletion-design.md`, then write the implementation plan for unused-method deletion, update-based deactivation and active/inactive administration views.
 
 ## Context maintenance rule
 
