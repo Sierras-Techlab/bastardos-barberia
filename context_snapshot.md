@@ -1,6 +1,6 @@
 # Context snapshot
 
-Captured: 2026-08-14
+Captured: 2026-08-15
 
 ## Repository state
 
@@ -10,7 +10,7 @@ Captured: 2026-08-14
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
 - Product-category domain, authenticated API client, product UUID contracts, manager UI and migration `014` are implemented locally. The migration remains pending manual Supabase installation after `010` through `013`.
 - Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
-- Dynamic payment methods plan `016`, Tasks 1–5 are implemented locally: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters and dashboard presentation. SQL migration `016` remains the pending task.
+- Dynamic payment methods plan `016` is implemented locally end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and SQL migration `016`. The migration remains pending manual Supabase installation.
 
 ## Delivered behavior
 
@@ -44,7 +44,7 @@ Captured: 2026-08-14
 - Canonical income idempotency dual-compares the exact pre-015 product fingerprint only when every newly required product exception flag is false. It preserves the historical audit hash, accepts a semantically identical cross-migration retry and still conflicts when any flag changes to true.
 - Payment methods now have strict trimmed 1–80-character names, manager-only create/update/deactivate operations, canonical lifecycle RPC adapters and stable duplicate/last-active conflicts. Authenticated catalog reads and detail lookup include inactive methods so historical payment filters and receipts can keep their labels; absent IDs return the safe payment-method 404.
 - `/api/payment-methods` now authorizes catalog reads for every authenticated user and create mutations for managers; `/api/payment-methods/[id]` safely fetches active/inactive historical methods, permits only manager rename/reactivation and uses a dedicated manager-only deactivation action. Route authorization occurs before body or path validation.
-- `/incomes/new` loads only active payment methods and provides a distinct allocation-row selector with one-method autofill, arbitrary multi-method splits and exact remaining/excess feedback. The history page loads active and inactive methods for stable filtering and manager lifecycle administration.
+- `/incomes/new` loads only active payment methods and presents them as responsive rounded selection cards. A dynamic `Combinado` card opens the arbitrary multi-method allocation editor with distinct methods and exact remaining/excess feedback; single-method cards assign the full total. The history page loads active and inactive methods for stable filtering and manager lifecycle administration.
 - Income list, mobile/detail and dashboard presentation render saved payment names dynamically; one allocation uses its snapshot name and multiple allocations use `Combinado (N medios)`. No UI or metric contract branches on fixed cash/transfer values.
 
 ## SQL and deployment state
@@ -72,6 +72,7 @@ Captured: 2026-08-14
 - Payment-method Task 2 passed 2 focused route files / 11 tests, TypeScript and `git diff --check`; the full suite passed 133 files / 494 tests.
 - Payment-method Tasks 3–5 passed their RED/GREEN contract, UI and presentation groups; the combined affected-domain slice passed 46 files / 176 tests.
 - After Tasks 3–5, the full suite passed 134 files / 504 tests, ESLint passed with no warnings, TypeScript and `git diff --check` passed, and the Next.js 16.3 production build completed successfully.
+- After restoring the card-based payment selector, the focused selector/form slice passed 2 files / 18 tests and the full suite passed 134 files / 510 tests. ESLint passed with no warnings, `git diff --check` passed, the Next.js 16.3 webpack production build succeeded and desktop/mobile browser validation found no console errors or layout overflow.
 
 ## Known boundaries
 
@@ -80,11 +81,11 @@ Captured: 2026-08-14
 - Physical deletion, sale editing, expenses, daily cash/register closure and reporting remain outside this milestone.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
-- Dynamic payment methods are connected throughout the application contracts and UI, but the current SQL/database types still expose the legacy payment shape until Task 6 implements migration `016`; do not deploy this application slice before that ordered migration is installed.
+- Dynamic payment methods are connected throughout the application contracts, UI and migration `016`, but the configured Supabase project still exposes the legacy payment shape until that migration is installed; do not deploy this application slice before the ordered `010` through `016` installation is completed.
 
 ## Recommended next task
 
-Implement plan `016`, Task 6: add migration `016`, regenerate the hand-maintained database types and document the ordered SQL acceptance checks.
+Apply migrations `010` through `016` manually in the configured Supabase project, run the documented structural and acceptance checks, and only then exercise the end-to-end commercial flow against that database.
 
 ## Context maintenance rule
 

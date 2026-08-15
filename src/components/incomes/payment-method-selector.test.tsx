@@ -16,8 +16,61 @@ it("auto-fills the first active method with the complete total", () => {
   render(<PaymentMethodSelector methods={methods} payments={[]} total={49000} onChange={onChange} error="Seleccioná un medio de pago." />);
 
   expect(onChange).toHaveBeenCalledWith([{ paymentMethodId: methods[0].id, amount: 49000 }]);
-  expect(screen.queryByRole("option", { name: "Cheque" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Cheque" })).not.toBeInTheDocument();
   expect(screen.getByText("Seleccioná un medio de pago.")).toBeVisible();
+});
+
+it("renders active methods and combined as selectable cards", () => {
+  render(
+    <PaymentMethodSelector
+      methods={methods}
+      payments={[{ paymentMethodId: methods[0].id, amount: 49000 }]}
+      total={49000}
+      onChange={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "Efectivo" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Transferencia" })).toHaveAttribute("aria-pressed", "false");
+  expect(screen.getByRole("button", { name: "Combinado" })).toHaveAttribute("aria-pressed", "false");
+  expect(screen.queryByRole("button", { name: "Cheque" })).not.toBeInTheDocument();
+});
+
+it("selects one method for the complete total", async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(
+    <PaymentMethodSelector
+      methods={methods}
+      payments={[{ paymentMethodId: methods[0].id, amount: 49000 }]}
+      total={49000}
+      onChange={onChange}
+    />,
+  );
+
+  await user.click(screen.getByRole("button", { name: "Tarjeta" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    { paymentMethodId: methods[2].id, amount: 49000 },
+  ]);
+});
+
+it("opens combined mode with two distinct dynamic methods", async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(
+    <PaymentMethodSelector
+      methods={methods}
+      payments={[{ paymentMethodId: methods[0].id, amount: 49000 }]}
+      total={49000}
+      onChange={onChange}
+    />,
+  );
+
+  await user.click(screen.getByRole("button", { name: "Combinado" }));
+  expect(onChange).toHaveBeenLastCalledWith([
+    { paymentMethodId: methods[0].id, amount: 49000 },
+    { paymentMethodId: methods[1].id, amount: 0 },
+  ]);
 });
 
 it("adds and removes distinct allocations up to every active method", async () => {
@@ -27,17 +80,12 @@ it("adds and removes distinct allocations up to every active method", async () =
     <PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 49000 }]} total={49000} onChange={onChange} />,
   );
 
+  await user.click(screen.getByRole("button", { name: "Combinado" }));
+  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 49000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={onChange} />);
   await user.click(screen.getByRole("button", { name: /agregar medio/i }));
   expect(onChange).toHaveBeenLastCalledWith([
     { paymentMethodId: methods[0].id, amount: 49000 },
     { paymentMethodId: methods[1].id, amount: 0 },
-  ]);
-
-  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 19000 }]} total={49000} onChange={onChange} />);
-  await user.click(screen.getByRole("button", { name: /agregar medio/i }));
-  expect(onChange).toHaveBeenLastCalledWith([
-    { paymentMethodId: methods[0].id, amount: 20000 },
-    { paymentMethodId: methods[1].id, amount: 19000 },
     { paymentMethodId: methods[2].id, amount: 0 },
   ]);
 
@@ -51,13 +99,13 @@ it("adds and removes distinct allocations up to every active method", async () =
 });
 
 it("reports remaining, exact and excess allocations", () => {
-  const { rerender } = render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 39000 }]} total={49000} onChange={vi.fn()} />);
+  const { rerender } = render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 39000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
   expect(screen.getByRole("status")).toHaveTextContent("Faltan $ 10.000");
 
-  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 19000 }, { paymentMethodId: methods[2].id, amount: 10000 }]} total={49000} onChange={vi.fn()} />);
+  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={vi.fn()} />);
   expect(screen.getByRole("status")).toHaveTextContent("Importe distribuido correctamente");
 
-  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 50000 }]} total={49000} onChange={vi.fn()} />);
+  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 50000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
   expect(screen.getByRole("status")).toHaveTextContent("Sobran $ 1.000");
 });
 

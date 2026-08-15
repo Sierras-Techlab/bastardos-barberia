@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Role, SafeUser } from "@/lib/auth/types";
+import type { Role } from "@/lib/auth/types";
 import { UserEditorDialog } from "./user-editor-dialog";
 
 const roles: Role[] = [
@@ -10,20 +10,6 @@ const roles: Role[] = [
   { id: 2, name: "admin" },
   { id: 3, name: "employee" },
 ];
-
-const employee: SafeUser = {
-  id: "00000000-0000-4000-8000-000000000002",
-  firstName: "Lucía",
-  lastName: "Ferreyra",
-  username: "lucia.ferreyra",
-  role: roles[2],
-  isActive: true,
-  serviceCommissionRate: 45,
-  productCommissionRate: 0,
-  lastLoginAt: null,
-  createdAt: "2026-08-08T12:00:00.000Z",
-  updatedAt: "2026-08-08T12:00:00.000Z",
-};
 
 describe("UserEditorDialog", () => {
   it("clears the plaintext password as soon as creation succeeds", async () => {
