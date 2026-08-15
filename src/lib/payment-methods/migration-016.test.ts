@@ -56,4 +56,21 @@ describe("migration 016 dynamic payment contract", () => {
     expect(compatibilityRepair).toBeGreaterThan(-1);
     expect(compatibilityRepair).toBeLessThan(dynamicIncomeFunction);
   });
+
+  it("serializes lifecycle changes and deletes only unused non-final methods", () => {
+    const sql = migration();
+
+    expect(
+      (sql.match(/bastardos_payment_method_lifecycle/g) ?? []).length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(sql).toMatch(
+      /create or replace function public\.delete_payment_method\([\s\S]*?PAYMENT_METHOD_IN_USE[\s\S]*?delete from public\.payment_methods/,
+    );
+    expect(sql).toMatch(
+      /drop function if exists public\.deactivate_payment_method\(uuid, uuid\)/,
+    );
+    expect(sql).toMatch(
+      /grant execute on function public\.delete_payment_method\(uuid, uuid\)\s+to service_role/,
+    );
+  });
 });

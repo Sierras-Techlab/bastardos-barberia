@@ -141,6 +141,10 @@ begin
     raise exception using errcode = '42501', message = 'MANAGER_REQUIRED';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('bastardos_payment_method_lifecycle', 0)
+  );
+
   select * into current_record
   from public.payment_methods
   where id = target_payment_method_id
@@ -186,8 +190,8 @@ begin
 end;
 $$;
 
--- RPC: deactivate_payment_method
-create or replace function public.deactivate_payment_method(
+-- RPC: delete_payment_method
+create or replace function public.delete_payment_method(
   actor_user_id uuid,
   target_payment_method_id uuid
 )
@@ -196,10 +200,58 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  actor_role_id smallint;
+  current_record record;
+  active_count integer;
 begin
-  return public.update_payment_method(actor_user_id, target_payment_method_id, null, false);
+  select role_id into actor_role_id
+  from public.users
+  where id = actor_user_id and is_active and deleted_at is null;
+
+  if not found or actor_role_id not in (1, 2) then
+    raise exception using errcode = '42501', message = 'MANAGER_REQUIRED';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('bastardos_payment_method_lifecycle', 0)
+  );
+
+  select id, is_active into current_record
+  from public.payment_methods
+  where id = target_payment_method_id
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'PAYMENT_METHOD_NOT_FOUND';
+  end if;
+
+  if current_record.is_active then
+    select count(*) into active_count
+    from public.payment_methods
+    where is_active;
+
+    if active_count <= 1 then
+      raise exception using errcode = 'P0001', message = 'LAST_ACTIVE_PAYMENT_METHOD';
+    end if;
+  end if;
+
+  if exists (
+    select 1
+    from public.income_payments
+    where payment_method_id = target_payment_method_id
+  ) then
+    raise exception using errcode = 'P0001', message = 'PAYMENT_METHOD_IN_USE';
+  end if;
+
+  delete from public.payment_methods
+  where id = target_payment_method_id;
+
+  return target_payment_method_id;
 end;
 $$;
+
+drop function if exists public.deactivate_payment_method(uuid, uuid);
 
 -- RPC: income_as_json
 create or replace function public.income_as_json(
@@ -841,14 +893,14 @@ $$;
 
 revoke execute on function public.create_payment_method(uuid, text) from public, anon, authenticated;
 revoke execute on function public.update_payment_method(uuid, uuid, text, boolean) from public, anon, authenticated;
-revoke execute on function public.deactivate_payment_method(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.delete_payment_method(uuid, uuid) from public, anon, authenticated;
 revoke execute on function public.create_income(uuid, uuid, uuid, uuid, uuid, jsonb, jsonb, boolean) from public, anon, authenticated;
 revoke execute on function public.income_as_json(uuid) from public, anon, authenticated;
 revoke execute on function public.list_incomes(uuid, boolean, uuid, date, date, uuid, text, text, text, integer, integer) from public, anon, authenticated;
 
 grant execute on function public.create_payment_method(uuid, text) to service_role;
 grant execute on function public.update_payment_method(uuid, uuid, text, boolean) to service_role;
-grant execute on function public.deactivate_payment_method(uuid, uuid) to service_role;
+grant execute on function public.delete_payment_method(uuid, uuid) to service_role;
 grant execute on function public.create_income(uuid, uuid, uuid, uuid, uuid, jsonb, jsonb, boolean) to service_role;
 grant execute on function public.income_as_json(uuid) to service_role;
 grant execute on function public.list_incomes(uuid, boolean, uuid, date, date, uuid, text, text, text, integer, integer) to service_role;
