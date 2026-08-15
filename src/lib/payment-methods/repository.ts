@@ -55,6 +55,13 @@ const mutationFailure = (
       409,
     );
   }
+  if (error.code === "23503" || error.message === "PAYMENT_METHOD_IN_USE") {
+    throw new AppError(
+      "PAYMENT_METHOD_IN_USE",
+      "Este medio de pago tiene ventas registradas. Desactivalo para ocultarlo sin perder el historial.",
+      409,
+    );
+  }
   return databaseFailure(operation, error);
 };
 
@@ -108,12 +115,12 @@ export const paymentMethodRepository: PaymentMethodRepository = {
     return typeof data === "string" ? findPaymentMethodById(data) : null;
   },
 
-  async deactivate(actorId, id) {
-    const { data, error } = await getSupabaseAdmin().rpc("deactivate_payment_method", {
+  async remove(actorId, id) {
+    const { data, error } = await getSupabaseAdmin().rpc("delete_payment_method", {
       actor_user_id: actorId,
       target_payment_method_id: id,
     });
-    if (error) mutationFailure("deactivate payment method", error);
-    return typeof data === "string" ? findPaymentMethodById(data) : null;
+    if (error) mutationFailure("delete payment method", error);
+    return typeof data === "string" ? data : null;
   },
 };

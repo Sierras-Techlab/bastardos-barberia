@@ -52,6 +52,7 @@ export type PaymentMethodClient = {
   create(input: PaymentMethodInput): Promise<PaymentMethod>;
   update(id: string, input: PaymentMethodUpdate): Promise<PaymentMethod>;
   deactivate(id: string): Promise<PaymentMethod>;
+  remove(id: string): Promise<{ id: string }>;
 };
 
 export const paymentMethodClient: PaymentMethodClient = {
@@ -83,6 +84,13 @@ export const paymentMethodClient: PaymentMethodClient = {
 
   deactivate(id) {
     return request<PaymentMethod>(
+      `/api/payment-methods/${encodeURIComponent(id)}`,
+      jsonRequest("PATCH", { isActive: false }),
+    );
+  },
+
+  remove(id) {
+    return request<{ id: string }>(
       `/api/payment-methods/${encodeURIComponent(id)}`,
       { method: "DELETE" },
     );

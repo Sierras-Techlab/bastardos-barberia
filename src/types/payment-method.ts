@@ -8,7 +8,7 @@ export type PaymentMethodInput = { name: string };
 
 export type PaymentMethodUpdate = {
   name?: string;
-  isActive?: true;
+  isActive?: boolean;
 };
 
 export type IncomePayment = {

@@ -13,7 +13,7 @@ export type PaymentMethodRepository = {
     id: string,
     input: PaymentMethodUpdate,
   ): Promise<PaymentMethod | null>;
-  deactivate(actorId: string, id: string): Promise<PaymentMethod | null>;
+  remove(actorId: string, id: string): Promise<string | null>;
 };
 
 export type PaymentMethodServiceDependencies = {

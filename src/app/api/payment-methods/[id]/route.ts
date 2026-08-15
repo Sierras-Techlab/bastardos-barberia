@@ -5,7 +5,7 @@ import {
   updatePaymentMethodSchema,
 } from "@/lib/payment-methods/schemas";
 import {
-  deactivatePaymentMethod,
+  deletePaymentMethod,
   getPaymentMethod,
   updatePaymentMethod,
 } from "@/lib/payment-methods/service";
@@ -46,7 +46,7 @@ export async function DELETE(
   try {
     const { user } = await requireManager();
     const id = paymentMethodIdSchema.parse((await context.params).id);
-    return successResponse(await deactivatePaymentMethod(user, id));
+    return successResponse(await deletePaymentMethod(user, id));
   } catch (error) {
     return errorResponse(error);
   }

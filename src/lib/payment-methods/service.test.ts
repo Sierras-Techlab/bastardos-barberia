@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { SafeUser } from "@/lib/auth/types";
-import type { PaymentMethodUpdate } from "@/types/payment-method";
 import {
   createPaymentMethod,
-  deactivatePaymentMethod,
+  deletePaymentMethod,
   getPaymentMethod,
   listPaymentMethods,
   updatePaymentMethod,
@@ -39,7 +38,7 @@ const dependencies = () => ({
     findById: vi.fn().mockResolvedValue(method),
     create: vi.fn().mockResolvedValue(method),
     update: vi.fn().mockResolvedValue(method),
-    deactivate: vi.fn().mockResolvedValue(method),
+    remove: vi.fn().mockResolvedValue(method.id),
   },
 });
 
@@ -88,43 +87,41 @@ describe("payment method domain", () => {
       .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
     await expect(updatePaymentMethod(employee, method.id, { name: "Transferencia" }, deps))
       .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
-    await expect(deactivatePaymentMethod(employee, method.id, deps))
+    await expect(deletePaymentMethod(employee, method.id, deps))
       .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
 
     expect(deps.methods.create).not.toHaveBeenCalled();
     expect(deps.methods.update).not.toHaveBeenCalled();
-    expect(deps.methods.deactivate).not.toHaveBeenCalled();
+    expect(deps.methods.remove).not.toHaveBeenCalled();
   });
 
   it("propagates the authenticated manager to every mutation", async () => {
     const deps = dependencies();
 
     await createPaymentMethod(manager, { name: method.name }, deps);
-    await updatePaymentMethod(manager, method.id, { isActive: true }, deps);
-    await deactivatePaymentMethod(manager, method.id, deps);
+    await updatePaymentMethod(manager, method.id, { isActive: false }, deps);
+    await expect(deletePaymentMethod(manager, method.id, deps)).resolves.toEqual({
+      id: method.id,
+    });
 
     expect(deps.methods.create).toHaveBeenCalledWith(manager.id, { name: method.name });
     expect(deps.methods.update).toHaveBeenCalledWith(manager.id, method.id, {
-      isActive: true,
+      isActive: false,
     });
-    expect(deps.methods.deactivate).toHaveBeenCalledWith(manager.id, method.id);
+    expect(deps.methods.remove).toHaveBeenCalledWith(manager.id, method.id);
   });
 
-  it("requires the dedicated lifecycle operation for a false active flag", async () => {
+  it("returns a safe not-found error when deletion finds no method", async () => {
     const deps = dependencies();
+    deps.methods.remove.mockResolvedValue(null);
 
     await expect(
-      updatePaymentMethod(
-        manager,
-        method.id,
-        { isActive: false } as unknown as PaymentMethodUpdate,
-        deps,
-      ),
+      deletePaymentMethod(manager, method.id, deps),
     ).rejects.toMatchObject({
-      code: "PAYMENT_METHOD_DEACTIVATION_REQUIRED",
-      status: 400,
+      code: "PAYMENT_METHOD_NOT_FOUND",
+      status: 404,
     });
 
-    expect(deps.methods.update).not.toHaveBeenCalled();
+    expect(deps.methods.remove).toHaveBeenCalledWith(manager.id, method.id);
   });
 });

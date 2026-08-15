@@ -17,13 +17,15 @@ describe("payment method boundary schemas", () => {
     );
   });
 
-  it("rejects malformed identifiers, unknown fields, empty updates and direct deactivation", () => {
+  it("rejects malformed identifiers, unknown fields and empty updates", () => {
     expect(paymentMethodIdSchema.safeParse("efectivo").success).toBe(false);
     expect(createPaymentMethodSchema.safeParse({ name: "Efectivo", active: true }).success)
       .toBe(false);
     expect(updatePaymentMethodSchema.safeParse({}).success).toBe(false);
     expect(updatePaymentMethodSchema.safeParse({ deletedAt: null }).success).toBe(false);
-    expect(updatePaymentMethodSchema.safeParse({ isActive: false }).success).toBe(false);
+    expect(updatePaymentMethodSchema.parse({ isActive: false })).toEqual({
+      isActive: false,
+    });
     expect(updatePaymentMethodSchema.parse({ isActive: true })).toEqual({
       isActive: true,
     });

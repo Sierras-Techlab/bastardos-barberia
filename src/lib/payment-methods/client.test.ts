@@ -25,13 +25,15 @@ describe("payment method API client", () => {
       .mockResolvedValueOnce(Response.json({ data: method }))
       .mockResolvedValueOnce(Response.json({ data: method }, { status: 201 }))
       .mockResolvedValueOnce(Response.json({ data: method }))
-      .mockResolvedValueOnce(Response.json({ data: { ...method, isActive: false } }));
+      .mockResolvedValueOnce(Response.json({ data: { ...method, isActive: false } }))
+      .mockResolvedValueOnce(Response.json({ data: { id: method.id } }));
 
     await expect(paymentMethodClient.list()).resolves.toEqual([method]);
     await expect(paymentMethodClient.get(method.id)).resolves.toEqual(method);
     await paymentMethodClient.create({ name: method.name });
     await paymentMethodClient.update(method.id, { name: "Transferencia" });
     await paymentMethodClient.deactivate(method.id);
+    await paymentMethodClient.remove(method.id);
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/payment-methods", undefined);
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -55,6 +57,15 @@ describe("payment method API client", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       5,
+      `/api/payment-methods/${method.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: false }),
+      },
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
       `/api/payment-methods/${method.id}`,
       { method: "DELETE" },
     );

@@ -15,11 +15,7 @@ export const createPaymentMethodSchema = z
 export const updatePaymentMethodSchema = z
   .object({
     name: paymentMethodNameSchema.optional(),
-    isActive: z
-      .literal(true, {
-        error: "Para desactivar un medio de pago, usá la acción correspondiente.",
-      })
-      .optional(),
+    isActive: z.boolean().optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {

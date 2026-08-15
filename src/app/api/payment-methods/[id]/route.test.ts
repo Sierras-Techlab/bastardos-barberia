@@ -5,20 +5,20 @@ const {
   requireManager,
   getPaymentMethod,
   updatePaymentMethod,
-  deactivatePaymentMethod,
+  deletePaymentMethod,
 } = vi.hoisted(() => ({
   requireUser: vi.fn(),
   requireManager: vi.fn(),
   getPaymentMethod: vi.fn(),
   updatePaymentMethod: vi.fn(),
-  deactivatePaymentMethod: vi.fn(),
+  deletePaymentMethod: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requireUser, requireManager }));
 vi.mock("@/lib/payment-methods/service", () => ({
   getPaymentMethod,
   updatePaymentMethod,
-  deactivatePaymentMethod,
+  deletePaymentMethod,
 }));
 
 import { AppError, unauthenticatedError } from "@/lib/auth/errors";
@@ -89,9 +89,10 @@ describe("/api/payment-methods/:id", () => {
     });
   });
 
-  it("requires a manager to rename or reactivate a method", async () => {
+  it("requires a manager to rename, deactivate or reactivate a method", async () => {
     updatePaymentMethod
       .mockResolvedValueOnce({ ...method, name: "Transferencia" })
+      .mockResolvedValueOnce({ ...method, isActive: false })
       .mockResolvedValueOnce({ ...method, isActive: true });
 
     const renamed = await PATCH(
@@ -108,8 +109,15 @@ describe("/api/payment-methods/:id", () => {
       }),
       context,
     );
+    const deactivated = await PATCH(
+      new Request(`http://localhost/api/payment-methods/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: false }),
+      }),
+      context,
+    );
 
-    expect(requireManager).toHaveBeenCalledTimes(2);
+    expect(requireManager).toHaveBeenCalledTimes(3);
     expect(requireUser).not.toHaveBeenCalled();
     expect(updatePaymentMethod).toHaveBeenNthCalledWith(1, actor, id, {
       name: "Transferencia",
@@ -117,8 +125,12 @@ describe("/api/payment-methods/:id", () => {
     expect(updatePaymentMethod).toHaveBeenNthCalledWith(2, actor, id, {
       isActive: true,
     });
+    expect(updatePaymentMethod).toHaveBeenNthCalledWith(3, actor, id, {
+      isActive: false,
+    });
     expect(renamed.status).toBe(200);
     expect(reactivated.status).toBe(200);
+    expect(deactivated.status).toBe(200);
   });
 
   it("requires manager authorization before validating mutation params or body", async () => {
@@ -139,35 +151,25 @@ describe("/api/payment-methods/:id", () => {
     );
 
     expect(updatePaymentMethod).not.toHaveBeenCalled();
-    expect(deactivatePaymentMethod).not.toHaveBeenCalled();
+    expect(deletePaymentMethod).not.toHaveBeenCalled();
     expect(patch.status).toBe(401);
     expect(deletion.status).toBe(401);
   });
 
-  it("rejects malformed IDs and direct deactivation patches", async () => {
+  it("rejects malformed IDs", async () => {
     const invalidId = await GET(
       new Request("http://localhost/api/payment-methods/not-a-uuid"),
       { params: Promise.resolve({ id: "not-a-uuid" }) },
     );
-    const invalidUpdate = await PATCH(
-      new Request(`http://localhost/api/payment-methods/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ isActive: false }),
-      }),
-      context,
-    );
-
     expect(getPaymentMethod).not.toHaveBeenCalled();
-    expect(updatePaymentMethod).not.toHaveBeenCalled();
     expect(invalidId.status).toBe(400);
-    expect(invalidUpdate.status).toBe(400);
   });
 
-  it("deactivates through the dedicated service and propagates conflicts", async () => {
-    deactivatePaymentMethod.mockRejectedValue(
+  it("deletes through the dedicated service and propagates in-use conflicts", async () => {
+    deletePaymentMethod.mockRejectedValue(
       new AppError(
-        "LAST_ACTIVE_PAYMENT_METHOD",
-        "Debe permanecer al menos un medio de pago activo.",
+        "PAYMENT_METHOD_IN_USE",
+        "Este medio de pago tiene ventas registradas. Desactivalo para ocultarlo sin perder el historial.",
         409,
       ),
     );
@@ -181,12 +183,12 @@ describe("/api/payment-methods/:id", () => {
 
     expect(requireManager).toHaveBeenCalledTimes(1);
     expect(requireUser).not.toHaveBeenCalled();
-    expect(deactivatePaymentMethod).toHaveBeenCalledWith(actor, id);
+    expect(deletePaymentMethod).toHaveBeenCalledWith(actor, id);
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
       error: {
-        code: "LAST_ACTIVE_PAYMENT_METHOD",
-        message: "Debe permanecer al menos un medio de pago activo.",
+        code: "PAYMENT_METHOD_IN_USE",
+        message: "Este medio de pago tiene ventas registradas. Desactivalo para ocultarlo sin perder el historial.",
       },
     });
   });

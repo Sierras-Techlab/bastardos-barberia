@@ -15,16 +15,6 @@ const paymentMethodNotFound = () =>
     404,
   );
 
-const assertNotDeactivationAttempt = (input: PaymentMethodUpdate) => {
-  if ((input as { isActive?: boolean }).isActive === false) {
-    throw new AppError(
-      "PAYMENT_METHOD_DEACTIVATION_REQUIRED",
-      "Para desactivar un medio de pago, usá la acción correspondiente.",
-      400,
-    );
-  }
-};
-
 const defaultDependencies: PaymentMethodServiceDependencies = {
   methods: paymentMethodRepository,
 };
@@ -62,19 +52,18 @@ export const updatePaymentMethod = async (
   dependencies: PaymentMethodServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
-  assertNotDeactivationAttempt(input);
   const method = await dependencies.methods.update(actor.id, id, input);
   if (!method) throw paymentMethodNotFound();
   return method;
 };
 
-export const deactivatePaymentMethod = async (
+export const deletePaymentMethod = async (
   actor: SafeUser,
   id: string,
   dependencies: PaymentMethodServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
-  const method = await dependencies.methods.deactivate(actor.id, id);
-  if (!method) throw paymentMethodNotFound();
-  return method;
+  const deletedId = await dependencies.methods.remove(actor.id, id);
+  if (!deletedId) throw paymentMethodNotFound();
+  return { id: deletedId };
 };

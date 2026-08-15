@@ -46,7 +46,7 @@ describe("payment method repository", () => {
     );
   });
 
-  it("uses canonical create, update and deactivate RPCs", async () => {
+  it("uses canonical create, update and delete RPCs", async () => {
     const readQuery = {
       select: vi.fn(),
       eq: vi.fn(),
@@ -62,7 +62,7 @@ describe("payment method repository", () => {
       name: "Transferencia",
       isActive: true,
     });
-    await paymentMethodRepository.deactivate(row.updated_by, row.id);
+    await paymentMethodRepository.remove(row.updated_by, row.id);
 
     expect(rpc).toHaveBeenNthCalledWith(1, "create_payment_method", {
       actor_user_id: row.created_by,
@@ -74,13 +74,13 @@ describe("payment method repository", () => {
       payment_method_name: "Transferencia",
       payment_method_is_active: true,
     });
-    expect(rpc).toHaveBeenNthCalledWith(3, "deactivate_payment_method", {
+    expect(rpc).toHaveBeenNthCalledWith(3, "delete_payment_method", {
       actor_user_id: row.updated_by,
       target_payment_method_id: row.id,
     });
   });
 
-  it("maps duplicate names and the last-active guard to stable conflicts", async () => {
+  it("maps duplicate names, final-active deletion and referenced deletion to stable conflicts", async () => {
     getSupabaseAdmin
       .mockReturnValueOnce({
         rpc: vi.fn().mockResolvedValue({
@@ -93,11 +93,27 @@ describe("payment method repository", () => {
           data: null,
           error: { code: "P0001", message: "LAST_ACTIVE_PAYMENT_METHOD" },
         }),
+      })
+      .mockReturnValueOnce({
+        rpc: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: "P0001", message: "PAYMENT_METHOD_IN_USE" },
+        }),
+      })
+      .mockReturnValueOnce({
+        rpc: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: "23503", message: "foreign key violation" },
+        }),
       });
 
     await expect(paymentMethodRepository.create(row.created_by, { name: row.name }))
       .rejects.toMatchObject({ code: "PAYMENT_METHOD_NAME_EXISTS", status: 409 });
-    await expect(paymentMethodRepository.deactivate(row.updated_by, row.id))
+    await expect(paymentMethodRepository.remove(row.updated_by, row.id))
       .rejects.toMatchObject({ code: "LAST_ACTIVE_PAYMENT_METHOD", status: 409 });
+    await expect(paymentMethodRepository.remove(row.updated_by, row.id))
+      .rejects.toMatchObject({ code: "PAYMENT_METHOD_IN_USE", status: 409 });
+    await expect(paymentMethodRepository.remove(row.updated_by, row.id))
+      .rejects.toMatchObject({ code: "PAYMENT_METHOD_IN_USE", status: 409 });
   });
 });
