@@ -40,7 +40,10 @@ type ProductsViewProps = {
   categories: ProductCategory[];
   canManage: boolean;
   productClient?: ProductClient;
-  categoryClient?: Pick<ProductCategoryClient, "create" | "update" | "deactivate">;
+  categoryClient?: Pick<
+    ProductCategoryClient,
+    "create" | "update" | "deactivate" | "remove"
+  >;
 };
 
 const initialFilters: ProductCatalogFilters = {

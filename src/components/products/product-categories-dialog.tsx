@@ -1,10 +1,11 @@
 "use client";
 
-import { Pencil, Plus, Tags } from "lucide-react";
+import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ProductCategoryDeleteDialog } from "@/components/products/product-category-delete-dialog";
 import {
   Dialog,
   DialogContent,
@@ -19,13 +20,20 @@ import type { ProductCategory } from "@/types/product-category";
 
 type ProductCategoriesDialogProps = {
   categories: ProductCategory[];
-  categoryClient: Pick<ProductCategoryClient, "create" | "update" | "deactivate">;
+  categoryClient: Pick<
+    ProductCategoryClient,
+    "create" | "update" | "deactivate" | "remove"
+  >;
   onCategoriesChange: (categories: ProductCategory[]) => void;
   onClose: () => void;
 };
 
 const fieldClassName =
   "h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
+const activeBadgeClassName =
+  "shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700";
+const inactiveBadgeClassName =
+  "shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700";
 
 const messageFor = (error: unknown) =>
   error instanceof Error
@@ -52,6 +60,8 @@ export const ProductCategoriesDialog = ({
   const [editingName, setEditingName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [deleting, setDeleting] = useState<ProductCategory | null>(null);
   const [blockedDeactivationIds, setBlockedDeactivationIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -60,6 +70,11 @@ export const ProductCategoriesDialog = ({
     setCategories(next);
     onCategoriesChange(next);
   };
+
+  const inactiveCount = categories.filter((category) => !category.isActive).length;
+  const visibleCategories = categories.filter(
+    (category) => category.isActive !== showInactive,
+  );
 
   const create = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -123,6 +138,14 @@ export const ProductCategoriesDialog = ({
     }
   };
 
+  const remove = async (category: ProductCategory) => {
+    await categoryClient.remove(category.id);
+    replaceCategories(
+      categories.filter((current) => current.id !== category.id),
+    );
+    toast.success("Categoría eliminada correctamente.");
+  };
+
   return (
     <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-xl">
@@ -136,7 +159,7 @@ export const ProductCategoriesDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="mt-4 flex gap-2" onSubmit={create}>
+        <form className="mt-4 grid grid-cols-1 gap-2" onSubmit={create}>
           <Input
             aria-label="Nueva categoría"
             value={newName}
@@ -144,7 +167,7 @@ export const ProductCategoriesDialog = ({
             placeholder="Nueva categoría"
             className={fieldClassName}
           />
-          <Button type="submit" className="h-10 rounded-xl" disabled={isSaving}>
+          <Button type="submit" className="h-10 w-full rounded-xl" disabled={isSaving}>
             <Plus /> Agregar categoría
           </Button>
         </form>
@@ -170,21 +193,60 @@ export const ProductCategoriesDialog = ({
           </form>
         )}
 
-        <ul className="mt-4 divide-y divide-black/5 rounded-xl border border-black/5">
-          {categories.map((category) => (
-            <li key={category.id} className="flex items-center justify-between gap-3 p-3">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{category.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {category.isActive ? "Activa" : "Inactiva"}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-1">
+        <div className="mt-4 flex flex-col items-start gap-3">
+          <div>
+            <p className="font-medium">
+              {showInactive ? "Categorías desactivadas" : "Categorías activas"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {showInactive
+                ? "Podés restaurarlas o eliminarlas si nunca se usaron."
+                : "Disponibles para organizar nuevos productos."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 rounded-xl bg-white"
+            onClick={() => {
+              setShowInactive((current) => !current);
+              setEditing(null);
+              setError(null);
+            }}
+            disabled={isSaving}
+          >
+            {showInactive
+              ? "Volver a activas"
+              : `Ver desactivadas (${inactiveCount})`}
+          </Button>
+        </div>
+
+        {visibleCategories.length > 0 ? (
+          <ul className="grid gap-2">
+            {visibleCategories.map((category) => (
+              <li
+                key={category.id}
+                data-testid={`product-category-card-${category.id}`}
+                className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-3"
+              >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <p className="min-w-0 truncate font-medium">{category.name}</p>
+                  <span
+                    className={
+                      category.isActive
+                        ? activeBadgeClassName
+                        : inactiveBadgeClassName
+                    }
+                  >
+                    {category.isActive ? "Activa" : "Inactiva"}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2">
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Renombrar ${category.name}`}
+                  variant="outline"
+                  aria-label={`Editar ${category.name}`}
+                  className="rounded-xl bg-white"
                   disabled={isSaving}
                   onClick={() => {
                     setEditing(category);
@@ -197,7 +259,7 @@ export const ProductCategoriesDialog = ({
                 <Button
                   type="button"
                   variant={category.isActive ? "outline" : "default"}
-                  className="rounded-xl"
+                  className={category.isActive ? "rounded-xl bg-white" : "rounded-xl"}
                   disabled={
                     isSaving ||
                     (category.isActive && blockedDeactivationIds.has(category.id))
@@ -206,10 +268,31 @@ export const ProductCategoriesDialog = ({
                 >
                   {category.isActive ? `Desactivar ${category.name}` : `Reactivar ${category.name}`}
                 </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Eliminar ${category.name}`}
+                  disabled={isSaving}
+                  onClick={() => {
+                    setDeleting(category);
+                    setError(null);
+                  }}
+                  className="w-full rounded-xl text-destructive hover:bg-red-50 hover:text-destructive"
+                >
+                  <Trash2 />
+                </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-xl border border-dashed border-black/10 bg-[#f7f6f3] px-4 py-6 text-center text-sm text-muted-foreground">
+            {showInactive
+              ? "No hay categorías desactivadas."
+              : "Todavía no hay categorías activas."}
+          </p>
+        )}
 
         {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
@@ -219,6 +302,13 @@ export const ProductCategoriesDialog = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {deleting && (
+        <ProductCategoryDeleteDialog
+          category={deleting}
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove(deleting)}
+        />
+      )}
     </Dialog>
   );
 };

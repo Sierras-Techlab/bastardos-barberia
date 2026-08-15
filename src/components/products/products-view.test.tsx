@@ -270,6 +270,7 @@ it("synchronizes renamed and deactivated categories into product cards and filte
     create: vi.fn(),
     update: vi.fn().mockResolvedValue(renamed),
     deactivate: vi.fn().mockResolvedValue({ ...renamed, isActive: false }),
+    remove: vi.fn(),
   };
   render(
     <>
@@ -284,7 +285,7 @@ it("synchronizes renamed and deactivated categories into product cards and filte
   );
 
   await user.click(screen.getByRole("button", { name: "Administrar categorías" }));
-  await user.click(screen.getByRole("button", { name: "Renombrar Fragancias" }));
+  await user.click(screen.getByRole("button", { name: "Editar Fragancias" }));
   const renameInput = screen.getByLabelText("Nombre de la categoría");
   await user.clear(renameInput);
   await user.type(renameInput, "Perfumería");

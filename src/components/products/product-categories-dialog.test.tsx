@@ -24,6 +24,7 @@ it("creates, renames and replaces category records from API responses", async ()
     create: vi.fn().mockResolvedValue(created),
     update: vi.fn().mockResolvedValue(renamed),
     deactivate: vi.fn(),
+    remove: vi.fn(),
   };
   const onCategoriesChange = vi.fn();
   render(<><ProductCategoriesDialog categories={[active, inactive]} categoryClient={categoryClient} onCategoriesChange={onCategoriesChange} onClose={vi.fn()} /><DashboardToaster /></>);
@@ -34,7 +35,7 @@ it("creates, renames and replaces category records from API responses", async ()
   expect(onCategoriesChange).toHaveBeenCalledWith([active, inactive, created]);
   expect(await screen.findByText("Categoría creada correctamente.")).toBeVisible();
 
-  await user.click(screen.getByRole("button", { name: "Renombrar Cuidado capilar" }));
+  await user.click(screen.getByRole("button", { name: "Editar Cuidado capilar" }));
   const dialog = screen.getByRole("dialog");
   const rename = within(dialog).getByLabelText("Nombre de la categoría");
   await user.clear(rename);
@@ -55,6 +56,7 @@ it("shows a safe conflict and supports reactivation", async () => {
         code: "PRODUCT_CATEGORY_IN_USE",
       }),
     ),
+    remove: vi.fn(),
   };
   render(<><ProductCategoriesDialog categories={[active, inactive]} categoryClient={categoryClient} onCategoriesChange={vi.fn()} onClose={vi.fn()} /><DashboardToaster /></>);
 
@@ -65,7 +67,43 @@ it("shows a safe conflict and supports reactivation", async () => {
   await user.click(deactivate);
   expect(categoryClient.deactivate).toHaveBeenCalledOnce();
 
+  await user.click(screen.getByRole("button", { name: "Ver desactivadas (1)" }));
   await user.click(screen.getByRole("button", { name: "Reactivar Fragancias" }));
   expect(categoryClient.update).toHaveBeenCalledWith(inactive.id, { isActive: true });
   expect(await screen.findByText("Categoría reactivada correctamente.")).toBeVisible();
+});
+
+it("separates active categories and removes one only after confirmation", async () => {
+  const user = userEvent.setup();
+  const categoryClient = {
+    create: vi.fn(),
+    update: vi.fn(),
+    deactivate: vi.fn(),
+    remove: vi.fn().mockResolvedValue({ id: inactive.id }),
+  };
+  const onCategoriesChange = vi.fn();
+
+  render(
+    <>
+      <ProductCategoriesDialog
+        categories={[active, inactive]}
+        categoryClient={categoryClient}
+        onCategoriesChange={onCategoriesChange}
+        onClose={vi.fn()}
+      />
+      <DashboardToaster />
+    </>,
+  );
+
+  expect(screen.getByTestId(`product-category-card-${active.id}`)).toBeVisible();
+  expect(screen.queryByTestId(`product-category-card-${inactive.id}`)).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Ver desactivadas (1)" }));
+  await user.click(screen.getByRole("button", { name: "Eliminar Fragancias" }));
+  expect(categoryClient.remove).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Eliminar categoría" }));
+
+  expect(categoryClient.remove).toHaveBeenCalledWith(inactive.id);
+  expect(onCategoriesChange).toHaveBeenCalledWith([active]);
+  expect(await screen.findByText("Categoría eliminada correctamente.")).toBeVisible();
 });
