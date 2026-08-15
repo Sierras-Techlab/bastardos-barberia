@@ -16,6 +16,29 @@ const createClient = () => ({
   remove: vi.fn(),
 });
 
+it("keeps creation and method actions in non-collapsing card regions", () => {
+  render(
+    <PaymentMethodsDialog
+      methods={[active]}
+      paymentMethodClient={createClient()}
+      onMethodsChange={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByTestId("payment-method-create-form")).toHaveClass(
+    "grid",
+    "grid-cols-1",
+  );
+
+  const card = screen.getByTestId(`payment-method-card-${active.id}`);
+  expect(within(card).getByText("Efectivo")).toBeVisible();
+  expect(within(card).getByText("Activo")).toBeVisible();
+  expect(within(card).getByRole("button", { name: "Editar Efectivo" })).toBeVisible();
+  expect(within(card).getByRole("button", { name: "Desactivar Efectivo" })).toHaveTextContent("Desactivar");
+  expect(within(card).getByRole("button", { name: "Eliminar Efectivo" })).toBeVisible();
+});
+
 it("shows active methods by default and keeps inactive methods in a separate view", async () => {
   const user = userEvent.setup();
   const paymentMethodClient = createClient();
@@ -59,7 +82,7 @@ it("creates, renames, deactivates and reactivates payment methods with canonical
   expect(paymentMethodClient.create).toHaveBeenCalledWith({ name: "Tarjeta" });
   expect(await screen.findByText("Medio de pago creado correctamente.")).toBeVisible();
 
-  await user.click(screen.getByRole("button", { name: "Renombrar Efectivo" }));
+  await user.click(screen.getByRole("button", { name: "Editar Efectivo" }));
   const dialog = screen.getByRole("dialog");
   const rename = within(dialog).getByLabelText("Nombre del medio de pago");
   await user.clear(rename);

@@ -19,6 +19,8 @@ type Props = {
 };
 
 const fieldClassName = "h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
+const activeBadgeClassName = "shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700";
+const inactiveBadgeClassName = "shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700";
 const messageFor = (error: unknown) => error instanceof Error ? error.message : "No se pudo actualizar el medio de pago.";
 
 export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodClient, onMethodsChange, onClose }: Props) => {
@@ -105,9 +107,9 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           <DialogDescription>Actualizá las opciones disponibles sin perder los nombres guardados en ventas anteriores.</DialogDescription>
         </DialogHeader>
 
-        <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={create}>
-          <Input aria-label="Nuevo medio de pago" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Nuevo medio de pago" className={fieldClassName} />
-          <Button type="submit" className="h-10 w-full rounded-xl sm:w-auto" disabled={saving}><Plus /> Agregar medio</Button>
+        <form data-testid="payment-method-create-form" className="mt-4 grid grid-cols-1 gap-2" onSubmit={create}>
+          <Input aria-label="Nuevo medio de pago" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Nombre del medio de pago" className={fieldClassName} />
+          <Button type="submit" className="h-10 w-full rounded-xl" disabled={saving}><Plus /> Agregar medio</Button>
         </form>
 
         {editing && (
@@ -117,7 +119,7 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           </form>
         )}
 
-        <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="mt-4 flex flex-col items-start gap-3">
           <div>
             <p className="font-medium">{showInactive ? "Medios desactivados" : "Medios activos"}</p>
             <p className="text-xs text-muted-foreground">
@@ -126,8 +128,8 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           </div>
           <Button
             type="button"
-            variant="ghost"
-            className="h-auto shrink-0 rounded-xl px-0 py-1 sm:px-2.5"
+            variant="outline"
+            className="h-9 rounded-xl bg-white"
             onClick={() => {
               setShowInactive((current) => !current);
               setEditing(null);
@@ -140,14 +142,17 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
         </div>
 
         {visibleMethods.length > 0 ? (
-          <ul className="divide-y divide-black/5 rounded-xl border border-black/5">
+          <ul className="grid gap-2">
           {visibleMethods.map((method) => (
-            <li key={method.id} className="flex flex-col items-stretch gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0"><p className="truncate font-medium">{method.name}</p><p className="text-xs text-muted-foreground">{method.isActive ? "Activo" : "Inactivo"}</p></div>
-              <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
-                <Button type="button" variant="ghost" size="icon" aria-label={`Renombrar ${method.name}`} disabled={saving} onClick={() => { setEditing(method); setEditingName(method.name); setError(null); }}><Pencil /></Button>
-                <Button type="button" variant="ghost" size="icon" aria-label={`Eliminar ${method.name}`} disabled={saving} onClick={() => { setDeleting(method); setError(null); }} className="text-destructive hover:bg-red-50 hover:text-destructive"><Trash2 /></Button>
-                <Button type="button" variant={method.isActive ? "outline" : "default"} className="rounded-xl" disabled={saving} onClick={() => setActive(method)}>{method.isActive ? `Desactivar ${method.name}` : `Reactivar ${method.name}`}</Button>
+            <li key={method.id} data-testid={`payment-method-card-${method.id}`} className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-3">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <p className="min-w-0 truncate font-medium">{method.name}</p>
+                <span className={method.isActive ? activeBadgeClassName : inactiveBadgeClassName}>{method.isActive ? "Activo" : "Inactivo"}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2">
+                <Button type="button" variant="outline" aria-label={`Editar ${method.name}`} className="rounded-xl bg-white" disabled={saving} onClick={() => { setEditing(method); setEditingName(method.name); setError(null); }}><Pencil /> Editar</Button>
+                <Button type="button" variant={method.isActive ? "outline" : "default"} aria-label={`${method.isActive ? "Desactivar" : "Reactivar"} ${method.name}`} className={method.isActive ? "rounded-xl bg-white" : "rounded-xl"} disabled={saving} onClick={() => setActive(method)}>{method.isActive ? "Desactivar" : "Reactivar"}</Button>
+                <Button type="button" variant="ghost" size="icon" aria-label={`Eliminar ${method.name}`} disabled={saving} onClick={() => { setDeleting(method); setError(null); }} className="w-full rounded-xl text-destructive hover:bg-red-50 hover:text-destructive"><Trash2 /></Button>
               </div>
             </li>
           ))}
