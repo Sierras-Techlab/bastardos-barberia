@@ -92,6 +92,22 @@ describe("CashView", () => {
     ).toBeVisible();
   });
 
+  it("aligns the payment breakdown with the sales table on desktop", () => {
+    render(
+      <CashView
+        initialDay={liveDay}
+        initialHistory={history}
+        viewerRole="owner"
+      />,
+    );
+
+    const paymentCard = screen
+      .getByText("Medios de pago")
+      .closest('[data-slot="card"]');
+
+    expect(paymentCard?.parentElement).toHaveClass("lg:pt-[3.75rem]");
+  });
+
   it("loads a selected historical closure without mutating it", async () => {
     const browser = userEvent.setup();
     const closedDay = {
