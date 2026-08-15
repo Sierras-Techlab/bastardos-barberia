@@ -53,6 +53,7 @@ Captured: 2026-08-15
 - `/cash` is manager-only and read-only. Today's Buenos Aires business date is calculated live; the workspace shows gross sales, commissions, barbershop net, service/product totals, dynamic payment allocations and sale-level audit with the existing income detail sheet.
 - Prior activity dates are selectable from a paginated history. Empty days are omitted. There is no cash opening, closing or CRUD control, and the only creation shortcut reuses `/incomes/new`.
 - The payment-method breakdown receives a desktop-only `3.75rem` top offset so its card aligns with the sales table below the audit heading; mobile keeps the original zero-offset stacked flow.
+- The desktop offset now comes from the explicit `.cash-payment-column` media rule instead of a Tailwind arbitrary responsive utility, preventing development CSS regeneration from dropping the alignment while preserving the mobile stack.
 - Migration `018` materializes immutable daily registers plus sale/payment snapshots. Same-day voids are excluded at close; later voids preserve the original register and create one negative, actor-linked adjustment on the local void date. An hourly idempotent `pg_cron` job closes any missing prior activity date.
 - `/incomes` now exposes only its authoritative server-backed paginator. The nested TanStack paginator was removed from `IncomeTable`, so desktop and mobile share one page state and one API request path.
 

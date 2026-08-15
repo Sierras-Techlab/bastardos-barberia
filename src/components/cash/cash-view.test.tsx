@@ -105,7 +105,7 @@ describe("CashView", () => {
       .getByText("Medios de pago")
       .closest('[data-slot="card"]');
 
-    expect(paymentCard?.parentElement).toHaveClass("lg:pt-[3.75rem]");
+    expect(paymentCard?.parentElement).toHaveClass("cash-payment-column");
   });
 
   it("loads a selected historical closure without mutating it", async () => {

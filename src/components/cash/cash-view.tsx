@@ -148,7 +148,7 @@ export const CashView = ({
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <CashSalesAudit sales={day.sales} onSelect={(sale) => void openIncome(sale.id)} />
-        <div className="space-y-5 lg:pt-[3.75rem]">
+        <div className="cash-payment-column space-y-5">
           <CashPaymentBreakdown payments={day.payments} />
           {day.adjustments.length > 0 && (
             <section className="rounded-[1.6rem] border border-primary/15 bg-primary/5 p-5">
