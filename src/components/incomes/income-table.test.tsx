@@ -2,34 +2,32 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
-import mock from "@/data/incomes.mock.json";
+import mock from "@/data/incomes.mock";
 import type { IncomeListData } from "@/types/income";
 import { IncomeTable } from "./income-table";
 
 const data = mock as IncomeListData;
 
-it("paginates ten accessible income rows", async () => {
+it("renders every server-provided income row without local pagination", async () => {
   const user = userEvent.setup();
   const onSelect = vi.fn();
   const incomes = data.incomes.slice(0, 12);
 
   render(<IncomeTable incomes={incomes} onSelect={onSelect} />);
 
-  expect(screen.getAllByRole("row")).toHaveLength(11);
-  expect(screen.getByText(/página 1 de 2/i)).toBeVisible();
+  expect(screen.getAllByRole("row")).toHaveLength(13);
+  expect(screen.queryByText(/página \d+ de \d+/i)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /siguiente/i })).not.toBeInTheDocument();
   expect(screen.getByRole("columnheader", { name: /fecha/i })).toBeVisible();
   expect(screen.getByRole("columnheader", { name: /concepto/i })).toBeVisible();
   expect(screen.getByText("Anulado")).toBeVisible();
 
-  await user.click(screen.getByRole("button", { name: /siguiente/i }));
-
-  expect(screen.getByText(/página 2 de 2/i)).toBeVisible();
   await user.click(
     screen.getByRole("button", {
-      name: `Abrir ingreso ${incomes[10].id}`,
+      name: `Abrir ingreso ${incomes[11].id}`,
     }),
   );
-  expect(onSelect).toHaveBeenCalledWith(incomes[10]);
+  expect(onSelect).toHaveBeenCalledWith(incomes[11]);
 });
 
 it("keeps rows semantic and exposes one explicit action", () => {
@@ -48,10 +46,10 @@ it("keeps rows semantic and exposes one explicit action", () => {
   ).toBeVisible();
 });
 
-it("shows combined payment and commission with a legacy fallback", () => {
-  const v2 = { ...data.incomes[0], payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { serviceBase: 19000, productBase: 30000, serviceRate: 45, productRate: 10, serviceAmount: 8550, productAmount: 3000, total: 11550, barbershopNet: 37450, fullServiceCommission: false } };
-  render(<IncomeTable incomes={[v2, data.incomes[1]]} onSelect={vi.fn()} />);
-  expect(screen.getByText("Combinado")).toBeVisible();
+it("shows combined payment and canonical commission", () => {
+  const incomeWithCommission = { ...data.incomes[0], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 20000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000002", methodName: "Transferencia", amount: 19000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000003", methodName: "Tarjeta", amount: 10000 }], commission: { total: 11550, barbershopNet: 37450 } };
+  render(<IncomeTable incomes={[incomeWithCommission, data.incomes[1]]} onSelect={vi.fn()} />);
+  expect(screen.getByText("Combinado (3 medios)")).toBeVisible();
   expect(screen.getByText(/11\.550/)).toBeVisible();
-  expect(screen.getByText("Pendiente de backend")).toBeVisible();
+  expect(screen.queryByText("Pendiente de backend")).not.toBeInTheDocument();
 });

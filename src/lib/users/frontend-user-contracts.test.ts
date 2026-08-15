@@ -2,10 +2,10 @@ import { expect, it } from "vitest";
 
 import { commissionRatesSchema, normalizeCommissionUser } from "@/lib/users/frontend-user-contracts";
 
-const user = { id: "u", firstName: "Fer", lastName: "B", username: "fer.b", role: { id: 3 as const, name: "employee" as const }, isActive: true, lastLoginAt: null, createdAt: "x", updatedAt: "x" };
+const user = { id: "u", firstName: "Fer", lastName: "B", username: "fer.b", role: { id: 3 as const, name: "employee" as const }, isActive: true, serviceCommissionRate: 45, productCommissionRate: 10, lastLoginAt: null, createdAt: "x", updatedAt: "x" };
 
-it("defaults missing legacy commission rates to zero", () => {
-  expect(normalizeCommissionUser(user)).toMatchObject({ serviceCommissionRate: 0, productCommissionRate: 0 });
+it("preserves canonical commission rates", () => {
+  expect(normalizeCommissionUser(user)).toBe(user);
 });
 
 it("accepts integer rates from zero through one hundred", () => {

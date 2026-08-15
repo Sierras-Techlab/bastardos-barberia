@@ -149,3 +149,9 @@
     @apply font-sans;
   }
 }
+
+@media (min-width: 64rem) {
+  .cash-payment-column {
+    padding-top: 3.75rem;
+  }
+}

@@ -50,4 +50,49 @@ describe("authentication schemas", () => {
   it("rejects empty updates", () => {
     expect(updateUserSchema.safeParse({}).success).toBe(false);
   });
+
+  it("defaults commission rates to zero when creating a user", () => {
+    expect(createUserSchema.parse({
+      firstName: "Ana",
+      lastName: "Pérez",
+      password: "password-2026",
+      roleId: 3,
+    })).toMatchObject({
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    });
+  });
+
+  it.each([
+    { serviceCommissionRate: -1, productCommissionRate: 0 },
+    { serviceCommissionRate: 101, productCommissionRate: 0 },
+    { serviceCommissionRate: 20.5, productCommissionRate: 0 },
+    { serviceCommissionRate: 0, productCommissionRate: -1 },
+    { serviceCommissionRate: 0, productCommissionRate: 101 },
+    { serviceCommissionRate: 0, productCommissionRate: 20.5 },
+  ])("rejects invalid commission rates: %o", (rates) => {
+    expect(createUserSchema.safeParse({
+      firstName: "Ana",
+      lastName: "Pérez",
+      password: "password-2026",
+      roleId: 3,
+      ...rates,
+    }).success).toBe(false);
+  });
+
+  it("accepts commission boundary values and commission-only updates", () => {
+    expect(createUserSchema.parse({
+      firstName: "Ana",
+      lastName: "Pérez",
+      password: "password-2026",
+      roleId: 3,
+      serviceCommissionRate: 0,
+      productCommissionRate: 100,
+    })).toMatchObject({
+      serviceCommissionRate: 0,
+      productCommissionRate: 100,
+    });
+    expect(updateUserSchema.parse({ serviceCommissionRate: 35 }))
+      .toEqual({ serviceCommissionRate: 35 });
+  });
 });

@@ -33,6 +33,8 @@ Open the Supabase SQL Editor and execute each file completely in this order:
 5. `supabase/queries/005_security.sql`
 6. `supabase/queries/006_atomic_auth_guards.sql`
 
+For the complete application, continue through `supabase/queries/018_automatic_daily_cash.sql` in the exact order documented in `supabase/queries/README.md`. When payment-method lifecycle changes are pulled, run the latest `016` file in full; then run incremental `017` for safe category deletion and `018` for automatic daily cash closures.
+
 See `supabase/queries/README.md` for verification queries and the responsibility of each script.
 
 ## Create the first owner
@@ -68,6 +70,20 @@ Successful responses use `{ "data": ... }`. Errors use `{ "error": { "code", "me
 | PATCH | `/api/admin/users/:id` | Owner/Admin | Change names, role or active state. |
 | PUT | `/api/admin/users/:id/password` | Owner/Admin | Replace password and revoke every session for that user. |
 | GET | `/api/admin/roles` | Owner/Admin | Return the fixed role catalog. |
+| GET | `/api/payment-methods` | Authenticated | Return active and inactive payment methods for current and historical UI. |
+| POST | `/api/payment-methods` | Owner/Admin | Create an active payment method. |
+| GET | `/api/payment-methods/:id` | Authenticated | Return one active or inactive payment method. |
+| PATCH | `/api/payment-methods/:id` | Owner/Admin | Rename, deactivate or reactivate a payment method. |
+| DELETE | `/api/payment-methods/:id` | Owner/Admin | Permanently delete an unused method; referenced methods return a conflict and must be deactivated. |
+| DELETE | `/api/product-categories/:id` | Owner/Admin | Permanently delete an unused category; referenced categories return a conflict and must be deactivated. |
+| GET | `/api/cash?date=YYYY-MM-DD` | Owner/Admin | Return today's live cash or one immutable historical closure with sale/payment audit detail. |
+| GET | `/api/cash/history` | Owner/Admin | Return paginated active-day closures; supports `dateFrom`, `dateTo`, `page` and `pageSize`. |
+
+## Automatic daily cash
+
+`/cash` is read-only and available only to owner/admin. Today's box is calculated live from the authoritative income totals, commissions, barbershop net and dynamic payment allocations. There is no manual opening or closing action.
+
+Migration `018` schedules an idempotent hourly `pg_cron` recovery job. It closes every missing Buenos Aires business date before today only when that date has sales or audited adjustments. Historical closures are immutable: a later income void creates a negative adjustment on the void date and preserves the original close for audit. Expenses remain a separate future module and are not subtracted from Caja.
 
 Create-user body example:
 

@@ -20,9 +20,11 @@ const row = {
   last_name: "Pérez",
   username: "juan.perez",
   password_hash: "$argon2id$v=19$hash",
-  role_id: 1,
-  role: { id: 1, name: "owner" },
+  role_id: 3,
+  role: { id: 3, name: "employee" },
   is_active: true,
+  service_commission_rate: 45,
+  product_commission_rate: 12,
   failed_login_attempts: 0,
   locked_until: null,
   last_login_at: null,
@@ -45,8 +47,10 @@ describe("user repository mappers", () => {
       firstName: "Juan",
       lastName: "Pérez",
       username: "juan.perez",
-      role: { id: 1, name: "owner" },
+      role: { id: 3, name: "employee" },
       isActive: true,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
       lastLoginAt: null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -179,6 +183,65 @@ describe("user repository mappers", () => {
     })).resolves.toBeNull();
 
     expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("persists commission rates when creating an account", async () => {
+    const query = {
+      insert: vi.fn(),
+      select: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: row, error: null }),
+    };
+    query.insert.mockReturnValue(query);
+    query.select.mockReturnValue(query);
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+
+    await userRepository.create({
+      firstName: "Juan",
+      lastName: "Pérez",
+      passwordHash: row.password_hash,
+      roleId: 3,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+      createdBy: null,
+    });
+
+    expect(query.insert).toHaveBeenCalledWith(expect.objectContaining({
+      service_commission_rate: 45,
+      product_commission_rate: 12,
+    }));
+  });
+
+  it("updates profile and commission rates through one atomic RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: row.id, error: null });
+    const detailQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      is: vi.fn(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: row, error: null }),
+    };
+    detailQuery.select.mockReturnValue(detailQuery);
+    detailQuery.eq.mockReturnValue(detailQuery);
+    detailQuery.is.mockReturnValue(detailQuery);
+    getSupabaseAdmin.mockReturnValue({
+      rpc,
+      from: vi.fn().mockReturnValue(detailQuery),
+    });
+
+    await userRepository.update(row.id, {
+      firstName: "Juana",
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    });
+
+    expect(rpc).toHaveBeenCalledWith("update_user_profile", expect.objectContaining({
+      target_user_id: row.id,
+      set_first_name: true,
+      new_first_name: "Juana",
+      set_service_commission_rate: true,
+      new_service_commission_rate: 0,
+      set_product_commission_rate: true,
+      new_product_commission_rate: 0,
+    }));
   });
 
   it("calls the atomic logical-deletion RPC", async () => {

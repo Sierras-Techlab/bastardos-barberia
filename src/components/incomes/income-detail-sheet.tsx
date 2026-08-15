@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, CreditCard, Package, Scissors, UserRound } from "lucide-react";
+import { Package, Scissors, UserRound, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,12 +42,11 @@ export const IncomeDetailSheet = ({
 }: IncomeDetailSheetProps) => {
   if (!income) return null;
 
-  const PaymentIcon = income.paymentMethod === "cash" ? Banknote : CreditCard;
   const customerName = income.customer
     ? `${income.customer.firstName} ${income.customer.lastName}`
     : "Sin cliente";
   const manager = viewerRole === "owner" || viewerRole === "admin";
-  const payments = income.payments ?? [{ method: income.paymentMethod, amount: income.total }];
+  const payments = income.payments;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -110,20 +109,28 @@ export const IncomeDetailSheet = ({
                 label="Empleado responsable"
                 value={`${income.employee.firstName} ${income.employee.lastName}`}
               />
-              {manager && <DetailRow label="Registrado por" value={income.registeredBy ? `${income.registeredBy.firstName} ${income.registeredBy.lastName}` : "Pendiente de backend"} />}
+              {manager && <DetailRow label="Registrado por" value={`${income.registeredBy.firstName} ${income.registeredBy.lastName}`} />}
               <DetailRow label="Cliente" value={customerName} />
-              {payments.map((payment) => <DetailRow key={payment.method} label={payment.method === "cash" ? "Efectivo" : "Transferencia"} value={formatArs(payment.amount)} />)}
+              {payments.map((payment) => <DetailRow key={payment.paymentMethodId} label={payment.methodName} value={formatArs(payment.amount)} />)}
             </dl>
           </section>
 
           <section>
-            <h3 className="mb-2 flex items-center gap-2 font-semibold"><PaymentIcon className="size-4 text-primary" />Comisión</h3>
+            <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-primary" />Comisión</h3>
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
-              <DetailRow label="Comisión devengada" value={income.commission ? formatArs(income.commission.total) : "Pendiente de backend"} />
-              {income.commission && <><DetailRow label={`Servicio (${income.commission.serviceRate}%)`} value={formatArs(income.commission.serviceAmount)} /><DetailRow label={`Productos (${income.commission.productRate}%)`} value={formatArs(income.commission.productAmount)} /></>}
-              {manager && <DetailRow label="Neto barbería" value={income.commission ? formatArs(income.commission.barbershopNet) : "Pendiente de backend"} />}
+              <DetailRow label="Comisión devengada" value={formatArs(income.commission.total)} />
+              {income.service && <DetailRow label={`${income.service.name} (${income.service.commission.rate}%)`} value={formatArs(income.service.commission.amount)} />}
+              {income.products.map((product) => <DetailRow key={product.id} label={`${product.name} (${product.commission.rate}%)`} value={formatArs(product.commission.amount)} />)}
+              {[income.service?.commission, ...income.products.map((product) => product.commission)].filter((commission) => commission?.authorizedBy).map((commission, index) => (
+                <DetailRow
+                  key={`authorized-by-${index}`}
+                  label="Autorizado por"
+                  value={`${commission?.authorizedBy?.firstName} ${commission?.authorizedBy?.lastName}`}
+                />
+              ))}
+              {manager && <DetailRow label="Neto barbería" value={formatArs(income.commission.barbershopNet)} />}
             </dl>
-            {income.commission?.fullServiceCommission && <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>}
+            {income.service?.commission?.fullCommission && <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>}
             {income.status === "voided" && <p className="mt-2 text-xs text-muted-foreground">Importes excluidos de las métricas activas.</p>}
           </section>
 

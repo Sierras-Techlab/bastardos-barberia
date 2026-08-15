@@ -1,4 +1,5 @@
 import type { UserRole } from "@/types/income";
+export type { CreateIncomeInput, IncomePaymentInput as IncomePayment } from "@/types/income";
 
 export type CommissionUser = {
   id: string;
@@ -10,37 +11,31 @@ export type CommissionUser = {
   productCommissionRate: number;
 };
 
-export type IncomePayment = {
-  method: "cash" | "transfer";
-  amount: number;
-};
-
-export type CreateIncomeV2Input = {
-  requestId: string;
-  employeeId: string;
-  customerId: string | null;
-  serviceId: string | null;
-  products: Array<{ productId: string; quantity: number }>;
-  payments: IncomePayment[];
-  grantFullServiceCommission: boolean;
-};
-
 export type CommissionPreviewInput = {
+  responsibleRole: UserRole;
   serviceBase: number;
-  productBase: number;
   serviceRate: number;
   productRate: number;
   grantFullServiceCommission: boolean;
+  products: Array<{ productId: string; price: number; quantity: number; grantFullCommission: boolean }>;
+};
+
+export type IncomeItemCommissionSnapshot = {
+  subtotal: number;
+  rate: number;
+  amount: number;
+  fullCommission: boolean;
+  authorizedBy: import("@/types/income").Employee | null;
+};
+
+export type CommissionPreviewSnapshot = {
+  service: IncomeItemCommissionSnapshot | null;
+  products: IncomeItemCommissionSnapshot[];
+  total: number;
+  barbershopNet: number;
 };
 
 export type IncomeCommissionSnapshot = {
-  serviceBase: number;
-  productBase: number;
-  serviceRate: number;
-  productRate: number;
-  serviceAmount: number;
-  productAmount: number;
   total: number;
   barbershopNet: number;
-  fullServiceCommission: boolean;
 };

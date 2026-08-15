@@ -26,6 +26,8 @@ const owner: SafeUser = {
   username: "ana.garcia",
   role: { id: 1, name: "owner" },
   isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
   lastLoginAt: null,
   createdAt: "2026-08-07T00:00:00.000Z",
   updatedAt: "2026-08-07T00:00:00.000Z",
@@ -41,7 +43,11 @@ const employee: SafeUser = {
 const product: CatalogProduct = {
   id: "10000000-0000-4000-8000-000000000001",
   name: "Gel",
-  category: "styling",
+  category: {
+    id: "20000000-0000-4000-8000-000000000001",
+    name: "Cuidado capilar",
+    isActive: true,
+  },
   price: 9900,
   stock: 4,
   isActive: true,
@@ -59,7 +65,7 @@ const dependencies = (): ProductServiceDependencies => ({
 
 const validCreateInput = {
   name: "Gel",
-  category: "styling" as const,
+  categoryId: "20000000-0000-4000-8000-000000000001",
   price: 9900,
   stock: 4,
 };
@@ -75,7 +81,7 @@ describe("product boundary schemas", () => {
     expect(
       createProductSchema.safeParse({
         name: "",
-        category: "unknown",
+        categoryId: "not-a-uuid",
         price: -1,
         stock: 1.5,
       }).success,

@@ -17,14 +17,15 @@ import type {
   Employee,
   IncomeKind,
   IncomeListFilters as IncomeListFiltersValue,
-  PaymentMethod,
   UserRole,
 } from "@/types/income";
+import type { PaymentMethod } from "@/types/payment-method";
 
 type IncomeFiltersProps = {
   role: UserRole;
   canFilterEmployees?: boolean;
   employees: Employee[];
+  paymentMethods: PaymentMethod[];
   value: IncomeListFiltersValue;
   onChange: (value: IncomeListFiltersValue) => void;
   onClear: () => void;
@@ -42,6 +43,7 @@ const FilterFields = ({
   role,
   canFilterEmployees = role !== "employee",
   employees,
+  paymentMethods,
   value,
   onChange,
   idPrefix,
@@ -97,18 +99,19 @@ const FilterFields = ({
       <select
         id={`${idPrefix}-payment`}
         aria-label="Medio de pago"
-        value={value.paymentMethod}
+        value={value.paymentMethodId}
         onChange={(event) =>
           onChange({
             ...value,
-            paymentMethod: event.target.value as PaymentMethod | "all",
+            paymentMethodId: event.target.value,
           })
         }
         className={selectClassName}
       >
         <option value="all">Todos</option>
-        <option value="cash">Efectivo</option>
-        <option value="transfer">Transferencia</option>
+        {paymentMethods.map((method) => (
+          <option key={method.id} value={method.id}>{method.name}{method.isActive ? "" : " (inactivo)"}</option>
+        ))}
       </select>
     </label>
     <label className="space-y-1 text-xs font-medium text-muted-foreground">
@@ -138,6 +141,7 @@ export const IncomeFilters = ({
   role,
   canFilterEmployees = role !== "employee",
   employees,
+  paymentMethods,
   value,
   onChange,
   onClear,
@@ -187,6 +191,7 @@ export const IncomeFilters = ({
           role={role}
           canFilterEmployees={canFilterEmployees}
           employees={employees}
+          paymentMethods={paymentMethods}
           value={value}
           onChange={onChange}
           idPrefix="desktop"
@@ -206,6 +211,7 @@ export const IncomeFilters = ({
               role={role}
               canFilterEmployees={canFilterEmployees}
               employees={employees}
+              paymentMethods={paymentMethods}
               value={value}
               onChange={onChange}
               idPrefix="mobile"

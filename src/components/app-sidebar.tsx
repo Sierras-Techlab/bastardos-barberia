@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
-  CreditCard,
   LayoutDashboard,
   LogOut,
   Package,
@@ -44,10 +43,9 @@ const operationNavigation = [
 
 const administrationNavigation = [
   { label: "Usuarios", icon: UserCog, href: "/users" },
-  { label: "Caja", icon: WalletCards },
+  { label: "Caja", icon: WalletCards, href: "/cash" },
   { label: "Gastos", icon: ReceiptText },
   { label: "Reportes", icon: BarChart3 },
-  { label: "Medios de pago", icon: CreditCard },
   { label: "Negocio", icon: Store },
 ];
 

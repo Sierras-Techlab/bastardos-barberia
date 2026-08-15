@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { ProductFilters } from "@/components/products/product-filters";
 import { ProductEditorDialog } from "@/components/products/product-editor-dialog";
+import { ProductCategoriesDialog } from "@/components/products/product-categories-dialog";
 import { ProductStatusDialog } from "@/components/products/product-status-dialog";
 import { ProductStockDialog } from "@/components/products/product-stock-dialog";
 import { ProductMetrics } from "@/components/products/product-metrics";
@@ -20,6 +21,10 @@ import {
   productClient as defaultProductClient,
   type ProductClient,
 } from "@/lib/products/client";
+import {
+  productCategoryClient as defaultProductCategoryClient,
+  type ProductCategoryClient,
+} from "@/lib/product-categories/client";
 import { sortProducts } from "@/lib/products/product-management";
 import type {
   ProductCatalogData,
@@ -28,26 +33,35 @@ import type {
   ProductEditorInput,
   ProductSort,
 } from "@/types/product";
+import type { ProductCategory } from "@/types/product-category";
 
 type ProductsViewProps = {
   data: ProductCatalogData;
+  categories: ProductCategory[];
   canManage: boolean;
   productClient?: ProductClient;
+  categoryClient?: Pick<
+    ProductCategoryClient,
+    "create" | "update" | "deactivate" | "remove"
+  >;
 };
 
 const initialFilters: ProductCatalogFilters = {
   query: "",
-  category: "all",
+  categoryId: "all",
   stockStatus: "all",
   activeState: "all",
 };
 
 export const ProductsView = ({
   data,
+  categories: initialCategories,
   canManage,
   productClient = defaultProductClient,
+  categoryClient = defaultProductCategoryClient,
 }: ProductsViewProps) => {
   const [catalogProducts, setCatalogProducts] = useState(() => data.products);
+  const [categories, setCategories] = useState(initialCategories);
   const [filters, setFilters] = useState(initialFilters);
   const [sort, setSort] = useState<ProductSort>("original");
   const [editor, setEditor] = useState<{
@@ -56,6 +70,7 @@ export const ProductsView = ({
   } | null>(null);
   const [stockProduct, setStockProduct] = useState<CatalogProduct | null>(null);
   const [statusProduct, setStatusProduct] = useState<CatalogProduct | null>(null);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const visibleProducts = useMemo(
     () =>
       canManage
@@ -73,11 +88,20 @@ export const ProductsView = ({
   );
   const canClear =
     filters.query !== "" ||
-    filters.category !== "all" ||
+    filters.categoryId !== "all" ||
     filters.stockStatus !== "all" ||
     filters.activeState !== "all";
 
   const clearFilters = () => setFilters(initialFilters);
+  const replaceCategories = (next: ProductCategory[]) => {
+    setCategories(next);
+    setCatalogProducts((current) =>
+      current.map((product) => {
+        const category = next.find((item) => item.id === product.category.id);
+        return category ? { ...product, category } : product;
+      }),
+    );
+  };
   const replaceProduct = (updated: CatalogProduct) =>
     setCatalogProducts((current) =>
       current.map((product) =>
@@ -88,7 +112,7 @@ export const ProductsView = ({
     if (editor?.mode === "edit" && editor.product) {
       const changes = {
         name: input.name,
-        category: input.category,
+        categoryId: input.categoryId,
         price: input.price,
       };
       const updated = await productClient.update(editor.product.id, changes);
@@ -111,6 +135,7 @@ export const ProductsView = ({
         onClear={clearFilters}
         canClear={canClear}
         canManage={canManage}
+        categories={categories}
         sort={sort}
         onSortChange={setSort}
       />
@@ -126,13 +151,23 @@ export const ProductsView = ({
             </p>
           </div>
           {canManage ? (
-            <Button
-              type="button"
-              className="rounded-xl"
-              onClick={() => setEditor({ mode: "create", product: null })}
-            >
-              <PackagePlus /> Nuevo producto
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setIsCategoryDialogOpen(true)}
+              >
+                Administrar categorías
+              </Button>
+              <Button
+                type="button"
+                className="rounded-xl"
+                onClick={() => setEditor({ mode: "create", product: null })}
+              >
+                <PackagePlus /> Nuevo producto
+              </Button>
+            </div>
           ) : (
             <p className="hidden text-xs text-muted-foreground sm:block">
               Precios de venta al público
@@ -190,8 +225,17 @@ export const ProductsView = ({
           mode={editor.mode}
           product={editor.product}
           products={catalogProducts}
+          categories={categories}
           onClose={() => setEditor(null)}
           onSave={saveProduct}
+        />
+      )}
+      {isCategoryDialogOpen && (
+        <ProductCategoriesDialog
+          categories={categories}
+          categoryClient={categoryClient}
+          onCategoriesChange={replaceCategories}
+          onClose={() => setIsCategoryDialogOpen(false)}
         />
       )}
       {stockProduct && (

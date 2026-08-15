@@ -34,7 +34,7 @@ describe("ProductSelector", () => {
     await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
 
     expect(onChange).toHaveBeenCalledWith([
-      { productId: "product-pomade", quantity: 1 },
+      { productId: "product-pomade", quantity: 1, grantFullCommission: false },
     ]);
   });
 
@@ -44,7 +44,7 @@ describe("ProductSelector", () => {
     render(
       <ProductSelector
         products={products}
-        value={[{ productId: "product-pomade", quantity: 1 }]}
+        value={[{ productId: "product-pomade", quantity: 1, grantFullCommission: false }]}
         onChange={onChange}
       />,
     );
@@ -52,7 +52,7 @@ describe("ProductSelector", () => {
     await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
 
     expect(onChange).toHaveBeenCalledWith([
-      { productId: "product-pomade", quantity: 2 },
+      { productId: "product-pomade", quantity: 2, grantFullCommission: false },
     ]);
     expect(screen.getAllByText("Pomada")).toHaveLength(2);
   });
@@ -60,7 +60,7 @@ describe("ProductSelector", () => {
   it("changes quantity and removes only through the explicit action", async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
-    const value = [{ productId: "product-pomade", quantity: 1 }];
+    const value = [{ productId: "product-pomade", quantity: 1, grantFullCommission: false }];
     render(
       <ProductSelector products={products} value={value} onChange={onChange} />,
     );
@@ -70,10 +70,45 @@ describe("ProductSelector", () => {
 
     await user.click(screen.getByRole("button", { name: /sumar pomada/i }));
     expect(onChange).toHaveBeenLastCalledWith([
-      { productId: "product-pomade", quantity: 2 },
+      { productId: "product-pomade", quantity: 2, grantFullCommission: false },
     ]);
 
     await user.click(screen.getByRole("button", { name: /eliminar pomada/i }));
     expect(onChange).toHaveBeenLastCalledWith([]);
+  });
+
+  it("grants full commission to the complete selected quantity only when eligible", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ProductSelector products={products} value={[{ productId: "product-pomade", quantity: 2, grantFullCommission: false }]} canGrantFullCommission onChange={onChange} />);
+
+    const checkbox = screen.getByRole("checkbox", { name: "Regalar el 100% del valor de las 2 unidades de Pomada" });
+    await user.click(checkbox);
+    expect(onChange).toHaveBeenCalledWith([{ productId: "product-pomade", quantity: 2, grantFullCommission: true }]);
+  });
+
+  it("keeps multiple product-line exceptions independent", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ProductSelector
+      products={products}
+      value={[
+        { productId: "product-pomade", quantity: 2, grantFullCommission: true },
+        { productId: "product-shampoo", quantity: 1, grantFullCommission: false },
+      ]}
+      canGrantFullCommission
+      onChange={onChange}
+    />);
+
+    await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Shampoo" }));
+    expect(onChange).toHaveBeenCalledWith([
+      { productId: "product-pomade", quantity: 2, grantFullCommission: true },
+      { productId: "product-shampoo", quantity: 1, grantFullCommission: true },
+    ]);
+  });
+
+  it("hides full-commission controls when attribution is ineligible", () => {
+    render(<ProductSelector products={products} value={[{ productId: "product-pomade", quantity: 2, grantFullCommission: false }]} canGrantFullCommission={false} onChange={vi.fn()} />);
+    expect(screen.queryByRole("checkbox", { name: /regalar el 100% del valor/i })).not.toBeInTheDocument();
   });
 });

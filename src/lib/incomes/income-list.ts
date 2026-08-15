@@ -15,6 +15,8 @@ const normalize = (value: string) =>
 const productQuantity = (item: IncomeListItem) =>
   item.products.reduce((total, product) => total + product.quantity, 0);
 
+const incomePayments = (item: IncomeListItem) => item.payments;
+
 export const getIncomeKind = (item: IncomeListItem): IncomeKind => {
   if (item.service && item.products.length > 0) {
     return "combined";
@@ -95,8 +97,10 @@ export const filterIncomeItems = (
       createdAt >= from &&
       createdAt <= to &&
       (!filters.employeeId || item.employee.id === filters.employeeId) &&
-      (filters.paymentMethod === "all" ||
-        item.paymentMethod === filters.paymentMethod) &&
+      (filters.paymentMethodId === "all" ||
+        incomePayments(item).some(
+          (payment) => payment.paymentMethodId === filters.paymentMethodId,
+        )) &&
       (filters.kind === "all" || getIncomeKind(item) === filters.kind)
     );
   });
@@ -113,16 +117,30 @@ export const calculateIncomeMetrics = (
 ): IncomeListMetrics => {
   const activeItems = items.filter((item) => item.status === "active");
   const total = activeItems.reduce((sum, item) => sum + item.total, 0);
-  const cashTotal = activeItems
-    .filter((item) => item.paymentMethod === "cash")
-    .reduce((sum, item) => sum + item.total, 0);
-  const transferTotal = total - cashTotal;
+  const commissionTotal = activeItems.reduce(
+    (sum, item) => sum + item.commission.total,
+    0,
+  );
+  const barbershopNet = activeItems.reduce(
+    (sum, item) => sum + item.commission.barbershopNet,
+    0,
+  );
+  const paymentTotalsById = new Map<string, { paymentMethodId: string; name: string; amount: number }>();
+  for (const payment of activeItems.flatMap(incomePayments)) {
+    const current = paymentTotalsById.get(payment.paymentMethodId);
+    paymentTotalsById.set(payment.paymentMethodId, {
+      paymentMethodId: payment.paymentMethodId,
+      name: payment.methodName,
+      amount: (current?.amount ?? 0) + payment.amount,
+    });
+  }
 
   return {
-    total,
+    grossTotal: total,
+    commissionTotal,
+    barbershopNet,
     count: activeItems.length,
     average: activeItems.length > 0 ? total / activeItems.length : 0,
-    cashTotal,
-    transferTotal,
+    paymentTotals: [...paymentTotalsById.values()],
   };
 };

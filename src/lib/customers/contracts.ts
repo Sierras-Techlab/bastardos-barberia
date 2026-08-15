@@ -1,4 +1,4 @@
-import type { CreateCustomerInput, Customer, UpdateCustomerInput } from "@/types/customer";
+import type { CreateCustomerInput, Customer, CustomerVisitQuery, PaginatedCustomerVisits, UpdateCustomerInput } from "@/types/customer";
 
 export type CustomerCreateRecord = CreateCustomerInput & { createdBy: string };
 export type CustomerUpdateRecord = UpdateCustomerInput & { updatedBy: string };
@@ -10,6 +10,7 @@ export type CustomerRepository = {
   create(input: CustomerCreateRecord): Promise<Customer>;
   update(id: string, changes: CustomerUpdateRecord): Promise<Customer | null>;
   softDelete(id: string, actorId: string, at: string): Promise<string | null>;
+  listVisits(actorId: string, customerId: string, query: CustomerVisitQuery): Promise<PaginatedCustomerVisits>;
 };
 export type CustomerServiceDependencies = {
   customers: CustomerRepository;

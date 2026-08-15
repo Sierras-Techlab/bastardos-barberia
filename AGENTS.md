@@ -36,6 +36,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `proxy.ts` is only an optimistic cookie-presence check. Every private page and API operation must authorize again at the server/data boundary.
 - Roles are fixed database records: `owner` (1), `admin` (2), `employee` (3).
 - Owner and admin are managers. Both currently have full administrative access.
+- Owner commission rates are always zero. Revenue from owner-attributed sales belongs entirely to the barbershop; owner withdrawals or compensation belong to future cash/expense flows, not sales commissions.
 - Accounts are created only by a manager. There is no public registration endpoint.
 - Usernames are database-generated from normalized `first_name.last_name`; collisions add `2`, `3`, and so on.
 - Login accepts username and password only. Inactive, locked, unknown and incorrect-password cases return the same public credential error.
@@ -49,8 +50,14 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Product stock changes are atomic, cannot produce negative stock and append an actor-linked inventory movement.
 - Services are logically deleted, preserve sales-history references and may be mutated only by owner/admin; employees receive active services only.
 - Customer names may duplicate. Normalized phone is required and unique, email is optional and unique when present, every authenticated role may create/edit, and only owner/admin may logically delete.
-- Every income belongs to the authenticated user who registered it. Owner/admin can read all incomes and employees can read only their own; browser payloads never choose the actor, total, timestamp or business date.
-- Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, product stock, inventory movements and customer visits. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
+- A customer may have one active ISO-weekday/local-time schedule. Schedule versions have effective dates, mutations and generation serialize per customer, and audited occurrences are generated idempotently for bounded windows; attendance is independent from sales. Visit history is a sanitized projection of active sale item snapshots.
+- User service/product commission rates are manager-configurable integers from 0 through 100 and default to zero.
+- Incomes distinguish the authenticated `registered_by` actor from the responsible `employee_id`. Employees are always responsible for themselves; owner/admin may select an active user and may exceptionally grant 100% of a service or individual product lines to a different non-owner employee.
+- Income payments are normalized allocations keyed by stable payment-method UUIDs; their distinct positive amounts exactly equal the authoritative sale total, while immutable method-name snapshots preserve history. Commission bases, per-item rates/amounts/exception authorizers, total and barbershop net are immutable sale snapshots.
+- Income history is scoped by responsible employee: owner/admin can read/filter every historical responsible user, including inactive or logically deleted accounts with retained sales, and employees can read only their own. Browser payloads never choose the actor, prices, total, commission amounts, timestamp or business date.
+- Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, split payments, product stock, inventory movements and customer visits. New-sale authorization/catalog rows remain locked through commit so concurrent role or lifecycle changes cannot invalidate the snapshot. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
+- Dashboard fixed-customer agenda dates use `America/Argentina/Buenos_Aires` and include only the current local date through Saturday; Sunday is empty and the range rotates on Monday.
+- Caja is manager-only and has no manual open/close or CRUD lifecycle. The current Buenos Aires business date is calculated live from incomes; prior active dates are closed automatically and idempotently into immutable sale/payment snapshots. A same-day void is excluded at close, while a void after closure creates one audited negative adjustment on the void date without rewriting the original closure. Dates without sales or adjustments are not persisted.
 
 ## Repository map
 
@@ -62,11 +69,13 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/app/api/products`, `src/lib/products`: authenticated product endpoints, validation, persistence, inventory services and browser API client.
 - `src/app/api/services`, `src/lib/services`: persistent role-aware service catalog and logical lifecycle.
 - `src/app/api/customers`, `src/lib/customers`: authenticated customer persistence with manager-only logical deletion.
+- `src/app/api/fixed-customer-occurrences`, `src/lib/fixed-customers`: weekly occurrence reads and audited attendance transitions.
 - `src/app/api/incomes`, `src/lib/incomes`: transactional sale creation, scoped history/detail, voiding and browser API client.
+- `src/app/api/cash`, `src/lib/cash`, `src/components/cash`: manager-only live cash, immutable closure history, audited post-close adjustments and the read-only `/cash` workspace.
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `009` and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `018` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

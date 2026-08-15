@@ -1,76 +1,116 @@
 # Context snapshot
 
-Captured: 2026-08-12
+Captured: 2026-08-15
 
 ## Repository state
 
-- Current branch: `feat/27-income-commissions` in the main worktree.
-- Local branches: 9.
-- Remote tracking references: 10, including the `origin/HEAD` alias.
-- User administration is integrated into `dev`; its temporary worktree and local feature branch were removed after verification.
+- Active branch: `feat/cash` in the primary checkout. Automatic daily Caja is implemented locally in commits `6637a56`, `7217ace`, `4a393cf` and `87abf1a` after its approved spec/plan commits.
+- The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
+- Commercial operations V2 is implemented locally through migrations `010` through `013`. The exact installed revision of the shared Supabase project must be verified before applying later migrations; this task did not mutate the remote database.
+- User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
+- Product-category domain, authenticated API client, product UUID contracts, manager UI and migrations `014`/`017` are implemented. The user confirmed category deletion is functional against the configured Supabase project.
+- Item-level product commissions (plan `015`, Tasks 1–4) and migration `015` are implemented locally. The canonical item-snapshot response and product exception behavior remain pending manual database installation.
+- Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and concurrency-safe deletion for unused methods. The user confirmed payment-method deletion is functional against the configured Supabase project.
+- Safe product-category deletion is implemented through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Referenced categories remain protected.
+- Automatic Caja is implemented through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. The user executed the migration and confirmed `/cash` is functional; this pagination task did not independently inspect the installed SQL objects.
 
-## Current implementation
+## Delivered behavior
 
-- Supabase SQL installation source is in `supabase/queries/001` through `009`.
-- Tables defined by the ordered scripts: `roles`, `users`, `sessions`, `products`, `inventory_movements`, `services`, `customers`, `incomes`, `income_items`.
-- Fixed roles: owner, admin, employee.
-- Database trigger generates normalized, collision-safe usernames.
-- RLS and grants block browser roles and permit the server secret role.
-- Local auth uses Argon2id, generic credential errors, five-attempt lockout and 12-hour opaque sessions.
-- Failed-login counters and the final-active-owner rule are atomic database operations, so concurrent requests cannot bypass them.
-- Auth endpoints and manager-only user/role endpoints are implemented.
-- Logical user deletion stores `deleted_at`/`deleted_by`, excludes deleted accounts from normal reads and atomically revokes their sessions.
-- `/users` is a responsive owner/admin-only workspace with search, role/status filters, pagination, create, profile edit, password replacement, activate/deactivate and delete flows.
-- The sidebar exposes an active Usuarios link only to owner/admin users.
-- A URL-transparent `(dashboard)` route group supplies one persistent authenticated sidebar to `/`, `/incomes`, `/incomes/new` and `/users`.
-- Every private leaf page still revalidates its live database session; request-scoped React memoization deduplicates layout-plus-page checks, while `proxy.ts` remains only an early cookie check.
-- Session activity writes are throttled to five-minute intervals, avoiding a blocking `last_seen_at` update on every navigation without caching authorization across requests.
-- Income history and dashboard home provide matching centered loading states inside the persistent shell.
-- Dashboard home is simplified to a real seven-day income summary, six quick actions and weekly fixed-customer occurrences. Income visibility remains global for owner/admin and self-only for employees; fixed occurrences remain an isolated frontend fixture until their backend contract is implemented.
-- Dashboard surfaces now use stable standard radii, explicit light/dark borders and a twelve-column desktop grid with 20 px gaps. Browser verification covered 1280 px desktop, 1024 px tablet and 390 px mobile without horizontal overflow.
-- `/products` is an authenticated, responsive persistent catalog with exact stock quantities, derived stock states, summary metrics, search, filters, stock/price sorting, a desktop table and mobile cards.
-- Owner/admin product creation, profile edits, activation changes and stock entries/exits pass through manager-only Route Handlers and server services. Employees receive active products only from the server boundary and have no management controls.
-- Product stock changes use database row locking, reject negative results and append an actor-linked inventory movement in the same transaction. Product creation stores creator/updater audit IDs and an optional initial-stock movement.
-- The authenticated dashboard layout mounts one Sonner toaster. Successful actions in Users, Products, Customers, Services and income voiding use the same accessible, dismissible three-second notification; field validation and blocking errors remain contextual.
-- Product filters use one, two, three or full-row columns according to viewport width so management filters stay compact when the browser shares the screen with development tools.
-- Inactive products retain their exact stock for inventory work but show `No disponible` in manager desktop and mobile catalogs; quantity-only stock filters and metrics remain unchanged.
-- `/customers` is persistent and responsive. Phone is the required normalized unique identity, exact names may repeat, email is optional/unique when supplied, all authenticated roles can create/edit, and owner/admin alone can logically delete. Missing email produces no `mailto:` action.
-- The reusable async customer editor is also available from `/incomes/new`; a newly created customer is appended and selected without leaving the sale draft.
-- `/services` is a persistent role-aware visual catalog. Owner/admin create, edit, activate/deactivate and logically delete; employees receive active services only. All writes carry authenticated audit users.
-- `/incomes/new` loads real active products/services and customers after session authorization, fixes the registering user to the authenticated account, sends no actor/total/date overrides, and uses stable UUID request IDs for idempotent retries.
-- Income creation is one PostgreSQL transaction: authoritative catalog snapshots and totals, deterministic product locks, stock deductions, sale-linked inventory movements and customer visit increments either all commit or all roll back.
-- `/incomes` uses server-side role scoping, Buenos Aires monthly date defaults, filters, metrics and pagination. Owner/admin can inspect all registering users and confirm a void; employees can only receive their own sales and have no void control.
-- Voiding is idempotent and manager-only. It marks rather than edits/deletes the sale, restores product stock, records reversal movements and decrements the associated customer visit exactly once.
-- `incomes.created_at` comes from the database clock and `business_date` is derived/indexed in `America/Argentina/Buenos_Aires` for the next daily-cash increment.
-- Income response validation accepts PostgreSQL `timestamptz` values with explicit UTC offsets. A runtime failure exposed this boundary after the transaction committed; the persisted sale remained intact and a regression test now covers the database's exact timestamp representation.
-- The login form calls the real API and the sidebar exposes logout.
-- A one-time, empty-database-only owner bootstrap command is available.
-- Tests cover schemas, authentication/session/user lifecycle, server authorization, persistent commercial repositories/services/APIs, async catalog/customer UI, idempotent sale submission, role-scoped history and manager voiding.
-- The approved staged migration from product, service, customer and income mocks to persistent server-authorized domains is implemented on `feat/backend-models` and installed in the configured Supabase project.
-- The approved sales design attributes each sale only to the authenticated registering user, gives owner/admin global visibility, scopes employees to their own sales, supports phone-identified inline customer creation, and records both exact timestamps and Buenos Aires business dates for future daily cash work.
-- Detailed TDD implementation plans are available at `docs/superpowers/plans/2026-08-11-products-inventory-backend.md` and `docs/superpowers/plans/2026-08-11-sales-domain-backend.md`. The user authorized autonomous in-scope execution, local verification and scoped commits, while remote SQL and credentials remain out of scope.
-- The current frontend milestone passes 112 test files / 359 tests, ESLint without warnings, the Next.js 16.3 webpack production build and `git diff --check` on the repository target Node/npm toolchain.
+- User administration persists integer service/product commission rates from 0 through 100, initially zero.
+- The responsive user directory exposes each employee's service and product commission percentages, and commission inputs can be cleared and replaced without retaining a leading zero while still rejecting empty or invalid values on submit.
+- Owner commission configuration is displayed as `No aplica`; owner fields are hidden in the editor and both application services and PostgreSQL normalize owner service/product rates to zero.
+- Authenticated sessions hydrate both commission rates, so an employee loading `/incomes/new` receives the same persisted commission configuration used by manager-selected employees.
+- `/incomes/new` enforces role-aware responsible employees: employees are forced to themselves; owner/admin may choose any active user, loading every result page rather than truncating the selector at 100 users.
+- A sale accepts one or more distinct payment-method UUID allocations with positive integer amounts whose exact sum is validated against server-authoritative prices and total; responses retain immutable method-name snapshots.
+- PostgreSQL snapshots service/product commission bases, configured rates, independently rounded amounts, total commission, barbershop net and the optional manager-authorized 100% service exception.
+- Owner-attributed sales keep zero commission and the complete total as barbershop net; a future owner withdrawal belongs to cash/expenses rather than income commission.
+- Income creation remains idempotent and atomic with catalog snapshots, stock, inventory movements, payments and customer visits. Semantic request conflicts are rejected, while an identical retry still succeeds after mutable responsible-user state changes. User, service, product and customer rows remain locked through each new sale so concurrent deactivation or demotion cannot invalidate its authority snapshot.
+- `/incomes` scopes employees by responsible `employee_id`; owner/admin can view and filter all historical responsible users, including inactive and logically deleted accounts with retained sales. Metrics expose gross, commission, net, count, average and dynamic per-method totals while excluding voids.
+- Income detail shows responsible employee, registering actor for managers, split payments, commission bases/rates/amounts, net and 100% authorizer. The confirmation flow shows the complete estimated sale before submission.
+- `/customers` persists one optional ISO-weekday/local-time habitual schedule in the same transaction as customer create/update.
+- The customer directory can combine text search and ordering with a fixed-schedule filter for all customers, habitual customers or customers without a habitual schedule.
+- Schedule creation/reactivation/reprogramming generates idempotent occurrences through eight weeks. Versioned effective dates prevent historical fabrication; same-day reprogramming preserves today's prior appointment; reactivation starts today unless a preserved occurrence already exists; per-customer advisory locks and optimistic versions prevent deadlocks and lost updates.
+- The `X visita(s)` controls open a responsive paginated modal backed by active income item snapshots. Its strict financial contract includes immutable visit total plus historical item unit price and subtotal; the dialog shows those ARS values while excluding user identities, payments, commissions and authorizations.
+- Dashboard fixed customers now come from authorized persistence, not a fixture. Pending attendance may transition once to attended/missed; actor/time are audited, a concurrent second resolution conflicts, and attendance never creates a sale or visit.
+- Product categories now have a server-only domain boundary with audited create/update records, atomic logical deactivation, normalized-name/in-use conflict mappings and active-only employee reads. Products carry complete category objects, use category UUIDs for mutations and filters, and managers have a dynamic category administration dialog.
+- Migration `014_product_categories.sql` creates the secured canonical category catalog, seeds/backfills the four legacy categories, replaces `products.category` with `category_id`, and promotes category-locked product/category lifecycle RPCs with rollback-wrapped SQL acceptance checks.
+- Category UI state keeps catalog product snapshots synchronized after category rename/reactivation/deactivation, editors never submit an inactive hidden category ID, and an in-use deactivation conflict disables that category's action until the manager closes the dialog and refreshes its state.
+- Category administration now shows active records by default, moves inactive records into a separate recoverable view and requires explicit confirmation before physical deletion. Only categories with zero product references can be removed; referenced categories remain intact and receive guidance to deactivate them so catalog and historical links are preserved.
+- Inicio requests fixed-customer occurrences only from the current Buenos Aires date through the current week's Saturday. Sunday is intentionally empty, no occurrence query is made, and the window rotates to the new Monday-through-Saturday week when that Monday begins.
+- The fixture `src/data/fixed-customers.mock.json` and the nonexistent `/customers/fixed` navigation were removed.
+- Owner commission handling is application-safe: owner creation, promotion and updates normalize both configured rates to zero; owner editor controls are fixed at zero; previews derive the responsible employee role and neutralize owner rates plus the 100% service preview override. User profile persistence now calls the canonical `update_user_profile` RPC.
+- Income drafts now carry a strict boolean product exception per selected line. Only a manager attributing the sale to a different non-owner may see exception controls; switching to self or an owner clears service and every product flag, while employees receive no controls. Full product exceptions cover the complete selected quantity and may coexist across products and with a full-service exception.
+- Changing or removing the selected service also clears its full-commission exception, so an invisible stale flag can never reach confirmation or submission. Product exception copy states explicitly that 100% covers the value of the complete line quantity.
+- Commission previews calculate service and product lines independently. Persisted-income contracts require immutable commission snapshots inside the service and every product item, while the aggregate exposes exact commission total and barbershop net; confirmation and detail views render the itemized amounts without positional coupling.
+- The persisted income and metrics types now mirror the strict response schemas: payments, registering actor, aggregate commission, gross total, commission total and barbershop net are mandatory. Income UI and dashboard consumers no longer fabricate legacy payment data or show pending-backend fallbacks.
+- Migration `015_product_item_commissions.sql` backfills immutable service/product item snapshots with exact parent reconciliation, calculates new product lines independently, fingerprints strict product exception flags and promotes the sole canonical `create_income` RPC. It preserves category-first product locks, stock/payments/customer visits, scoped history and idempotent retries while removing `create_income_v2`.
+- Canonical income idempotency dual-compares the exact pre-015 product fingerprint only when every newly required product exception flag is false. It preserves the historical audit hash, accepts a semantically identical cross-migration retry and still conflicts when any flag changes to true.
+- Payment methods now have strict trimmed 1–80-character names, manager-only create/update/deactivate/delete operations, canonical lifecycle RPC adapters and stable duplicate/last-active/in-use conflicts. Authenticated catalog reads and detail lookup include inactive methods so historical payment filters and receipts keep their labels; absent IDs return the safe payment-method 404.
+- `/api/payment-methods` authorizes catalog reads for every authenticated user and create mutations for managers. `/api/payment-methods/[id]` safely fetches active/inactive historical methods; manager `PATCH` handles rename/deactivation/reactivation, while `DELETE` permanently removes only unused methods. Route authorization occurs before body or path validation.
+- The manager dialog shows active methods by default, moves deactivated methods into a separate recoverable view and requires an explicit destructive confirmation before deletion. A referenced method remains in place and receives guidance to deactivate it without losing history.
+- `/incomes/new` loads only active payment methods and presents them as responsive rounded selection cards. A dynamic `Combinado` card opens the arbitrary multi-method allocation editor with distinct methods and exact remaining/excess feedback; single-method cards assign the full total. The history page loads active and inactive methods for stable filtering and manager lifecycle administration.
+- Income list, mobile/detail and dashboard presentation render saved payment names dynamically; one allocation uses its snapshot name and multiple allocations use `Combinado (N medios)`. No UI or metric contract branches on fixed cash/transfer values.
+- `/cash` is manager-only and read-only. Today's Buenos Aires business date is calculated live; the workspace shows gross sales, commissions, barbershop net, service/product totals, dynamic payment allocations and sale-level audit with the existing income detail sheet.
+- Prior activity dates are selectable from a paginated history. Empty days are omitted. There is no cash opening, closing or CRUD control, and the only creation shortcut reuses `/incomes/new`.
+- The payment-method breakdown receives a desktop-only `3.75rem` top offset so its card aligns with the sales table below the audit heading; mobile keeps the original zero-offset stacked flow.
+- The desktop offset now comes from the explicit `.cash-payment-column` media rule instead of a Tailwind arbitrary responsive utility, preventing development CSS regeneration from dropping the alignment while preserving the mobile stack.
+- Migration `018` materializes immutable daily registers plus sale/payment snapshots. Same-day voids are excluded at close; later voids preserve the original register and create one negative, actor-linked adjustment on the local void date. An hourly idempotent `pg_cron` job closes any missing prior activity date.
+- `/incomes` now exposes only its authoritative server-backed paginator. The nested TanStack paginator was removed from `IncomeTable`, so desktop and mobile share one page state and one API request path.
 
-## Database integration state
+## SQL and deployment state
 
-The configured Supabase project has scripts `001` through `009` installed. Runtime use confirmed product, service and customer creation, while a read-only database check confirmed the persisted income and the `get_income_detail` response from `009_sales_domain.sql`. SQL installation remains manual for other environments, which must run all nine ordered scripts documented in `supabase/queries/README.md`.
+- `supabase/queries/010_income_commissions_and_split_payments.sql` contains user commission columns/RPC, income registrant/responsible separation with immutable role snapshots, normalized bigint payments, overflow-safe immutable commission snapshots, locked catalog authorization and a manager-only historical-responsible projection.
+- `supabase/queries/011_customer_visits_and_fixed_schedules.sql` contains effective-dated weekly schedules, per-customer serialized occurrence generation/resolution, optimistic schedule concurrency, transactional customer V2 functions and sanitized visit projection.
+- `supabase/queries/012_owner_commission_invariant.sql` enforces owner-zero commission rates and snapshots on users and incomes tables.
+- `supabase/queries/013_customer_visit_financials.sql` promotes the schedule-aware customer RPCs to canonical `create_customer`/`update_customer` names and exposes only active-sale totals plus immutable item prices/subtotals in paginated visit history.
+- `supabase/queries/014_product_categories.sql` provides the canonical audited category catalog, UUID product foreign key, safe manager-only deactivation and category-first product mutation locks.
+- `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, idempotent compatibility repairs and serialized manager lifecycle functions. Its delete RPC protects the final active method and rejects referenced methods before physical deletion.
+- `supabase/queries/017_product_category_deletion.sql` incrementally replaces the unconditional category-delete trigger with a manager-only RPC that deletes only categories without product references.
+- `supabase/queries/018_automatic_daily_cash.sql` installs secured closure/snapshot/adjustment tables, the post-close void trigger, `close_pending_daily_cash`, `get_daily_cash`, `list_daily_cash` and the hourly recovery cron job.
+- `supabase/queries/README.md` documents ordered installation `001` through `018`, including cash object, RLS and cron verification.
+- The user confirmed the configured project is functional for payment-method deletion, category deletion and automatic Caja after applying the corresponding migrations through `018`.
+
+## Verification
+
+- Last full suite before Fix Round 1: 127 test files / 468 tests passed.
+- Fix Round 1 focused coverage: 15 test files / 60 tests passed, including service exception reset on deselect/change, singular/plural whole-line product copy and a manager-to-other-employee submission combining full service plus two full product lines.
+- The Tasks 1–3 focused groups passed with 22 domain/contract tests, 18 repository/service/client tests and 29 UI tests. Task 4 now has five migration/type contract checks; Fix Round 1 passed the focused income slice with 13 files / 66 tests.
+- ESLint passed with no warnings.
+- Next.js 16.3 production build passed, including all new API routes.
+- TypeScript and `git diff --check` passed.
+- Local runtime was Node 24.17/npm 11.13; repository target remains Node 24.18/npm 11.16.
+- The workweek correction also has 15 focused passing tests covering calendar boundaries, server query scope and card behavior.
+- Payment-method Task 1 passed 4 focused files / 14 tests, TypeScript and `git diff --check`; its prior full suite passed 131 files / 481 tests.
+- Payment-method Task 2 passed 2 focused route files / 11 tests, TypeScript and `git diff --check`; the full suite passed 133 files / 494 tests.
+- Payment-method Tasks 3–5 passed their RED/GREEN contract, UI and presentation groups; the combined affected-domain slice passed 46 files / 176 tests.
+- After Tasks 3–5, the full suite passed 134 files / 504 tests, ESLint passed with no warnings, TypeScript and `git diff --check` passed, and the Next.js 16.3 production build completed successfully.
+- After restoring the card-based payment selector, the focused selector/form slice passed 2 files / 18 tests and the full suite passed 134 files / 510 tests. ESLint passed with no warnings, `git diff --check` passed, the Next.js 16.3 webpack production build succeeded and desktop/mobile browser validation found no console errors or layout overflow.
+- Safe payment-method deletion passed the complete affected slice with 10 files / 46 tests and the full repository suite with 136 files / 522 tests. ESLint, TypeScript, `git diff --check` and the Next.js 16.3 webpack production build passed. Authenticated browser validation covered active/inactive navigation and named confirmation; at 390×844 both nested dialogs matched their 358px available width with no document overflow or console errors.
+- Payment-method administration no longer places full-width inputs or method identity in competition with long horizontal actions. The create flow is vertically stable and each method is an independent card with a persistent name, colored state badge and compact edit/lifecycle/delete row. Authenticated validation at 1280×720 and 390×844 showed every label/action, zero document or dialog overflow and no browser warnings/errors; the inactive view remains equally readable and reactivation stays visually primary.
+- Product-category deletion passed 6 focused domain/API files with 22 tests and the affected product/category UI slice with 13 files and 50 tests. ESLint and `git diff --check` passed before the final repository-wide verification.
+- Final verification after category lifecycle and responsive UI polish passed 138 test files / 531 tests, ESLint, generated route types, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. Authenticated browser checks at the default desktop viewport and 390×844 confirmed readable active-category cards, compact actions and the named nested deletion confirmation without horizontal overflow.
+- Category cards received a density correction after real-device feedback: creation and active/inactive navigation share horizontal space when available, while each category keeps edit, lifecycle and delete in one explicit flex action group. The affected product slice passed 7 files / 29 tests, ESLint, TypeScript and the Webpack production build; authenticated desktop and 390×844 checks confirmed the cards no longer stack their controls or waste vertical space.
+- Payment-method administration is intentionally contextual to `/incomes`: the redundant non-navigating `Medios de pago` sidebar placeholder was removed for managers, while the manager-only modal, income link, API and lifecycle behavior remain unchanged. The user confirmed unused deletion works against Supabase.
+- The migration `016` product-availability regression reproduced as a failing structural test and passed after projecting `p.is_active` into the locked product record consumed by `create_income`.
+- A controlled RPC probe confirmed the installed function passes product availability validation; a read-only schema probe isolated its remaining `42703` to the missing `incomes.responsible_role_snapshot` column. The migration contract now requires both fresh installation in `010` and idempotent repair/backfill in `016`.
+- After the responsible-role repair, the migration regression test passed its red/green cycle, the complete Vitest suite exited successfully, ESLint reported no errors, `git diff --check` passed and the Next.js 16.3 webpack production build completed successfully.
+- End-to-end database probing then verified every column consumed by the sale transaction and traversed all validations preceding the first write. A controlled service-only sale isolated the next failure to PostgreSQL `23502`: dynamic payments omit the superseded `income_payments.method`, while the installed legacy column still required a value. PostgreSQL rolled the diagnostic transaction back completely. Migration `016` now drops only that legacy `NOT NULL` requirement before installing the dynamic RPC.
+- Automatic Caja final verification passed 150 test files / 559 tests, ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. Its rollback-wrapped SQL acceptance block remains documented for isolated validation; this task did not apply the migration to the shared database.
+- Income pagination deduplication passed its red/green regression cycle, 2 focused files / 9 tests, the complete suite with 150 files / 560 tests, ESLint and the Next.js 16.3 Webpack production build. Browser validation at the default desktop viewport and 390×844 confirmed exactly one page label and one previous/next control, working navigation to page two, no horizontal overflow and no browser errors or warnings. The repository audit found no nested paginator in users, cash history or customer visit history.
+- Cash payment-card alignment passed its red/green component test, the complete suite with 150 files / 561 tests, ESLint, `git diff --check` and the Next.js 16.3 Webpack production build. Browser measurement reported a `0px` desktop top-edge difference between sales table and payment card; at 390×844 the computed offset remained `0px`, document width stayed at 390px and no browser errors or warnings appeared.
 
 ## Known boundaries
 
-- Frontend V2 now prepares responsible-employee selection, split payments and accrued commission previews. Backend/SQL support is intentionally pending and documented in `docs/backend-handoffs/2026-08-12-income-commissions-and-split-payments.md`.
-- `/incomes` now has role-aware dual presentations: employees have personal gross/commission/count/average metrics with no employee filter or barbershop net; owner/admin users can view all or filter one employee and receive gross/commission/net/count metrics. Desktop rows, mobile cards and detail surfaces support split payments and commission snapshots with explicit legacy fallbacks.
-- Commission controls sent by user administration and the V2 income payload are not accepted by the current backend yet; no SQL was executed from this branch.
-- Customer create/edit now prepares one optional ISO-weekday and local-time fixed schedule. The dashboard can mark mock occurrences as attended/missed in local state, while persistence, generation, auditing and `/customers/fixed` remain pending in the same backend handoff.
-
-- Deleted-user restore and deleted-user audit screens are intentionally outside the current UI.
-- Product deletion and purchase cost remain outside the persistent catalog.
-- Other environments still depend on manually applying the ordered SQL files through Supabase SQL Editor.
-- Physical deletion, sale editing, customer-history screens, expenses, daily cash/register closure and reporting remain outside this milestone.
+- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks. The user reports the configured project is functional through the `018` feature set; future schema changes must continue through ordered manual migrations.
+- Sale editing, expenses, counted-versus-expected cash reconciliation and reporting remain outside this milestone. Daily Caja and automatic historical closure are now implemented locally. Physical deletion remains intentionally limited to unused payment methods and product categories with zero product references; product records, services, customers and users retain their existing lifecycle rules.
+- The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
+- A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
+- The latest `016_payment_methods.sql` includes the legacy `income_payments.method` compatibility repair used by the functioning dynamic payment flow.
 
 ## Recommended next task
 
-Implement and review the backend handoff for responsible employees, split payments, immutable commission snapshots and weekly fixed-customer occurrences, then reconnect the prepared frontend V2.
+Define and implement Expenses as the next independent financial module, then use immutable Caja closures plus expenses as the basis for reports.
 
 ## Context maintenance rule
 
-Update this file after every completed task with the active branch, branch counts, delivered behavior, unresolved external actions, known boundaries and the single best next task. Update `product.md` whenever scope, module status or product objectives change; update `AGENTS.md` only when durable architecture or workflow changes.
+Update this file after every completed task with the active branch, delivered behavior, unresolved external actions, known boundaries and the single best next task. Update `product.md` whenever scope, module status or objectives change; update `AGENTS.md` only when durable architecture or workflow changes.

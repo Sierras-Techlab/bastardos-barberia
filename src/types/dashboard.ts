@@ -32,7 +32,8 @@ export type DashboardData = {
     revenue: number;
     share: number;
   }>;
-  paymentMethods: Array<{
+  paymentTotals: Array<{
+    paymentMethodId: string;
     name: string;
     transactions: number;
     amount: number;

@@ -24,6 +24,8 @@ const employee = {
   username: "fernanda.perez",
   role: { id: 3 as const, name: "employee" as const },
   isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
   lastLoginAt: null,
   createdAt: "2026-08-07T00:00:00.000Z",
   updatedAt: "2026-08-07T00:00:00.000Z",
@@ -89,6 +91,37 @@ it("links managers to the active user administration page", () => {
   const link = screen.getByRole("link", { name: "Usuarios" });
   expect(link).toHaveAttribute("href", "/users");
   expect(link).toHaveAttribute("data-active");
+});
+
+it("links only managers to the active cash workspace", () => {
+  pathname.value = "/cash";
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={owner} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  const link = screen.getByRole("link", { name: "Caja" });
+  expect(link).toHaveAttribute("href", "/cash");
+  expect(link).toHaveAttribute("data-active");
+});
+
+it("keeps payment-method administration contextual to incomes", () => {
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={owner} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  expect(screen.queryByText("Medios de pago")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ingresos" })).toHaveAttribute(
+    "href",
+    "/incomes",
+  );
 });
 
 it("keeps incomes active on nested income routes", () => {

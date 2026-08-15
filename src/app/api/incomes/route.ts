@@ -8,7 +8,7 @@ const listInput = (request: Request) => {
   const optional = (name: string) => params.get(name) || undefined;
   return incomeListQuerySchema.parse({
     query: optional("query"), dateFrom: optional("dateFrom"), dateTo: optional("dateTo"),
-    userId: optional("userId"), paymentMethod: optional("paymentMethod"), kind: optional("kind"), status: optional("status"),
+    userId: optional("userId"), paymentMethodId: optional("paymentMethodId"), kind: optional("kind"), status: optional("status"),
     page: params.has("page") ? Number(params.get("page")) : 1,
     pageSize: params.has("pageSize") ? Number(params.get("pageSize")) : 10,
   });

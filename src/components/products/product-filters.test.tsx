@@ -8,7 +8,7 @@ it("uses a compact two-column layout before the full desktop row", () => {
     <ProductFilters
       value={{
         query: "",
-        category: "all",
+        categoryId: "all",
         stockStatus: "all",
         activeState: "all",
       }}
@@ -16,6 +16,10 @@ it("uses a compact two-column layout before the full desktop row", () => {
       onClear={vi.fn()}
       canClear={false}
       canManage
+      categories={[
+        { id: "20000000-0000-4000-8000-000000000001", name: "Cuidado capilar", isActive: true },
+        { id: "20000000-0000-4000-8000-000000000002", name: "Peinado y styling", isActive: true },
+      ]}
       sort="original"
       onSortChange={vi.fn()}
     />,
@@ -27,4 +31,25 @@ it("uses a compact two-column layout before the full desktop row", () => {
   expect(grid).toHaveClass("sm:grid-cols-2");
   expect(screen.getByRole("searchbox", { name: "Buscar productos" }).parentElement)
     .toHaveClass("sm:col-span-2", "xl:col-span-1");
+});
+
+it("renders category filters from the live catalog", () => {
+  render(
+    <ProductFilters
+      value={{ query: "", categoryId: "all", stockStatus: "all", activeState: "all" }}
+      onChange={vi.fn()}
+      onClear={vi.fn()}
+      canClear={false}
+      canManage
+      categories={[
+        { id: "20000000-0000-4000-8000-000000000001", name: "Cuidado capilar", isActive: true },
+      ]}
+      sort="original"
+      onSortChange={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("option", { name: "Cuidado capilar" })).toHaveValue(
+    "20000000-0000-4000-8000-000000000001",
+  );
 });

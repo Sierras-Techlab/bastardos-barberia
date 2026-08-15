@@ -10,21 +10,45 @@ it("creates, edits and removes customers through JSON APIs", async () => {
   await customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: null });
   await customerClient.update(customer.id, { firstName: "Anita" });
   await customerClient.remove(customer.id);
-  expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/customers", expect.objectContaining({ body: JSON.stringify({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null }) }));
+  expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/customers", expect.objectContaining({ body: JSON.stringify({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: null }) }));
   expect(fetchMock).toHaveBeenNthCalledWith(2, `/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ firstName: "Anita" }) }));
   expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/customers/${customer.id}`, { method: "DELETE" });
 });
 
-it("sends a configured schedule and explains a legacy backend rejection", async () => {
+it("sends a configured schedule and preserves the server error", async () => {
   fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "VALIDATION_ERROR", message: "Revisá los datos ingresados." } }, { status: 400 }));
   const promise = customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" } });
-  await expect(promise).rejects.toThrow("El horario fijo todavía no está disponible en el servidor.");
+  await expect(promise).rejects.toThrow("Revisá los datos ingresados.");
   expect(fetchMock).toHaveBeenCalledWith("/api/customers", expect.objectContaining({ body: expect.stringContaining('"fixedSchedule":{"weekday":4,"time":"10:00"}') }));
 });
 
-it("preserves the explicit null used to disable a schedule and explains a legacy rejection", async () => {
+it("preserves the explicit null used to disable a schedule", async () => {
   fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "VALIDATION_ERROR", message: "Revisá los datos ingresados." } }, { status: 400 }));
-  const promise = customerClient.update(customer.id, { fixedSchedule: null });
-  await expect(promise).rejects.toThrow("El horario fijo todavía no está disponible en el servidor.");
-  expect(fetchMock).toHaveBeenCalledWith(`/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ fixedSchedule: null }) }));
+  const promise = customerClient.update(customer.id, { fixedSchedule: null, expectedScheduleVersion: 1 });
+  await expect(promise).rejects.toThrow("Revisá los datos ingresados.");
+  expect(fetchMock).toHaveBeenCalledWith(`/api/customers/${customer.id}`, expect.objectContaining({ body: JSON.stringify({ fixedSchedule: null, expectedScheduleVersion: 1 }) }));
+});
+
+it("loads paginated visit details without caching", async () => {
+  const visits = {
+    items: [{
+      id: "20000000-0000-4000-8000-000000000001",
+      occurredAt: "2026-08-13T14:00:00.000Z",
+      businessDate: "2026-08-13",
+      totalSpent: 49000,
+      items: [
+        { type: "service", name: "Corte", quantity: 1, unitPrice: 19000, subtotal: 19000 },
+        { type: "product", name: "Cera mate", quantity: 2, unitPrice: 15000, subtotal: 30000 },
+      ],
+    }],
+    pagination: { page: 2, pageSize: 20, total: 22, totalPages: 2 },
+  };
+  fetchMock.mockResolvedValueOnce(Response.json({ data: visits }));
+  const controller = new AbortController();
+
+  await expect(customerClient.listVisits(customer.id, { page: 2, pageSize: 20 }, controller.signal)).resolves.toEqual(visits);
+  expect(fetchMock).toHaveBeenCalledWith(
+    `/api/customers/${customer.id}/visits?page=2&pageSize=20`,
+    { cache: "no-store", signal: controller.signal },
+  );
 });

@@ -19,14 +19,15 @@ import {
 } from "@/lib/products/product-management";
 import type {
   CatalogProduct,
-  ProductCategory,
   ProductEditorInput,
 } from "@/types/product";
+import type { ProductCategory } from "@/types/product-category";
 
 type ProductEditorDialogProps = {
   mode: "create" | "edit";
   product: CatalogProduct | null;
   products: CatalogProduct[];
+  categories: ProductCategory[];
   onClose: () => void;
   onSave: (input: ProductEditorInput) => Promise<void> | void;
 };
@@ -38,12 +39,17 @@ export const ProductEditorDialog = ({
   mode,
   product,
   products,
+  categories,
   onClose,
   onSave,
 }: ProductEditorDialogProps) => {
   const [name, setName] = useState(product?.name ?? "");
-  const [category, setCategory] = useState<ProductCategory>(
-    product?.category ?? "hair-care",
+  const activeCategories = categories.filter((category) => category.isActive);
+  const currentCategory = product
+    ? categories.find((category) => category.id === product.category.id)
+    : null;
+  const [categoryId, setCategoryId] = useState(
+    currentCategory?.isActive ? currentCategory.id : (activeCategories[0]?.id ?? ""),
   );
   const [price, setPrice] = useState(product ? String(product.price) : "");
   const [stock, setStock] = useState(product ? String(product.stock) : "");
@@ -56,7 +62,7 @@ export const ProductEditorDialog = ({
     if (savingRef.current) return;
     const input = {
       name,
-      category,
+      categoryId,
       price: Number(price),
       stock: mode === "edit" && product ? product.stock : Number(stock),
     };
@@ -123,16 +129,15 @@ export const ProductEditorDialog = ({
             <label className="space-y-1.5 text-sm font-medium">
               Categoría
               <select
-                value={category}
-                onChange={(event) =>
-                  setCategory(event.target.value as ProductCategory)
-                }
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
                 className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
               >
-                <option value="hair-care">Cuidado capilar</option>
-                <option value="styling">Styling</option>
-                <option value="beard-care">Cuidado de barba</option>
-                <option value="fragrance">Fragancias</option>
+                {activeCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="space-y-1.5 text-sm font-medium">

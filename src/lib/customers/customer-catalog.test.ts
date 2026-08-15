@@ -24,6 +24,18 @@ describe("customer catalog", () => {
     expect(filterCustomers(data.customers, "@gmail.com").length).toBeGreaterThan(1);
   });
 
+  it("filters customers by fixed schedule without losing text search", () => {
+    const customers = [
+      { ...data.customers[0], fixedSchedule: { weekday: 4 as const, time: "10:00" } },
+      { ...data.customers[1], fixedSchedule: null },
+    ];
+
+    expect(filterCustomers(customers, "", "fixed")).toEqual([customers[0]]);
+    expect(filterCustomers(customers, "", "not-fixed")).toEqual([customers[1]]);
+    expect(filterCustomers(customers, customers[0].firstName, "fixed")).toEqual([customers[0]]);
+    expect(filterCustomers(customers, customers[1].firstName, "fixed")).toEqual([]);
+  });
+
   it("sorts visits and dates without mutating the fixture", () => {
     const original = data.customers.map(({ id }) => id);
     expect(sortCustomers(data.customers, "visits-desc")[0].visits).toBe(
@@ -52,6 +64,7 @@ describe("customer catalog", () => {
       lastName: "Díaz",
       email: "ana@mail.com",
       phone: "+54 351 555-0101",
+      fixedSchedule: null,
     });
     expect(customerEditorSchema.parse({ firstName: "Ana", lastName: "Díaz", email: "", phone: "+54 351 555-0101" }).email).toBeNull();
   });

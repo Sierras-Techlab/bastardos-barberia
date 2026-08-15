@@ -17,11 +17,17 @@ const income: IncomeListItem = {
     firstName: "Fer",
     lastName: "Pérez",
   },
+  registeredBy: {
+    id: "00000000-0000-4000-8000-000000000003",
+    firstName: "Fer",
+    lastName: "Pérez",
+  },
   customer: null,
   service: {
     id: "30000000-0000-4000-8000-000000000001",
     name: "Barba",
     price: 5000,
+    commission: { subtotal: 5000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
   },
   products: [
     {
@@ -29,9 +35,11 @@ const income: IncomeListItem = {
       name: "Gel",
       unitPrice: 5000,
       quantity: 2,
+      commission: { subtotal: 10000, rate: 0, amount: 0, fullCommission: false, authorizedBy: null },
     },
   ],
-  paymentMethod: "cash",
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 15000 }],
+  commission: { total: 0, barbershopNet: 15000 },
   total: 15000,
   status: "active",
 };
@@ -43,6 +51,8 @@ const customer: Customer = {
   email: null,
   visits: 0,
   createdAt: "2026-08-11T14:00:00.000Z",
+  fixedSchedule: null,
+  fixedScheduleVersion: null,
 };
 
 describe("dashboard recent activity", () => {

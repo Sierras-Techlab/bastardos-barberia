@@ -22,8 +22,7 @@ import {
   formatArs,
 } from "@/lib/incomes/income-calculations";
 import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
-import type { Income, IncomeFormData } from "@/types/income";
-import type { CreateIncomeV2Input } from "@/types/income-commissions";
+import type { CreateIncomeInput, Income, IncomeFormData } from "@/types/income";
 import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
@@ -37,7 +36,7 @@ import { CommissionPreview } from "./commission-preview";
 
 type IncomeFormProps = {
   data: IncomeFormData;
-  incomeClient?: Pick<IncomeClient, "createV2">;
+  incomeClient?: Pick<IncomeClient, "create">;
 };
 
 const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
@@ -65,7 +64,6 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      paymentMode: null,
       payments: [],
       grantFullServiceCommission: false,
     },
@@ -78,7 +76,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     const total = calculateIncomeTotal(validValues, data.services, data.products);
     const balance = calculatePaymentBalance(total, validValues.payments);
     if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => payment.amount <= 0)) {
-      form.setError("paymentMode", { message: "Distribuí el importe total entre medios de pago válidos." });
+      form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
       return;
     }
     setReviewValues(validValues);
@@ -87,13 +85,12 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const handleConfirm = async () => {
     if (
       !reviewValues ||
-      !reviewValues.paymentMode ||
       submittingRef.current
     ) {
       return;
     }
 
-    const input: CreateIncomeV2Input = {
+    const input: CreateIncomeInput = {
       requestId: requestIdRef.current,
       employeeId: reviewValues.employeeId,
       customerId: reviewValues.customerId,
@@ -107,7 +104,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     setSubmitError(null);
 
     try {
-      const income = await incomeClient.createV2(input);
+      const income = await incomeClient.create(input);
       setCreatedIncome(income);
       setReviewValues(null);
       requestIdRef.current = crypto.randomUUID();
@@ -130,7 +127,6 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      paymentMode: null,
       payments: [],
       grantFullServiceCommission: false,
     });
@@ -166,7 +162,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
               >
                 Empleado responsable
               </label>
-              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); }} error={fieldState.error?.message} />} />
+              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
             </div>
 
             <div className="space-y-2">
@@ -216,7 +212,10 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                 <ServiceSelector
                   services={data.services}
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={(serviceId) => {
+                    field.onChange(serviceId);
+                    form.setValue("grantFullServiceCommission", false);
+                  }}
                   error={fieldState.error?.message}
                 />
               )}
@@ -240,6 +239,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   products={data.products}
                   value={field.value}
                   onChange={field.onChange}
+                  canGrantFullCommission={(data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
                 />
               )}
             />
@@ -256,13 +256,13 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           <CardContent>
             <Controller
               control={form.control}
-              name="paymentMode"
+              name="payments"
               render={({ field, fieldState }) => (
                 <PaymentMethodSelector
-                  mode={field.value}
-                  payments={values.payments}
+                  methods={data.paymentMethods}
+                  payments={field.value}
                   total={calculateIncomeTotal(values, data.services, data.products)}
-                  onChange={(mode, payments) => { field.onChange(mode); form.setValue("payments", payments, { shouldValidate: true }); }}
+                  onChange={field.onChange}
                   error={fieldState.error?.message}
                 />
               )}

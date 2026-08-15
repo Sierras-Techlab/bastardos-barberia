@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ProductsView } from "@/components/products/products-view";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePageUser } from "@/lib/auth/authorization";
+import { listProductCategories } from "@/lib/product-categories/service";
 import { listProducts } from "@/lib/products/service";
 
 export const metadata: Metadata = {
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 
 const ProductsPage = async () => {
   const { user } = await requirePageUser();
-  const productsData = await listProducts(user);
+  const [productsData, categoriesData] = await Promise.all([
+    listProducts(user),
+    listProductCategories(user),
+  ]);
   const canManage = user.role.name === "owner" || user.role.name === "admin";
 
   return (
@@ -43,7 +47,11 @@ const ProductsPage = async () => {
           </p>
         </div>
 
-        <ProductsView data={productsData} canManage={canManage} />
+        <ProductsView
+          data={productsData}
+          categories={categoriesData.categories}
+          canManage={canManage}
+        />
       </main>
     </>
   );

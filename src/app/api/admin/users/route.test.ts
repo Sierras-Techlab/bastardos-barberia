@@ -31,7 +31,7 @@ describe("/api/admin/users", () => {
 
   it("creates users with an explicit password", async () => {
     createUser.mockResolvedValue({ id: "new-user", username: "grace.hopper" });
-    const body = { firstName: "Grace", lastName: "Hopper", password: "safe-password", roleId: 3 };
+    const body = { firstName: "Grace", lastName: "Hopper", password: "safe-password", roleId: 3, serviceCommissionRate: 45, productCommissionRate: 12 };
 
     const response = await POST(new Request("http://localhost/api/admin/users", {
       method: "POST",
@@ -40,5 +40,23 @@ describe("/api/admin/users", () => {
 
     expect(createUser).toHaveBeenCalledWith({ id: "manager-1" }, body);
     expect(response.status).toBe(201);
+  });
+
+  it("rejects unknown user authority fields", async () => {
+    const response = await POST(new Request("http://localhost/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        firstName: "Grace",
+        lastName: "Hopper",
+        password: "safe-password",
+        roleId: 3,
+        serviceCommissionRate: 45,
+        productCommissionRate: 12,
+        createdBy: "attacker",
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+    expect(createUser).not.toHaveBeenCalled();
   });
 });

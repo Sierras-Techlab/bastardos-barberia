@@ -57,11 +57,13 @@ export const UserList = ({
   >
     <div
       role="row"
-      className="hidden grid-cols-[minmax(15rem,1.5fr)_11rem_9rem_11rem_3rem] gap-4 border-b border-black/5 px-5 py-3 text-[0.68rem] font-bold tracking-[0.14em] text-zinc-400 uppercase md:grid"
+      className="hidden grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_9rem_3rem] gap-4 border-b border-black/5 px-5 py-3 text-[0.68rem] font-bold tracking-[0.14em] text-zinc-400 uppercase md:grid"
     >
       <span role="columnheader">Usuario</span>
       <span role="columnheader">Rol</span>
       <span role="columnheader">Estado</span>
+      <span role="columnheader">Comisión servicios</span>
+      <span role="columnheader">Comisión productos</span>
       <span role="columnheader">Último acceso</span>
       <span role="columnheader" className="sr-only">Acciones</span>
     </div>
@@ -71,12 +73,19 @@ export const UserList = ({
         const fullName = user.firstName + " " + user.lastName;
         const isSelf = user.id === currentUserId;
         const selfRestrictionId = "self-action-restriction-" + user.id;
+        const commissionApplies = user.role.name !== "owner";
+        const serviceCommission = commissionApplies
+          ? `${user.serviceCommissionRate}%`
+          : "no aplica";
+        const productCommission = commissionApplies
+          ? `${user.productCommissionRate}%`
+          : "no aplica";
 
         return (
           <div
             role="row"
             key={user.id}
-            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-[#faf9f7] md:grid-cols-[minmax(15rem,1.5fr)_11rem_9rem_11rem_3rem] md:gap-4 md:px-5"
+            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-[#faf9f7] md:grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_9rem_3rem] md:gap-4 md:px-5"
           >
             <div role="cell" className="flex min-w-0 items-center gap-3">
               <Avatar className="size-10 shrink-0 border border-black/5">
@@ -110,6 +119,18 @@ export const UserList = ({
                 <p className="mt-2 text-[0.7rem] text-zinc-400 md:hidden">
                   Último acceso: {formatLastLogin(user.lastLoginAt)}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-zinc-500 md:hidden">
+                  <span
+                    aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
+                  >
+                    Servicios {commissionApplies ? serviceCommission : "No aplica"}
+                  </span>
+                  <span
+                    aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
+                  >
+                    Productos {commissionApplies ? productCommission : "No aplica"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -134,6 +155,22 @@ export const UserList = ({
                 />
                 {user.isActive ? "Activo" : "Inactivo"}
               </Badge>
+            </div>
+
+            <div
+              role="cell"
+              aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
+              className="hidden text-sm font-semibold text-zinc-700 md:block"
+            >
+              {commissionApplies ? serviceCommission : "No aplica"}
+            </div>
+
+            <div
+              role="cell"
+              aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
+              className="hidden text-sm font-semibold text-zinc-700 md:block"
+            >
+              {commissionApplies ? productCommission : "No aplica"}
             </div>
 
             <div role="cell" className="hidden text-xs text-zinc-500 md:block">

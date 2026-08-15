@@ -44,9 +44,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "transfer",
       "total": 49000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 49000
+        }
+      ]
     },
     {
       "id": "income-002",
@@ -67,9 +73,15 @@
         "price": 16000
       },
       "products": [],
-      "paymentMethod": "cash",
       "total": 16000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 16000
+        }
+      ]
     },
     {
       "id": "income-003",
@@ -89,9 +101,15 @@
           "quantity": 2
         }
       ],
-      "paymentMethod": "transfer",
       "total": 19800,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 19800
+        }
+      ]
     },
     {
       "id": "income-004",
@@ -119,9 +137,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 21900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 21900
+        }
+      ]
     },
     {
       "id": "income-005",
@@ -142,9 +166,15 @@
         "price": 16000
       },
       "products": [],
-      "paymentMethod": "cash",
       "total": 16000,
-      "status": "voided"
+      "status": "voided",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 16000
+        }
+      ]
     },
     {
       "id": "income-006",
@@ -172,9 +202,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "transfer",
       "total": 24900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 24900
+        }
+      ]
     },
     {
       "id": "income-007",
@@ -202,9 +238,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 27900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 27900
+        }
+      ]
     },
     {
       "id": "income-008",
@@ -230,9 +272,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "transfer",
       "total": 37500,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 37500
+        }
+      ]
     },
     {
       "id": "income-009",
@@ -253,9 +301,15 @@
         "price": 13000
       },
       "products": [],
-      "paymentMethod": "cash",
       "total": 13000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 13000
+        }
+      ]
     },
     {
       "id": "income-010",
@@ -276,9 +330,15 @@
         "price": 16000
       },
       "products": [],
-      "paymentMethod": "transfer",
       "total": 16000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 16000
+        }
+      ]
     },
     {
       "id": "income-011",
@@ -306,9 +366,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 28900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 28900
+        }
+      ]
     },
     {
       "id": "income-012",
@@ -328,9 +394,15 @@
           "quantity": 2
         }
       ],
-      "paymentMethod": "cash",
       "total": 17800,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 17800
+        }
+      ]
     },
     {
       "id": "income-013",
@@ -358,9 +430,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "transfer",
       "total": 20500,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 20500
+        }
+      ]
     },
     {
       "id": "income-014",
@@ -381,9 +459,15 @@
         "price": 19000
       },
       "products": [],
-      "paymentMethod": "cash",
       "total": 19000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 19000
+        }
+      ]
     },
     {
       "id": "income-015",
@@ -411,9 +495,15 @@
           "quantity": 2
         }
       ],
-      "paymentMethod": "transfer",
       "total": 27800,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 27800
+        }
+      ]
     },
     {
       "id": "income-016",
@@ -437,9 +527,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 11900,
-      "status": "voided"
+      "status": "voided",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 11900
+        }
+      ]
     },
     {
       "id": "income-017",
@@ -456,9 +552,15 @@
         "price": 13000
       },
       "products": [],
-      "paymentMethod": "cash",
       "total": 13000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 13000
+        }
+      ]
     },
     {
       "id": "income-018",
@@ -486,9 +588,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "transfer",
       "total": 25900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 25900
+        }
+      ]
     },
     {
       "id": "income-019",
@@ -509,9 +617,15 @@
         "price": 19000
       },
       "products": [],
-      "paymentMethod": "cash",
       "total": 19000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 19000
+        }
+      ]
     },
     {
       "id": "income-020",
@@ -541,9 +655,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 20900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 20900
+        }
+      ]
     },
     {
       "id": "income-021",
@@ -564,9 +684,15 @@
         "price": 16000
       },
       "products": [],
-      "paymentMethod": "transfer",
       "total": 16000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 16000
+        }
+      ]
     },
     {
       "id": "income-022",
@@ -590,9 +716,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 21900,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 21900
+        }
+      ]
     },
     {
       "id": "income-023",
@@ -620,9 +752,15 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "transfer",
       "total": 49000,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+          "methodName": "Transferencia",
+          "amount": 49000
+        }
+      ]
     },
     {
       "id": "income-024",
@@ -652,9 +790,27 @@
           "quantity": 1
         }
       ],
-      "paymentMethod": "cash",
       "total": 21800,
-      "status": "active"
+      "status": "active",
+      "payments": [
+        {
+          "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+          "methodName": "Efectivo",
+          "amount": 21800
+        }
+      ]
+    }
+  ],
+  "paymentMethods": [
+    {
+      "id": "60000000-0000-4000-8000-000000000001",
+      "name": "Efectivo",
+      "isActive": true
+    },
+    {
+      "id": "60000000-0000-4000-8000-000000000002",
+      "name": "Transferencia",
+      "isActive": true
     }
   ]
 }

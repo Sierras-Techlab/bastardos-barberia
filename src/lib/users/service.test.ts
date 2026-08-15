@@ -12,6 +12,7 @@ import type { SafeUser } from "@/lib/auth/types";
 const owner: SafeUser = {
   id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García",
   username: "ana.garcia", role: { id: 1, name: "owner" }, isActive: true,
+  serviceCommissionRate: 0, productCommissionRate: 0,
   lastLoginAt: null, createdAt: "2026-08-07T00:00:00.000Z", updatedAt: "2026-08-07T00:00:00.000Z",
 };
 
@@ -30,9 +31,78 @@ const dependencies = () => ({
 describe("user lifecycle", () => {
   it("hashes the password before creating a user", async () => {
     const deps = dependencies();
-    await createUser(owner, { firstName: "Luis", lastName: "Pérez", password: "password-2026", roleId: 3 }, deps);
+    await createUser(owner, { firstName: "Luis", lastName: "Pérez", password: "password-2026", roleId: 3, serviceCommissionRate: 0, productCommissionRate: 0 }, deps);
     expect(deps.users.create).toHaveBeenCalledWith(expect.objectContaining({
       passwordHash: "$argon2id$v=19$hash", createdBy: owner.id,
+      serviceCommissionRate: 0, productCommissionRate: 0,
+    }));
+  });
+
+  it("passes configured commission rates to account persistence", async () => {
+    const deps = dependencies();
+    await createUser(owner, {
+      firstName: "Luis",
+      lastName: "Pérez",
+      password: "password-2026",
+      roleId: 3,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+    }, deps);
+
+    expect(deps.users.create).toHaveBeenCalledWith(expect.objectContaining({
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+    }));
+  });
+
+  it("persists zero commission rates when creating an owner", async () => {
+    const deps = dependencies();
+
+    await createUser(owner, {
+      firstName: "Lucía",
+      lastName: "Ferreyra",
+      password: "password-2026",
+      roleId: 1,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+    }, deps);
+
+    expect(deps.users.create).toHaveBeenCalledWith(expect.objectContaining({
+      roleId: 1,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    }));
+  });
+
+  it("persists zero commission rates when promoting a user to owner", async () => {
+    const deps = dependencies();
+    const employee = { ...owner, id: "00000000-0000-4000-8000-000000000002", role: { id: 3 as const, name: "employee" as const } };
+    vi.mocked(deps.users.findById).mockResolvedValue(employee);
+
+    await updateUser(owner, employee.id, {
+      roleId: 1,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+    }, deps);
+
+    expect(deps.users.update).toHaveBeenCalledWith(employee.id, expect.objectContaining({
+      roleId: 1,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
+    }));
+  });
+
+  it("does not persist non-zero commission updates for an owner", async () => {
+    const deps = dependencies();
+
+    await updateUser(owner, owner.id, {
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+    }, deps);
+
+    expect(deps.users.update).toHaveBeenCalledWith(owner.id, expect.objectContaining({
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
     }));
   });
 

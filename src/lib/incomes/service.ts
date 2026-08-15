@@ -12,7 +12,14 @@ const scopeFor = (actor: SafeUser, requestedUserId?: string): IncomeScope => {
   return { requestingUserId: actor.id, canViewAll, userId: canViewAll ? requestedUserId ?? null : actor.id };
 };
 const notFound = () => new AppError("INCOME_NOT_FOUND", "No encontramos el ingreso.", 404);
-export const createIncome = (actor: SafeUser, input: CreateIncomeInput, dependencies: IncomeDependencies = defaults) => dependencies.incomes.create(actor.id, input);
+// Keep the submitted request canonical for idempotent retries. The atomic database
+// function is the authoritative boundary that forces employees to themselves.
+export const createIncome = (actor: SafeUser, input: CreateIncomeInput, dependencies: IncomeDependencies = defaults) =>
+  dependencies.incomes.create(actor, input);
 export const listIncomes = (actor: SafeUser, query: IncomeListQuery, dependencies: IncomeDependencies = defaults) => dependencies.incomes.list(scopeFor(actor, query.userId), query);
+export const listIncomeResponsibleEmployees = (actor: SafeUser, dependencies: IncomeDependencies = defaults) => {
+  assertManager(actor);
+  return dependencies.incomes.listResponsibleEmployees(actor.id);
+};
 export const getIncome = async (actor: SafeUser, id: string, dependencies: IncomeDependencies = defaults) => { const income = await dependencies.incomes.findById(scopeFor(actor), id); if (!income) throw notFound(); return income; };
 export const voidIncome = async (actor: SafeUser, id: string, dependencies: IncomeDependencies = defaults) => { assertManager(actor); const income = await dependencies.incomes.void(id, actor.id); if (!income) throw notFound(); return income; };

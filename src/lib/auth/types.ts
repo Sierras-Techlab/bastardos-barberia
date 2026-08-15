@@ -14,6 +14,8 @@ export type SafeUser = {
   username: string;
   role: Role;
   isActive: boolean;
+  serviceCommissionRate: number;
+  productCommissionRate: number;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;

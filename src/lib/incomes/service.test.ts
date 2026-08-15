@@ -2,28 +2,40 @@ import { describe, expect, it, vi } from "vitest";
 import type { SafeUser } from "@/lib/auth/types";
 import type { IncomeDependencies, IncomeRepository } from "@/lib/incomes/contracts";
 import { createIncomeSchema } from "@/lib/incomes/income-schema";
-import { createIncome, getIncome, listIncomes, voidIncome } from "@/lib/incomes/service";
+import { createIncome, getIncome, listIncomeResponsibleEmployees, listIncomes, voidIncome } from "@/lib/incomes/service";
 
-const owner: SafeUser = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García", username: "ana.garcia", role: { id: 1, name: "owner" }, isActive: true, lastLoginAt: null, createdAt: "2026-08-07T00:00:00.000Z", updatedAt: "2026-08-07T00:00:00.000Z" };
+const owner: SafeUser = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García", username: "ana.garcia", role: { id: 1, name: "owner" }, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0, lastLoginAt: null, createdAt: "2026-08-07T00:00:00.000Z", updatedAt: "2026-08-07T00:00:00.000Z" };
 const employee: SafeUser = { ...owner, id: "00000000-0000-4000-8000-000000000003", username: "fer.perez", role: { id: 3, name: "employee" } };
-const income = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: employee.id, firstName: "Fer", lastName: "Pérez" }, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000 }, products: [], paymentMethod: "cash" as const, total: 13000, status: "active" as const };
-const repository = (): IncomeRepository => ({ create: vi.fn().mockResolvedValue(income), list: vi.fn().mockResolvedValue({ items: [income], metrics: { total: 13000, count: 1, average: 13000, cashTotal: 13000, transferTotal: 0 }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }), findById: vi.fn().mockResolvedValue(income), void: vi.fn().mockResolvedValue({ ...income, status: "voided" }) });
-const valid = { requestId: "40000000-0000-4000-8000-000000000001", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], paymentMethod: "cash" as const };
+const income = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: employee.id, firstName: "Fer", lastName: "Pérez" }, registeredBy: { id: employee.id, firstName: "Fer", lastName: "Pérez" }, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 13000 }], commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" as const };
+const repository = (): IncomeRepository => ({ create: vi.fn().mockResolvedValue(income), list: vi.fn().mockResolvedValue({ items: [income], metrics: { grossTotal: 13000, commissionTotal: 5850, barbershopNet: 7150, count: 1, average: 13000, paymentTotals: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", name: "Efectivo", amount: 13000 }] }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }), listResponsibleEmployees: vi.fn().mockResolvedValue([income.employee]), findById: vi.fn().mockResolvedValue(income), void: vi.fn().mockResolvedValue({ ...income, status: "voided" }) });
+const valid = {
+  requestId: "40000000-0000-4000-8000-000000000001",
+  employeeId: employee.id,
+  customerId: null,
+  serviceId: "30000000-0000-4000-8000-000000000001",
+  products: [],
+  payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }],
+  grantFullServiceCommission: false,
+};
 
 describe("income boundary", () => {
-  it("accepts only public ids, composition and payment", () => {
+  it("accepts the strict canonical composition and payments", () => {
     expect(createIncomeSchema.parse(valid)).toEqual(valid);
-    expect(createIncomeSchema.safeParse({ ...valid, employeeId: employee.id }).success).toBe(false);
     expect(createIncomeSchema.safeParse({ ...valid, total: 1 }).success).toBe(false);
-    expect(createIncomeSchema.safeParse({ ...valid, products: [{ productId: valid.serviceId, quantity: 1 }, { productId: valid.serviceId, quantity: 2 }] }).success).toBe(false);
+    expect(createIncomeSchema.safeParse({ ...valid, products: [{ productId: valid.serviceId, quantity: 1, grantFullCommission: false }, { productId: valid.serviceId, quantity: 2, grantFullCommission: true }] }).success).toBe(false);
   });
 });
 
 describe("income service", () => {
-  it("passes only the authenticated registering user to creation", async () => {
+  it("preserves the submitted responsible id so database idempotency remains stable", async () => {
     const incomes = repository(); const deps: IncomeDependencies = { incomes };
-    await createIncome(employee, valid, deps);
-    expect(incomes.create).toHaveBeenCalledWith(employee.id, valid);
+    await createIncome(employee, { ...valid, employeeId: owner.id }, deps);
+    expect(incomes.create).toHaveBeenCalledWith(employee, { ...valid, employeeId: owner.id });
+  });
+  it("preserves a manager-selected responsible employee", async () => {
+    const incomes = repository(); const deps: IncomeDependencies = { incomes };
+    await createIncome(owner, valid, deps);
+    expect(incomes.create).toHaveBeenCalledWith(owner, valid);
   });
   it("scopes employee list/detail and permits manager-wide reads", async () => {
     const employeeRepo = repository(); const ownerRepo = repository();
@@ -33,6 +45,12 @@ describe("income service", () => {
     expect(employeeRepo.list).toHaveBeenCalledWith({ requestingUserId: employee.id, canViewAll: false, userId: employee.id }, expect.anything());
     expect(ownerRepo.list).toHaveBeenCalledWith({ requestingUserId: owner.id, canViewAll: true, userId: employee.id }, expect.anything());
     expect(employeeRepo.findById).toHaveBeenCalledWith({ requestingUserId: employee.id, canViewAll: false, userId: employee.id }, income.id);
+  });
+  it("exposes historical responsible users only to managers", async () => {
+    const incomes = repository();
+    expect(() => listIncomeResponsibleEmployees(employee, { incomes })).toThrow(expect.objectContaining({ code: "FORBIDDEN" }));
+    await expect(listIncomeResponsibleEmployees(owner, { incomes })).resolves.toEqual([income.employee]);
+    expect(incomes.listResponsibleEmployees).toHaveBeenCalledWith(owner.id);
   });
   it("allows only managers to void", async () => {
     const incomes = repository();

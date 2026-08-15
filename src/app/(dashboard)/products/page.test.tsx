@@ -13,13 +13,15 @@ const owner = {
   updatedAt: "2026-08-07T00:00:00.000Z",
 };
 
-const { requirePageUser, listProducts } = vi.hoisted(() => ({
+const { requirePageUser, listProducts, listProductCategories } = vi.hoisted(() => ({
   requirePageUser: vi.fn(),
   listProducts: vi.fn(),
+  listProductCategories: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
 vi.mock("@/lib/products/service", () => ({ listProducts }));
+vi.mock("@/lib/product-categories/service", () => ({ listProductCategories }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/products",
@@ -33,6 +35,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   requirePageUser.mockResolvedValue({ user: owner });
   listProducts.mockResolvedValue({ products: [] });
+  listProductCategories.mockResolvedValue({ categories: [] });
 });
 
 it("composes the authenticated persistent product catalog route", async () => {
@@ -48,6 +51,7 @@ it("composes the authenticated persistent product catalog route", async () => {
   expect(metadata.title).toBe("Productos");
   expect(screen.getByLabelText("Estado del producto")).toBeVisible();
   expect(listProducts).toHaveBeenCalledWith(owner);
+  expect(listProductCategories).toHaveBeenCalledWith(owner);
 });
 
 it("revalidates the session at the product catalog boundary", async () => {
@@ -61,6 +65,7 @@ it("does not load products after session revocation", async () => {
 
   await expect(ProductsPage()).rejects.toThrow("revoked session");
   expect(listProducts).not.toHaveBeenCalled();
+  expect(listProductCategories).not.toHaveBeenCalled();
 });
 
 it("loads an employee-scoped catalog without management filters", async () => {
@@ -76,5 +81,6 @@ it("loads an employee-scoped catalog without management filters", async () => {
   render(await DashboardLayout({ children: await ProductsPage() }));
 
   expect(listProducts).toHaveBeenCalledWith(employee);
+  expect(listProductCategories).toHaveBeenCalledWith(employee);
   expect(screen.queryByLabelText("Estado del producto")).not.toBeInTheDocument();
 });

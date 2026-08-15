@@ -1,29 +1,31 @@
 import type {
+  CommissionPreviewSnapshot,
   CommissionPreviewInput,
-  IncomeCommissionSnapshot,
   IncomePayment,
 } from "@/types/income-commissions";
 import type { IncomeStatus } from "@/types/income";
 
 export const calculateCommissionPreview = (
   input: CommissionPreviewInput,
-): IncomeCommissionSnapshot => {
-  const fullServiceCommission = input.grantFullServiceCommission && input.serviceBase > 0;
-  const serviceRate = fullServiceCommission ? 100 : input.serviceRate;
-  const serviceAmount = Math.round((input.serviceBase * serviceRate) / 100);
-  const productAmount = Math.round((input.productBase * input.productRate) / 100);
-  const total = serviceAmount + productAmount;
+): CommissionPreviewSnapshot => {
+  const isOwner = input.responsibleRole === "owner";
+  const line = (subtotal: number, baseRate: number, fullRequested: boolean) => {
+    const fullCommission = !isOwner && fullRequested && subtotal > 0;
+    const rate = isOwner ? 0 : fullCommission ? 100 : baseRate;
+    return { subtotal, rate, amount: Math.round((subtotal * rate) / 100), fullCommission, authorizedBy: null };
+  };
+  const service = input.serviceBase > 0
+    ? line(input.serviceBase, input.serviceRate, input.grantFullServiceCommission)
+    : null;
+  const products = input.products.map((product) => line(product.price * product.quantity, input.productRate, product.grantFullCommission));
+  const total = (service?.amount ?? 0) + products.reduce((sum, product) => sum + product.amount, 0);
+  const gross = input.serviceBase + products.reduce((sum, product) => sum + product.subtotal, 0);
 
   return {
-    serviceBase: input.serviceBase,
-    productBase: input.productBase,
-    serviceRate,
-    productRate: input.productRate,
-    serviceAmount,
-    productAmount,
+    service,
+    products,
     total,
-    barbershopNet: input.serviceBase + input.productBase - total,
-    fullServiceCommission,
+    barbershopNet: gross - total,
   };
 };
 

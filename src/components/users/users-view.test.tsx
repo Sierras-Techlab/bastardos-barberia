@@ -53,6 +53,8 @@ const owner: SafeUser = {
   username: "ana.garcia",
   role: { id: 1, name: "owner" },
   isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
   lastLoginAt: "2026-08-08T15:00:00.000Z",
   createdAt: "2026-08-01T12:00:00.000Z",
   updatedAt: "2026-08-08T12:00:00.000Z",
@@ -65,6 +67,8 @@ const employee: SafeUser = {
   username: "lucia.ferreyra",
   role: { id: 3, name: "employee" },
   isActive: true,
+  serviceCommissionRate: 45,
+  productCommissionRate: 10,
   lastLoginAt: null,
   createdAt: "2026-08-08T12:00:00.000Z",
   updatedAt: "2026-08-08T12:00:00.000Z",
@@ -116,6 +120,18 @@ describe("UsersView", () => {
     expect(await screen.findByText("@lucia.ferreyra")).toBeVisible();
     expect(screen.getByText("2 en esta página")).toBeVisible();
     expect(screen.getByText("2 activos")).toBeVisible();
+    expect(
+      screen.getAllByLabelText("Comisión servicios de Lucía Ferreyra: 45%"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByLabelText("Comisión productos de Lucía Ferreyra: 10%"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByLabelText("Comisión servicios de Ana García: no aplica"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByLabelText("Comisión productos de Ana García: no aplica"),
+    ).toHaveLength(2);
 
     await browser.selectOptions(screen.getByLabelText("Estado"), "inactive");
 

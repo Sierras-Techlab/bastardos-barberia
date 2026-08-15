@@ -19,19 +19,21 @@ describe("/api/products/:id", () => {
     requireManager.mockResolvedValue({ user: actor });
   });
 
-  it("awaits the product id and applies manager updates", async () => {
+  it("awaits the product id and applies category ID updates", async () => {
     updateProduct.mockResolvedValue({ id: productId, price: 10900 });
 
     const response = await PATCH(
       new Request(`http://localhost/api/products/${productId}`, {
         method: "PATCH",
-        body: JSON.stringify({ price: 10900 }),
+        body: JSON.stringify({
+          categoryId: "20000000-0000-4000-8000-000000000002",
+        }),
       }),
       { params: Promise.resolve({ id: productId }) },
     );
 
     expect(updateProduct).toHaveBeenCalledWith(actor, productId, {
-      price: 10900,
+      categoryId: "20000000-0000-4000-8000-000000000002",
     });
     expect(response.status).toBe(200);
   });

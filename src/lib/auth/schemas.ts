@@ -7,6 +7,8 @@ const nameSchema = z.string().trim().min(1).max(80).refine(
   "El nombre debe contener letras o n\u00fameros.",
 );
 const newPasswordSchema = z.string().min(10).max(128);
+const commissionRateValueSchema = z.number().int().min(0).max(100);
+const commissionRateSchema = commissionRateValueSchema.default(0);
 
 export const loginSchema = z.object({
   username: z.string().trim().min(3).max(255).transform((value) => value.toLowerCase()),
@@ -18,7 +20,9 @@ export const createUserSchema = z.object({
   lastName: nameSchema,
   password: newPasswordSchema,
   roleId: roleIdSchema,
-});
+  serviceCommissionRate: commissionRateSchema,
+  productCommissionRate: commissionRateSchema,
+}).strict();
 
 export const updateUserSchema = z
   .object({
@@ -26,7 +30,10 @@ export const updateUserSchema = z
     lastName: nameSchema.optional(),
     roleId: roleIdSchema.optional(),
     isActive: z.boolean().optional(),
+    serviceCommissionRate: commissionRateValueSchema.optional(),
+    productCommissionRate: commissionRateValueSchema.optional(),
   })
+  .strict()
   .refine((value) => Object.values(value).some((item) => item !== undefined), {
     message: "Debe indicar al menos un cambio.",
   });

@@ -6,16 +6,16 @@ import type {
   ProductCatalogData,
   ProductCatalogFilters,
   ProductCatalogMetrics,
-  ProductCategory,
   ProductStockStatus,
 } from "@/types/product";
 
-const productCategorySchema = z.enum([
-  "hair-care",
-  "styling",
-  "beard-care",
-  "fragrance",
-]);
+const productCategorySchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    isActive: z.boolean(),
+  })
+  .strict();
 
 const productSchema = z
   .object({
@@ -42,13 +42,6 @@ const productCatalogDataSchema = z
   ])
   .transform(({ products }) => ({ products }));
 
-const categoryLabels: Record<ProductCategory, string> = {
-  "hair-care": "Cuidado capilar",
-  styling: "Peinado y fijación",
-  "beard-care": "Cuidado de barba",
-  fragrance: "Fragancias",
-};
-
 const normalizeSearch = (value: string) =>
   value.trim().toLocaleLowerCase("es-AR");
 
@@ -65,7 +58,7 @@ export const filterProducts = (
   return products.filter((product) => {
     const matchesQuery = normalizeSearch(product.name).includes(query);
     const matchesCategory =
-      filters.category === "all" || product.category === filters.category;
+      filters.categoryId === "all" || product.category.id === filters.categoryId;
     const matchesStockStatus =
       filters.stockStatus === "all" ||
       getProductStockStatus(product.stock) === filters.stockStatus;
@@ -108,11 +101,8 @@ export const calculateProductMetrics = (
     outOfStockProducts: products.filter(
       (product) => getProductStockStatus(product.stock) === "out-of-stock",
     ).length,
-    categoryCount: new Set(products.map((product) => product.category)).size,
+    categoryCount: new Set(products.map((product) => product.category.id)).size,
     averagePrice:
       products.length > 0 ? Math.round(totalPrice / products.length) : 0,
   };
 };
-
-export const formatProductCategory = (category: ProductCategory) =>
-  categoryLabels[category];

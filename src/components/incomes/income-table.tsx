@@ -2,12 +2,10 @@
 
 import {
   createColumnHelper,
-  createPaginatedRowModel,
-  rowPaginationFeature,
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,17 +16,14 @@ import {
   formatIncomeDateTime,
 } from "@/lib/incomes/income-list";
 import type { IncomeListItem } from "@/types/income";
-import { getIncomeCommissionState, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
+import { getIncomeCommissionAmount, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
 
 type IncomeTableProps = {
   incomes: IncomeListItem[];
   onSelect: (income: IncomeListItem) => void;
 };
 
-const features = tableFeatures({
-  rowPaginationFeature,
-  paginatedRowModel: createPaginatedRowModel(),
-});
+const features = tableFeatures({});
 
 const columnHelper = createColumnHelper<typeof features, IncomeListItem>();
 
@@ -79,14 +74,14 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
             : "Sin cliente",
         }),
         columnHelper.display({
-        id: "paymentMethod",
+        id: "payments",
         header: "Pago",
         cell: ({ row }) => getIncomePaymentLabel(row.original),
         }),
         columnHelper.display({
         id: "commission",
         header: () => <span className="block text-right">Comisión</span>,
-        cell: ({ row }) => { const state = getIncomeCommissionState(row.original); return <span className="block whitespace-nowrap text-right text-xs text-muted-foreground">{state.available ? formatArs(state.amount) : "Pendiente de backend"}</span>; },
+        cell: ({ row }) => <span className="block whitespace-nowrap text-right text-xs text-muted-foreground">{formatArs(getIncomeCommissionAmount(row.original))}</span>,
         }),
         columnHelper.display({
         id: "total",
@@ -129,12 +124,6 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
     features,
     data: incomes,
     columns,
-    initialState: {
-      pagination: {
-        pageIndex: 0,
-        pageSize: 10,
-      },
-    },
   });
 
   return (
@@ -170,35 +159,6 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="flex items-center justify-between border-t border-black/5 px-4 py-3">
-        <p className="text-xs text-muted-foreground">
-          Página {table.state.pagination.pageIndex + 1} de{" "}
-          {Math.max(table.getPageCount(), 1)}
-        </p>
-        <div className="flex gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!table.getCanPreviousPage()}
-            onClick={() => table.previousPage()}
-          >
-            <ChevronLeft />
-            Anterior
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!table.getCanNextPage()}
-            onClick={() => table.nextPage()}
-          >
-            Siguiente
-            <ChevronRight />
-          </Button>
-        </div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
-import mock from "@/data/incomes.mock.json";
+import mock from "@/data/incomes.mock";
 import type { IncomeListData } from "@/types/income";
 import { IncomeMobileList } from "./income-mobile-list";
 
@@ -35,8 +35,8 @@ it("identifies voided cards", () => {
 });
 
 it("shows combined payment and accrued commission", () => {
-  const income = { ...data.incomes[0], payments: [{ method: "cash" as const, amount: 20000 }, { method: "transfer" as const, amount: 29000 }], commission: { serviceBase: 19000, productBase: 30000, serviceRate: 45, productRate: 10, serviceAmount: 8550, productAmount: 3000, total: 11550, barbershopNet: 37450, fullServiceCommission: false } };
+  const income = { ...data.incomes[0], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 20000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000002", methodName: "Transferencia", amount: 19000 }, { paymentMethodId: "60000000-0000-4000-8000-000000000003", methodName: "Tarjeta", amount: 10000 }], commission: { total: 11550, barbershopNet: 37450 } };
   render(<IncomeMobileList incomes={[income]} onSelect={vi.fn()} />);
-  expect(screen.getByText("Combinado")).toBeVisible();
+  expect(screen.getByText("Combinado (3 medios)")).toBeVisible();
   expect(screen.getByText(/Comisión.*11\.550/)).toBeVisible();
 });

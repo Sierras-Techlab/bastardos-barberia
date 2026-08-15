@@ -5,9 +5,10 @@ import type {
   CustomerCatalogData,
   CustomerEditorInput,
   CustomerMetrics,
+  CustomerScheduleFilter,
   CustomerSort,
 } from "@/types/customer";
-import { createCustomerSchema } from "@/lib/customers/schemas";
+import { createCustomerSchema, fixedScheduleSchema } from "@/lib/customers/schemas";
 
 const customerSchema = z.object({
   id: z.string().min(1),
@@ -17,6 +18,8 @@ const customerSchema = z.object({
   phone: z.string().min(1),
   visits: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
+  fixedSchedule: fixedScheduleSchema.nullable().default(null),
+  fixedScheduleVersion: z.number().int().positive().nullable().default(null),
 }).strict();
 
 const customerCatalogFixtureSchema = z.object({
@@ -37,12 +40,21 @@ const normalizePhone = (value: string) => value.replace(/\D/g, "");
 export const authorizeCustomerCatalogData = (input: unknown): CustomerCatalogData =>
   customerCatalogSchema.parse(input);
 
-export const filterCustomers = (customers: Customer[], query: string) => {
+export const filterCustomers = (
+  customers: Customer[],
+  query: string,
+  schedule: CustomerScheduleFilter = "all",
+) => {
   const normalized = normalizeText(query);
-  if (!normalized) return customers;
   const normalizedQueryPhone = normalizePhone(query);
 
   return customers.filter((customer) => {
+    const matchesSchedule = schedule === "all"
+      || (schedule === "fixed" && customer.fixedSchedule !== null)
+      || (schedule === "not-fixed" && customer.fixedSchedule === null);
+    if (!matchesSchedule) return false;
+    if (!normalized) return true;
+
     const searchable = normalizeText(
       `${customer.firstName} ${customer.lastName} ${customer.email ?? ""} ${customer.phone} ${normalizePhone(customer.phone)}`,
     );

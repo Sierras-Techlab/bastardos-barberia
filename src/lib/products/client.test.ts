@@ -6,7 +6,11 @@ import type { CatalogProduct } from "@/types/product";
 const product: CatalogProduct = {
   id: "10000000-0000-4000-8000-000000000001",
   name: "Gel",
-  category: "styling",
+  category: {
+    id: "20000000-0000-4000-8000-000000000001",
+    name: "Cuidado capilar",
+    isActive: true,
+  },
   price: 9900,
   stock: 4,
   isActive: true,
@@ -23,7 +27,7 @@ describe("product API client", () => {
   it("creates products with a JSON request", async () => {
     const input = {
       name: "Gel",
-      category: "styling" as const,
+      categoryId: "20000000-0000-4000-8000-000000000001",
       price: 9900,
       stock: 4,
     };

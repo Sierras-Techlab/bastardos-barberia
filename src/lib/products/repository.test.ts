@@ -10,13 +10,17 @@ import {
   productRepository,
   toCatalogProduct,
 } from "@/lib/products/repository";
-import type { ProductRow } from "@/lib/supabase/database.types";
+const category = {
+  id: "20000000-0000-4000-8000-000000000001",
+  name: "Cuidado capilar",
+  is_active: true,
+};
 
-const row: ProductRow = {
+const row = {
   id: "10000000-0000-4000-8000-000000000001",
   name: "Gel",
   normalized_name: "gel",
-  category: "styling",
+  category,
   price: 9900,
   stock: 4,
   is_active: true,
@@ -26,7 +30,7 @@ const row: ProductRow = {
   updated_at: "2026-08-11T10:00:00.000Z",
 };
 
-const createReadQuery = (data: ProductRow | null = row) => {
+const createReadQuery = (data: typeof row | null = row) => {
   const query = {
     select: vi.fn(),
     eq: vi.fn(),
@@ -46,11 +50,21 @@ describe("product repository", () => {
     expect(toCatalogProduct(row)).toEqual({
       id: row.id,
       name: "Gel",
-      category: "styling",
+      category: {
+        id: category.id,
+        name: category.name,
+        isActive: true,
+      },
       price: 9900,
       stock: 4,
       isActive: true,
     });
+  });
+
+  it("rejects a product row without its required category relation", () => {
+    expect(() =>
+      toCatalogProduct({ ...row, category: null }),
+    ).toThrow("Product category relation is missing.");
   });
 
   it("limits employee catalog reads to active products", async () => {
@@ -82,7 +96,7 @@ describe("product repository", () => {
 
     await productRepository.create({
       name: "Gel",
-      category: "styling",
+      categoryId: category.id,
       price: 9900,
       stock: 4,
       createdBy: row.created_by,
@@ -90,24 +104,18 @@ describe("product repository", () => {
 
     expect(rpc).toHaveBeenCalledWith("create_product", {
       product_name: "Gel",
-      product_category: "styling",
+      product_category_id: category.id,
       product_price: 9900,
       initial_stock: 4,
       actor_user_id: row.created_by,
     });
   });
 
-  it("updates only supplied profile fields and the audit actor", async () => {
-    const query = {
-      update: vi.fn(),
-      eq: vi.fn(),
-      select: vi.fn(),
-      maybeSingle: vi.fn().mockResolvedValue({ data: row, error: null }),
-    };
-    query.update.mockReturnValue(query);
-    query.eq.mockReturnValue(query);
-    query.select.mockReturnValue(query);
+  it("updates through the canonical database function", async () => {
+    const query = createReadQuery();
+    const rpc = vi.fn().mockResolvedValue({ data: row.id, error: null });
     getSupabaseAdmin.mockReturnValue({
+      rpc,
       from: vi.fn().mockReturnValue(query),
     });
 
@@ -116,9 +124,13 @@ describe("product repository", () => {
       updatedBy: row.updated_by,
     });
 
-    expect(query.update).toHaveBeenCalledWith({
-      price: 10900,
-      updated_by: row.updated_by,
+    expect(rpc).toHaveBeenCalledWith("update_product", {
+      target_product_id: row.id,
+      product_name: null,
+      product_category_id: null,
+      product_price: 10900,
+      product_is_active: null,
+      actor_user_id: row.updated_by,
     });
   });
 
@@ -164,7 +176,7 @@ describe("product repository", () => {
     await expect(
       productRepository.create({
         name: "Gel",
-        category: "styling",
+        categoryId: category.id,
         price: 9900,
         stock: 0,
         createdBy: row.created_by,
@@ -178,5 +190,37 @@ describe("product repository", () => {
         { kind: "exit", quantity: 9 },
       ),
     ).rejects.toMatchObject({ code: "INSUFFICIENT_STOCK", status: 409 });
+  });
+
+  it("maps missing and inactive categories to safe errors", async () => {
+    getSupabaseAdmin
+      .mockReturnValueOnce({
+        rpc: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: "P0001", message: "PRODUCT_CATEGORY_NOT_FOUND" },
+        }),
+      })
+      .mockReturnValueOnce({
+        rpc: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: "P0001", message: "PRODUCT_CATEGORY_INACTIVE" },
+        }),
+      });
+
+    const input = {
+      name: "Gel",
+      categoryId: category.id,
+      price: 9900,
+      stock: 0,
+      createdBy: row.created_by,
+    };
+    await expect(productRepository.create(input)).rejects.toMatchObject({
+      code: "PRODUCT_CATEGORY_NOT_FOUND",
+      status: 404,
+    });
+    await expect(productRepository.create(input)).rejects.toMatchObject({
+      code: "PRODUCT_CATEGORY_INACTIVE",
+      status: 409,
+    });
   });
 });

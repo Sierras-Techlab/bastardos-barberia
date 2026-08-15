@@ -17,6 +17,18 @@
       "lastName": "Pérez"
     }
   ],
+  "paymentMethods": [
+    {
+      "id": "60000000-0000-4000-8000-000000000001",
+      "name": "Efectivo",
+      "isActive": true
+    },
+    {
+      "id": "60000000-0000-4000-8000-000000000002",
+      "name": "Transferencia",
+      "isActive": true
+    }
+  ],
   "customers": [
     {
       "id": "customer-tomas-pereyra",
