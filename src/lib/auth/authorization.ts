@@ -1,0 +1,46 @@
+import "server-only";
+
+import { redirect } from "next/navigation";
+import { cache } from "react";
+import { MANAGER_ROLES } from "./constants";
+import { getSessionCookie } from "./cookie";
+import { AppError } from "./errors";
+import { getCurrentSession } from "./session";
+import type { SafeUser } from "./types";
+
+export const assertManager = (user: SafeUser) => {
+  if (!MANAGER_ROLES.has(user.role.name)) {
+    throw new AppError("FORBIDDEN", "No tenés permisos para realizar esta acción.", 403);
+  }
+  return user;
+};
+
+const resolveCurrentUser = cache(async () =>
+  getCurrentSession(await getSessionCookie()));
+
+export const requireUser = async () => resolveCurrentUser();
+
+export const requireManager = async () => {
+  const session = await requireUser();
+  assertManager(session.user);
+  return session;
+};
+
+export const requirePageUser = async () => {
+  try {
+    return await requireUser();
+  } catch (error) {
+    if (error instanceof AppError && error.status === 401) redirect("/login");
+    throw error;
+  }
+};
+
+export const requireManagerPage = async () => {
+  try {
+    return await requireManager();
+  } catch (error) {
+    if (error instanceof AppError && error.status === 401) redirect("/login");
+    if (error instanceof AppError && error.status === 403) redirect("/");
+    throw error;
+  }
+};

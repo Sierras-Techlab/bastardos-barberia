@@ -1,0 +1,101 @@
+{
+  "isMock": true,
+  "products": [
+    {
+      "id": "product-hunter-cream",
+      "name": "Hunter Cream",
+      "category": { "id": "20000000-0000-4000-8000-000000000002", "name": "Peinado y styling", "isActive": true },
+      "price": 30000,
+      "stock": 8,
+      "isActive": true
+    },
+    {
+      "id": "product-skala-cream",
+      "name": "Skala Cream",
+      "category": { "id": "20000000-0000-4000-8000-000000000001", "name": "Cuidado capilar", "isActive": true },
+      "price": 7500,
+      "stock": 14,
+      "isActive": true
+    },
+    {
+      "id": "product-shampoo-acondicionador",
+      "name": "Shampoo + acondicionador",
+      "category": { "id": "20000000-0000-4000-8000-000000000001", "name": "Cuidado capilar", "isActive": true },
+      "price": 5900,
+      "stock": 11,
+      "isActive": true
+    },
+    {
+      "id": "product-acondicionador",
+      "name": "Acondicionador",
+      "category": { "id": "20000000-0000-4000-8000-000000000001", "name": "Cuidado capilar", "isActive": true },
+      "price": 3900,
+      "stock": 9,
+      "isActive": true
+    },
+    {
+      "id": "product-mascara-capilar",
+      "name": "Máscara capilar",
+      "category": { "id": "20000000-0000-4000-8000-000000000001", "name": "Cuidado capilar", "isActive": true },
+      "price": 3900,
+      "stock": 2,
+      "isActive": true
+    },
+    {
+      "id": "product-mousse",
+      "name": "Mousse",
+      "category": { "id": "20000000-0000-4000-8000-000000000002", "name": "Peinado y styling", "isActive": true },
+      "price": 16900,
+      "stock": 5,
+      "isActive": true
+    },
+    {
+      "id": "product-perfume",
+      "name": "Perfume",
+      "category": { "id": "20000000-0000-4000-8000-000000000004", "name": "Fragancias", "isActive": true },
+      "price": 10900,
+      "stock": 0,
+      "isActive": false
+    },
+    {
+      "id": "product-beard-oil",
+      "name": "Aceite para barba",
+      "category": { "id": "20000000-0000-4000-8000-000000000003", "name": "Cuidado de barba", "isActive": true },
+      "price": 8900,
+      "stock": 10,
+      "isActive": true
+    },
+    {
+      "id": "product-matizador",
+      "name": "Matizador",
+      "category": { "id": "20000000-0000-4000-8000-000000000001", "name": "Cuidado capilar", "isActive": true },
+      "price": 7900,
+      "stock": 3,
+      "isActive": true
+    },
+    {
+      "id": "product-cream-beauty",
+      "name": "Crema Beauty",
+      "category": { "id": "20000000-0000-4000-8000-000000000001", "name": "Cuidado capilar", "isActive": true },
+      "price": 4900,
+      "stock": 12,
+      "isActive": true
+    },
+    {
+      "id": "product-hair-wax",
+      "name": "Cera para pelo",
+      "category": { "id": "20000000-0000-4000-8000-000000000002", "name": "Peinado y styling", "isActive": true },
+      "price": 11900,
+      "stock": 16,
+      "isActive": true
+    },
+    {
+      "id": "product-gel",
+      "name": "Gel",
+      "category": { "id": "20000000-0000-4000-8000-000000000002", "name": "Peinado y styling", "isActive": true },
+      "price": 9900,
+      "stock": 13,
+      "isActive": true
+    }
+  ]
+}

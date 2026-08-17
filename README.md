@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bastardos Barberia
 
-## Getting Started
+Internal administrative dashboard built with Next.js 16 and Supabase PostgreSQL. Authentication is local: Supabase is used only as the database, not as an authentication provider.
 
-First, run the development server:
+## Local setup
+
+Requirements: Node 24.18.x and npm 11.16.x.
 
 ```bash
+npm install
+Copy-Item .env.example .env
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required permanent environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SECRET_KEY=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`SUPABASE_SECRET_KEY` is server-only. Never prefix it with `NEXT_PUBLIC_` and never expose it to frontend code. The publishable Supabase key is not required by the authentication implementation.
 
-## Learn More
+## Create the database
 
-To learn more about Next.js, take a look at the following resources:
+Open the Supabase SQL Editor and execute each file completely in this order:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. `supabase/queries/001_extensions_and_roles.sql`
+2. `supabase/queries/002_users.sql`
+3. `supabase/queries/003_sessions.sql`
+4. `supabase/queries/004_functions_and_triggers.sql`
+5. `supabase/queries/005_security.sql`
+6. `supabase/queries/006_atomic_auth_guards.sql`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For the complete application, continue through `supabase/queries/018_automatic_daily_cash.sql` in the exact order documented in `supabase/queries/README.md`. When payment-method lifecycle changes are pulled, run the latest `016` file in full; then run incremental `017` for safe category deletion and `018` for automatic daily cash closures.
 
-## Deploy on Vercel
+See `supabase/queries/README.md` for verification queries and the responsibility of each script.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Create the first owner
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+After the SQL scripts succeed, temporarily complete these local `.env` values:
+
+```dotenv
+BOOTSTRAP_OWNER_FIRST_NAME=
+BOOTSTRAP_OWNER_LAST_NAME=
+BOOTSTRAP_OWNER_PASSWORD=
+```
+
+Then run:
+
+```bash
+npm run bootstrap:owner
+```
+
+The command works only while the users table is empty. PostgreSQL generates and returns the final normalized username. Remove the three temporary bootstrap values from `.env` after use. Later users are created through the manager API.
+
+## API contract
+
+Successful responses use `{ "data": ... }`. Errors use `{ "error": { "code", "message", "fields"? } }`.
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| POST | `/api/auth/login` | Public | Authenticate by username/password and set the session cookie. |
+| POST | `/api/auth/logout` | Session optional | Revoke the current session and clear the cookie. |
+| GET | `/api/auth/me` | Authenticated | Return the current safe user. |
+| GET | `/api/admin/users` | Owner/Admin | Paginated user list with `page`, `pageSize`, `search`, `roleId`, `status`. |
+| POST | `/api/admin/users` | Owner/Admin | Create a user with first name, last name, password and role. |
+| GET | `/api/admin/users/:id` | Owner/Admin | Return one safe user. |
+| PATCH | `/api/admin/users/:id` | Owner/Admin | Change names, role or active state. |
+| PUT | `/api/admin/users/:id/password` | Owner/Admin | Replace password and revoke every session for that user. |
+| GET | `/api/admin/roles` | Owner/Admin | Return the fixed role catalog. |
+| GET | `/api/payment-methods` | Authenticated | Return active and inactive payment methods for current and historical UI. |
+| POST | `/api/payment-methods` | Owner/Admin | Create an active payment method. |
+| GET | `/api/payment-methods/:id` | Authenticated | Return one active or inactive payment method. |
+| PATCH | `/api/payment-methods/:id` | Owner/Admin | Rename, deactivate or reactivate a payment method. |
+| DELETE | `/api/payment-methods/:id` | Owner/Admin | Permanently delete an unused method; referenced methods return a conflict and must be deactivated. |
+| DELETE | `/api/product-categories/:id` | Owner/Admin | Permanently delete an unused category; referenced categories return a conflict and must be deactivated. |
+| GET | `/api/cash?date=YYYY-MM-DD` | Owner/Admin | Return today's live cash or one immutable historical closure with sale/payment audit detail. |
+| GET | `/api/cash/history` | Owner/Admin | Return paginated active-day closures; supports `dateFrom`, `dateTo`, `page` and `pageSize`. |
+
+## Automatic daily cash
+
+`/cash` is read-only and available only to owner/admin. Today's box is calculated live from the authoritative income totals, commissions, barbershop net and dynamic payment allocations. There is no manual opening or closing action.
+
+Migration `018` schedules an idempotent hourly `pg_cron` recovery job. It closes every missing Buenos Aires business date before today only when that date has sales or audited adjustments. Historical closures are immutable: a later income void creates a negative adjustment on the void date and preserves the original close for audit. Expenses remain a separate future module and are not subtracted from Caja.
+
+Create-user body example:
+
+```json
+{
+  "firstName": "Ada",
+  "lastName": "Lovelace",
+  "password": "a-long-temporary-password",
+  "roleId": 3
+}
+```
+
+The response includes the generated username, for example `ada.lovelace` or `ada.lovelace2`. It never includes a password hash or session token.
+
+## Verification
+
+```bash
+npm test
+npm run lint
+npx next typegen
+npx tsc --noEmit
+npm run build
+```
+
+Start with `AGENTS.md`, `context_snapshot.md` and `product.md` when continuing development.

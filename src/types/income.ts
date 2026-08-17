@@ -1,0 +1,38 @@
+import type { PaymentMethod, IncomePayment, IncomePaymentInput } from "@/types/payment-method";
+
+export type { IncomePayment, IncomePaymentInput } from "@/types/payment-method";
+export type UserRole = "owner" | "admin" | "employee";
+export type Employee = { id: string; firstName: string; lastName: string };
+export type Customer = Employee & { phone?: string };
+export type Service = { id: string; name: string; price: number };
+export type Product = { id: string; name: string; price: number; stock: number };
+export type CurrentUser = Employee & { role: UserRole };
+export type IncomeFormEmployee = CurrentUser & { isActive: boolean; serviceCommissionRate: number; productCommissionRate: number };
+export type IncomeFormData = { currentUser: CurrentUser; customers: Customer[]; services: Service[]; products: Product[]; paymentMethods: PaymentMethod[]; employees?: IncomeFormEmployee[] };
+export type IncomeProductInput = { productId: string; quantity: number; grantFullCommission: boolean };
+export type CreateIncomeInput = {
+  requestId: string;
+  employeeId: string;
+  customerId: string | null;
+  serviceId: string | null;
+  products: IncomeProductInput[];
+  payments: IncomePaymentInput[];
+  grantFullServiceCommission: boolean;
+};
+export type IncomeStatus = "active" | "voided";
+export type IncomeKind = "service" | "products" | "combined";
+export type IncomeListService = Service & { commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
+export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number; commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
+export type IncomeListItem = {
+  id: string; createdAt: string; businessDate: string; employee: Employee; customer: Employee | null;
+  service: IncomeListService | null; products: IncomeListProduct[]; payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; status: IncomeStatus;
+};
+export type Income = IncomeListItem;
+export type IncomeService = { create(input: CreateIncomeInput): Promise<Income> };
+export type IncomeListFilters = { query: string; dateFrom: string; dateTo: string; employeeId: string; paymentMethodId: string | "all"; kind: IncomeKind | "all"; status?: IncomeStatus | "all" };
+export type IncomeListQuery = { query?: string; dateFrom?: string; dateTo?: string; userId?: string; paymentMethodId?: string; kind?: IncomeKind; status?: IncomeStatus; page: number; pageSize: number };
+export type IncomePaymentTotal = { paymentMethodId: string; name: string; amount: number };
+export type IncomeListMetrics = { grossTotal: number; commissionTotal: number; barbershopNet: number; count: number; average: number; paymentTotals: IncomePaymentTotal[] };
+export type IncomePagination = { page: number; pageSize: number; total: number; totalPages: number };
+export type PaginatedIncomes = { items: IncomeListItem[]; metrics: IncomeListMetrics; pagination: IncomePagination };
+export type IncomeListData = { currentUser: CurrentUser; employees: Employee[]; paymentMethods: PaymentMethod[]; incomes: IncomeListItem[] };

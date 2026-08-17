@@ -1,0 +1,110 @@
+{
+  "isMock": true,
+  "generatedAt": "2026-08-06T00:30:00-03:00",
+  "business": {
+    "name": "Bastardos Barbería",
+    "location": "Villa Carlos Paz, Córdoba",
+    "currency": "ARS"
+  },
+  "summary": {
+    "dailyRevenue": 156000,
+    "customersServed": 9,
+    "servicesPerformed": 11,
+    "averageTicket": 17333
+  },
+  "revenue": {
+    "period": "Últimos 7 días",
+    "total": 874000,
+    "goal": 1000000,
+    "averageTicket": 18500,
+    "changePercentage": 12.4,
+    "series": [
+      { "label": "Jue", "value": 98000, "transactions": 6 },
+      { "label": "Vie", "value": 164000, "transactions": 9 },
+      { "label": "Sáb", "value": 198000, "transactions": 11 },
+      { "label": "Dom", "value": 0, "transactions": 0 },
+      { "label": "Lun", "value": 112000, "transactions": 7 },
+      { "label": "Mar", "value": 146000, "transactions": 8 },
+      { "label": "Mié", "value": 156000, "transactions": 9 }
+    ]
+  },
+  "topServices": [
+    {
+      "name": "Corte + barba",
+      "sales": 18,
+      "revenue": 342000,
+      "share": 39
+    },
+    {
+      "name": "Corte de pelo",
+      "sales": 21,
+      "revenue": 336000,
+      "share": 38
+    },
+    {
+      "name": "Barba",
+      "sales": 11,
+      "revenue": 143000,
+      "share": 16
+    },
+    {
+      "name": "Otros servicios",
+      "sales": 6,
+      "revenue": 53000,
+      "share": 7
+    }
+  ],
+  "paymentTotals": [
+    {
+      "paymentMethodId": "60000000-0000-4000-8000-000000000002",
+      "name": "Transferencia",
+      "transactions": 24,
+      "amount": 398000,
+      "share": 46
+    },
+    {
+      "paymentMethodId": "60000000-0000-4000-8000-000000000001",
+      "name": "Efectivo",
+      "transactions": 19,
+      "amount": 301000,
+      "share": 34
+    },
+    {
+      "paymentMethodId": "60000000-0000-4000-8000-000000000003",
+      "name": "Débito",
+      "transactions": 9,
+      "amount": 175000,
+      "share": 20
+    }
+  ],
+  "recentActivity": [
+    {
+      "id": "activity-001",
+      "type": "income",
+      "title": "Ingreso registrado",
+      "description": "Corte + barba y pomada · $31.000",
+      "time": "Hace 12 min"
+    },
+    {
+      "id": "activity-002",
+      "type": "customer",
+      "title": "Nuevo cliente",
+      "description": "Tomás Pereyra fue agregado a clientes",
+      "time": "Hace 38 min"
+    },
+    {
+      "id": "activity-003",
+      "type": "expense",
+      "title": "Gasto registrado",
+      "description": "Insumos de limpieza · $18.500",
+      "time": "Hace 1 h"
+    },
+    {
+      "id": "activity-004",
+      "type": "cash",
+      "title": "Cierre de caja",
+      "description": "Total declarado · $142.000",
+      "time": "Hace 2 h"
+    }
+  ]
+}

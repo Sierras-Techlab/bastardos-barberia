@@ -1,0 +1,8 @@
+{
+  "isMock": true,
+  "services": [
+    { "id": "service-haircut-eyebrows", "name": "Corte de pelo y perfilado de cejas", "price": 16000, "isActive": true },
+    { "id": "service-beard", "name": "Barba", "price": 13000, "isActive": true },
+    { "id": "service-complete", "name": "Corte de pelo, perfilado y barba", "price": 19000, "isActive": true }
+  ]
+}
