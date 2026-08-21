@@ -247,10 +247,54 @@ from information_schema.triggers
 where event_object_schema = 'public'
   and event_object_table = 'incomes'
   and trigger_name = 'attach_income_work_session';
+
+with work_session_tables(table_name) as (
+  values
+    ('public.employee_work_sessions'::regclass),
+    ('public.employee_work_session_corrections'::regclass)
+), roles(role_name) as (
+  values ('service_role'), ('anon'), ('authenticated')
+)
+select
+  table_name::text as table_name,
+  role_name,
+  has_table_privilege(role_name, table_name, 'SELECT') as can_select,
+  has_table_privilege(role_name, table_name, 'INSERT') as can_insert,
+  has_table_privilege(role_name, table_name, 'UPDATE') as can_update,
+  has_table_privilege(role_name, table_name, 'DELETE') as can_delete
+from work_session_tables
+cross join roles
+order by table_name, role_name;
+
+with work_session_functions(function_signature) as (
+  values
+    ('public.start_work_session(uuid)'::regprocedure),
+    ('public.end_work_session(uuid)'::regprocedure),
+    ('public.get_current_work_session(uuid)'::regprocedure),
+    ('public.correct_work_session(uuid,uuid,timestamptz,timestamptz,text)'::regprocedure),
+    ('public.list_work_sessions(uuid,uuid,date,date,integer,integer)'::regprocedure)
+), roles(role_name) as (
+  values ('service_role'), ('anon'), ('authenticated')
+)
+select
+  function_signature::text as function_signature,
+  role_name,
+  has_function_privilege(role_name, function_signature, 'EXECUTE')
+    as can_execute
+from work_session_functions
+cross join roles
+order by function_signature, role_name;
 ```
 
 Both tables must report `rowsecurity = true`, all five canonical RPCs must be
 present exactly once, and the income trigger must report `BEFORE` / `INSERT`.
+For both tables, `service_role` must have `can_select = true` and every DML
+column false; `anon` and `authenticated` must have every table privilege false.
+For each exact `regprocedure` signature, `service_role` must have
+`can_execute = true`, while `anon` and `authenticated` must both have
+`can_execute = false`. These effective-privilege checks also catch grants
+inherited through `PUBLIC`; they intentionally make no assertion about owner or
+`postgres` privileges.
 
 Validate work-session lifecycle, income attachment, correction audit and active-only
 production metrics without retaining temporary records:

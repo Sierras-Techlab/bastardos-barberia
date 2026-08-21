@@ -61,3 +61,60 @@ exit 0
 - Remote installation of `019` after `018`, plus the README object/RLS/grant/
   trigger checks and rollback-wrapped acceptance transaction, remains pending
   authorization and execution.
+
+## Fix Round 1 — effective grant acceptance
+
+### Root cause
+
+The migration already revokes inherited `service_role` DML before granting only
+table reads, but the README object check inspected only tables, RLS, RPC names
+and the income trigger. It therefore did not verify effective table or function
+privileges, including grants inherited through `PUBLIC`.
+
+### RED
+
+After adding the focused structural regression, before changing the README:
+
+```text
+npm test -- src/lib/work-sessions/migration-019.test.ts
+1 failed / 5 passed
+documents effective table and RPC grant checks for all browser roles
+expected README to match /has_table_privilege\s*\(/i
+```
+
+### Implementation and GREEN
+
+- The README now queries `has_table_privilege` for both work-session tables and
+  `service_role`, `anon` and `authenticated`, reporting SELECT plus every DML
+  privilege.
+- It now queries `has_function_privilege` for the five exact canonical
+  `regprocedure` signatures and the same roles.
+- Expected results state read-only `service_role` table access, server-only RPC
+  execution and zero table/RPC privilege for browser roles. Owner/`postgres`
+  implicit privileges are intentionally not asserted.
+- The migration structural test now covers the manager-open-session acceptance
+  sentinel, linkage/audit predicate, exact two-sale first-session metrics and
+  the effective-privilege query/role/signature documentation.
+
+```text
+npm test -- src/lib/work-sessions/migration-019.test.ts
+1 file / 6 tests passed
+
+npx tsc --noEmit
+exit 0
+
+npm run lint
+exit 0
+
+git diff --check
+exit 0
+
+npm test
+164 files / 625 tests passed
+```
+
+### Concerns
+
+No SQL was run remotely. The effective-grant checks are documented for the
+authorized, post-`018` Supabase acceptance run; desktop and 390×844 validation
+remain assigned to the main agent.

@@ -84,12 +84,39 @@ describe("migration 019 employee work sessions", () => {
       "WORK_SESSION_ACCEPTANCE_DUPLICATE_START_FAILED",
       "WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_WITHOUT_SESSION_FAILED",
       "WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_LINK_FAILED",
+      "WORK_SESSION_ACCEPTANCE_MANAGER_OPEN_SESSION_LINK_FAILED",
       "WORK_SESSION_ACCEPTANCE_MANAGER_OUTSIDE_SALE_FAILED",
       "WORK_SESSION_ACCEPTANCE_CORRECTION_AUDIT_FAILED",
       "WORK_SESSION_ACCEPTANCE_SECOND_SESSION_FAILED",
       "WORK_SESSION_ACCEPTANCE_VOID_METRICS_FAILED",
     ]) {
       expect(readme).toContain(sentinel);
+    }
+
+    expect(readme).toMatch(
+      /manager_linked_income_id[\s\S]*work_session_id\s*=\s*first_session_id[\s\S]*not\s+outside_work_session/i,
+    );
+    expect(readme).toMatch(
+      /first_session_json->'metrics'->>'saleCount'\)::integer\s*<>\s*2[\s\S]*employeeCommission'\)::bigint\s*<>\s*10000[\s\S]*grossTotal'\)::bigint\s*<>\s*20000[\s\S]*barbershopNet'\)::bigint\s*<>\s*10000/i,
+    );
+  });
+
+  it("documents effective table and RPC grant checks for server and browser roles", () => {
+    expect(readme).toMatch(/has_table_privilege\s*\(/i);
+    expect(readme).toMatch(/has_function_privilege\s*\(/i);
+
+    for (const role of ["service_role", "anon", "authenticated"]) {
+      expect(readme).toContain(role);
+    }
+
+    for (const signature of [
+      "start_work_session(uuid)",
+      "end_work_session(uuid)",
+      "get_current_work_session(uuid)",
+      "correct_work_session(uuid,uuid,timestamptz,timestamptz,text)",
+      "list_work_sessions(uuid,uuid,date,date,integer,integer)",
+    ]) {
+      expect(readme).toContain(signature);
     }
   });
 });
