@@ -1,10 +1,11 @@
 # Context snapshot
 
-Captured: 2026-08-15
+Captured: 2026-08-21
 
 ## Repository state
 
-- Active branch: `feat/cash` in the primary checkout. Automatic daily Caja is implemented locally in commits `6637a56`, `7217ace`, `4a393cf` and `87abf1a` after its approved spec/plan commits.
+- Active branch: `feat/changes-fullstack`. The current application baseline includes the merged automatic Caja work through migration `018`.
+- The next product increment has an approved architecture in `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`. It is planning-only: no migration `019` through `023` or dependent application behavior is implemented yet.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
 - Commercial operations V2 is implemented locally through migrations `010` through `013`. The exact installed revision of the shared Supabase project must be verified before applying later migrations; this task did not mutate the remote database.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
@@ -106,10 +107,11 @@ Captured: 2026-08-15
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 - The latest `016_payment_methods.sql` includes the legacy `income_payments.method` compatibility repair used by the functioning dynamic payment flow.
+- The approved roadmap intentionally supersedes two current rules only when its matching SQL and application blocks are installed: owners will become commission-configurable in `020`, and Caja will gain opening/counting/confirmation in `022`. Until then, owner rates remain forced to zero and Caja remains read-only with automatic closure.
 
 ## Recommended next task
 
-Define and implement Expenses as the next independent financial module, then use immutable Caja closures plus expenses as the basis for reports.
+Write and approve the five TDD implementation plans for the `019` through `023` roadmap, then implement `019` employee work sessions as the first independent block.
 
 ## Context maintenance rule
 

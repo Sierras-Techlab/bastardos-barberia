@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-15
+Last updated: 2026-08-21
 
 ## Vision
 
@@ -35,7 +35,9 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-Install and validate migration `018`, confirm its `pg_cron` job and exercise `/cash` against live and historical activity. Caja is intentionally read-only: it derives from incomes, exposes dynamic payment totals and sale-level audit, skips empty dates and never asks a manager to open or close the day. The next independent financial increment is Expenses; reports can later combine immutable cash closures with expense data.
+The approved next roadmap is split into five deployable blocks: `019` employee work sessions and presentism; `020` manager price overrides, configurable owner commission and employee-safe financial projections; `021` professional-owned fixed customers with atomic monthly payments; `022` manual cash opening/counting with automatic pending-confirmation fallback; and `023` customer last visit derived from active normal sales. These items are designed but not implemented. The current `012` owner-zero and `018` automatic read-only Caja behavior remains authoritative until its matching block is installed.
+
+The installed baseline through `018` keeps Caja read-only and automatic: it derives live totals from incomes, exposes dynamic payment totals and sale-level audit, skips empty dates and never asks a manager to open or close the day. The approved `022` block will evolve that same canonical model instead of introducing version-suffixed tables or RPCs.
 
 The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Managers may permanently delete a category only while no product—active or inactive—references it; referenced categories remain recoverable through logical deactivation. The category dialog separates active and inactive records and requires destructive confirmation. Product physical deletion and purchase cost remain outside scope.
 
