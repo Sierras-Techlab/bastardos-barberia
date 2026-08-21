@@ -4,9 +4,10 @@ Captured: 2026-08-21
 
 ## Repository state
 
-- Active worktree branch: `codex/019-employee-work-sessions`. It is based on the merged automatic Caja baseline through migration `018` and contains increment `019` Tasks 1–3.
-- The next product increment has an approved architecture in `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`. It is planning-only: no migration `019` through `023` or dependent application behavior is implemented yet.
-- Five TDD implementation plans now decompose that architecture into ordered, independently deployable blocks `019` through `023`. They remain planning artifacts until an execution approach is selected.
+- Active worktree branch: `codex/019-employee-work-sessions`, at `98e70dd8bd210c276e89619a1446e3a53d3d9dcb` before this documentation commit. It is based on the merged automatic Caja baseline through migration `018` and contains all `019` Tasks 1–4.
+- The approved operational-control architecture remains the roadmap for ordered blocks `019` through `023`; block `019` is implemented locally, while later blocks remain planning-only.
+- **Implemented locally — 019:** migration, strict role-scoped domain/repository contracts, authenticated no-store API/client, persistent employee clock control, Presentismo history and manager correction UI. Only employees can clock themselves; actor/timestamps are server-derived. An employee sale requires that employee's open session. Managers do not require a session; a manager sale attributed to an employee links the employee's open session when one exists, otherwise retains the explicit `outsideWorkSession` audit flag. Corrections require a reason and append immutable prior/new timestamps. Exact-session metrics exclude voided incomes; gross/net remain manager-only.
+- **Pending Supabase application — 019:** manually execute `019_employee_work_sessions.sql` after installed migration `018`, then run its documented rollback-wrapped acceptance block and object/RLS/grant/trigger checks. No remote SQL was executed by this worktree.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
 - Commercial operations V2 is implemented locally through migrations `010` through `013`. The exact installed revision of the shared Supabase project must be verified before applying later migrations; this task did not mutate the remote database.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
@@ -15,7 +16,6 @@ Captured: 2026-08-21
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and concurrency-safe deletion for unused methods. The user confirmed payment-method deletion is functional against the configured Supabase project.
 - Safe product-category deletion is implemented through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Referenced categories remain protected.
 - Automatic Caja is implemented through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. The user executed the migration and confirmed `/cash` is functional; this pagination task did not independently inspect the installed SQL objects.
-- Increment `019` Tasks 1–3 are implemented in the dedicated worktree: strict role-scoped contracts and services now use a strict default repository, while transactional migration `019` provides employee clock lifecycle, append-only manager corrections and trigger-derived income linkage. Employee current/history parsing cannot expose manager gross/net metrics. Authenticated API routes and a browser-safe no-store client now expose this behavior; the migration remains local and UI work has not started.
 
 ## Delivered behavior
 
@@ -62,6 +62,7 @@ Captured: 2026-08-21
 - Employee work-session persistence now enforces one open session per employee, permits later same-day sessions, rejects employee-created sales without their own open session and links manager-created employee sales to an open session or marks them explicitly outside-session. Active linked incomes drive exact per-session production; voided incomes are excluded, and employee JSON omits gross/net keys rather than hiding them in the UI.
 - Manager work-session corrections append immutable prior/new timestamps and a required reason before updating the session. The strict server adapter calls only the five canonical RPCs, parses role-specific JSON and maps lifecycle/range/linkage sentinels to stable application errors.
 - `/api/work-sessions` authorizes before parsing manager filters and delegates employee self-scoping to the service. Authenticated employee endpoints expose current, start and end without accepting browser timestamps; manager corrections authorize before resolving the awaited dynamic ID or parsing the strict payload. The browser client uses `cache: "no-store"` for every current/history and mutation request.
+- The authenticated layout renders the employee-only persistent clock; `/work-sessions` provides responsive employee history and manager filters, page metrics and audited corrections. Before loading income catalogs or the editor, `/incomes/new` blocks an employee without an open session and offers a Presentismo CTA; managers bypass that guard.
 
 ## SQL and deployment state
 
@@ -108,6 +109,8 @@ Captured: 2026-08-21
 - Cash payment-card alignment passed its red/green component test, the complete suite with 150 files / 561 tests, ESLint, `git diff --check` and the Next.js 16.3 Webpack production build. Browser measurement reported a `0px` desktop top-edge difference between sales table and payment card; at 390×844 the computed offset remained `0px`, document width stayed at 390px and no browser errors or warnings appeared.
 - Work-session Task 2 plus Fix Round 1 passed their RED/GREEN cycles and final focused group with 3 files / 20 tests. The complete repository suite passed with 154 files / 588 tests; ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack production build all exited successfully. Migration `019` explicitly removes any inherited `service_role` DML before granting table reads. SQL acceptance remains rollback-wrapped and documented rather than applied to a remote database.
 - Work-session Task 3 first failed RED because its six new test suites imported the intentionally absent API/client modules. After the minimal implementation, its focused slice passed 6 files / 13 tests; Next.js route type generation, TypeScript and `git diff --check` passed. Final verification passed 160 files / 601 tests, ESLint and the Next.js 16.3 Turbopack production build; no remote SQL was applied.
+- Work-session Task 4 plus its two fix rounds passed focused component/page slices and final verification with 164 files / 624 tests, ESLint, Next.js type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack build. The main agent must still perform the requested desktop and 390×844 visual validation; this task did not use a browser or GUI.
+- Work-session Task 5 documentation verification passed `npm test` (164 files / 624 tests), ESLint, Next.js type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The documented Supabase acceptance remains unexecuted.
 
 ## Known boundaries
 
@@ -120,7 +123,7 @@ Captured: 2026-08-21
 
 ## Recommended next task
 
-Implement increment `019` Task 4: build the responsive presentism workspace on top of the authenticated work-session API and strict browser client.
+Main-agent pending validation: inspect the implemented Presentismo and employee sale guard at desktop and 390×844, with no console errors or horizontal overflow. Separately, when authorized, install `019` after `018` in Supabase and run the documented rollback acceptance.
 
 ## Context maintenance rule
 

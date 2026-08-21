@@ -270,6 +270,7 @@ declare
   first_session_id uuid;
   second_session_id uuid;
   linked_income_id uuid;
+  manager_linked_income_id uuid;
   outside_income_id uuid;
   voided_income_id uuid;
   prior_started_at timestamptz;
@@ -355,6 +356,28 @@ begin
       and not outside_work_session
   ) then
     raise exception 'WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_LINK_FAILED';
+  end if;
+
+  -- A manager does not need a session. When attributing a sale to an employee
+  -- who does have one open, the trigger must attach it rather than mark it
+  -- outside the employee's work session.
+  manager_linked_income_id := public.create_income(
+    manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+
+  if not exists (
+    select 1 from public.incomes
+    where id = manager_linked_income_id
+      and work_session_id = first_session_id
+      and not outside_work_session
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_MANAGER_OPEN_SESSION_LINK_FAILED';
   end if;
 
   perform public.end_work_session(employee_id);
@@ -444,10 +467,10 @@ begin
   from jsonb_array_elements(manager_history->'items') item
   where item->>'id' = second_session_id::text;
 
-  if (first_session_json->'metrics'->>'saleCount')::integer <> 1
-    or (first_session_json->'metrics'->>'employeeCommission')::bigint <> 5000
-    or (first_session_json->'metrics'->>'grossTotal')::bigint <> 10000
-    or (first_session_json->'metrics'->>'barbershopNet')::bigint <> 5000
+  if (first_session_json->'metrics'->>'saleCount')::integer <> 2
+    or (first_session_json->'metrics'->>'employeeCommission')::bigint <> 10000
+    or (first_session_json->'metrics'->>'grossTotal')::bigint <> 20000
+    or (first_session_json->'metrics'->>'barbershopNet')::bigint <> 10000
     or (second_session_json->'metrics'->>'saleCount')::integer <> 0
     or (second_session_json->'metrics'->>'employeeCommission')::bigint <> 0
     or (second_session_json->'metrics'->>'grossTotal')::bigint <> 0
@@ -462,10 +485,11 @@ rollback;
 ```
 
 The block must finish without an exception. It covers employee clock-in/out,
-duplicate clock-in, rejection before clock-in, exact employee linkage, explicit
-manager outside-session audit, prior/new correction snapshots, a second same-day
-session and active-only production metrics. `rollback` removes every temporary
-identity, catalog row, session, correction, income and void effect.
+duplicate clock-in, rejection before clock-in, exact employee linkage, manager
+linkage to an employee's open session, explicit manager outside-session audit,
+prior/new correction snapshots, a second same-day session and active-only
+production metrics. `rollback` removes every temporary identity, catalog row,
+session, correction, income and void effect.
 
 ## Verify
 
