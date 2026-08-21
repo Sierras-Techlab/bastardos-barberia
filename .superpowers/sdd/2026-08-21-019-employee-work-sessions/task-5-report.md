@@ -177,3 +177,60 @@ npm test
 No remote SQL or browser validation was performed. The Supabase acceptance
 remains an authorized post-`018` deployment action, and desktop/390×844 UI
 validation remains assigned to the main agent.
+
+## Fix Round 3 — isolate table and function grant matrices
+
+### Root cause
+
+The Round 2 role assertion searched the complete grant block. Because both the
+table and function matrices contain similarly named `roles` CTEs, either matrix
+could satisfy the assertion intended for the other.
+
+### RED
+
+The strengthened test first split the grant block at `with work_session_tables`
+and `with work_session_functions`. A local, uncommitted mutation renamed only
+the function matrix CTE to `function_roles`; the initial loose regex exposed a
+substring false positive (`roles` inside `function_roles`). After anchoring the
+expected CTE as `), roles(role_name)`, the same temporary mutation produced the
+intended RED:
+
+```text
+npm test -- src/lib/work-sessions/migration-019.test.ts
+1 failed / 5 passed
+expected functionGrantBlock to match the exact roles(role_name) CTE
+```
+
+The README mutation was then restored without being committed.
+
+### GREEN
+
+- `tableGrantBlock` spans only the table CTE through the start of the function
+  CTE and independently requires its exact roles CTE, seven-privilege matrix,
+  SELECT-only expectation and effective table privilege call.
+- `functionGrantBlock` spans only the function CTE through its SQL fence and
+  independently requires its exact roles CTE, expected execution policy and
+  all five exact signatures. It also proves it cannot contain the table CTE.
+
+```text
+npm test -- src/lib/work-sessions/migration-019.test.ts
+1 file / 6 tests passed
+
+npx tsc --noEmit
+exit 0
+
+git diff --check
+exit 0
+
+npm run lint
+exit 0
+
+npm test
+164 files / 625 tests passed
+```
+
+### Concerns
+
+This is test-only: no migration, remote SQL, browser validation, push or merge
+was performed. Supabase acceptance and the main agent's desktop/390×844 checks
+remain external pending actions.

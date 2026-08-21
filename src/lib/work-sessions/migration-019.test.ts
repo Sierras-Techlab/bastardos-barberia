@@ -121,20 +121,32 @@ describe("migration 019 employee work sessions", () => {
     expect(grantBlock).toBeDefined();
     const grants = grantBlock ?? "";
 
-    expect(grants).toMatch(
-      /roles\(role_name\) as \(\s*values \('service_role'\), \('anon'\), \('authenticated'\)\s*\)/i,
-    );
-    expect(grants).toMatch(
+    const tableGrantStart = grants.indexOf("with work_session_tables");
+    const functionGrantStart = grants.indexOf("with work_session_functions");
+    const functionGrantEnd = grants.indexOf("```", functionGrantStart);
+    expect(tableGrantStart).toBeGreaterThan(-1);
+    expect(functionGrantStart).toBeGreaterThan(tableGrantStart);
+    expect(functionGrantEnd).toBeGreaterThan(functionGrantStart);
+
+    const tableGrantBlock = grants.slice(tableGrantStart, functionGrantStart);
+    const functionGrantBlock = grants.slice(functionGrantStart, functionGrantEnd);
+    const roleCte =
+      /\),\s*roles\(role_name\) as \(\s*values \('service_role'\), \('anon'\), \('authenticated'\)\s*\)/i;
+    expect(tableGrantBlock).toMatch(roleCte);
+    expect(functionGrantBlock).toMatch(roleCte);
+    expect(functionGrantBlock).not.toContain("with work_session_tables");
+
+    expect(tableGrantBlock).toMatch(
       /privileges\(privilege_name\) as \([\s\S]*'SELECT'[\s\S]*'INSERT'[\s\S]*'UPDATE'[\s\S]*'DELETE'[\s\S]*'TRUNCATE'[\s\S]*'REFERENCES'[\s\S]*'TRIGGER'/i,
     );
-    expect(grants).toMatch(
+    expect(tableGrantBlock).toMatch(
       /case\s+when role_name = 'service_role'\s+and privilege_name = 'SELECT'\s+then true\s+else false\s+end as expected/i,
     );
-    expect(grants).toMatch(
+    expect(tableGrantBlock).toMatch(
       /has_table_privilege\(role_name, table_name, privilege_name\) as actual/i,
     );
-    expect(grants).toMatch(/has_function_privilege\s*\(/i);
-    expect(grants).toMatch(
+    expect(functionGrantBlock).toMatch(/has_function_privilege\s*\(/i);
+    expect(functionGrantBlock).toMatch(
       /case\s+when role_name = 'service_role'\s+then true\s+else false\s+end as expected/i,
     );
 
@@ -145,7 +157,7 @@ describe("migration 019 employee work sessions", () => {
       "correct_work_session(uuid,uuid,timestamptz,timestamptz,text)",
       "list_work_sessions(uuid,uuid,date,date,integer,integer)",
     ]) {
-      expect(grants).toContain(signature);
+      expect(functionGrantBlock).toContain(signature);
     }
   });
 });
