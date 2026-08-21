@@ -23,6 +23,7 @@ export type WorkSessionBase = {
   businessDate: string;
   startedAt: string;
   endedAt: string | null;
+  updatedAt: string;
   state: WorkSessionState;
 };
 
@@ -37,6 +38,7 @@ export type ManagerWorkSession = WorkSessionBase & {
 export type WorkSession = EmployeeWorkSession | ManagerWorkSession;
 
 export type WorkSessionCorrectionInput = {
+  expectedUpdatedAt: string;
   startedAt: string;
   endedAt: string | null;
   reason: string;

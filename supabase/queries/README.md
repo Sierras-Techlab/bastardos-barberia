@@ -283,7 +283,7 @@ with work_session_functions(function_signature) as (
     ('public.start_work_session(uuid)'::regprocedure),
     ('public.end_work_session(uuid)'::regprocedure),
     ('public.get_current_work_session(uuid)'::regprocedure),
-    ('public.correct_work_session(uuid,uuid,timestamptz,timestamptz,text)'::regprocedure),
+    ('public.correct_work_session(uuid,uuid,timestamptz,timestamptz,timestamptz,text)'::regprocedure),
     ('public.list_work_sessions(uuid,uuid,date,date,integer,integer)'::regprocedure)
 ), roles(role_name) as (
   values ('service_role'), ('anon'), ('authenticated')
@@ -330,8 +330,11 @@ declare
   manager_linked_income_id uuid;
   outside_income_id uuid;
   voided_income_id uuid;
+  first_open_started_at timestamptz;
+  first_open_updated_at timestamptz;
   prior_started_at timestamptz;
   prior_ended_at timestamptz;
+  valid_correction_updated_at timestamptz;
   corrected_started_at timestamptz;
   manager_history jsonb;
   first_session_json jsonb;
@@ -386,6 +389,11 @@ begin
 
   first_session_id := (public.start_work_session(employee_id)->>'id')::uuid;
 
+  select started_at, updated_at
+  into first_open_started_at, first_open_updated_at
+  from public.employee_work_sessions
+  where id = first_session_id;
+
   begin
     perform public.start_work_session(employee_id);
     raise exception 'WORK_SESSION_ACCEPTANCE_DUPLICATE_START_FAILED';
@@ -439,6 +447,39 @@ begin
 
   perform public.end_work_session(employee_id);
 
+  -- The snapshot displayed before clock-out is stale. It must not be able to
+  -- reopen the session after end_work_session has advanced updated_at.
+  begin
+    perform public.correct_work_session(
+      manager_id,
+      first_session_id,
+      first_open_updated_at,
+      first_open_started_at,
+      null,
+      'Reapertura obsoleta'
+    );
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_AFTER_END_FAILED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'WORK_SESSION_CONFLICT' then
+        raise;
+      end if;
+  end;
+
+  if exists (
+    select 1
+    from public.employee_work_sessions session
+    where session.id = first_session_id
+      and session.ended_at is null
+  ) or exists (
+    select 1
+    from public.employee_work_session_corrections correction
+    where correction.work_session_id = first_session_id
+      and correction.reason = 'Reapertura obsoleta'
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_AFTER_END_FAILED';
+  end if;
+
   outside_income_id := public.create_income(
     manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
     '[]'::jsonb,
@@ -458,8 +499,8 @@ begin
     raise exception 'WORK_SESSION_ACCEPTANCE_MANAGER_OUTSIDE_SALE_FAILED';
   end if;
 
-  select started_at, ended_at
-  into prior_started_at, prior_ended_at
+  select started_at, ended_at, updated_at
+  into prior_started_at, prior_ended_at, valid_correction_updated_at
   from public.employee_work_sessions
   where id = first_session_id;
 
@@ -467,10 +508,45 @@ begin
   perform public.correct_work_session(
     manager_id,
     first_session_id,
+    valid_correction_updated_at,
     corrected_started_at,
     prior_ended_at,
     'Ajuste de aceptación'
   );
+
+  -- A second dialog holding the same pre-correction token must not overwrite
+  -- the valid correction that has just advanced updated_at.
+  begin
+    perform public.correct_work_session(
+      manager_id,
+      first_session_id,
+      valid_correction_updated_at,
+      corrected_started_at + interval '1 microsecond',
+      prior_ended_at,
+      'Ajuste obsoleto'
+    );
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_CORRECTION_ACCEPTED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'WORK_SESSION_CONFLICT' then
+        raise;
+      end if;
+  end;
+
+  if not exists (
+    select 1
+    from public.employee_work_sessions session
+    where session.id = first_session_id
+      and session.started_at = corrected_started_at
+      and session.ended_at = prior_ended_at
+  ) or exists (
+    select 1
+    from public.employee_work_session_corrections correction
+    where correction.work_session_id = first_session_id
+      and correction.reason = 'Ajuste obsoleto'
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_CORRECTION_OVERWROTE_VALID_CHANGE';
+  end if;
 
   if not exists (
     select 1
@@ -544,9 +620,10 @@ rollback;
 The block must finish without an exception. It covers employee clock-in/out,
 duplicate clock-in, rejection before clock-in, exact employee linkage, manager
 linkage to an employee's open session, explicit manager outside-session audit,
-prior/new correction snapshots, a second same-day session and active-only
-production metrics. `rollback` removes every temporary identity, catalog row,
-session, correction, income and void effect.
+prior/new correction snapshots, stale correction rejection after clock-out,
+same-token correction rejection without overwriting the valid audit, a second
+same-day session and active-only production metrics. `rollback` removes every
+temporary identity, catalog row, session, correction, income and void effect.
 
 ## Verify
 

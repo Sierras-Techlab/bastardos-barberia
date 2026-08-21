@@ -16,6 +16,7 @@ const session: ManagerWorkSession = {
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T12:00:00.000Z",
   endedAt: "2026-08-21T20:00:47.321Z",
+  updatedAt: "2026-08-21T20:00:47.654Z",
   state: "closed",
   metrics: {
     workedMinutes: 480,
@@ -74,6 +75,7 @@ it("preserves seconds on the untouched endpoint while correcting the other", asy
   await browser.click(screen.getByRole("button", { name: "Guardar corrección" }));
 
   expect(correct).toHaveBeenCalledWith(session.id, {
+    expectedUpdatedAt: session.updatedAt,
     startedAt: "2026-08-21T13:00:00.000Z",
     endedAt: "2026-08-21T20:00:47.321Z",
     reason: "Olvido informado por el empleado",

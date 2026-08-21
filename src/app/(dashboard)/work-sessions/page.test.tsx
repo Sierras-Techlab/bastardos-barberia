@@ -38,6 +38,7 @@ const employeePage = {
       businessDate: "2026-08-21",
       startedAt: "2026-08-21T12:00:00.000Z",
       endedAt: "2026-08-21T20:00:00.000Z",
+      updatedAt: "2026-08-21T20:00:00.000Z",
       state: "closed" as const,
       metrics: { workedMinutes: 480, saleCount: 3, employeeCommission: 18000 },
     },

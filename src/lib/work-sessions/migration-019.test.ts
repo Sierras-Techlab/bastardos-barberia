@@ -42,7 +42,7 @@ describe("migration 019 employee work sessions", () => {
     expect(sql).toMatch(/function public\.end_work_session\(\s*employee_user_id uuid/i);
     expect(sql).toMatch(/function public\.get_current_work_session\(\s*employee_user_id uuid/i);
     expect(sql).toMatch(
-      /function public\.correct_work_session\(\s*manager_user_id uuid,\s*target_session_id uuid,\s*corrected_started_at timestamptz,\s*corrected_ended_at timestamptz,\s*correction_reason text/i,
+      /function public\.correct_work_session\(\s*manager_user_id uuid,\s*target_session_id uuid,\s*expected_updated_at timestamptz,\s*corrected_started_at timestamptz,\s*corrected_ended_at timestamptz,\s*correction_reason text/i,
     );
     expect(sql).toMatch(
       /function public\.list_work_sessions\(\s*requesting_user_id uuid,\s*filter_employee_id uuid,\s*filter_date_from date,\s*filter_date_to date,\s*page_number integer,\s*page_size integer/i,
@@ -56,6 +56,38 @@ describe("migration 019 employee work sessions", () => {
     expect(sql).toMatch(
       /create trigger employee_work_session_corrections_prevent_mutation\s+before update or delete on public\.employee_work_session_corrections/i,
     );
+  });
+
+  it("removes the superseded correction signature before creating the canonical RPC", () => {
+    const legacyDrop = sql.search(
+      /drop function if exists public\.correct_work_session\(\s*uuid,\s*uuid,\s*timestamptz,\s*timestamptz,\s*text\s*\)/i,
+    );
+    const canonicalCreate = sql.search(
+      /create or replace function public\.correct_work_session\(\s*manager_user_id uuid,\s*target_session_id uuid,\s*expected_updated_at timestamptz/i,
+    );
+
+    expect(legacyDrop).toBeGreaterThan(-1);
+    expect(canonicalCreate).toBeGreaterThan(legacyDrop);
+  });
+
+  it("checks the locked correction version before overlap, audit or session writes", () => {
+    const correctionFunction = sql.match(
+      /create or replace function public\.correct_work_session\([\s\S]*?\nend;\n\$\$;/i,
+    )?.[0] ?? "";
+    const rowLock = correctionFunction.search(/select \* into current_session[\s\S]*for update;/i);
+    const versionCheck = correctionFunction.search(
+      /current_session\.updated_at\s+is distinct from\s+expected_updated_at[\s\S]*WORK_SESSION_CONFLICT/i,
+    );
+    const overlapCheck = correctionFunction.search(/if exists \(\s*select 1\s*from public\.employee_work_sessions other/i);
+    const auditWrite = correctionFunction.search(/insert into public\.employee_work_session_corrections/i);
+    const sessionWrite = correctionFunction.search(/update public\.employee_work_sessions/i);
+
+    expect(rowLock).toBeGreaterThan(-1);
+    expect(versionCheck).toBeGreaterThan(rowLock);
+    expect(overlapCheck).toBeGreaterThan(versionCheck);
+    expect(auditWrite).toBeGreaterThan(versionCheck);
+    expect(sessionWrite).toBeGreaterThan(auditWrite);
+    expect(sql).toMatch(/'updatedAt', session\.updated_at/i);
   });
 
   it("removes inherited service-role DML before granting read-only table access", () => {
@@ -87,6 +119,9 @@ describe("migration 019 employee work sessions", () => {
       "WORK_SESSION_ACCEPTANCE_MANAGER_OPEN_SESSION_LINK_FAILED",
       "WORK_SESSION_ACCEPTANCE_MANAGER_OUTSIDE_SALE_FAILED",
       "WORK_SESSION_ACCEPTANCE_CORRECTION_AUDIT_FAILED",
+      "WORK_SESSION_ACCEPTANCE_STALE_AFTER_END_FAILED",
+      "WORK_SESSION_ACCEPTANCE_STALE_CORRECTION_ACCEPTED",
+      "WORK_SESSION_ACCEPTANCE_STALE_CORRECTION_OVERWROTE_VALID_CHANGE",
       "WORK_SESSION_ACCEPTANCE_SECOND_SESSION_FAILED",
       "WORK_SESSION_ACCEPTANCE_VOID_METRICS_FAILED",
     ]) {
@@ -154,7 +189,7 @@ describe("migration 019 employee work sessions", () => {
       "start_work_session(uuid)",
       "end_work_session(uuid)",
       "get_current_work_session(uuid)",
-      "correct_work_session(uuid,uuid,timestamptz,timestamptz,text)",
+      "correct_work_session(uuid,uuid,timestamptz,timestamptz,timestamptz,text)",
       "list_work_sessions(uuid,uuid,date,date,integer,integer)",
     ]) {
       expect(functionGrantBlock).toContain(signature);

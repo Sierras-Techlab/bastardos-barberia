@@ -68,6 +68,24 @@ it("maps insufficient stock without exposing database details", async () => {
   await expect(incomeRepository.create(actor, input)).rejects.toMatchObject({ code: "INSUFFICIENT_STOCK", status: 409, message: expect.stringContaining("Gel") });
 });
 
+it("maps the database work-session requirement to the stable sale conflict", async () => {
+  getSupabaseAdmin.mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "P0001",
+        message: "PostgreSQL error: EMPLOYEE_WORK_SESSION_REQUIRED",
+      },
+    }),
+  });
+
+  await expect(incomeRepository.create(actor, input)).rejects.toMatchObject({
+    code: "EMPLOYEE_WORK_SESSION_REQUIRED",
+    status: 409,
+    message: "Iniciá tu jornada antes de registrar una venta.",
+  });
+});
+
 it.each([
   ["EMPLOYEE_NOT_ELIGIBLE", "EMPLOYEE_NOT_ELIGIBLE", 409],
   ["PAYMENT_ALLOCATION_MISMATCH", "PAYMENT_ALLOCATION_MISMATCH", 409],

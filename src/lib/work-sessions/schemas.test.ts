@@ -19,6 +19,7 @@ const employeeSession = {
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T12:00:00.000-03:00",
   endedAt: null,
+  updatedAt: "2026-08-21T12:00:00.123-03:00",
   state: "open" as const,
   metrics: {
     workedMinutes: 75,
@@ -48,6 +49,17 @@ describe("work session boundary schemas", () => {
         barbershopNet: 12600,
       },
     })).toMatchObject({ metrics: { grossTotal: 21000, barbershopNet: 12600 } });
+  });
+
+  it("requires an offset-bearing optimistic version timestamp", () => {
+    const withoutVersion: Record<string, unknown> = { ...employeeSession };
+    delete withoutVersion.updatedAt;
+
+    expect(employeeWorkSessionSchema.safeParse(withoutVersion).success).toBe(false);
+    expect(employeeWorkSessionSchema.safeParse({
+      ...employeeSession,
+      updatedAt: "2026-08-21T12:00:00.123",
+    }).success).toBe(false);
   });
 
   it("rejects unknown fields, offset-less timestamps and negative metrics", () => {
@@ -86,29 +98,40 @@ describe("work session boundary schemas", () => {
 
   it("trims correction reasons and rejects blank reasons, unknown fields and invalid ranges", () => {
     expect(workSessionCorrectionInputSchema.parse({
+      expectedUpdatedAt: employeeSession.updatedAt,
       startedAt: "2026-08-21T12:00:00.000-03:00",
       endedAt: "2026-08-21T13:15:00.000-03:00",
       reason: "  Olvidó marcar salida  ",
     })).toEqual({
+      expectedUpdatedAt: employeeSession.updatedAt,
       startedAt: "2026-08-21T12:00:00.000-03:00",
       endedAt: "2026-08-21T13:15:00.000-03:00",
       reason: "Olvidó marcar salida",
     });
     expect(workSessionCorrectionInputSchema.safeParse({
+      expectedUpdatedAt: employeeSession.updatedAt,
       startedAt: "2026-08-21T12:00:00.000-03:00",
       endedAt: null,
       reason: "   ",
     }).success).toBe(false);
     expect(workSessionCorrectionInputSchema.safeParse({
+      expectedUpdatedAt: employeeSession.updatedAt,
       startedAt: "2026-08-21T12:00:00.000-03:00",
       endedAt: "2026-08-21T11:59:00.000-03:00",
       reason: "Hora equivocada",
     }).success).toBe(false);
     expect(workSessionCorrectionInputSchema.safeParse({
+      expectedUpdatedAt: employeeSession.updatedAt,
       startedAt: "2026-08-21T12:00:00.000-03:00",
       endedAt: null,
       reason: "Correcta",
       actorId: employee.id,
+    }).success).toBe(false);
+    expect(workSessionCorrectionInputSchema.safeParse({
+      expectedUpdatedAt: "2026-08-21T12:00:00.123",
+      startedAt: "2026-08-21T12:00:00.000-03:00",
+      endedAt: null,
+      reason: "Correcta",
     }).success).toBe(false);
   });
 

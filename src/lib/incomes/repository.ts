@@ -14,6 +14,7 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
     PRODUCT_NOT_FOUND: ["PRODUCT_NOT_FOUND", "No encontramos uno de los productos.", 404],
     PRODUCT_NOT_AVAILABLE: ["PRODUCT_NOT_AVAILABLE", "Uno de los productos ya no está disponible.", 409],
     EMPLOYEE_NOT_ELIGIBLE: ["EMPLOYEE_NOT_ELIGIBLE", "El empleado seleccionado no está disponible.", 409],
+    EMPLOYEE_WORK_SESSION_REQUIRED: ["EMPLOYEE_WORK_SESSION_REQUIRED", "Iniciá tu jornada antes de registrar una venta.", 409],
     PAYMENT_ALLOCATION_MISMATCH: ["PAYMENT_ALLOCATION_MISMATCH", "La distribución del pago no coincide con el total.", 409],
     INVALID_COMMISSION_OVERRIDE: ["INVALID_COMMISSION_OVERRIDE", "No se puede otorgar el servicio completo en esta venta.", 403],
     INVALID_PRODUCT_COMMISSION_OVERRIDE: ["INVALID_PRODUCT_COMMISSION_OVERRIDE", "No se puede otorgar el producto completo en esta venta.", 403],

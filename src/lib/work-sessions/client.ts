@@ -1,18 +1,35 @@
+import { z } from "zod";
+
+import {
+  employeeWorkSessionSchema,
+  managerWorkSessionSchema,
+  paginatedEmployeeWorkSessionsSchema,
+  paginatedManagerWorkSessionsSchema,
+} from "@/lib/work-sessions/schemas";
 import type {
   EmployeeWorkSession,
   ManagerWorkSession,
+  PaginatedEmployeeWorkSessions,
+  PaginatedManagerWorkSessions,
   PaginatedWorkSessions,
   WorkSessionCorrectionInput,
   WorkSessionListQuery,
 } from "@/types/work-session";
 
-type ApiErrorBody = {
-  error?: {
-    code?: string;
-    message?: string;
-    fields?: Record<string, string[]>;
-  };
-};
+const successEnvelopeSchema = z.object({ data: z.unknown() }).strict();
+const errorEnvelopeSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.string().optional(),
+        message: z.string().optional(),
+        fields: z.record(z.string(), z.array(z.string())).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .passthrough();
+const nullableEmployeeWorkSessionSchema = employeeWorkSessionSchema.nullable();
 
 export class WorkSessionApiError extends Error {
   constructor(
@@ -26,20 +43,26 @@ export class WorkSessionApiError extends Error {
   }
 }
 
-const request = async <T>(url: string, init?: RequestInit): Promise<T> => {
+const request = async <T>(
+  url: string,
+  schema: z.ZodType<T>,
+  init?: RequestInit,
+): Promise<T> => {
   const response = await fetch(url, { cache: "no-store", ...init });
-  const body = (await response.json()) as ApiErrorBody & { data?: T };
+  const body: unknown = await response.json();
 
   if (!response.ok) {
+    const parsedError = errorEnvelopeSchema.safeParse(body);
+    const error = parsedError.success ? parsedError.data.error : undefined;
     throw new WorkSessionApiError(
       response.status,
-      body.error?.code ?? "INTERNAL_ERROR",
-      body.error?.message ?? "No se pudo completar la operación.",
-      body.error?.fields,
+      error?.code ?? "INTERNAL_ERROR",
+      error?.message ?? "No se pudo completar la operación.",
+      error?.fields,
     );
   }
 
-  return body.data as T;
+  return schema.parse(successEnvelopeSchema.parse(body).data);
 };
 
 const listQueryString = (query: WorkSessionListQuery) => {
@@ -52,7 +75,7 @@ const listQueryString = (query: WorkSessionListQuery) => {
 
 export type WorkSessionClient = {
   current(): Promise<EmployeeWorkSession | null>;
-  list(query: WorkSessionListQuery): Promise<PaginatedWorkSessions>;
+  list: typeof list;
   start(): Promise<EmployeeWorkSession>;
   end(): Promise<EmployeeWorkSession>;
   correct(
@@ -61,22 +84,56 @@ export type WorkSessionClient = {
   ): Promise<ManagerWorkSession>;
 };
 
+export type WorkSessionViewerRole = "employee" | "owner" | "admin";
+
+function list(
+  query: WorkSessionListQuery,
+  viewerRole: "employee",
+): Promise<PaginatedEmployeeWorkSessions>;
+function list(
+  query: WorkSessionListQuery,
+  viewerRole: "owner" | "admin",
+): Promise<PaginatedManagerWorkSessions>;
+function list(
+  query: WorkSessionListQuery,
+  viewerRole: WorkSessionViewerRole,
+): Promise<PaginatedWorkSessions>;
+function list(
+  query: WorkSessionListQuery,
+  viewerRole: WorkSessionViewerRole,
+) {
+  return request(
+    `/api/work-sessions?${listQueryString(query)}`,
+    viewerRole === "employee"
+      ? paginatedEmployeeWorkSessionsSchema
+      : paginatedManagerWorkSessionsSchema,
+  );
+}
+
 export const workSessionClient: WorkSessionClient = {
-  current: () => request<EmployeeWorkSession | null>("/api/work-sessions/current"),
+  current: () =>
+    request("/api/work-sessions/current", nullableEmployeeWorkSessionSchema),
 
-  list: (query) =>
-    request<PaginatedWorkSessions>(
-      `/api/work-sessions?${listQueryString(query)}`,
-    ),
+  list,
 
-  start: () => request<EmployeeWorkSession>("/api/work-sessions/start", { method: "POST" }),
+  start: () =>
+    request("/api/work-sessions/start", employeeWorkSessionSchema, {
+      method: "POST",
+    }),
 
-  end: () => request<EmployeeWorkSession>("/api/work-sessions/end", { method: "POST" }),
+  end: () =>
+    request("/api/work-sessions/end", employeeWorkSessionSchema, {
+      method: "POST",
+    }),
 
   correct: (id, input) =>
-    request<ManagerWorkSession>(`/api/work-sessions/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    }),
+    request(
+      `/api/work-sessions/${encodeURIComponent(id)}`,
+      managerWorkSessionSchema,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    ),
 };

@@ -115,6 +115,7 @@ begin
     'businessDate', session.business_date,
     'startedAt', session.started_at,
     'endedAt', session.ended_at,
+    'updatedAt', session.updated_at,
     'state', case when session.ended_at is null then 'open' else 'closed' end,
     'metrics', case when include_manager_metrics then
       jsonb_build_object(
@@ -300,9 +301,14 @@ begin
 end;
 $$;
 
+drop function if exists public.correct_work_session(
+  uuid, uuid, timestamptz, timestamptz, text
+);
+
 create or replace function public.correct_work_session(
   manager_user_id uuid,
   target_session_id uuid,
+  expected_updated_at timestamptz,
   corrected_started_at timestamptz,
   corrected_ended_at timestamptz,
   correction_reason text
@@ -356,6 +362,10 @@ begin
   from public.employee_work_sessions
   where id = target_session_id
   for update;
+
+  if current_session.updated_at is distinct from expected_updated_at then
+    raise exception using errcode = 'P0001', message = 'WORK_SESSION_CONFLICT';
+  end if;
 
   if exists (
     select 1
@@ -599,7 +609,7 @@ revoke execute on function public.end_work_session(uuid)
 revoke execute on function public.get_current_work_session(uuid)
   from public, anon, authenticated;
 revoke execute on function public.correct_work_session(
-  uuid, uuid, timestamptz, timestamptz, text
+  uuid, uuid, timestamptz, timestamptz, timestamptz, text
 ) from public, anon, authenticated;
 revoke execute on function public.list_work_sessions(
   uuid, uuid, date, date, integer, integer
@@ -613,7 +623,7 @@ grant execute on function public.start_work_session(uuid) to service_role;
 grant execute on function public.end_work_session(uuid) to service_role;
 grant execute on function public.get_current_work_session(uuid) to service_role;
 grant execute on function public.correct_work_session(
-  uuid, uuid, timestamptz, timestamptz, text
+  uuid, uuid, timestamptz, timestamptz, timestamptz, text
 ) to service_role;
 grant execute on function public.list_work_sessions(
   uuid, uuid, date, date, integer, integer

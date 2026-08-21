@@ -99,13 +99,16 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await workSessionClient.list({
-        employeeId: next.employeeId || undefined,
-        dateFrom: next.dateFrom || undefined,
-        dateTo: next.dateTo || undefined,
-        page,
-        pageSize: data.pagination.pageSize,
-      });
+      const response = await workSessionClient.list(
+        {
+          employeeId: next.employeeId || undefined,
+          dateFrom: next.dateFrom || undefined,
+          dateTo: next.dateTo || undefined,
+          page,
+          pageSize: data.pagination.pageSize,
+        },
+        viewerRole,
+      );
       if (requestId !== requestSequence.current) return null;
       setData(response);
       return response;
@@ -225,7 +228,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
         {data.items.length > 0 ? (
           <>
             <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 md:block">
-              <table aria-label="Historial de jornadas" className={`w-full text-left text-sm ${isManager ? "min-w-[64rem]" : "min-w-[44rem]"}`}>
+              <table aria-label="Historial de jornadas" className={`w-full text-left text-sm ${isManager ? "min-w-[72rem]" : "min-w-[44rem]"}`}>
                 <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">Fecha</th>
@@ -237,6 +240,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
                       <>
                         <th className="px-4 py-3 text-right font-medium">Bruto</th>
                         <th className="px-4 py-3 text-right font-medium">Neto</th>
+                        <th className="px-4 py-3 text-right font-medium">Comisión</th>
                         <th className="w-14 px-2 py-3"><span className="sr-only">Acciones</span></th>
                       </>
                     ) : (
@@ -256,6 +260,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
                         <>
                           <td className="px-4 py-3.5 text-right">{formatArs(session.metrics.grossTotal)}</td>
                           <td className="px-4 py-3.5 text-right font-semibold">{formatArs(session.metrics.barbershopNet)}</td>
+                          <td className="px-4 py-3.5 text-right font-semibold">{formatArs(session.metrics.employeeCommission)}</td>
                           <td className="px-2 py-3.5"><Button type="button" variant="ghost" size="icon" aria-label={`Corregir jornada de ${session.employee.firstName} ${session.employee.lastName}`} onClick={() => setCorrecting(session)}><Pencil /></Button></td>
                         </>
                       ) : !isManager ? (
@@ -285,6 +290,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
                       <>
                         <div><dt className="text-xs text-muted-foreground">Bruto</dt><dd className="mt-0.5 font-medium">{formatArs(session.metrics.grossTotal)}</dd></div>
                         <div><dt className="text-xs text-muted-foreground">Neto</dt><dd className="mt-0.5 font-semibold">{formatArs(session.metrics.barbershopNet)}</dd></div>
+                        <div><dt className="text-xs text-muted-foreground">Comisión</dt><dd className="mt-0.5 font-semibold">{formatArs(session.metrics.employeeCommission)}</dd></div>
                       </>
                     ) : (
                       <div><dt className="text-xs text-muted-foreground">Mi comisión</dt><dd className="mt-0.5 font-semibold">{formatArs(session.metrics.employeeCommission)}</dd></div>

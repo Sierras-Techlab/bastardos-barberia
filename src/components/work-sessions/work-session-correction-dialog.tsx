@@ -77,6 +77,7 @@ export const WorkSessionCorrectionDialog = ({
     let corrected: ManagerWorkSession;
     try {
       corrected = await workSessionClient.correct(session.id, {
+        expectedUpdatedAt: session.updatedAt,
         startedAt: startedAtDirty
           ? fromBuenosAiresInput(startedAt)
           : session.startedAt,

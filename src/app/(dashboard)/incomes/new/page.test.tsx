@@ -27,6 +27,7 @@ const { requirePageUser, listServices, listProducts, listCustomers, listUsers, l
     businessDate: "2026-08-21",
     startedAt: "2026-08-21T12:00:00.000Z",
     endedAt: null,
+    updatedAt: "2026-08-21T12:00:00.000Z",
     state: "open",
     metrics: { workedMinutes: 20, saleCount: 0, employeeCommission: 0 },
   }),

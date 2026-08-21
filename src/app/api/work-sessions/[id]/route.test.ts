@@ -27,6 +27,7 @@ describe("PATCH /api/work-sessions/:id", () => {
       new Request(`http://localhost/api/work-sessions/${id}`, {
         method: "PATCH",
         body: JSON.stringify({
+          expectedUpdatedAt: "2026-08-15T12:00:00.123-03:00",
           startedAt: "2026-08-15T09:00:00-03:00",
           endedAt: "2026-08-15T17:00:00-03:00",
           reason: "Corrección de fichada",
@@ -37,6 +38,7 @@ describe("PATCH /api/work-sessions/:id", () => {
 
     expect(response.status).toBe(200);
     expect(correctWorkSession).toHaveBeenCalledWith(actor, id, {
+      expectedUpdatedAt: "2026-08-15T12:00:00.123-03:00",
       startedAt: "2026-08-15T09:00:00-03:00",
       endedAt: "2026-08-15T17:00:00-03:00",
       reason: "Corrección de fichada",
@@ -63,6 +65,7 @@ describe("PATCH /api/work-sessions/:id", () => {
       new Request(`http://localhost/api/work-sessions/${id}`, {
         method: "PATCH",
         body: JSON.stringify({
+          expectedUpdatedAt: "2026-08-15T12:00:00.123-03:00",
           startedAt: "2026-08-15T09:00:00-03:00",
           endedAt: null,
           reason: "Corrección de fichada",

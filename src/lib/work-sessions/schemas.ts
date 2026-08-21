@@ -34,6 +34,7 @@ const workSessionBaseSchema = z
     businessDate: z.iso.date(),
     startedAt: timestampSchema,
     endedAt: timestampSchema.nullable(),
+    updatedAt: timestampSchema,
     state: z.enum(["open", "closed"]),
   })
   .strict();
@@ -72,6 +73,7 @@ export const workSessionSchema = z.union([
 
 export const workSessionCorrectionInputSchema = z
   .object({
+    expectedUpdatedAt: timestampSchema,
     startedAt: timestampSchema,
     endedAt: timestampSchema.nullable(),
     reason: z.string().trim().min(1, "Indicá el motivo de la corrección."),

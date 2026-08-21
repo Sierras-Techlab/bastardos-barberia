@@ -57,6 +57,7 @@ const session: EmployeeWorkSession = {
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T12:00:00.000-03:00",
   endedAt: null,
+  updatedAt: "2026-08-21T12:00:00.123-03:00",
   state: "open",
   metrics: { workedMinutes: 0, saleCount: 0, employeeCommission: 0 },
 };
@@ -169,6 +170,7 @@ describe("work session domain", () => {
   it("allows only managers to correct sessions and forwards their authenticated identity", async () => {
     const deps = dependencies();
     const correction = {
+      expectedUpdatedAt: session.updatedAt,
       startedAt: "2026-08-21T12:00:00.000-03:00",
       endedAt: "2026-08-21T13:00:00.000-03:00",
       reason: "Olvidó marcar salida",

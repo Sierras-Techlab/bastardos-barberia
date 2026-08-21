@@ -18,6 +18,7 @@ const employeeSession = {
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T09:00:00.000-03:00",
   endedAt: null,
+  updatedAt: "2026-08-21T09:00:00.456-03:00",
   state: "open",
   metrics: {
     workedMinutes: 60,
@@ -78,6 +79,7 @@ describe("workSessionRepository", () => {
       pageSize: 12,
     };
     const correction = {
+      expectedUpdatedAt: employeeSession.updatedAt,
       startedAt: "2026-08-21T08:50:00.000-03:00",
       endedAt: "2026-08-21T12:30:00.000-03:00",
       reason: "Olvidó registrar la salida",
@@ -106,6 +108,7 @@ describe("workSessionRepository", () => {
     expect(rpc).toHaveBeenNthCalledWith(3, "correct_work_session", {
       manager_user_id: managerId,
       target_session_id: sessionId,
+      expected_updated_at: correction.expectedUpdatedAt,
       corrected_started_at: correction.startedAt,
       corrected_ended_at: correction.endedAt,
       correction_reason: correction.reason,
@@ -137,7 +140,6 @@ describe("workSessionRepository", () => {
     ["WORK_SESSION_NOT_OPEN", "WORK_SESSION_NOT_OPEN", 409],
     ["WORK_SESSION_CONFLICT", "WORK_SESSION_CONFLICT", 409],
     ["INVALID_WORK_SESSION_RANGE", "INVALID_WORK_SESSION_RANGE", 400],
-    ["EMPLOYEE_WORK_SESSION_REQUIRED", "EMPLOYEE_WORK_SESSION_REQUIRED", 409],
   ])("maps %s to a stable AppError", async (sentinel, code, status) => {
     getSupabaseAdmin.mockReturnValue({
       rpc: vi.fn().mockResolvedValue({

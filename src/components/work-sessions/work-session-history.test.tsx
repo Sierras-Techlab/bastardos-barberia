@@ -19,6 +19,7 @@ const employeeSession: EmployeeWorkSession = {
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T12:00:00.000Z",
   endedAt: "2026-08-21T20:00:00.000Z",
+  updatedAt: "2026-08-21T20:00:00.000Z",
   state: "closed",
   metrics: { workedMinutes: 480, saleCount: 3, employeeCommission: 18000 },
 };
@@ -38,6 +39,19 @@ const secondEmployee = {
   lastName: "Sosa",
 };
 
+const secondManagerSession: ManagerWorkSession = {
+  ...managerSession,
+  id: "70000000-0000-4000-8000-000000000002",
+  employee: secondEmployee,
+  metrics: {
+    workedMinutes: 360,
+    saleCount: 2,
+    employeeCommission: 7000,
+    grossTotal: 17000,
+    barbershopNet: 10000,
+  },
+};
+
 const employeeOptions = [employeeSession.employee, secondEmployee];
 
 const pagination = { page: 1, pageSize: 12, total: 1, totalPages: 1 };
@@ -54,7 +68,57 @@ it("renders sanitized employee history without manager financial labels", () => 
   expect(screen.getAllByText("Mi comisión").length).toBeGreaterThan(0);
   expect(screen.queryByText("Ventas brutas")).not.toBeInTheDocument();
   expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
+  expect(screen.queryByText("Bruto")).not.toBeInTheDocument();
+  expect(screen.queryByText("Neto")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /corregir jornada/i })).not.toBeInTheDocument();
+});
+
+it("attributes each manager commission to its exact session on desktop and mobile", () => {
+  render(
+    <WorkSessionHistory
+      viewerRole="owner"
+      initialData={{
+        items: [managerSession, secondManagerSession],
+        pagination: { ...pagination, total: 2 },
+      }}
+      employeeOptions={employeeOptions}
+    />,
+  );
+
+  const table = screen.getByRole("table", { name: "Historial de jornadas" });
+  expect(
+    within(table).getByRole("columnheader", { name: "Comisión" }),
+  ).toBeVisible();
+  expect(table).toHaveClass("min-w-[72rem]");
+
+  const desktopRows = within(table).getAllByRole("row");
+  const fernandaRow = desktopRows.find((row) =>
+    within(row).queryByText("Fernanda Pérez"),
+  );
+  const martinRow = desktopRows.find((row) =>
+    within(row).queryByText("Martín Sosa"),
+  );
+  expect(fernandaRow).toBeDefined();
+  expect(martinRow).toBeDefined();
+  expect(within(fernandaRow!).getByText(/^\$\s*18\.000$/)).toBeVisible();
+  expect(within(martinRow!).getByText(/^\$\s*7\.000$/)).toBeVisible();
+
+  const mobileHistory = screen.getByRole("list", {
+    name: "Historial de jornadas en móvil",
+  });
+  const mobileItems = within(mobileHistory).getAllByRole("listitem");
+  const fernandaCard = mobileItems.find((item) =>
+    within(item).queryByText("Fernanda Pérez"),
+  );
+  const martinCard = mobileItems.find((item) =>
+    within(item).queryByText("Martín Sosa"),
+  );
+  expect(fernandaCard).toBeDefined();
+  expect(martinCard).toBeDefined();
+  expect(within(fernandaCard!).getByText("Comisión")).toBeVisible();
+  expect(within(fernandaCard!).getByText(/^\$\s*18\.000$/)).toBeVisible();
+  expect(within(martinCard!).getByText("Comisión")).toBeVisible();
+  expect(within(martinCard!).getByText(/^\$\s*7\.000$/)).toBeVisible();
 });
 
 it("reconciles refreshed employee history from new server props", () => {
@@ -107,7 +171,7 @@ it("shows manager gross and net metrics with employee filtering", async () => {
   expect(screen.getAllByText(/52\.000/).length).toBeGreaterThan(0);
   expect(screen.getAllByText(/34\.000/).length).toBeGreaterThan(0);
   expect(screen.getByRole("table", { name: "Historial de jornadas" })).toHaveClass(
-    "min-w-[64rem]",
+    "min-w-[72rem]",
   );
   expect(screen.getByRole("table", { name: "Historial de jornadas" }).parentElement).toHaveClass(
     "overflow-x-auto",
@@ -118,13 +182,16 @@ it("shows manager gross and net metrics with employee filtering", async () => {
     employeeSession.employee.id,
   );
 
-  expect(list).toHaveBeenCalledWith({
-    employeeId: employeeSession.employee.id,
-    dateFrom: undefined,
-    dateTo: undefined,
-    page: 1,
-    pageSize: 12,
-  });
+  expect(list).toHaveBeenCalledWith(
+    {
+      employeeId: employeeSession.employee.id,
+      dateFrom: undefined,
+      dateTo: undefined,
+      page: 1,
+      pageSize: 12,
+    },
+    "owner",
+  );
 });
 
 it("reloads the current filtered page after a correction changes membership", async () => {
@@ -171,13 +238,16 @@ it("reloads the current filtered page after a correction changes membership", as
   await browser.click(screen.getByRole("button", { name: "Guardar corrección" }));
 
   await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
-  expect(list).toHaveBeenLastCalledWith({
-    employeeId: undefined,
-    dateFrom: "2026-08-21",
-    dateTo: "2026-08-21",
-    page: 1,
-    pageSize: 12,
-  });
+  expect(list).toHaveBeenLastCalledWith(
+    {
+      employeeId: undefined,
+      dateFrom: "2026-08-21",
+      dateTo: "2026-08-21",
+      page: 1,
+      pageSize: 12,
+    },
+    "owner",
+  );
   expect(screen.getByText("Todavía no hay jornadas")).toBeVisible();
   expect(screen.getByText("Ventas brutas").nextElementSibling).toHaveTextContent("$ 0");
 });
@@ -227,20 +297,28 @@ it("falls back to the last valid page when correction contracts pagination", asy
   await browser.click(screen.getByRole("button", { name: "Guardar corrección" }));
 
   await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
-  expect(list).toHaveBeenNthCalledWith(1, {
-    employeeId: undefined,
-    dateFrom: undefined,
-    dateTo: undefined,
-    page: 2,
-    pageSize: 12,
-  });
-  expect(list).toHaveBeenNthCalledWith(2, {
-    employeeId: undefined,
-    dateFrom: undefined,
-    dateTo: undefined,
-    page: 1,
-    pageSize: 12,
-  });
+  expect(list).toHaveBeenNthCalledWith(
+    1,
+    {
+      employeeId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      page: 2,
+      pageSize: 12,
+    },
+    "owner",
+  );
+  expect(list).toHaveBeenNthCalledWith(
+    2,
+    {
+      employeeId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      page: 1,
+      pageSize: 12,
+    },
+    "owner",
+  );
   expect(screen.getByText("Página 1 de 1")).toBeVisible();
   expect(screen.getAllByText("Martín Sosa").length).toBeGreaterThan(0);
 });

@@ -22,6 +22,7 @@ const openSession: EmployeeWorkSession = {
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T10:00:00.000Z",
   endedAt: null,
+  updatedAt: "2026-08-21T10:00:00.000Z",
   state: "open",
   metrics: { workedMinutes: 95, saleCount: 2, employeeCommission: 9000 },
 };

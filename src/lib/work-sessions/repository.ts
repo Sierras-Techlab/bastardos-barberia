@@ -48,11 +48,6 @@ const rpcFailure = (operation: string, error: DatabaseError): never => {
       "El rango horario de la jornada no es válido.",
       400,
     ],
-    EMPLOYEE_WORK_SESSION_REQUIRED: [
-      "EMPLOYEE_WORK_SESSION_REQUIRED",
-      "Iniciá tu jornada antes de registrar una venta.",
-      409,
-    ],
     WORK_SESSION_NOT_FOUND: [
       "WORK_SESSION_NOT_FOUND",
       "No encontramos la jornada.",
@@ -152,6 +147,7 @@ export const workSessionRepository: WorkSessionRepository = {
       {
         manager_user_id: managerId,
         target_session_id: sessionId,
+        expected_updated_at: input.expectedUpdatedAt,
         corrected_started_at: input.startedAt,
         corrected_ended_at: input.endedAt,
         correction_reason: input.reason,
