@@ -1,6 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
 
 import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import type { EmployeeWorkSession } from "@/types/work-session";
@@ -23,6 +29,20 @@ const openSession: EmployeeWorkSession = {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+it("reserves the mobile sale-action strip above the fixed clock", () => {
+  render(<WorkSessionControl initialSession={null} />);
+
+  expect(screen.getByRole("complementary", { name: "Control de jornada" })).toHaveClass(
+    "bottom-20",
+    "xl:bottom-6",
+  );
+});
+
 it("starts an employee session and changes the persistent action to clock-out", async () => {
   const start = vi.fn().mockResolvedValue(openSession);
   const browser = userEvent.setup();
@@ -43,10 +63,11 @@ it("starts an employee session and changes the persistent action to clock-out", 
   expect(screen.getByText("Jornada en curso")).toBeVisible();
   expect(screen.getByRole("button", { name: "Marcar salida" })).toBeVisible();
   expect(await screen.findByText("Entrada registrada correctamente.")).toBeVisible();
+  expect(refresh).toHaveBeenCalledOnce();
 });
 
-it("shows live elapsed time and persists clock-out", async () => {
-  vi.useFakeTimers({ toFake: ["Date"] });
+it("advances live elapsed time each minute and persists clock-out", async () => {
+  vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-08-21T11:35:00.000Z"));
   const closedSession: EmployeeWorkSession = {
     ...openSession,
@@ -54,8 +75,6 @@ it("shows live elapsed time and persists clock-out", async () => {
     state: "closed",
   };
   const end = vi.fn().mockResolvedValue(closedSession);
-  const browser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-
   render(
     <WorkSessionControl
       initialSession={openSession}
@@ -64,9 +83,43 @@ it("shows live elapsed time and persists clock-out", async () => {
   );
 
   expect(screen.getByText("1 h 35 min")).toBeVisible();
-  await browser.click(screen.getByRole("button", { name: "Marcar salida" }));
+  act(() => vi.advanceTimersByTime(60_000));
+  expect(screen.getByText("1 h 36 min")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Marcar salida" }));
+  await act(async () => Promise.resolve());
 
   expect(end).toHaveBeenCalledOnce();
   expect(screen.getByText("Sin jornada abierta")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Marcar entrada" })).toBeVisible();
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+it("synchronizes a changed server prop without discarding local mutations", async () => {
+  const start = vi.fn().mockResolvedValue(openSession);
+  const browser = userEvent.setup();
+  const { rerender } = render(
+    <WorkSessionControl
+      initialSession={null}
+      workSessionClient={{ start, end: vi.fn() }}
+    />,
+  );
+
+  await browser.click(screen.getByRole("button", { name: "Marcar entrada" }));
+  expect(screen.getByRole("button", { name: "Marcar salida" })).toBeVisible();
+
+  rerender(
+    <WorkSessionControl
+      initialSession={{ ...openSession, id: "70000000-0000-4000-8000-000000000099" }}
+      workSessionClient={{ start, end: vi.fn() }}
+    />,
+  );
+  expect(screen.getByRole("button", { name: "Marcar salida" })).toBeVisible();
+
+  rerender(
+    <WorkSessionControl
+      initialSession={null}
+      workSessionClient={{ start, end: vi.fn() }}
+    />,
+  );
   expect(screen.getByRole("button", { name: "Marcar entrada" })).toBeVisible();
 });

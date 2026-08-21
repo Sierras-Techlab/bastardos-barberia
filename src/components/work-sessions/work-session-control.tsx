@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock3, LogIn, LogOut, TriangleAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -27,10 +28,11 @@ const formatElapsed = (minutes: number) => {
 const elapsedSince = (startedAt: string, now: number) =>
   Math.max(0, Math.floor((now - Date.parse(startedAt)) / 60_000));
 
-export const WorkSessionControl = ({
+const WorkSessionControlState = ({
   initialSession,
-  workSessionClient = defaultWorkSessionClient,
-}: WorkSessionControlProps) => {
+  workSessionClient,
+}: Required<WorkSessionControlProps>) => {
+  const router = useRouter();
   const [session, setSession] = useState(initialSession);
   const [now, setNow] = useState(() => Date.now());
   const [saving, setSaving] = useState(false);
@@ -51,11 +53,13 @@ export const WorkSessionControl = ({
         await workSessionClient.end();
         setSession(null);
         toast.success("Salida registrada correctamente.");
+        router.refresh();
       } else {
         const started = await workSessionClient.start();
         setSession(started);
         setNow(Date.now());
         toast.success("Entrada registrada correctamente.");
+        router.refresh();
       }
     } catch (caught) {
       const message =
@@ -72,7 +76,7 @@ export const WorkSessionControl = ({
   return (
     <aside
       aria-label="Control de jornada"
-      className="fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-[1.4rem] border border-black/8 bg-[#202023] p-3 text-white shadow-2xl shadow-black/20 md:left-[calc(var(--sidebar-width)+1rem)] xl:bottom-6 xl:left-[calc(var(--sidebar-width)+1.5rem)]"
+      className="fixed bottom-20 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-[1.4rem] border border-black/8 bg-[#202023] p-3 text-white shadow-2xl shadow-black/20 md:left-[calc(var(--sidebar-width)+1rem)] xl:bottom-6 xl:left-[calc(var(--sidebar-width)+1.5rem)]"
     >
       <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-red-300">
@@ -115,5 +119,27 @@ export const WorkSessionControl = ({
         </p>
       )}
     </aside>
+  );
+};
+
+export const WorkSessionControl = ({
+  initialSession,
+  workSessionClient = defaultWorkSessionClient,
+}: WorkSessionControlProps) => {
+  const serverSessionKey = initialSession
+    ? [
+        initialSession.id,
+        initialSession.state,
+        initialSession.startedAt,
+        initialSession.endedAt ?? "open",
+      ].join(":")
+    : "none";
+
+  return (
+    <WorkSessionControlState
+      key={serverSessionKey}
+      initialSession={initialSession}
+      workSessionClient={workSessionClient}
+    />
   );
 };

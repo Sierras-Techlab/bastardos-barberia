@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { WorkSessionHistory } from "@/components/work-sessions/work-session-history";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePageUser } from "@/lib/auth/authorization";
+import { userRepository } from "@/lib/users/repository";
 import {
   paginatedEmployeeWorkSessionsSchema,
   paginatedManagerWorkSessionsSchema,
@@ -14,9 +15,31 @@ export const metadata: Metadata = {
   description: "Consultá y administrá las jornadas de Bastardos Barbería.",
 };
 
+const listAllEmployeeOptions = async () => {
+  const query = { roleId: 3 as const, status: "all" as const, pageSize: 100 };
+  const firstPage = await userRepository.list({ ...query, page: 1 });
+  const remainingPages =
+    firstPage.totalPages > 1
+      ? await Promise.all(
+          Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
+            userRepository.list({ ...query, page: index + 2 }),
+          ),
+        )
+      : [];
+
+  return [firstPage.items, ...remainingPages.map((page) => page.items)]
+    .flat()
+    .map(({ id, firstName, lastName }) => ({ id, firstName, lastName }));
+};
+
 const WorkSessionsPage = async () => {
   const { user } = await requirePageUser();
-  const result = await listWorkSessions(user, { page: 1, pageSize: 12 });
+  const [result, employeeOptions] = await Promise.all([
+    listWorkSessions(user, { page: 1, pageSize: 12 }),
+    user.role.name === "employee"
+      ? Promise.resolve(null)
+      : listAllEmployeeOptions(),
+  ]);
   const history =
     user.role.name === "employee" ? (
       <WorkSessionHistory
@@ -27,6 +50,7 @@ const WorkSessionsPage = async () => {
       <WorkSessionHistory
         viewerRole={user.role.name}
         initialData={paginatedManagerWorkSessionsSchema.parse(result)}
+        employeeOptions={employeeOptions ?? []}
       />
     );
 
@@ -36,7 +60,9 @@ const WorkSessionsPage = async () => {
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-5 md:px-7 xl:px-8">
           <SidebarTrigger className="-ml-1" />
           <div className="min-w-0">
-            <p className="truncate text-xs text-muted-foreground">Jornadas del equipo</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {user.role.name === "employee" ? "Mi jornada" : "Jornadas del equipo"}
+            </p>
             <h1 className="truncate font-semibold">Presentismo</h1>
           </div>
         </div>

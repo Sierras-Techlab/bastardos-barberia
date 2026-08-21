@@ -11,7 +11,7 @@ import {
   Scissors,
   TriangleAlert,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { WorkSessionCorrectionDialog } from "@/components/work-sessions/work-session-correction-dialog";
@@ -41,6 +41,7 @@ type WorkSessionHistoryProps = {
   | {
       viewerRole: "owner" | "admin";
       initialData: PaginatedManagerWorkSessions;
+      employeeOptions: EmployeeWorkSession["employee"][];
     }
 );
 
@@ -72,11 +73,12 @@ const isManagerSession = (
   session: EmployeeWorkSession | ManagerWorkSession,
 ): session is ManagerWorkSession => "grossTotal" in session.metrics;
 
-export const WorkSessionHistory = ({
-  viewerRole,
-  initialData,
-  workSessionClient = defaultWorkSessionClient,
-}: WorkSessionHistoryProps) => {
+export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
+  const {
+    viewerRole,
+    initialData,
+    workSessionClient = defaultWorkSessionClient,
+  } = props;
   const isManager = viewerRole !== "employee";
   const [data, setData] = useState<PaginatedWorkSessions>(initialData);
   const [employeeId, setEmployeeId] = useState("");
@@ -85,37 +87,29 @@ export const WorkSessionHistory = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [correcting, setCorrecting] = useState<ManagerWorkSession | null>(null);
-
-  const employees = useMemo(() => {
-    const unique = new Map<string, EmployeeWorkSession["employee"]>();
-    for (const session of initialData.items) {
-      unique.set(session.employee.id, session.employee);
-    }
-    return [...unique.values()].sort((left, right) =>
-      `${left.lastName} ${left.firstName}`.localeCompare(
-        `${right.lastName} ${right.firstName}`,
-        "es",
-      ),
-    );
-  }, [initialData.items]);
+  const requestSequence = useRef(0);
+  const employees =
+    props.viewerRole === "employee" ? [] : props.employeeOptions;
 
   const load = async (
     next: { employeeId: string; dateFrom: string; dateTo: string },
     page = 1,
   ) => {
+    const requestId = ++requestSequence.current;
     setLoading(true);
     setError(null);
     try {
-      setData(
-        await workSessionClient.list({
-          employeeId: next.employeeId || undefined,
-          dateFrom: next.dateFrom || undefined,
-          dateTo: next.dateTo || undefined,
-          page,
-          pageSize: data.pagination.pageSize,
-        }),
-      );
+      const response = await workSessionClient.list({
+        employeeId: next.employeeId || undefined,
+        dateFrom: next.dateFrom || undefined,
+        dateTo: next.dateTo || undefined,
+        page,
+        pageSize: data.pagination.pageSize,
+      });
+      if (requestId !== requestSequence.current) return;
+      setData(response);
     } catch (caught) {
+      if (requestId !== requestSequence.current) return;
       const message =
         caught instanceof Error
           ? caught.message
@@ -123,7 +117,7 @@ export const WorkSessionHistory = ({
       setError(message);
       toast.error(message);
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
   };
 
@@ -139,19 +133,21 @@ export const WorkSessionHistory = ({
     { grossTotal: 0, barbershopNet: 0, employeeCommission: 0, saleCount: 0 },
   );
 
-  const replaceCorrected = (corrected: ManagerWorkSession) => {
-    setData((current) => ({
-      ...current,
-      items: current.items.map((session) =>
-        session.id === corrected.id ? corrected : session,
-      ),
-    }));
+  const reloadAfterCorrection = async () => {
+    await load(
+      { employeeId, dateFrom, dateTo },
+      data.pagination.page,
+    );
   };
 
   return (
     <div className="space-y-6" aria-busy={loading}>
       {isManager && (
-        <section aria-label="Resumen de presentismo" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Resumen de presentismo de la página actual" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="sm:col-span-2 xl:col-span-4">
+            <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Página actual</p>
+            <p className="mt-1 text-sm text-muted-foreground">Los totales reflejan únicamente las jornadas visibles en esta página.</p>
+          </div>
           {[
             { label: "Ventas brutas", value: formatArs(managerTotals.grossTotal), icon: Banknote },
             { label: "Neto barbería", value: formatArs(managerTotals.barbershopNet), icon: Scissors },
@@ -222,8 +218,8 @@ export const WorkSessionHistory = ({
 
         {data.items.length > 0 ? (
           <>
-            <div className="hidden overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 md:block">
-              <table aria-label="Historial de jornadas" className="w-full text-left text-sm">
+            <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 md:block">
+              <table aria-label="Historial de jornadas" className={`w-full text-left text-sm ${isManager ? "min-w-[64rem]" : "min-w-[44rem]"}`}>
                 <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">Fecha</th>
@@ -313,7 +309,7 @@ export const WorkSessionHistory = ({
       )}
 
       {isManager && correcting && (
-        <WorkSessionCorrectionDialog session={correcting} workSessionClient={workSessionClient} onClose={() => setCorrecting(null)} onSaved={replaceCorrected} />
+        <WorkSessionCorrectionDialog session={correcting} workSessionClient={workSessionClient} onClose={() => setCorrecting(null)} onSaved={reloadAfterCorrection} />
       )}
     </div>
   );

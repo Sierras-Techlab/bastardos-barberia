@@ -14,7 +14,7 @@ const session: ManagerWorkSession = {
   },
   businessDate: "2026-08-21",
   startedAt: "2026-08-21T12:00:00.000Z",
-  endedAt: "2026-08-21T20:00:00.000Z",
+  endedAt: "2026-08-21T20:00:47.321Z",
   state: "closed",
   metrics: {
     workedMinutes: 480,
@@ -45,7 +45,7 @@ it("requires a reason before submitting a manager correction", async () => {
   );
   expect(correct).not.toHaveBeenCalled();
 });
-it("persists corrected timestamps and the audit reason", async () => {
+it("preserves seconds on the untouched endpoint while correcting the other", async () => {
   const corrected = {
     ...session,
     startedAt: "2026-08-21T13:00:00.000Z",
@@ -74,7 +74,7 @@ it("persists corrected timestamps and the audit reason", async () => {
 
   expect(correct).toHaveBeenCalledWith(session.id, {
     startedAt: "2026-08-21T13:00:00.000Z",
-    endedAt: "2026-08-21T20:00:00.000Z",
+    endedAt: "2026-08-21T20:00:47.321Z",
     reason: "Olvido informado por el empleado",
   });
   expect(onSaved).toHaveBeenCalledWith(corrected);

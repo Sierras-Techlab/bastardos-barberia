@@ -23,7 +23,7 @@ import type { ManagerWorkSession } from "@/types/work-session";
 type WorkSessionCorrectionDialogProps = {
   session: ManagerWorkSession;
   onClose: () => void;
-  onSaved: (session: ManagerWorkSession) => void;
+  onSaved: (session: ManagerWorkSession) => void | Promise<void>;
   workSessionClient?: Pick<WorkSessionClient, "correct">;
 };
 
@@ -52,9 +52,11 @@ export const WorkSessionCorrectionDialog = ({
   const [startedAt, setStartedAt] = useState(() =>
     toBuenosAiresInput(session.startedAt),
   );
+  const [startedAtDirty, setStartedAtDirty] = useState(false);
   const [endedAt, setEndedAt] = useState(() =>
     session.endedAt ? toBuenosAiresInput(session.endedAt) : "",
   );
+  const [endedAtDirty, setEndedAtDirty] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -74,11 +76,17 @@ export const WorkSessionCorrectionDialog = ({
     setError(null);
     try {
       const corrected = await workSessionClient.correct(session.id, {
-        startedAt: fromBuenosAiresInput(startedAt),
-        endedAt: endedAt ? fromBuenosAiresInput(endedAt) : null,
+        startedAt: startedAtDirty
+          ? fromBuenosAiresInput(startedAt)
+          : session.startedAt,
+        endedAt: endedAtDirty
+          ? endedAt
+            ? fromBuenosAiresInput(endedAt)
+            : null
+          : session.endedAt,
         reason: reason.trim(),
       });
-      onSaved(corrected);
+      await onSaved(corrected);
       toast.success("Jornada corregida correctamente.");
       onClose();
     } catch (caught) {
@@ -115,7 +123,10 @@ export const WorkSessionCorrectionDialog = ({
               <Input
                 type="datetime-local"
                 value={startedAt}
-                onChange={(event) => setStartedAt(event.target.value)}
+                onChange={(event) => {
+                  setStartedAt(event.target.value);
+                  setStartedAtDirty(true);
+                }}
                 className="h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white"
                 required
               />
@@ -125,7 +136,10 @@ export const WorkSessionCorrectionDialog = ({
               <Input
                 type="datetime-local"
                 value={endedAt}
-                onChange={(event) => setEndedAt(event.target.value)}
+                onChange={(event) => {
+                  setEndedAt(event.target.value);
+                  setEndedAtDirty(true);
+                }}
                 className="h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white"
               />
             </label>
