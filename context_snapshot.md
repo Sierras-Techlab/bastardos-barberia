@@ -4,7 +4,7 @@ Captured: 2026-08-21
 
 ## Repository state
 
-- Active worktree branch: `codex/019-employee-work-sessions`. It is based on the merged automatic Caja baseline through migration `018` and contains increment `019` Tasks 1–2.
+- Active worktree branch: `codex/019-employee-work-sessions`. It is based on the merged automatic Caja baseline through migration `018` and contains increment `019` Tasks 1–3.
 - The next product increment has an approved architecture in `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`. It is planning-only: no migration `019` through `023` or dependent application behavior is implemented yet.
 - Five TDD implementation plans now decompose that architecture into ordered, independently deployable blocks `019` through `023`. They remain planning artifacts until an execution approach is selected.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
@@ -15,7 +15,7 @@ Captured: 2026-08-21
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and concurrency-safe deletion for unused methods. The user confirmed payment-method deletion is functional against the configured Supabase project.
 - Safe product-category deletion is implemented through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Referenced categories remain protected.
 - Automatic Caja is implemented through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. The user executed the migration and confirmed `/cash` is functional; this pagination task did not independently inspect the installed SQL objects.
-- Increment `019` Tasks 1–2 are implemented in the dedicated worktree: strict role-scoped contracts and services now use a strict default repository, while transactional migration `019` provides employee clock lifecycle, append-only manager corrections and trigger-derived income linkage. Employee current/history parsing cannot expose manager gross/net metrics. The migration remains local and no API or browser behavior has been added yet.
+- Increment `019` Tasks 1–3 are implemented in the dedicated worktree: strict role-scoped contracts and services now use a strict default repository, while transactional migration `019` provides employee clock lifecycle, append-only manager corrections and trigger-derived income linkage. Employee current/history parsing cannot expose manager gross/net metrics. Authenticated API routes and a browser-safe no-store client now expose this behavior; the migration remains local and UI work has not started.
 
 ## Delivered behavior
 
@@ -61,6 +61,7 @@ Captured: 2026-08-21
 - `/incomes` now exposes only its authoritative server-backed paginator. The nested TanStack paginator was removed from `IncomeTable`, so desktop and mobile share one page state and one API request path.
 - Employee work-session persistence now enforces one open session per employee, permits later same-day sessions, rejects employee-created sales without their own open session and links manager-created employee sales to an open session or marks them explicitly outside-session. Active linked incomes drive exact per-session production; voided incomes are excluded, and employee JSON omits gross/net keys rather than hiding them in the UI.
 - Manager work-session corrections append immutable prior/new timestamps and a required reason before updating the session. The strict server adapter calls only the five canonical RPCs, parses role-specific JSON and maps lifecycle/range/linkage sentinels to stable application errors.
+- `/api/work-sessions` authorizes before parsing manager filters and delegates employee self-scoping to the service. Authenticated employee endpoints expose current, start and end without accepting browser timestamps; manager corrections authorize before resolving the awaited dynamic ID or parsing the strict payload. The browser client uses `cache: "no-store"` for every current/history and mutation request.
 
 ## SQL and deployment state
 
@@ -106,6 +107,7 @@ Captured: 2026-08-21
 - Income pagination deduplication passed its red/green regression cycle, 2 focused files / 9 tests, the complete suite with 150 files / 560 tests, ESLint and the Next.js 16.3 Webpack production build. Browser validation at the default desktop viewport and 390×844 confirmed exactly one page label and one previous/next control, working navigation to page two, no horizontal overflow and no browser errors or warnings. The repository audit found no nested paginator in users, cash history or customer visit history.
 - Cash payment-card alignment passed its red/green component test, the complete suite with 150 files / 561 tests, ESLint, `git diff --check` and the Next.js 16.3 Webpack production build. Browser measurement reported a `0px` desktop top-edge difference between sales table and payment card; at 390×844 the computed offset remained `0px`, document width stayed at 390px and no browser errors or warnings appeared.
 - Work-session Task 2 plus Fix Round 1 passed their RED/GREEN cycles and final focused group with 3 files / 20 tests. The complete repository suite passed with 154 files / 588 tests; ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack production build all exited successfully. Migration `019` explicitly removes any inherited `service_role` DML before granting table reads. SQL acceptance remains rollback-wrapped and documented rather than applied to a remote database.
+- Work-session Task 3 first failed RED because its six new test suites imported the intentionally absent API/client modules. After the minimal implementation, its focused slice passed 6 files / 13 tests; Next.js route type generation, TypeScript and `git diff --check` passed. Final verification passed 160 files / 601 tests, ESLint and the Next.js 16.3 Turbopack production build; no remote SQL was applied.
 
 ## Known boundaries
 
@@ -118,7 +120,7 @@ Captured: 2026-08-21
 
 ## Recommended next task
 
-Implement increment `019` Task 3: expose the authenticated work-session API and strict browser client on top of the completed domain and persistence layers.
+Implement increment `019` Task 4: build the responsive presentism workspace on top of the authenticated work-session API and strict browser client.
 
 ## Context maintenance rule
 
