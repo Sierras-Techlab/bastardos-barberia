@@ -1,20 +1,24 @@
 import type {
   EmployeeWorkSession,
   ManagerWorkSession,
-  PaginatedWorkSessions,
-  WorkSession,
+  PaginatedEmployeeWorkSessions,
+  PaginatedManagerWorkSessions,
   WorkSessionCorrectionInput,
   WorkSessionListQuery,
 } from "@/types/work-session";
 
 export type WorkSessionRepository = {
-  getCurrent(employeeId: string): Promise<WorkSession | null>;
+  getCurrent(employeeId: string): Promise<EmployeeWorkSession | null>;
   start(employeeId: string): Promise<EmployeeWorkSession>;
   end(employeeId: string): Promise<EmployeeWorkSession>;
-  list(
+  listEmployee(
     requestingUserId: string,
     query: WorkSessionListQuery,
-  ): Promise<PaginatedWorkSessions>;
+  ): Promise<PaginatedEmployeeWorkSessions>;
+  listManager(
+    requestingUserId: string,
+    query: WorkSessionListQuery,
+  ): Promise<PaginatedManagerWorkSessions>;
   correct(
     managerId: string,
     sessionId: string,

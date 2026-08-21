@@ -15,7 +15,7 @@ Captured: 2026-08-21
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and concurrency-safe deletion for unused methods. The user confirmed payment-method deletion is functional against the configured Supabase project.
 - Safe product-category deletion is implemented through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Referenced categories remain protected.
 - Automatic Caja is implemented through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. The user executed the migration and confirmed `/cash` is functional; this pagination task did not independently inspect the installed SQL objects.
-- Increment `019` Task 1 is implemented in the dedicated worktree: strict role-scoped work-session contracts, Zod boundaries and dependency-injected authorization services are ready for the migration, repository and API tasks. No database or browser behavior has been added yet.
+- Increment `019` Task 1 is implemented in the dedicated worktree: strict role-scoped work-session contracts, Zod boundaries and dependency-injected authorization services are ready for the migration, repository and API tasks. Employee current/history contracts and service parsing cannot expose manager gross/net metrics. No database or browser behavior has been added yet.
 
 ## Delivered behavior
 

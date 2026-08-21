@@ -95,3 +95,42 @@ the subsequent project type check passed without source changes for that issue.
 
 None. Task 2 must connect the contract to the migration-backed repository and
 parse role-specific RPC JSON with the two schemas supplied here.
+
+## Fix Round 1
+
+### Change
+
+- Split history persistence methods into `listEmployee` and `listManager` and
+  narrowed `getCurrent` to `Promise<EmployeeWorkSession | null>`.
+- The service now parses all employee lifecycle responses with the strict
+  employee schema and parses history with the role-specific paginated schema.
+  A repository response containing `grossTotal` or `barbershopNet` for an
+  employee is rejected before it can reach a caller.
+
+### Regression coverage
+
+`service.test.ts` now supplies a manager-shaped current session and history
+page to employee operations, then asserts both operations reject with
+`ZodError`. The existing history tests also assert the employee and manager
+repository methods are invoked separately.
+
+### RED
+
+```text
+npm test -- src/lib/work-sessions/service.test.ts
+FAIL rejects manager financial metrics from employee current and history responses
+AssertionError: promise resolved instead of rejecting
+```
+
+### GREEN
+
+```text
+npm test -- src/lib/work-sessions/schemas.test.ts src/lib/work-sessions/service.test.ts
+2 files passed, 13 tests passed
+
+npx tsc --noEmit
+exit 0
+
+npm test
+152 files passed, 574 tests passed, exit 0
+```

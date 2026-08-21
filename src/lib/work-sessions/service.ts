@@ -2,6 +2,11 @@ import { assertManager } from "@/lib/auth/authorization";
 import { AppError } from "@/lib/auth/errors";
 import type { SafeUser } from "@/lib/auth/types";
 import type { WorkSessionServiceDependencies } from "@/lib/work-sessions/contracts";
+import {
+  employeeWorkSessionSchema,
+  paginatedEmployeeWorkSessionsSchema,
+  paginatedManagerWorkSessionsSchema,
+} from "@/lib/work-sessions/schemas";
 import type {
   WorkSessionCorrectionInput,
   WorkSessionListQuery,
@@ -22,7 +27,8 @@ export const getCurrentWorkSession = async (
   dependencies: WorkSessionServiceDependencies,
 ) => {
   assertEmployee(actor);
-  return dependencies.workSessions.getCurrent(actor.id);
+  const session = await dependencies.workSessions.getCurrent(actor.id);
+  return session === null ? null : employeeWorkSessionSchema.parse(session);
 };
 
 export const startWorkSession = async (
@@ -30,7 +36,9 @@ export const startWorkSession = async (
   dependencies: WorkSessionServiceDependencies,
 ) => {
   assertEmployee(actor);
-  return dependencies.workSessions.start(actor.id);
+  return employeeWorkSessionSchema.parse(
+    await dependencies.workSessions.start(actor.id),
+  );
 };
 
 export const endWorkSession = async (
@@ -38,7 +46,9 @@ export const endWorkSession = async (
   dependencies: WorkSessionServiceDependencies,
 ) => {
   assertEmployee(actor);
-  return dependencies.workSessions.end(actor.id);
+  return employeeWorkSessionSchema.parse(
+    await dependencies.workSessions.end(actor.id),
+  );
 };
 
 export const listWorkSessions = async (
@@ -46,11 +56,19 @@ export const listWorkSessions = async (
   query: WorkSessionListQuery,
   dependencies: WorkSessionServiceDependencies,
 ) => {
-  const scopedQuery = actor.role.name === "employee"
-    ? { ...query, employeeId: actor.id }
-    : (assertManager(actor), query);
+  if (actor.role.name === "employee") {
+    return paginatedEmployeeWorkSessionsSchema.parse(
+      await dependencies.workSessions.listEmployee(actor.id, {
+        ...query,
+        employeeId: actor.id,
+      }),
+    );
+  }
 
-  return dependencies.workSessions.list(actor.id, scopedQuery);
+  assertManager(actor);
+  return paginatedManagerWorkSessionsSchema.parse(
+    await dependencies.workSessions.listManager(actor.id, query),
+  );
 };
 
 export const correctWorkSession = async (

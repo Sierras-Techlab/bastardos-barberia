@@ -15,6 +15,7 @@ import {
 import type {
   EmployeeWorkSession,
   ManagerWorkSession,
+  PaginatedEmployeeWorkSessions,
 } from "@/types/work-session";
 
 const manager: SafeUser = {
@@ -54,7 +55,11 @@ const dependencies = (): WorkSessionServiceDependencies => ({
     getCurrent: vi.fn().mockResolvedValue(session),
     start: vi.fn().mockResolvedValue(session),
     end: vi.fn().mockResolvedValue({ ...session, endedAt: "2026-08-21T13:00:00.000-03:00", state: "closed" }),
-    list: vi.fn().mockResolvedValue({
+    listEmployee: vi.fn().mockResolvedValue({
+      items: [session],
+      pagination: { page: 1, pageSize: 12, total: 1, totalPages: 1 },
+    }),
+    listManager: vi.fn().mockResolvedValue({
       items: [managerSession],
       pagination: { page: 1, pageSize: 12, total: 1, totalPages: 1 },
     }),
@@ -100,7 +105,7 @@ describe("work session domain", () => {
       pageSize: 20,
     }, deps);
 
-    expect(deps.workSessions.list).toHaveBeenCalledWith(employee.id, {
+    expect(deps.workSessions.listEmployee).toHaveBeenCalledWith(employee.id, {
       employeeId: employee.id,
       dateFrom: "2026-08-01",
       page: 2,
@@ -108,12 +113,31 @@ describe("work session domain", () => {
     });
   });
 
+  it("rejects manager financial metrics from employee current and history responses", async () => {
+    const currentDeps = dependencies();
+    vi.mocked(currentDeps.workSessions.getCurrent).mockResolvedValue(
+      managerSession as unknown as EmployeeWorkSession,
+    );
+
+    await expect(getCurrentWorkSession(employee, currentDeps)).rejects.toMatchObject({
+      name: "ZodError",
+    });
+
+    const historyDeps = dependencies();
+    vi.mocked(historyDeps.workSessions.listEmployee).mockResolvedValue({
+      items: [managerSession],
+      pagination: { page: 1, pageSize: 12, total: 1, totalPages: 1 },
+    } as unknown as PaginatedEmployeeWorkSessions);
+    await expect(listWorkSessions(employee, { page: 1, pageSize: 12 }, historyDeps))
+      .rejects.toMatchObject({ name: "ZodError" });
+  });
+
   it("retains a manager-selected employee filter for manager history", async () => {
     const deps = dependencies();
 
     await listWorkSessions(manager, { employeeId: employee.id, page: 1, pageSize: 12 }, deps);
 
-    expect(deps.workSessions.list).toHaveBeenCalledWith(manager.id, {
+    expect(deps.workSessions.listManager).toHaveBeenCalledWith(manager.id, {
       employeeId: employee.id,
       page: 1,
       pageSize: 12,
