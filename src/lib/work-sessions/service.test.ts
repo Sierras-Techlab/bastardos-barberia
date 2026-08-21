@@ -1,5 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
+const { defaultWorkSessions } = vi.hoisted(() => ({
+  defaultWorkSessions: {
+    getCurrent: vi.fn(),
+    start: vi.fn(),
+    end: vi.fn(),
+    listEmployee: vi.fn(),
+    listManager: vi.fn(),
+    correct: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/work-sessions/repository", () => ({
+  workSessionRepository: defaultWorkSessions,
+}));
+
 import type { SafeUser } from "@/lib/auth/types";
 import type {
   WorkSessionRepository,
@@ -68,6 +83,13 @@ const dependencies = (): WorkSessionServiceDependencies => ({
 });
 
 describe("work session domain", () => {
+  it("uses the persistent repository by default while retaining injectable dependencies", async () => {
+    defaultWorkSessions.start.mockResolvedValueOnce(session);
+
+    await expect(startWorkSession(employee)).resolves.toEqual(session);
+    expect(defaultWorkSessions.start).toHaveBeenCalledWith(employee.id);
+  });
+
   it("allows only employees to obtain, start and end their own session", async () => {
     const deps = dependencies();
 

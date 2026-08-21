@@ -2,6 +2,7 @@ import { assertManager } from "@/lib/auth/authorization";
 import { AppError } from "@/lib/auth/errors";
 import type { SafeUser } from "@/lib/auth/types";
 import type { WorkSessionServiceDependencies } from "@/lib/work-sessions/contracts";
+import { workSessionRepository } from "@/lib/work-sessions/repository";
 import {
   employeeWorkSessionSchema,
   paginatedEmployeeWorkSessionsSchema,
@@ -22,9 +23,13 @@ const assertEmployee = (actor: SafeUser) => {
   }
 };
 
+const defaultDependencies: WorkSessionServiceDependencies = {
+  workSessions: workSessionRepository,
+};
+
 export const getCurrentWorkSession = async (
   actor: SafeUser,
-  dependencies: WorkSessionServiceDependencies,
+  dependencies: WorkSessionServiceDependencies = defaultDependencies,
 ) => {
   assertEmployee(actor);
   const session = await dependencies.workSessions.getCurrent(actor.id);
@@ -33,7 +38,7 @@ export const getCurrentWorkSession = async (
 
 export const startWorkSession = async (
   actor: SafeUser,
-  dependencies: WorkSessionServiceDependencies,
+  dependencies: WorkSessionServiceDependencies = defaultDependencies,
 ) => {
   assertEmployee(actor);
   return employeeWorkSessionSchema.parse(
@@ -43,7 +48,7 @@ export const startWorkSession = async (
 
 export const endWorkSession = async (
   actor: SafeUser,
-  dependencies: WorkSessionServiceDependencies,
+  dependencies: WorkSessionServiceDependencies = defaultDependencies,
 ) => {
   assertEmployee(actor);
   return employeeWorkSessionSchema.parse(
@@ -54,7 +59,7 @@ export const endWorkSession = async (
 export const listWorkSessions = async (
   actor: SafeUser,
   query: WorkSessionListQuery,
-  dependencies: WorkSessionServiceDependencies,
+  dependencies: WorkSessionServiceDependencies = defaultDependencies,
 ) => {
   if (actor.role.name === "employee") {
     return paginatedEmployeeWorkSessionsSchema.parse(
@@ -75,7 +80,7 @@ export const correctWorkSession = async (
   actor: SafeUser,
   id: string,
   input: WorkSessionCorrectionInput,
-  dependencies: WorkSessionServiceDependencies,
+  dependencies: WorkSessionServiceDependencies = defaultDependencies,
 ) => {
   assertManager(actor);
   return dependencies.workSessions.correct(actor.id, id, input);

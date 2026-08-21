@@ -4,7 +4,7 @@ Captured: 2026-08-21
 
 ## Repository state
 
-- Active branch: `feat/changes-fullstack`. The current application baseline includes the merged automatic Caja work through migration `018`.
+- Active worktree branch: `codex/019-employee-work-sessions`. It is based on the merged automatic Caja baseline through migration `018` and contains increment `019` Tasks 1–2.
 - The next product increment has an approved architecture in `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`. It is planning-only: no migration `019` through `023` or dependent application behavior is implemented yet.
 - Five TDD implementation plans now decompose that architecture into ordered, independently deployable blocks `019` through `023`. They remain planning artifacts until an execution approach is selected.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
@@ -15,7 +15,7 @@ Captured: 2026-08-21
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and concurrency-safe deletion for unused methods. The user confirmed payment-method deletion is functional against the configured Supabase project.
 - Safe product-category deletion is implemented through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Referenced categories remain protected.
 - Automatic Caja is implemented through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. The user executed the migration and confirmed `/cash` is functional; this pagination task did not independently inspect the installed SQL objects.
-- Increment `019` Task 1 is implemented in the dedicated worktree: strict role-scoped work-session contracts, Zod boundaries and dependency-injected authorization services are ready for the migration, repository and API tasks. Employee current/history contracts and service parsing cannot expose manager gross/net metrics. No database or browser behavior has been added yet.
+- Increment `019` Tasks 1–2 are implemented in the dedicated worktree: strict role-scoped contracts and services now use a strict default repository, while transactional migration `019` provides employee clock lifecycle, append-only manager corrections and trigger-derived income linkage. Employee current/history parsing cannot expose manager gross/net metrics. The migration remains local and no API or browser behavior has been added yet.
 
 ## Delivered behavior
 
@@ -59,6 +59,8 @@ Captured: 2026-08-21
 - The desktop offset now comes from the explicit `.cash-payment-column` media rule instead of a Tailwind arbitrary responsive utility, preventing development CSS regeneration from dropping the alignment while preserving the mobile stack.
 - Migration `018` materializes immutable daily registers plus sale/payment snapshots. Same-day voids are excluded at close; later voids preserve the original register and create one negative, actor-linked adjustment on the local void date. An hourly idempotent `pg_cron` job closes any missing prior activity date.
 - `/incomes` now exposes only its authoritative server-backed paginator. The nested TanStack paginator was removed from `IncomeTable`, so desktop and mobile share one page state and one API request path.
+- Employee work-session persistence now enforces one open session per employee, permits later same-day sessions, rejects employee-created sales without their own open session and links manager-created employee sales to an open session or marks them explicitly outside-session. Active linked incomes drive exact per-session production; voided incomes are excluded, and employee JSON omits gross/net keys rather than hiding them in the UI.
+- Manager work-session corrections append immutable prior/new timestamps and a required reason before updating the session. The strict server adapter calls only the five canonical RPCs, parses role-specific JSON and maps lifecycle/range/linkage sentinels to stable application errors.
 
 ## SQL and deployment state
 
@@ -70,8 +72,10 @@ Captured: 2026-08-21
 - `supabase/queries/016_payment_methods.sql` provides the dynamic payment-methods catalog, UUID foreign keys, payment method metrics, generalized `create_income` / `list_incomes` RPCs, idempotent compatibility repairs and serialized manager lifecycle functions. Its delete RPC protects the final active method and rejects referenced methods before physical deletion.
 - `supabase/queries/017_product_category_deletion.sql` incrementally replaces the unconditional category-delete trigger with a manager-only RPC that deletes only categories without product references.
 - `supabase/queries/018_automatic_daily_cash.sql` installs secured closure/snapshot/adjustment tables, the post-close void trigger, `close_pending_daily_cash`, `get_daily_cash`, `list_daily_cash` and the hourly recovery cron job.
-- `supabase/queries/README.md` documents ordered installation `001` through `018`, including cash object, RLS and cron verification.
+- `supabase/queries/019_employee_work_sessions.sql` installs secured work-session/correction tables, five canonical RPCs and the before-insert income attachment trigger without rewriting `create_income` or Caja semantics.
+- `supabase/queries/README.md` documents ordered installation `001` through `019`, including rollback-wrapped work-session lifecycle, correction, income-linkage and void-excluded metric acceptance.
 - The user confirmed the configured project is functional for payment-method deletion, category deletion and automatic Caja after applying the corresponding migrations through `018`.
+- Migration `019` has not been applied to the configured Supabase project; this task intentionally produced local SQL, structural tests and documented rollback acceptance only.
 
 ## Verification
 
@@ -101,6 +105,7 @@ Captured: 2026-08-21
 - Automatic Caja final verification passed 150 test files / 559 tests, ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. Its rollback-wrapped SQL acceptance block remains documented for isolated validation; this task did not apply the migration to the shared database.
 - Income pagination deduplication passed its red/green regression cycle, 2 focused files / 9 tests, the complete suite with 150 files / 560 tests, ESLint and the Next.js 16.3 Webpack production build. Browser validation at the default desktop viewport and 390×844 confirmed exactly one page label and one previous/next control, working navigation to page two, no horizontal overflow and no browser errors or warnings. The repository audit found no nested paginator in users, cash history or customer visit history.
 - Cash payment-card alignment passed its red/green component test, the complete suite with 150 files / 561 tests, ESLint, `git diff --check` and the Next.js 16.3 Webpack production build. Browser measurement reported a `0px` desktop top-edge difference between sales table and payment card; at 390×844 the computed offset remained `0px`, document width stayed at 390px and no browser errors or warnings appeared.
+- Work-session Task 2 passed its RED/GREEN cycles and final focused group with 3 files / 19 tests. The complete repository suite passed with 154 files / 587 tests; ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack production build all exited successfully. SQL acceptance remains rollback-wrapped and documented rather than applied to a remote database.
 
 ## Known boundaries
 
@@ -113,7 +118,7 @@ Captured: 2026-08-21
 
 ## Recommended next task
 
-Select the execution approach for the approved `019` through `023` TDD plans, then implement `019` employee work sessions as the first independent block.
+Implement increment `019` Task 3: expose the authenticated work-session API and strict browser client on top of the completed domain and persistence layers.
 
 ## Context maintenance rule
 

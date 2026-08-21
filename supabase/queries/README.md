@@ -22,6 +22,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 16. `016_payment_methods.sql`
 17. `017_product_category_deletion.sql`
 18. `018_automatic_daily_cash.sql`
+19. `019_employee_work_sessions.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -30,6 +31,8 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `017_product_category_deletion.sql` is an incremental migration for existing projects. Run it after the latest `016`; do not rerun the structural migration `014`. It replaces the unconditional category-delete trigger with a manager-only RPC that physically removes only categories without any product references.
 
 `018_automatic_daily_cash.sql` installs the manager-only automatic cash module. It creates immutable daily closures only for dates with sales or post-close adjustments, preserves sale and payment-method snapshots for audit, records later voids as negative adjustments, and schedules the idempotent closer hourly with `pg_cron`. Run it after `017`; there is no manual open or close operation.
+
+`019_employee_work_sessions.sql` installs employee clock-in/out, append-only manager corrections and server-derived income linkage. Employee-created sales require the actor's own open session. Manager-created sales for an employee link that employee's open session when present and otherwise retain an explicit outside-session audit flag. Run it after `018`; the canonical `create_income` RPC remains unchanged.
 
 Verify the automatic cash objects and cron job:
 
@@ -214,6 +217,255 @@ rollback;
 ```
 
 The block must finish without an exception. It proves that an active split-payment sale is included, a same-day void remains visible only as excluded audit membership, repeating the closer is a no-op, and a later void creates one exact negative adjustment without changing the original closure. `rollback` removes every temporary user, catalog row, sale, closure and adjustment.
+
+Verify the work-session objects, RLS and canonical income trigger:
+
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+  and tablename in (
+    'employee_work_sessions',
+    'employee_work_session_corrections'
+  )
+order by tablename;
+
+select routine_name
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name in (
+    'start_work_session',
+    'end_work_session',
+    'correct_work_session',
+    'get_current_work_session',
+    'list_work_sessions'
+  )
+order by routine_name;
+
+select trigger_name, action_timing, event_manipulation
+from information_schema.triggers
+where event_object_schema = 'public'
+  and event_object_table = 'incomes'
+  and trigger_name = 'attach_income_work_session';
+```
+
+Both tables must report `rowsecurity = true`, all five canonical RPCs must be
+present exactly once, and the income trigger must report `BEFORE` / `INSERT`.
+
+Validate work-session lifecycle, income attachment, correction audit and active-only
+production metrics without retaining temporary records:
+
+```sql
+begin;
+
+do $$
+declare
+  suffix text := substring(
+    replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12
+  );
+  manager_id uuid;
+  employee_id uuid;
+  service_id uuid;
+  payment_method_id uuid;
+  first_session_id uuid;
+  second_session_id uuid;
+  linked_income_id uuid;
+  outside_income_id uuid;
+  voided_income_id uuid;
+  prior_started_at timestamptz;
+  prior_ended_at timestamptz;
+  corrected_started_at timestamptz;
+  manager_history jsonb;
+  first_session_json jsonb;
+  second_session_json jsonb;
+begin
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Manager', 'Jornadas', 'manager.jornadas.' || suffix,
+    '$argon2id$verification', 2, 0, 0
+  ) returning id into manager_id;
+
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate, created_by
+  ) values (
+    'Empleado', 'Jornadas', 'empleado.jornadas.' || suffix,
+    '$argon2id$verification', 3, 50, 0, manager_id
+  ) returning id into employee_id;
+
+  insert into public.services (
+    name, normalized_name, price, created_by, updated_by
+  ) values (
+    'Servicio jornada ' || suffix, '', 10000, manager_id, manager_id
+  ) returning id into service_id;
+
+  insert into public.payment_methods (
+    name, normalized_name, created_by, updated_by
+  ) values (
+    'Pago jornada ' || suffix, 'pago-jornada-' || suffix,
+    manager_id, manager_id
+  ) returning id into payment_method_id;
+
+  begin
+    perform public.create_income(
+      employee_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+      '[]'::jsonb,
+      jsonb_build_array(jsonb_build_object(
+        'paymentMethodId', payment_method_id,
+        'amount', 10000
+      )),
+      false
+    );
+    raise exception 'WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_WITHOUT_SESSION_FAILED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'EMPLOYEE_WORK_SESSION_REQUIRED' then
+        raise;
+      end if;
+  end;
+
+  first_session_id := (public.start_work_session(employee_id)->>'id')::uuid;
+
+  begin
+    perform public.start_work_session(employee_id);
+    raise exception 'WORK_SESSION_ACCEPTANCE_DUPLICATE_START_FAILED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'WORK_SESSION_ALREADY_OPEN' then
+        raise;
+      end if;
+  end;
+
+  linked_income_id := public.create_income(
+    employee_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+
+  if not exists (
+    select 1 from public.incomes
+    where id = linked_income_id
+      and work_session_id = first_session_id
+      and not outside_work_session
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_LINK_FAILED';
+  end if;
+
+  perform public.end_work_session(employee_id);
+
+  outside_income_id := public.create_income(
+    manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+
+  if not exists (
+    select 1 from public.incomes
+    where id = outside_income_id
+      and work_session_id is null
+      and outside_work_session
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_MANAGER_OUTSIDE_SALE_FAILED';
+  end if;
+
+  select started_at, ended_at
+  into prior_started_at, prior_ended_at
+  from public.employee_work_sessions
+  where id = first_session_id;
+
+  corrected_started_at := prior_started_at + interval '1 microsecond';
+  perform public.correct_work_session(
+    manager_id,
+    first_session_id,
+    corrected_started_at,
+    prior_ended_at,
+    'Ajuste de aceptación'
+  );
+
+  if not exists (
+    select 1
+    from public.employee_work_session_corrections correction
+    join public.employee_work_sessions session
+      on session.id = correction.work_session_id
+    where correction.work_session_id = first_session_id
+      and correction.corrected_by = manager_id
+      and correction.reason = 'Ajuste de aceptación'
+      and correction.prior_started_at = prior_started_at
+      and correction.prior_ended_at = prior_ended_at
+      and correction.corrected_started_at = corrected_started_at
+      and correction.corrected_ended_at = prior_ended_at
+      and session.started_at = corrected_started_at
+      and session.ended_at = prior_ended_at
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_CORRECTION_AUDIT_FAILED';
+  end if;
+
+  second_session_id := (public.start_work_session(employee_id)->>'id')::uuid;
+  voided_income_id := public.create_income(
+    employee_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+  perform public.void_income(voided_income_id, manager_id);
+  perform public.end_work_session(employee_id);
+
+  if second_session_id = first_session_id
+    or (select count(*) from public.employee_work_sessions session
+        where session.employee_id = employee_id
+          and session.business_date = (
+            pg_catalog.clock_timestamp()
+              at time zone 'America/Argentina/Buenos_Aires'
+          )::date) <> 2
+  then
+    raise exception 'WORK_SESSION_ACCEPTANCE_SECOND_SESSION_FAILED';
+  end if;
+
+  manager_history := public.list_work_sessions(
+    manager_id, employee_id, null, null, 1, 20
+  );
+  select item into first_session_json
+  from jsonb_array_elements(manager_history->'items') item
+  where item->>'id' = first_session_id::text;
+  select item into second_session_json
+  from jsonb_array_elements(manager_history->'items') item
+  where item->>'id' = second_session_id::text;
+
+  if (first_session_json->'metrics'->>'saleCount')::integer <> 1
+    or (first_session_json->'metrics'->>'employeeCommission')::bigint <> 5000
+    or (first_session_json->'metrics'->>'grossTotal')::bigint <> 10000
+    or (first_session_json->'metrics'->>'barbershopNet')::bigint <> 5000
+    or (second_session_json->'metrics'->>'saleCount')::integer <> 0
+    or (second_session_json->'metrics'->>'employeeCommission')::bigint <> 0
+    or (second_session_json->'metrics'->>'grossTotal')::bigint <> 0
+    or (second_session_json->'metrics'->>'barbershopNet')::bigint <> 0
+  then
+    raise exception 'WORK_SESSION_ACCEPTANCE_VOID_METRICS_FAILED';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+The block must finish without an exception. It covers employee clock-in/out,
+duplicate clock-in, rejection before clock-in, exact employee linkage, explicit
+manager outside-session audit, prior/new correction snapshots, a second same-day
+session and active-only production metrics. `rollback` removes every temporary
+identity, catalog row, session, correction, income and void effect.
 
 ## Verify
 

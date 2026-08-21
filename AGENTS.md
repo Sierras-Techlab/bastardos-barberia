@@ -58,6 +58,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, split payments, product stock, inventory movements and customer visits. New-sale authorization/catalog rows remain locked through commit so concurrent role or lifecycle changes cannot invalidate the snapshot. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
 - Dashboard fixed-customer agenda dates use `America/Argentina/Buenos_Aires` and include only the current local date through Saturday; Sunday is empty and the range rotates on Monday.
 - Caja is manager-only and has no manual open/close or CRUD lifecycle. The current Buenos Aires business date is calculated live from incomes; prior active dates are closed automatically and idempotently into immutable sale/payment snapshots. A same-day void is excluded at close, while a void after closure creates one audited negative adjustment on the void date without rewriting the original closure. Dates without sales or adjustments are not persisted.
+- Only current-role employees clock themselves in or out, with at most one open work session per employee and multiple completed sessions allowed per local business date. Employee-created sales require and derive their own open session at the database trigger; manager-created employee sales link an open session when present or retain an explicit outside-session audit flag. Manager corrections append prior/new timestamps before changing the session, and employee work-session JSON never includes gross or barbershop-net metrics.
 
 ## Repository map
 
@@ -72,10 +73,11 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/app/api/fixed-customer-occurrences`, `src/lib/fixed-customers`: weekly occurrence reads and audited attendance transitions.
 - `src/app/api/incomes`, `src/lib/incomes`: transactional sale creation, scoped history/detail, voiding and browser API client.
 - `src/app/api/cash`, `src/lib/cash`, `src/components/cash`: manager-only live cash, immutable closure history, audited post-close adjustments and the read-only `/cash` workspace.
+- `src/lib/work-sessions`: strict role-scoped work-session contracts, persistence adapters and authorization services; migration `019` owns clock lifecycle, audited corrections and server-derived income linkage.
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `018` and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `019` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

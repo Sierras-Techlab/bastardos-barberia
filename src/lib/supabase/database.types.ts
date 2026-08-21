@@ -137,6 +137,30 @@ export type FixedCustomerOccurrenceRow = {
 export type IncomePaymentMethod = "cash" | "transfer";
 export type IncomeStatus = "active" | "voided";
 
+export type EmployeeWorkSessionRow = {
+  id: string;
+  employee_id: string;
+  business_date: string;
+  started_at: string;
+  ended_at: string | null;
+  started_by: string;
+  ended_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EmployeeWorkSessionCorrectionRow = {
+  id: string;
+  work_session_id: string;
+  corrected_by: string;
+  reason: string;
+  prior_started_at: string;
+  prior_ended_at: string | null;
+  corrected_started_at: string;
+  corrected_ended_at: string | null;
+  corrected_at: string;
+};
+
 export type IncomeRow = {
   id: string;
   request_id: string;
@@ -157,6 +181,8 @@ export type IncomeRow = {
   barbershop_net: number;
   full_service_commission: boolean;
   full_service_commission_authorized_by: string | null;
+  work_session_id: string | null;
+  outside_work_session: boolean;
   status: IncomeStatus;
   created_at: string;
   business_date: string;
