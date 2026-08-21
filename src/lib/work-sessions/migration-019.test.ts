@@ -58,6 +58,26 @@ describe("migration 019 employee work sessions", () => {
     );
   });
 
+  it("removes inherited service-role DML before granting read-only table access", () => {
+    const sessionsRevoke = sql.indexOf(
+      "revoke all on table public.employee_work_sessions from service_role;",
+    );
+    const correctionsRevoke = sql.indexOf(
+      "revoke all on table public.employee_work_session_corrections from service_role;",
+    );
+    const sessionsGrant = sql.indexOf(
+      "grant select on table public.employee_work_sessions to service_role;",
+    );
+    const correctionsGrant = sql.indexOf(
+      "grant select on table public.employee_work_session_corrections to service_role;",
+    );
+
+    expect(sessionsRevoke).toBeGreaterThan(-1);
+    expect(correctionsRevoke).toBeGreaterThan(-1);
+    expect(sessionsRevoke).toBeLessThan(sessionsGrant);
+    expect(correctionsRevoke).toBeLessThan(correctionsGrant);
+  });
+
   it("documents rollback-wrapped acceptance for lifecycle, sale linkage and active metrics", () => {
     expect(readme).toMatch(/Validate work-session lifecycle[\s\S]*begin;[\s\S]*rollback;/i);
     for (const sentinel of [

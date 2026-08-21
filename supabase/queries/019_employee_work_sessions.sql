@@ -585,6 +585,8 @@ alter table public.employee_work_session_corrections enable row level security;
 
 revoke all on table public.employee_work_sessions from public, anon, authenticated;
 revoke all on table public.employee_work_session_corrections from public, anon, authenticated;
+revoke all on table public.employee_work_sessions from service_role;
+revoke all on table public.employee_work_session_corrections from service_role;
 grant select on table public.employee_work_sessions to service_role;
 grant select on table public.employee_work_session_corrections to service_role;
 
