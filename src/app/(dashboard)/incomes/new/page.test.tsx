@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
-const { requirePageUser, listServices, listProducts, listCustomers, listUsers, listPaymentMethods } = vi.hoisted(() => ({
+const { requirePageUser, listServices, listProducts, listCustomers, listUsers, listPaymentMethods, getCurrentWorkSession } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -21,6 +21,15 @@ const { requirePageUser, listServices, listProducts, listCustomers, listUsers, l
   listCustomers: vi.fn().mockResolvedValue([]),
   listUsers: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0, totalPages: 0 }),
   listPaymentMethods: vi.fn().mockResolvedValue([{ id: "60000000-0000-4000-8000-000000000001", name: "Efectivo", isActive: true }]),
+  getCurrentWorkSession: vi.fn().mockResolvedValue({
+    id: "70000000-0000-4000-8000-000000000001",
+    employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Empleado", lastName: "Bastardos" },
+    businessDate: "2026-08-21",
+    startedAt: "2026-08-21T12:00:00.000Z",
+    endedAt: null,
+    state: "open",
+    metrics: { workedMinutes: 20, saleCount: 0, employeeCommission: 0 },
+  }),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -31,6 +40,7 @@ vi.mock("@/lib/products/repository", () => ({ productRepository: { list: listPro
 vi.mock("@/lib/customers/repository", () => ({ customerRepository: { list: listCustomers } }));
 vi.mock("@/lib/users/repository", () => ({ userRepository: { list: listUsers } }));
 vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: listPaymentMethods } }));
+vi.mock("@/lib/work-sessions/service", () => ({ getCurrentWorkSession }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes/new",
@@ -39,6 +49,11 @@ vi.mock("next/navigation", () => ({
 
 import NewIncomePage, { metadata } from "./page";
 import DashboardLayout from "../../layout";
+import { SidebarProvider } from "@/components/ui/sidebar";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 it("composes the Bastardos income form route", async () => {
   const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -126,4 +141,44 @@ it("does not render the income form after session revocation", async () => {
   requirePageUser.mockRejectedValueOnce(new Error("revoked session"));
 
   await expect(NewIncomePage()).rejects.toThrow("revoked session");
+});
+
+it("guards an employee without an open session before loading the sale editor", async () => {
+  requirePageUser.mockResolvedValueOnce({
+    user: {
+      id: "00000000-0000-4000-8000-000000000003",
+      firstName: "Empleado",
+      lastName: "Bastardos",
+      username: "empleado.bastardos",
+      role: { id: 3, name: "employee" },
+      isActive: true,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
+      lastLoginAt: null,
+      createdAt: "2026-08-07T00:00:00.000Z",
+      updatedAt: "2026-08-07T00:00:00.000Z",
+    },
+  });
+  getCurrentWorkSession.mockResolvedValueOnce(null);
+
+  render(<SidebarProvider>{await NewIncomePage()}</SidebarProvider>);
+
+  expect(screen.getByText("Iniciá tu jornada para cargar ventas")).toBeVisible();
+  expect(screen.getByRole("link", { name: "Ir a Presentismo" })).toHaveAttribute(
+    "href",
+    "/work-sessions",
+  );
+  expect(screen.queryByRole("button", { name: /revisar ingreso/i })).not.toBeInTheDocument();
+  expect(listServices).not.toHaveBeenCalled();
+  expect(listProducts).not.toHaveBeenCalled();
+  expect(listCustomers).not.toHaveBeenCalled();
+  expect(listPaymentMethods).not.toHaveBeenCalled();
+});
+
+it("does not apply the work-session guard to managers", async () => {
+  render(<SidebarProvider>{await NewIncomePage()}</SidebarProvider>);
+
+  expect(getCurrentWorkSession).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: /revisar ingreso/i })).toBeVisible();
+  expect(listServices).toHaveBeenCalled();
 });

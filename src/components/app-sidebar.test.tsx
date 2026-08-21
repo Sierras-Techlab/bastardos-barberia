@@ -176,3 +176,29 @@ it("links every authenticated role to services", () => {
   expect(link).toHaveAttribute("href", "/services");
   expect(link).toHaveAttribute("data-active");
 });
+
+it("shows Presentismo exactly once under employee operation", () => {
+  pathname.value = "/work-sessions";
+  render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={employee} /></SidebarProvider></TooltipProvider>,
+  );
+
+  const links = screen.getAllByRole("link", { name: "Presentismo" });
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveAttribute("href", "/work-sessions");
+  expect(links[0]).toHaveAttribute("data-active");
+  expect(screen.queryByText("Administración")).not.toBeInTheDocument();
+});
+
+it("shows Presentismo exactly once under manager administration", () => {
+  pathname.value = "/work-sessions";
+  render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={owner} /></SidebarProvider></TooltipProvider>,
+  );
+
+  const links = screen.getAllByRole("link", { name: "Presentismo" });
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveAttribute("href", "/work-sessions");
+  expect(links[0]).toHaveAttribute("data-active");
+  expect(screen.getByText("Administración")).toBeVisible();
+});
