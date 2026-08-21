@@ -74,8 +74,9 @@ export const WorkSessionCorrectionDialog = ({
 
     setSaving(true);
     setError(null);
+    let corrected: ManagerWorkSession;
     try {
-      const corrected = await workSessionClient.correct(session.id, {
+      corrected = await workSessionClient.correct(session.id, {
         startedAt: startedAtDirty
           ? fromBuenosAiresInput(startedAt)
           : session.startedAt,
@@ -86,9 +87,6 @@ export const WorkSessionCorrectionDialog = ({
           : session.endedAt,
         reason: reason.trim(),
       });
-      await onSaved(corrected);
-      toast.success("Jornada corregida correctamente.");
-      onClose();
     } catch (caught) {
       const message =
         caught instanceof Error
@@ -96,6 +94,18 @@ export const WorkSessionCorrectionDialog = ({
           : "No se pudo corregir la jornada.";
       setError(message);
       toast.error(message);
+      setSaving(false);
+      return;
+    }
+
+    toast.success("Jornada corregida correctamente.");
+    onClose();
+    try {
+      await onSaved(corrected);
+    } catch {
+      toast.error(
+        "La jornada se guardó, pero no se pudo actualizar el historial.",
+      );
     } finally {
       setSaving(false);
     }

@@ -29,7 +29,13 @@ const listAllEmployeeOptions = async () => {
 
   return [firstPage.items, ...remainingPages.map((page) => page.items)]
     .flat()
-    .map(({ id, firstName, lastName }) => ({ id, firstName, lastName }));
+    .map(({ id, firstName, lastName }) => ({ id, firstName, lastName }))
+    .sort((left, right) =>
+      `${left.lastName} ${left.firstName}`.localeCompare(
+        `${right.lastName} ${right.firstName}`,
+        "es-AR",
+      ),
+    );
 };
 
 const WorkSessionsPage = async () => {

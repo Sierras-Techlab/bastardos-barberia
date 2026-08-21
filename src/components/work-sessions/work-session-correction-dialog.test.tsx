@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
+import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import type { ManagerWorkSession } from "@/types/work-session";
 import { WorkSessionCorrectionDialog } from "./work-session-correction-dialog";
 
@@ -78,4 +79,42 @@ it("preserves seconds on the untouched endpoint while correcting the other", asy
     reason: "Olvido informado por el empleado",
   });
   expect(onSaved).toHaveBeenCalledWith(corrected);
+});
+
+it("keeps a persisted correction successful when history refresh fails", async () => {
+  const correct = vi.fn().mockResolvedValue(session);
+  const onSaved = vi.fn().mockRejectedValue(new Error("refresh failed"));
+  const onClose = vi.fn();
+  const browser = userEvent.setup();
+
+  render(
+    <>
+      <WorkSessionCorrectionDialog
+        session={session}
+        workSessionClient={{ correct }}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+      <DashboardToaster />
+    </>,
+  );
+
+  await browser.type(
+    screen.getByLabelText("Motivo de la corrección"),
+    "Corrección confirmada",
+  );
+  await browser.click(screen.getByRole("button", { name: "Guardar corrección" }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+  expect(correct).toHaveBeenCalledOnce();
+  expect(
+    (await screen.findAllByText("Jornada corregida correctamente.")).length,
+  ).toBeGreaterThan(0);
+  expect(
+    await screen.findByText(
+      "La jornada se guardó, pero no se pudo actualizar el historial.",
+    ),
+  ).toBeVisible();
+  expect(within(screen.getByRole("dialog")).queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.queryByText("No se pudo corregir la jornada.")).not.toBeInTheDocument();
 });

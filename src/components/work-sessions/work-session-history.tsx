@@ -73,7 +73,7 @@ const isManagerSession = (
   session: EmployeeWorkSession | ManagerWorkSession,
 ): session is ManagerWorkSession => "grossTotal" in session.metrics;
 
-export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
+const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
   const {
     viewerRole,
     initialData,
@@ -106,16 +106,18 @@ export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
         page,
         pageSize: data.pagination.pageSize,
       });
-      if (requestId !== requestSequence.current) return;
+      if (requestId !== requestSequence.current) return null;
       setData(response);
+      return response;
     } catch (caught) {
-      if (requestId !== requestSequence.current) return;
+      if (requestId !== requestSequence.current) return null;
       const message =
         caught instanceof Error
           ? caught.message
           : "No se pudo cargar el historial de jornadas.";
       setError(message);
       toast.error(message);
+      return null;
     } finally {
       if (requestId === requestSequence.current) setLoading(false);
     }
@@ -134,10 +136,14 @@ export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
   );
 
   const reloadAfterCorrection = async () => {
-    await load(
-      { employeeId, dateFrom, dateTo },
-      data.pagination.page,
-    );
+    const filters = { employeeId, dateFrom, dateTo };
+    const response = await load(filters, data.pagination.page);
+    if (!response) return;
+
+    const lastValidPage = Math.max(1, response.pagination.totalPages);
+    if (response.pagination.page > lastValidPage) {
+      await load(filters, lastValidPage);
+    }
   };
 
   return (
@@ -300,7 +306,7 @@ export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
         )}
       </section>
 
-      {data.pagination.totalPages > 1 && (
+      {data.pagination.totalPages > 0 && (
         <nav aria-label="Paginación de jornadas" className="flex items-center justify-between gap-4">
           <Button type="button" variant="outline" className="rounded-xl" disabled={loading || data.pagination.page <= 1} onClick={() => void load({ employeeId, dateFrom, dateTo }, data.pagination.page - 1)}><ChevronLeft /> Anterior</Button>
           <span className="text-sm text-muted-foreground">Página {data.pagination.page} de {data.pagination.totalPages}</span>
@@ -313,4 +319,17 @@ export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
       )}
     </div>
   );
+};
+
+export const WorkSessionHistory = (props: WorkSessionHistoryProps) => {
+  if (props.viewerRole === "employee") {
+    return (
+      <WorkSessionHistoryState
+        key={JSON.stringify(props.initialData)}
+        {...props}
+      />
+    );
+  }
+
+  return <WorkSessionHistoryState {...props} />;
 };

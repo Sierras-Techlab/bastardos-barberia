@@ -57,6 +57,37 @@ it("renders sanitized employee history without manager financial labels", () => 
   expect(screen.queryByRole("button", { name: /corregir jornada/i })).not.toBeInTheDocument();
 });
 
+it("reconciles refreshed employee history from new server props", () => {
+  const { rerender } = render(
+    <WorkSessionHistory
+      viewerRole="employee"
+      initialData={{
+        items: [],
+        pagination: { ...pagination, total: 0, totalPages: 0 },
+      }}
+    />,
+  );
+
+  expect(screen.getByText("Todavía no hay jornadas")).toBeVisible();
+
+  const openSession: EmployeeWorkSession = {
+    ...employeeSession,
+    endedAt: null,
+    state: "open",
+    metrics: { ...employeeSession.metrics, workedMinutes: 95 },
+  };
+  rerender(
+    <WorkSessionHistory
+      viewerRole="employee"
+      initialData={{ items: [openSession], pagination }}
+    />,
+  );
+
+  expect(screen.queryByText("Todavía no hay jornadas")).not.toBeInTheDocument();
+  expect(screen.getAllByText("En curso").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("1 h 35 min").length).toBeGreaterThan(0);
+});
+
 it("shows manager gross and net metrics with employee filtering", async () => {
   const list = vi.fn().mockResolvedValue({ items: [managerSession], pagination });
   const browser = userEvent.setup();
@@ -149,6 +180,69 @@ it("reloads the current filtered page after a correction changes membership", as
   });
   expect(screen.getByText("Todavía no hay jornadas")).toBeVisible();
   expect(screen.getByText("Ventas brutas").nextElementSibling).toHaveTextContent("$ 0");
+});
+
+it("falls back to the last valid page when correction contracts pagination", async () => {
+  const pageTwo = {
+    items: [managerSession],
+    pagination: { page: 2, pageSize: 12, total: 13, totalPages: 2 },
+  };
+  const fallbackSession: ManagerWorkSession = {
+    ...managerSession,
+    id: "70000000-0000-4000-8000-000000000002",
+    employee: secondEmployee,
+  };
+  const list = vi
+    .fn()
+    .mockResolvedValueOnce({
+      items: [],
+      pagination: { page: 2, pageSize: 12, total: 12, totalPages: 1 },
+    })
+    .mockResolvedValueOnce({
+      items: [fallbackSession],
+      pagination: { page: 1, pageSize: 12, total: 12, totalPages: 1 },
+    });
+  const correct = vi.fn().mockResolvedValue({
+    ...managerSession,
+    businessDate: "2026-08-19",
+  });
+  const browser = userEvent.setup();
+
+  render(
+    <WorkSessionHistory
+      viewerRole="owner"
+      initialData={pageTwo}
+      employeeOptions={employeeOptions}
+      workSessionClient={{ list, correct }}
+    />,
+  );
+
+  await browser.click(
+    screen.getAllByRole("button", { name: /corregir jornada de fernanda pérez/i })[0],
+  );
+  await browser.type(
+    screen.getByLabelText("Motivo de la corrección"),
+    "La jornada cambió de fecha",
+  );
+  await browser.click(screen.getByRole("button", { name: "Guardar corrección" }));
+
+  await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  expect(list).toHaveBeenNthCalledWith(1, {
+    employeeId: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    page: 2,
+    pageSize: 12,
+  });
+  expect(list).toHaveBeenNthCalledWith(2, {
+    employeeId: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    page: 1,
+    pageSize: 12,
+  });
+  expect(screen.getByText("Página 1 de 1")).toBeVisible();
+  expect(screen.getAllByText("Martín Sosa").length).toBeGreaterThan(0);
 });
 
 it("keeps the newest filter response when requests finish out of order", async () => {

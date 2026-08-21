@@ -122,14 +122,14 @@ it("loads every active and inactive non-deleted employee as manager filter optio
       items: [employeeWithoutSession],
       page: 1,
       pageSize: 100,
-      total: 2,
+      total: 101,
       totalPages: 2,
     })
     .mockResolvedValueOnce({
       items: [inactiveEmployeeWithoutSession],
       page: 2,
       pageSize: 100,
-      total: 2,
+      total: 101,
       totalPages: 2,
     });
 
@@ -137,6 +137,11 @@ it("loads every active and inactive non-deleted employee as manager filter optio
 
   expect(screen.getByRole("option", { name: "Martín Sosa" })).toBeInTheDocument();
   expect(screen.getByRole("option", { name: "Lucía Ramos" })).toBeInTheDocument();
+  expect(
+    screen
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual(["Todos los empleados", "Lucía Ramos", "Martín Sosa"]);
   expect(listUsers).toHaveBeenNthCalledWith(1, {
     roleId: 3,
     status: "all",
