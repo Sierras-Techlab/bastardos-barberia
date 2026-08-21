@@ -6,6 +6,7 @@ Captured: 2026-08-21
 
 - Active branch: `feat/changes-fullstack`. The current application baseline includes the merged automatic Caja work through migration `018`.
 - The next product increment has an approved architecture in `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`. It is planning-only: no migration `019` through `023` or dependent application behavior is implemented yet.
+- Five TDD implementation plans now decompose that architecture into ordered, independently deployable blocks `019` through `023`. They remain planning artifacts until an execution approach is selected.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
 - Commercial operations V2 is implemented locally through migrations `010` through `013`. The exact installed revision of the shared Supabase project must be verified before applying later migrations; this task did not mutate the remote database.
 - User authorized autonomous in-scope implementation, local tests and commits. Remote SQL application, push and PR remain outside the authorization received.
@@ -111,7 +112,7 @@ Captured: 2026-08-21
 
 ## Recommended next task
 
-Write and approve the five TDD implementation plans for the `019` through `023` roadmap, then implement `019` employee work sessions as the first independent block.
+Select the execution approach for the approved `019` through `023` TDD plans, then implement `019` employee work sessions as the first independent block.
 
 ## Context maintenance rule
 
