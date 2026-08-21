@@ -93,8 +93,21 @@ describe("migration 019 employee work sessions", () => {
       expect(readme).toContain(sentinel);
     }
 
-    expect(readme).toMatch(
-      /manager_linked_income_id[\s\S]*work_session_id\s*=\s*first_session_id[\s\S]*not\s+outside_work_session/i,
+    const managerAcceptanceStart = readme.indexOf(
+      "manager_linked_income_id := public.create_income",
+    );
+    const managerAcceptanceEnd = readme.indexOf(
+      "WORK_SESSION_ACCEPTANCE_MANAGER_OPEN_SESSION_LINK_FAILED",
+    );
+    expect(managerAcceptanceStart).toBeGreaterThan(-1);
+    expect(managerAcceptanceEnd).toBeGreaterThan(managerAcceptanceStart);
+
+    const managerAcceptanceBlock = readme.slice(
+      managerAcceptanceStart,
+      managerAcceptanceEnd,
+    );
+    expect(managerAcceptanceBlock).toMatch(
+      /where id = manager_linked_income_id[\s\S]*work_session_id\s*=\s*first_session_id[\s\S]*not\s+outside_work_session/i,
     );
     expect(readme).toMatch(
       /first_session_json->'metrics'->>'saleCount'\)::integer\s*<>\s*2[\s\S]*employeeCommission'\)::bigint\s*<>\s*10000[\s\S]*grossTotal'\)::bigint\s*<>\s*20000[\s\S]*barbershopNet'\)::bigint\s*<>\s*10000/i,
@@ -102,12 +115,28 @@ describe("migration 019 employee work sessions", () => {
   });
 
   it("documents effective table and RPC grant checks for server and browser roles", () => {
-    expect(readme).toMatch(/has_table_privilege\s*\(/i);
-    expect(readme).toMatch(/has_function_privilege\s*\(/i);
+    const grantBlock = readme.match(
+      /Verify the work-session objects, RLS and canonical income trigger:[\s\S]*?(?=\nValidate work-session lifecycle)/i,
+    )?.[0];
+    expect(grantBlock).toBeDefined();
+    const grants = grantBlock ?? "";
 
-    for (const role of ["service_role", "anon", "authenticated"]) {
-      expect(readme).toContain(role);
-    }
+    expect(grants).toMatch(
+      /roles\(role_name\) as \(\s*values \('service_role'\), \('anon'\), \('authenticated'\)\s*\)/i,
+    );
+    expect(grants).toMatch(
+      /privileges\(privilege_name\) as \([\s\S]*'SELECT'[\s\S]*'INSERT'[\s\S]*'UPDATE'[\s\S]*'DELETE'[\s\S]*'TRUNCATE'[\s\S]*'REFERENCES'[\s\S]*'TRIGGER'/i,
+    );
+    expect(grants).toMatch(
+      /case\s+when role_name = 'service_role'\s+and privilege_name = 'SELECT'\s+then true\s+else false\s+end as expected/i,
+    );
+    expect(grants).toMatch(
+      /has_table_privilege\(role_name, table_name, privilege_name\) as actual/i,
+    );
+    expect(grants).toMatch(/has_function_privilege\s*\(/i);
+    expect(grants).toMatch(
+      /case\s+when role_name = 'service_role'\s+then true\s+else false\s+end as expected/i,
+    );
 
     for (const signature of [
       "start_work_session(uuid)",
@@ -116,7 +145,7 @@ describe("migration 019 employee work sessions", () => {
       "correct_work_session(uuid,uuid,timestamptz,timestamptz,text)",
       "list_work_sessions(uuid,uuid,date,date,integer,integer)",
     ]) {
-      expect(readme).toContain(signature);
+      expect(grants).toContain(signature);
     }
   });
 });

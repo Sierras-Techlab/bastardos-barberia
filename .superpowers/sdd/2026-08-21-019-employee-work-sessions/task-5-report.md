@@ -118,3 +118,62 @@ npm test
 No SQL was run remotely. The effective-grant checks are documented for the
 authorized, post-`018` Supabase acceptance run; desktop and 390×844 validation
 remain assigned to the main agent.
+
+## Fix Round 2 — complete matrix and isolated acceptance assertions
+
+### Root cause
+
+Fix Round 1 checked only four table privileges and its structural matches could
+span unrelated README content. In particular, the manager-linkage expression
+could be satisfied by the preceding employee sale, while grant assertions did
+not require all PostgreSQL table privileges within the work-session grant block.
+
+### RED
+
+After strengthening the structural test and before changing the README:
+
+```text
+npm test -- src/lib/work-sessions/migration-019.test.ts
+1 failed / 5 passed
+documents effective table and RPC grant checks for server and browser roles
+expected the isolated grant block to contain privileges(privilege_name)
+```
+
+### Implementation and GREEN
+
+- Table acceptance now cross-joins both work-session tables, the three relevant
+  roles and all seven PostgreSQL table privileges: `SELECT`, `INSERT`, `UPDATE`,
+  `DELETE`, `TRUNCATE`, `REFERENCES` and `TRIGGER`.
+- Each matrix row reports `expected` and effective `actual`; only
+  `service_role` / `SELECT` is expected true. The guide requires equality for
+  every row, preserving detection of inherited `PUBLIC` grants.
+- Function acceptance likewise reports expected versus actual execution for the
+  exact five `regprocedure` signatures.
+- The structural test now isolates the manager-created income block from its
+  `create_income` assignment through the manager-link sentinel before requiring
+  its own ID, session linkage and outside-session predicate. It also isolates
+  the grant block by its heading and requires the complete role/privilege/
+  expected/actual matrix there.
+
+```text
+npm test -- src/lib/work-sessions/migration-019.test.ts
+1 file / 6 tests passed
+
+npx tsc --noEmit
+exit 0
+
+npm run lint
+exit 0
+
+git diff --check
+exit 0
+
+npm test
+164 files / 625 tests passed
+```
+
+### Concerns
+
+No remote SQL or browser validation was performed. The Supabase acceptance
+remains an authorized post-`018` deployment action, and desktop/390×844 UI
+validation remains assigned to the main agent.

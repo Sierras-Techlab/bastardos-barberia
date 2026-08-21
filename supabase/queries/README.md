@@ -254,17 +254,29 @@ with work_session_tables(table_name) as (
     ('public.employee_work_session_corrections'::regclass)
 ), roles(role_name) as (
   values ('service_role'), ('anon'), ('authenticated')
+), privileges(privilege_name) as (
+  values
+    ('SELECT'),
+    ('INSERT'),
+    ('UPDATE'),
+    ('DELETE'),
+    ('TRUNCATE'),
+    ('REFERENCES'),
+    ('TRIGGER')
 )
 select
   table_name::text as table_name,
   role_name,
-  has_table_privilege(role_name, table_name, 'SELECT') as can_select,
-  has_table_privilege(role_name, table_name, 'INSERT') as can_insert,
-  has_table_privilege(role_name, table_name, 'UPDATE') as can_update,
-  has_table_privilege(role_name, table_name, 'DELETE') as can_delete
+  privilege_name,
+  case
+    when role_name = 'service_role' and privilege_name = 'SELECT' then true
+    else false
+  end as expected,
+  has_table_privilege(role_name, table_name, privilege_name) as actual
 from work_session_tables
 cross join roles
-order by table_name, role_name;
+cross join privileges
+order by table_name, role_name, privilege_name;
 
 with work_session_functions(function_signature) as (
   values
@@ -279,8 +291,8 @@ with work_session_functions(function_signature) as (
 select
   function_signature::text as function_signature,
   role_name,
-  has_function_privilege(role_name, function_signature, 'EXECUTE')
-    as can_execute
+  case when role_name = 'service_role' then true else false end as expected,
+  has_function_privilege(role_name, function_signature, 'EXECUTE') as actual
 from work_session_functions
 cross join roles
 order by function_signature, role_name;
@@ -288,13 +300,14 @@ order by function_signature, role_name;
 
 Both tables must report `rowsecurity = true`, all five canonical RPCs must be
 present exactly once, and the income trigger must report `BEFORE` / `INSERT`.
-For both tables, `service_role` must have `can_select = true` and every DML
-column false; `anon` and `authenticated` must have every table privilege false.
-For each exact `regprocedure` signature, `service_role` must have
-`can_execute = true`, while `anon` and `authenticated` must both have
-`can_execute = false`. These effective-privilege checks also catch grants
-inherited through `PUBLIC`; they intentionally make no assertion about owner or
-`postgres` privileges.
+For every table-privilege row, `actual` must equal `expected`: only
+`service_role` / `SELECT` is true; all other privileges (`INSERT`, `UPDATE`,
+`DELETE`, `TRUNCATE`, `REFERENCES` and `TRIGGER`) and every `anon` /
+`authenticated` table privilege are false. For every exact `regprocedure`
+signature, `actual` must equal `expected`: `service_role` executes the five
+canonical RPCs, while `anon` and `authenticated` do not. These effective-
+privilege checks also catch grants inherited through `PUBLIC`; they
+intentionally make no assertion about owner or `postgres` privileges.
 
 Validate work-session lifecycle, income attachment, correction audit and active-only
 production metrics without retaining temporary records:
