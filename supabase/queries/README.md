@@ -23,6 +23,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 17. `017_product_category_deletion.sql`
 18. `018_automatic_daily_cash.sql`
 19. `019_employee_work_sessions.sql`
+20. `020_income_pricing_owner_commissions_and_employee_privacy.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -33,6 +34,8 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `018_automatic_daily_cash.sql` installs the manager-only automatic cash module. It creates immutable daily closures only for dates with sales or post-close adjustments, preserves sale and payment-method snapshots for audit, records later voids as negative adjustments, and schedules the idempotent closer hourly with `pg_cron`. Run it after `017`; there is no manual open or close operation.
 
 `019_employee_work_sessions.sql` installs employee clock-in/out, append-only manager corrections and server-derived income linkage. Employee-created sales require the actor's own open session. Manager-created sales for an employee link that employee's open session when present and otherwise retain an explicit outside-session audit flag. Run it after `018`; the canonical `create_income` RPC remains unchanged.
+
+`020_income_pricing_owner_commissions_and_employee_privacy.sql` removes the owner-zero rule introduced by `012`, lets managers override charged prices with reason and computes commission on the charged subtotal. It accepts manager exact amounts and employee integer basis points (summing to 10000), allows zero-total sales without payments and exposes a sanitized `income_as_employee_json` projection that omits catalog/charged prices, payments, totals and barbershop net. Run it after `019`; the canonical `create_income`, `list_incomes`, `get_income_detail` and `income_as_json` names remain unchanged.
 
 Verify the automatic cash objects and cron job:
 

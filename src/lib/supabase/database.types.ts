@@ -171,6 +171,7 @@ export type IncomeRow = {
   customer_id: string | null;
   payment_method: IncomePaymentMethod | null;
   total: number;
+  gross_total: number;
   service_commission_base: number;
   product_commission_base: number;
   service_commission_rate: number;
@@ -193,8 +194,11 @@ export type IncomeRow = {
 export type IncomePaymentRow = {
   id: string;
   income_id: string;
-  method: IncomePaymentMethod;
+  method: IncomePaymentMethod | null;
+  payment_method_id: string | null;
+  method_name_snapshot: string | null;
   amount: number;
+  basis_points: number | null;
   created_at: string;
 };
 
@@ -208,13 +212,20 @@ export type IncomeItemRow = {
   product_id: string | null;
   name_snapshot: string;
   unit_price: number;
+  catalog_unit_price: number;
+  charged_unit_price: number;
   quantity: number;
   subtotal: number;
+  catalog_subtotal: number;
+  charged_subtotal: number;
+  adjustment_amount: number;
   line_subtotal: number;
   commission_rate: number;
   commission_amount: number;
   full_commission: boolean;
   full_commission_authorized_by: string | null;
+  price_override_by: string | null;
+  price_override_reason: string | null;
   created_at: string;
 };
 

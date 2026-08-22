@@ -130,6 +130,7 @@ describe("managerIncomeResponseSchema", () => {
     payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 20000 }],
     commission: { total: 9000, barbershopNet: 11000 },
     total: 20000,
+    grossTotal: 20000,
     status: "active" as const,
   };
 

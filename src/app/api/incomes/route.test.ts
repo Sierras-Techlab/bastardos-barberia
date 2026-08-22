@@ -3,7 +3,7 @@ import { AppError } from "@/lib/auth/errors";
 const { requireUser, listIncomes, createIncome } = vi.hoisted(() => ({ requireUser: vi.fn(), listIncomes: vi.fn(), createIncome: vi.fn() }));
 vi.mock("@/lib/auth/authorization", () => ({ requireUser })); vi.mock("@/lib/incomes/service", () => ({ listIncomes, createIncome }));
 import { GET, POST } from "./route";
-const actor = { id: "00000000-0000-4000-8000-000000000001" };
+const actor = { id: "00000000-0000-4000-8000-000000000001", role: { id: 1, name: "owner" as const } };
 beforeEach(() => { vi.clearAllMocks(); requireUser.mockResolvedValue({ user: actor }); });
 it("parses list query and public create body", async () => {
   listIncomes.mockResolvedValue({ items: [] }); createIncome.mockResolvedValue({ id: "id" });

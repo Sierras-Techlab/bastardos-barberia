@@ -18,6 +18,8 @@ export type CreateIncomeInput = {
   products: IncomeProductInput[];
   payments: IncomePaymentInput[];
   grantFullServiceCommission: boolean;
+  servicePriceOverride?: { chargedUnitPrice: number; reason: string } | null;
+  productPriceOverrides?: Record<string, { chargedUnitPrice: number; reason: string }>;
 };
 export type IncomeStatus = "active" | "voided";
 export type IncomeKind = "service" | "products" | "combined";

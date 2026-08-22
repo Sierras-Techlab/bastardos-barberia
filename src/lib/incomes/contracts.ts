@@ -61,6 +61,7 @@ export const managerIncomeResponseSchema = z.object({
   payments: z.array(paymentSchema).min(1),
   commission: commissionSchema,
   total: z.number().int().nonnegative(),
+  grossTotal: z.number().int().nonnegative(),
   status: z.enum(["active", "voided"]),
 }).strict();
 const employeeConceptSchema = z.object({
@@ -82,6 +83,12 @@ export const employeeIncomeResponseSchema = z.object({
 export const paginatedIncomesSchema = z.object({
   items: z.array(incomeResponseSchema),
   metrics: z.object({ grossTotal: z.number().nonnegative(), commissionTotal: z.number().nonnegative(), barbershopNet: z.number().nonnegative(), count: z.number().int().nonnegative(), average: z.number().nonnegative(), paymentTotals: z.array(z.object({ paymentMethodId: z.uuid(), name: z.string().min(1), amount: z.number().int().nonnegative() }).strict()) }).strict(),
+  pagination: z.object({ page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict(),
+}).strict();
+
+export const employeePaginatedIncomesSchema = z.object({
+  items: z.array(employeeIncomeResponseSchema),
+  metrics: z.object({ count: z.number().int().nonnegative(), employeeCommissionTotal: z.number().int().nonnegative() }).strict(),
   pagination: z.object({ page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict(),
 }).strict();
 export const incomeResponsibleEmployeesSchema = z.array(employeeSchema);
