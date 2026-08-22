@@ -32,3 +32,30 @@ export const formatArs = (value: number) =>
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(value);
+
+const MAX_BASIS_POINTS = 10000;
+
+export const allocateByBasisPoints = (
+  total: number,
+  basisPoints: number[],
+): number[] => {
+  if (basisPoints.length === 0) {
+    throw new Error("Se requiere al menos un porcentaje para asignar el total.");
+  }
+  const sum = basisPoints.reduce((acc, value) => acc + value, 0);
+  if (sum !== MAX_BASIS_POINTS) {
+    throw new Error("Los porcentajes deben sumar 100% (10000 basis points).");
+  }
+  if (total === 0) {
+    return basisPoints.map(() => 0);
+  }
+  const allocations = new Array<number>(basisPoints.length).fill(0);
+  let allocated = 0;
+  for (let index = 0; index < basisPoints.length - 1; index += 1) {
+    const portion = Math.floor((total * basisPoints[index]) / MAX_BASIS_POINTS);
+    allocations[index] = portion;
+    allocated += portion;
+  }
+  allocations[allocations.length - 1] = total - allocated;
+  return allocations;
+};

@@ -6,12 +6,37 @@ const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName:
 const paymentSchema = z.object({ paymentMethodId: z.uuid(), methodName: z.string().min(1), amount: z.number().int().positive() }).strict();
 const itemCommissionSchema = z.object({
   subtotal: z.number().int().nonnegative(),
+  catalogSubtotal: z.number().int().nonnegative(),
+  chargedSubtotal: z.number().int().nonnegative(),
+  adjustmentAmount: z.number().int(),
   rate: z.number().int().min(0).max(100),
   amount: z.number().int().nonnegative(),
   fullCommission: z.boolean(),
   authorizedBy: employeeSchema.nullable(),
 }).strict();
-const serviceSchema = z.object({ id: z.uuid(), name: z.string(), price: z.number().int().positive(), commission: itemCommissionSchema }).strict();
+const managerServiceSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  catalogUnitPrice: z.number().int().nonnegative(),
+  chargedUnitPrice: z.number().int().nonnegative(),
+  catalogSubtotal: z.number().int().nonnegative(),
+  chargedSubtotal: z.number().int().nonnegative(),
+  adjustmentAmount: z.number().int(),
+  commission: itemCommissionSchema,
+}).strict();
+const legacyServiceSchema = serviceSchemaBackwardCompatible();
+const managerProductSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  catalogUnitPrice: z.number().int().nonnegative(),
+  chargedUnitPrice: z.number().int().nonnegative(),
+  catalogSubtotal: z.number().int().nonnegative(),
+  chargedSubtotal: z.number().int().nonnegative(),
+  adjustmentAmount: z.number().int(),
+  quantity: z.number().int().positive(),
+  commission: itemCommissionSchema,
+}).strict();
+const legacyProductSchema = productSchemaBackwardCompatible();
 const commissionSchema = z.object({
   total: z.number().int().nonnegative(),
   barbershopNet: z.number().int().nonnegative(),
@@ -19,10 +44,40 @@ const commissionSchema = z.object({
 export const incomeResponseSchema = z.object({
   id: z.uuid(), createdAt: z.iso.datetime({ offset: true }), businessDate: z.iso.date(), employee: employeeSchema,
   registeredBy: employeeSchema,
-  customer: employeeSchema.nullable(), service: serviceSchema.nullable(),
-  products: z.array(z.object({ id: z.uuid(), name: z.string(), unitPrice: z.number().int().positive(), quantity: z.number().int().positive(), commission: itemCommissionSchema }).strict()),
+  customer: employeeSchema.nullable(), service: legacyServiceSchema.nullable(),
+  products: z.array(legacyProductSchema),
   payments: z.array(paymentSchema).min(1), commission: commissionSchema,
   total: z.number().int().positive(), status: z.enum(["active", "voided"]),
+}).strict();
+export const managerIncomeResponseSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.iso.datetime({ offset: true }),
+  businessDate: z.iso.date(),
+  employee: employeeSchema,
+  registeredBy: employeeSchema,
+  customer: employeeSchema.nullable(),
+  service: managerServiceSchema.nullable(),
+  products: z.array(managerProductSchema),
+  payments: z.array(paymentSchema).min(1),
+  commission: commissionSchema,
+  total: z.number().int().nonnegative(),
+  status: z.enum(["active", "voided"]),
+}).strict();
+const employeeConceptSchema = z.object({
+  id: z.uuid(),
+  type: z.enum(["service", "product"]),
+  name: z.string(),
+  quantity: z.number().int().positive(),
+  earning: z.number().int().nonnegative(),
+}).strict();
+export const employeeIncomeResponseSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.iso.datetime({ offset: true }),
+  businessDate: z.iso.date(),
+  customer: employeeSchema.nullable(),
+  concepts: z.array(employeeConceptSchema).min(1),
+  employeeCommission: z.number().int().nonnegative(),
+  status: z.enum(["active", "voided"]),
 }).strict();
 export const paginatedIncomesSchema = z.object({
   items: z.array(incomeResponseSchema),
@@ -39,3 +94,32 @@ export type IncomeRepository = {
   void(id: string, actorId: string): Promise<IncomeListItem | null>;
 };
 export type IncomeDependencies = { incomes: IncomeRepository };
+
+function serviceSchemaBackwardCompatible() {
+  return z.object({
+    id: z.uuid(),
+    name: z.string(),
+    price: z.number().int().positive(),
+    catalogUnitPrice: z.number().int().nonnegative().optional(),
+    chargedUnitPrice: z.number().int().nonnegative().optional(),
+    catalogSubtotal: z.number().int().nonnegative().optional(),
+    chargedSubtotal: z.number().int().nonnegative().optional(),
+    adjustmentAmount: z.number().int().optional(),
+    commission: itemCommissionSchema,
+  }).strict();
+}
+
+function productSchemaBackwardCompatible() {
+  return z.object({
+    id: z.uuid(),
+    name: z.string(),
+    unitPrice: z.number().int().positive(),
+    catalogUnitPrice: z.number().int().nonnegative().optional(),
+    chargedUnitPrice: z.number().int().nonnegative().optional(),
+    catalogSubtotal: z.number().int().nonnegative().optional(),
+    chargedSubtotal: z.number().int().nonnegative().optional(),
+    adjustmentAmount: z.number().int().optional(),
+    quantity: z.number().int().positive(),
+    commission: itemCommissionSchema,
+  }).strict();
+}

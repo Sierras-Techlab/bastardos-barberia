@@ -5,9 +5,27 @@ import { incomeRepository } from "@/lib/incomes/repository";
 import type { SafeUser } from "@/lib/auth/types";
 
 const manager = { id: "00000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "García" };
-const serviceCommission = { subtotal: 13000, rate: 50, amount: 6500, fullCommission: false, authorizedBy: null };
-const productCommission = { subtotal: 20000, rate: 100, amount: 20000, fullCommission: true, authorizedBy: manager };
-const item = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" }, registeredBy: manager, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, commission: serviceCommission }, products: [{ id: "50000000-0000-4000-8000-000000000001", name: "Cera", unitPrice: 10000, quantity: 2, commission: productCommission }], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 33000 }], commission: { total: 26500, barbershopNet: 6500 }, total: 33000, status: "active" };
+const serviceCommission = {
+  subtotal: 13000,
+  catalogSubtotal: 13000,
+  chargedSubtotal: 13000,
+  adjustmentAmount: 0,
+  rate: 50,
+  amount: 6500,
+  fullCommission: false,
+  authorizedBy: null,
+};
+const productCommission = {
+  subtotal: 20000,
+  catalogSubtotal: 20000,
+  chargedSubtotal: 20000,
+  adjustmentAmount: 0,
+  rate: 100,
+  amount: 20000,
+  fullCommission: true,
+  authorizedBy: manager,
+};
+const item = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" }, registeredBy: manager, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, catalogUnitPrice: 13000, chargedUnitPrice: 13000, catalogSubtotal: 13000, chargedSubtotal: 13000, adjustmentAmount: 0, commission: serviceCommission }, products: [{ id: "50000000-0000-4000-8000-000000000001", name: "Cera", unitPrice: 10000, catalogUnitPrice: 10000, chargedUnitPrice: 10000, catalogSubtotal: 20000, chargedSubtotal: 20000, adjustmentAmount: 0, quantity: 2, commission: productCommission }], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 33000 }], commission: { total: 26500, barbershopNet: 6500 }, total: 33000, status: "active" };
 const actor: SafeUser = { ...item.employee, username: "fer.perez", role: { id: 3, name: "employee" }, isActive: true, serviceCommissionRate: 45, productCommissionRate: 10, lastLoginAt: null, createdAt: "2026-08-01T00:00:00Z", updatedAt: "2026-08-01T00:00:00Z" };
 const input = { requestId: "40000000-0000-4000-8000-000000000001", employeeId: actor.id, customerId: null, serviceId: item.service.id, products: [{ productId: item.products[0].id, quantity: 2, grantFullCommission: true }], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 33000 }], grantFullServiceCommission: false };
 beforeEach(() => vi.clearAllMocks());

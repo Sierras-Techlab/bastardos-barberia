@@ -17,16 +17,30 @@ export type CommissionPreviewInput = {
   serviceRate: number;
   productRate: number;
   grantFullServiceCommission: boolean;
-  products: Array<{ productId: string; price: number; quantity: number; grantFullCommission: boolean }>;
+  authorizedBy?: import("@/types/income").Employee | null;
+  serviceChargedBase?: number;
+  products: Array<{
+    productId: string;
+    price: number;
+    quantity: number;
+    grantFullCommission: boolean;
+    chargedUnitPrice?: number;
+  }>;
 };
 
 export type IncomeItemCommissionSnapshot = {
   subtotal: number;
+  catalogSubtotal: number;
+  chargedSubtotal: number;
+  adjustmentAmount: number;
   rate: number;
   amount: number;
   fullCommission: boolean;
   authorizedBy: import("@/types/income").Employee | null;
 };
+
+/** Alias for backwards compatibility with code that references the charged subtotal only. */
+export type IncomeItemChargedSnapshot = IncomeItemCommissionSnapshot;
 
 export type CommissionPreviewSnapshot = {
   service: IncomeItemCommissionSnapshot | null;

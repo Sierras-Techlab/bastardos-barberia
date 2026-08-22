@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateIncomeTotal, formatArs } from "./income-calculations";
+import {
+  allocateByBasisPoints,
+  calculateIncomeTotal,
+  formatArs,
+} from "./income-calculations";
 
 const services = [{ id: "service-1", name: "Corte", price: 16000 }];
 const products = [
@@ -59,6 +63,30 @@ describe("calculateIncomeTotal", () => {
         products,
       ),
     ).toBe(0);
+  });
+});
+
+describe("allocateByBasisPoints", () => {
+  it("distributes the exact total when basis points sum to 10000", () => {
+    expect(allocateByBasisPoints(19000, [5000, 5000])).toEqual([9500, 9500]);
+  });
+
+  it("assigns the integer remainder to the last allocation deterministically", () => {
+    expect(allocateByBasisPoints(10001, [5000, 5000])).toEqual([5000, 5001]);
+    expect(allocateByBasisPoints(100, [3334, 3333, 3333])).toEqual([33, 33, 34]);
+  });
+
+  it("returns zeros for a zero total", () => {
+    expect(allocateByBasisPoints(0, [5000, 5000])).toEqual([0, 0]);
+  });
+
+  it("rejects basis points that do not sum to 10000", () => {
+    expect(() => allocateByBasisPoints(1000, [3000, 3000])).toThrow();
+    expect(() => allocateByBasisPoints(1000, [5000, 5000, 1000])).toThrow();
+  });
+
+  it("rejects empty basis points", () => {
+    expect(() => allocateByBasisPoints(1000, [])).toThrow();
   });
 });
 

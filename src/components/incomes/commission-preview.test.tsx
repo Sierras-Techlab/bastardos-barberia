@@ -26,14 +26,14 @@ it("previews a full service alongside multiple independently commissioned produc
   expect(preview).toHaveTextContent("$ 9.000");
 });
 it("hides the exceptional grant for the employee role", () => { render(<CommissionPreview values={values} data={{ ...data, currentUser: { ...currentUser, role: "employee" } }} onGrantFullServiceCommission={vi.fn()} />); expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument(); });
-it("neutralizes owner commission rates and overrides for the responsible employee", () => {
+it("applies the owner configured rates and never the 100 percent exception", () => {
   const responsibleOwner = { ...employee, id: "00000000-0000-4000-8000-000000000003", firstName: "Sofía", role: "owner" as const };
 
   render(<CommissionPreview values={{ ...values, employeeId: responsibleOwner.id, grantFullServiceCommission: true }} data={{ ...data, employees: [responsibleOwner] }} onGrantFullServiceCommission={vi.fn()} />);
 
   const preview = screen.getByLabelText("Comisión estimada");
-  expect(preview).toHaveTextContent("Corte · 0%");
-  expect(preview).toHaveTextContent("$ 0");
-  expect(preview).toHaveTextContent("$ 26.000");
+  expect(preview).toHaveTextContent("Corte · 45%");
+  expect(preview).toHaveTextContent("Cera · 10%");
+  expect(preview).not.toHaveTextContent("Corte · 100%");
   expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument();
 });
