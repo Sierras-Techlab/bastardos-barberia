@@ -10,12 +10,17 @@ const row: CustomerRow = { id: "10000000-0000-4000-8000-000000000001", first_nam
 
 describe("customer repository", () => {
   beforeEach(() => vi.clearAllMocks());
-  it("maps nullable email and excludes deleted records", async () => {
-    const query = { select: vi.fn(), is: vi.fn(), order: vi.fn() };
-    query.select.mockReturnValue(query); query.is.mockReturnValue(query); query.order.mockResolvedValue({ data: [row], error: null });
-    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
-    await expect(customerRepository.list()).resolves.toEqual([toCustomer(row)]);
-    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  it("delegates to list_customers with the authenticated actor id", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ ...toCustomer(row), lastVisitBusinessDate: "2026-08-15" }],
+      error: null,
+    });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+    const result = await customerRepository.list("00000000-0000-4000-8000-000000000099");
+    expect(rpc).toHaveBeenCalledWith("list_customers", {
+      actor_user_id: "00000000-0000-4000-8000-000000000099",
+    });
+    expect(result[0]).toMatchObject({ lastVisitBusinessDate: "2026-08-15" });
   });
   it("returns only the newest non-deleted customer", async () => {
     const query = {

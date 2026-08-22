@@ -17,7 +17,7 @@ const applyActorScheduleScope = (actor: SafeUser, schedule: FixedScheduleInput |
   if (schedule === undefined || schedule === null) return schedule;
   return isEmployee(actor) ? forcedSelfSchedule(actor, schedule) : schedule;
 };
-export const listCustomers = async (_actor: SafeUser, dependencies: CustomerServiceDependencies = defaults) => ({ customers: await dependencies.customers.list() });
+export const listCustomers = async (actor: SafeUser, dependencies: CustomerServiceDependencies = defaults) => ({ customers: await dependencies.customers.list(actor.id) });
 export const getLatestCustomer = async (_actor: SafeUser, dependencies: CustomerServiceDependencies = defaults) => dependencies.customers.latest();
 export const createCustomer = async (actor: SafeUser, input: CreateCustomerInput, dependencies: CustomerServiceDependencies = defaults) =>
   dependencies.customers.create({ ...input, fixedSchedule: applyActorScheduleScope(actor, input.fixedSchedule) ?? null, createdBy: actor.id });

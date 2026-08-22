@@ -6,6 +6,7 @@ import type { CustomerRepository } from "@/lib/customers/contracts";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CustomerRow } from "@/lib/supabase/database.types";
 import type { Customer } from "@/types/customer";
+import { authorizeCustomerCatalogData } from "@/lib/customers/customer-catalog";
 
 const paginatedCustomerVisitsSchema = z.object({
   items: z.array(z.object({
@@ -66,6 +67,7 @@ export const toCustomer = (row: CustomerWithScheduleRow): Customer => {
     monthlyPrice,
   } : null,
   fixedScheduleVersion: schedule?.version ?? null,
+  lastVisitBusinessDate: null,
   });
 };
 const databaseFailure = (operation: string, error: unknown): never => {
@@ -95,10 +97,10 @@ const readById = async (id: string) => {
   return data ? toCustomer(data as unknown as CustomerWithScheduleRow) : null;
 };
 export const customerRepository: CustomerRepository = {
-  async list() {
-    const { data, error } = await getSupabaseAdmin().from("customers").select(CUSTOMER_SELECT).is("deleted_at", null).order("created_at", { ascending: true });
+  async list(actorId) {
+    const { data, error } = await getSupabaseAdmin().rpc("list_customers", { actor_user_id: actorId });
     if (error) databaseFailure("list customers", error);
-    return (data ?? []).map((item) => toCustomer(item as unknown as CustomerWithScheduleRow));
+    return authorizeCustomerCatalogData({ customers: data ?? [] }).customers;
   },
   async latest() {
     const { data, error } = await getSupabaseAdmin()

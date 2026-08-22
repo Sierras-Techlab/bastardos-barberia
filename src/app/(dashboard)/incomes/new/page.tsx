@@ -77,7 +77,7 @@ const NewIncomePage = async () => {
     await Promise.all([
       serviceRepository.list(false),
       productRepository.list(false),
-      customerRepository.list(),
+      customerRepository.list(user.id),
       paymentMethodRepository.list(false),
       user.role.name === "employee"
         ? Promise.resolve(null)
