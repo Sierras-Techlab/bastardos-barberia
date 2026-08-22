@@ -1,5 +1,6 @@
 import type { UserRole } from "@/types/income";
-export type { CreateIncomeInput, IncomePaymentInput as IncomePayment } from "@/types/income";
+export type { IncomePayment } from "@/types/payment-method";
+export type { CreateIncomeInput } from "@/types/income";
 
 export type CommissionUser = {
   id: string;
@@ -30,9 +31,9 @@ export type CommissionPreviewInput = {
 
 export type IncomeItemCommissionSnapshot = {
   subtotal: number;
-  catalogSubtotal: number;
-  chargedSubtotal: number;
-  adjustmentAmount: number;
+  catalogSubtotal?: number;
+  chargedSubtotal?: number;
+  adjustmentAmount?: number;
   rate: number;
   amount: number;
   fullCommission: boolean;

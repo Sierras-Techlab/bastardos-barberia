@@ -35,7 +35,22 @@ const managerData: IncomeFormData = {
     { id: "00000000-0000-4000-8000-000000000004", firstName: "Sofía", lastName: "Dueña", role: "owner", isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 },
   ],
 };
-const result = (input: CreateIncomeInput): Income => ({ id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: data.currentUser, registeredBy: data.currentUser, customer: null, service: { ...data.services[0], commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } }, products: [], payments: input.payments.map((payment) => ({ ...payment, methodName: paymentMethods.find((method) => method.id === payment.paymentMethodId)?.name ?? "Desconocido" })), commission: { total: 5850, barbershopNet: 7150 }, total: 13000, status: "active" });
+const result = (input: CreateIncomeInput): Income => ({
+  id: "20000000-0000-4000-8000-000000000001",
+  createdAt: "2026-08-11T12:00:00.000Z",
+  businessDate: "2026-08-11",
+  employee: data.currentUser,
+  registeredBy: data.currentUser,
+  customer: null,
+  service: { ...data.services[0], commission: { subtotal: 13000, rate: 45, amount: 5850, fullCommission: false, authorizedBy: null } },
+  products: [],
+  payments: input.payments
+    .filter((payment): payment is { paymentMethodId: string; amount: number } => "amount" in payment)
+    .map((payment) => ({ paymentMethodId: payment.paymentMethodId, methodName: paymentMethods.find((method) => method.id === payment.paymentMethodId)?.name ?? "Desconocido", amount: payment.amount })),
+  commission: { total: 5850, barbershopNet: 7150 },
+  total: 13000,
+  status: "active",
+});
 const client = (create = vi.fn(async (input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
 const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 

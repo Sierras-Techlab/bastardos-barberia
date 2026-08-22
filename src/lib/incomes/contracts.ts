@@ -6,9 +6,9 @@ const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName:
 const paymentSchema = z.object({ paymentMethodId: z.uuid(), methodName: z.string().min(1), amount: z.number().int().positive() }).strict();
 const itemCommissionSchema = z.object({
   subtotal: z.number().int().nonnegative(),
-  catalogSubtotal: z.number().int().nonnegative(),
-  chargedSubtotal: z.number().int().nonnegative(),
-  adjustmentAmount: z.number().int(),
+  catalogSubtotal: z.number().int().nonnegative().optional(),
+  chargedSubtotal: z.number().int().nonnegative().optional(),
+  adjustmentAmount: z.number().int().optional(),
   rate: z.number().int().min(0).max(100),
   amount: z.number().int().nonnegative(),
   fullCommission: z.boolean(),
@@ -93,12 +93,15 @@ export const employeePaginatedIncomesSchema = z.object({
 }).strict();
 export const incomeResponsibleEmployeesSchema = z.array(employeeSchema);
 export type IncomeScope = { requestingUserId: string; canViewAll: boolean; userId: string | null };
+export type ManagerIncomeDetail = z.infer<typeof managerIncomeResponseSchema>;
+export type EmployeeIncomeDetail = z.infer<typeof employeeIncomeResponseSchema>;
+export type EmployeePaginatedIncomes = z.infer<typeof employeePaginatedIncomesSchema>;
 export type IncomeRepository = {
-  create(actor: SafeUser, input: CreateIncomeInput): Promise<Income>;
-  list(scope: IncomeScope, query: IncomeListQuery): Promise<PaginatedIncomes>;
+  create(actor: SafeUser, input: CreateIncomeInput): Promise<ManagerIncomeDetail | EmployeeIncomeDetail>;
+  list(scope: IncomeScope, query: IncomeListQuery): Promise<PaginatedIncomes | EmployeePaginatedIncomes>;
   listResponsibleEmployees(requestingUserId: string): Promise<Array<{ id: string; firstName: string; lastName: string }>>;
-  findById(scope: IncomeScope, id: string): Promise<IncomeListItem | null>;
-  void(id: string, actorId: string): Promise<IncomeListItem | null>;
+  findById(scope: IncomeScope, id: string): Promise<ManagerIncomeDetail | EmployeeIncomeDetail | null>;
+  void(id: string, actorId: string): Promise<ManagerIncomeDetail | EmployeeIncomeDetail | null>;
 };
 export type IncomeDependencies = { incomes: IncomeRepository };
 

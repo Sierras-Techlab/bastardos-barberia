@@ -3,17 +3,10 @@ import type {
   CommissionPreviewInput,
   IncomePayment,
 } from "@/types/income-commissions";
+import type { IncomePaymentInput } from "@/types/payment-method";
 import type { IncomeStatus } from "@/types/income";
 
-type LineSnapshot = {
-  catalogSubtotal: number;
-  chargedSubtotal: number;
-  adjustmentAmount: number;
-  rate: number;
-  amount: number;
-  fullCommission: boolean;
-  authorizedBy: import("@/types/income").Employee | null;
-};
+type LineSnapshot = import("@/types/income-commissions").IncomeItemCommissionSnapshot;
 
 const buildLineSnapshot = ({
   chargedSubtotal,
@@ -71,8 +64,8 @@ export const calculateCommissionPreview = (
 
   if (service) {
     service.catalogSubtotal = input.serviceBase;
-    service.adjustmentAmount = service.chargedSubtotal - service.catalogSubtotal;
-    service.subtotal = service.chargedSubtotal;
+    service.adjustmentAmount = (service.chargedSubtotal ?? 0) - service.catalogSubtotal;
+    service.subtotal = service.chargedSubtotal ?? 0;
   }
 
   const products = input.products.map((product) => {
@@ -87,13 +80,13 @@ export const calculateCommissionPreview = (
       isOwner,
     });
     snapshot.catalogSubtotal = catalogSubtotal;
-    snapshot.adjustmentAmount = snapshot.chargedSubtotal - catalogSubtotal;
-    snapshot.subtotal = snapshot.chargedSubtotal;
+    snapshot.adjustmentAmount = (snapshot.chargedSubtotal ?? 0) - catalogSubtotal;
+    snapshot.subtotal = snapshot.chargedSubtotal ?? 0;
     return snapshot;
   });
 
   const total = (service?.amount ?? 0) + products.reduce((sum, product) => sum + product.amount, 0);
-  const gross = (service?.chargedSubtotal ?? 0) + products.reduce((sum, product) => sum + product.chargedSubtotal, 0);
+  const gross = (service?.chargedSubtotal ?? 0) + products.reduce((sum, product) => sum + (product.chargedSubtotal ?? 0), 0);
   const barbershopNet = gross - total;
 
   return {
@@ -104,8 +97,8 @@ export const calculateCommissionPreview = (
   };
 };
 
-export const calculatePaymentBalance = (total: number, payments: IncomePayment[]) => {
-  const allocated = payments.reduce((sum, payment) => sum + payment.amount, 0);
+export const calculatePaymentBalance = (total: number, payments: IncomePaymentInput[]) => {
+  const allocated = payments.reduce((sum, payment) => sum + ("amount" in payment ? payment.amount : 0), 0);
   return {
     allocated,
     remaining: Math.max(total - allocated, 0),

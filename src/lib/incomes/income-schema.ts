@@ -55,6 +55,30 @@ export const incomeFormSchema = z.object({
   message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
 });
 
+const priceOverrideFormSchema = z.object({
+  chargedUnitPrice: z.coerce.number().int().positive(),
+  reason: z.string().trim().min(1, "Indicá el motivo del cambio de precio."),
+}).strict();
+
+const productOverridesFormSchema = z.array(
+  z.object({ productId: z.string(), override: priceOverrideFormSchema.nullable() }).strict(),
+).default([]);
+
+export const managerIncomeFormSchema = incomeFormSchema.extend({
+  servicePriceOverride: priceOverrideFormSchema.nullable().default(null),
+  productPriceOverrides: productOverridesFormSchema,
+}).strict();
+
+export const employeeIncomeFormSchema = incomeFormSchema.extend({
+  servicePriceOverride: z.null().default(null),
+  productPriceOverrides: z.array(z.unknown()).default([]),
+}).strict();
+
+export const employeeIncomeFormPaymentSchema = z.object({
+  paymentMethodId: z.uuid(),
+  basisPoints: z.coerce.number().int().min(0).max(10000),
+}).strict();
+
 const managerCreateBaseSchema = z.object({
   requestId: z.uuid(),
   employeeId: z.uuid(),

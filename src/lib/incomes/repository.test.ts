@@ -82,7 +82,11 @@ it("rejects a response when a sale item omits its commission snapshot", async ()
   const serviceWithoutCommission = {
     id: item.service.id,
     name: item.service.name,
-    price: item.service.price,
+    catalogUnitPrice: 13000,
+    chargedUnitPrice: 13000,
+    catalogSubtotal: 13000,
+    chargedSubtotal: 13000,
+    adjustmentAmount: 0,
   };
   const databaseItem = { ...item, service: serviceWithoutCommission };
   const rpc = vi

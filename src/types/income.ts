@@ -27,7 +27,7 @@ export type IncomeListService = Service & { commission: import("@/types/income-c
 export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number; commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
 export type IncomeListItem = {
   id: string; createdAt: string; businessDate: string; employee: Employee; customer: Employee | null;
-  service: IncomeListService | null; products: IncomeListProduct[]; payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; status: IncomeStatus;
+  service: IncomeListService | null; products: IncomeListProduct[]; payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; grossTotal?: number; status: IncomeStatus;
 };
 export type Income = IncomeListItem;
 export type IncomeService = { create(input: CreateIncomeInput): Promise<Income> };

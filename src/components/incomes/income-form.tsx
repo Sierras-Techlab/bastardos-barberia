@@ -75,7 +75,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     setSubmitError(null);
     const total = calculateIncomeTotal(validValues, data.services, data.products);
     const balance = calculatePaymentBalance(total, validValues.payments);
-    if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => payment.amount <= 0)) {
+    if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => "amount" in payment && payment.amount <= 0)) {
       form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
       return;
     }

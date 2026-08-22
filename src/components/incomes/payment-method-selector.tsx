@@ -9,6 +9,9 @@ import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
 import { cn } from "@/lib/utils";
 import type { IncomePaymentInput, PaymentMethod } from "@/types/payment-method";
 
+const amountOf = (payment: IncomePaymentInput) =>
+  "amount" in payment ? payment.amount : 0;
+
 type Props = {
   methods: PaymentMethod[];
   payments: IncomePaymentInput[];
@@ -47,7 +50,7 @@ export const PaymentMethodSelector = ({ methods, payments, total, onChange, erro
   useEffect(() => {
     const oldTotal = previousTotal.current;
     previousTotal.current = total;
-    if (oldTotal !== total && payments.length === 1 && payments[0].amount === oldTotal) {
+    if (oldTotal !== total && payments.length === 1 && amountOf(payments[0]) === oldTotal) {
       onChange([{ ...payments[0], amount: total }]);
     }
   }, [onChange, payments, total]);
@@ -158,7 +161,7 @@ export const PaymentMethodSelector = ({ methods, payments, total, onChange, erro
                       type="number"
                       min="0"
                       step="1"
-                      value={payment.amount || ""}
+                      value={amountOf(payment) || ""}
                       onChange={(event) => update(index, { amount: Math.max(0, Math.trunc(Number(event.target.value) || 0)) })}
                       className="h-10 rounded-xl border-black/10 bg-white shadow-none"
                     />
