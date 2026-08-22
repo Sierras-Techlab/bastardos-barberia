@@ -1,4 +1,4 @@
-import type { FixedCustomerOccurrence, FixedSchedule, IsoWeekday } from "@/types/fixed-customer";
+import type { FixedCustomerOccurrence, IsoWeekday } from "@/types/fixed-customer";
 
 const weekdayNames: Record<IsoWeekday, string> = {
   1: "lunes",

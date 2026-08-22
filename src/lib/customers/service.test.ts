@@ -78,7 +78,8 @@ describe("customer service", () => {
 
   it("accepts a schedule without responsibleUserId so employees can submit forced-self", async () => {
     const dependencies = deps();
-    const { responsibleUserId: _ignored, ...rest } = scheduleInput;
+    const { responsibleUserId, ...rest } = scheduleInput;
+    void responsibleUserId;
     await createCustomer(employee, { firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: rest }, dependencies);
     const createCall = vi.mocked(dependencies.customers.create).mock.calls.at(-1)?.[0];
     expect(createCall?.fixedSchedule?.responsibleUserId).toBe(employee.id);

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { SafeUser } from "@/lib/auth/types";
-import type { CreateIncomeInput, IncomeListQuery, PaginatedIncomes } from "@/types/income";
+import type { CreateIncomeInput, IncomeListQuery } from "@/types/income";
 
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
 const paymentSchema = z.object({ paymentMethodId: z.uuid(), methodName: z.string().min(1), amount: z.number().int().positive() }).strict();
@@ -94,6 +94,7 @@ export const employeePaginatedIncomesSchema = z.object({
 export const incomeResponsibleEmployeesSchema = z.array(employeeSchema);
 export type IncomeScope = { requestingUserId: string; canViewAll: boolean; userId: string | null };
 export type ManagerIncomeDetail = z.infer<typeof managerIncomeResponseSchema>;
+export type PaginatedIncomes = z.infer<typeof paginatedIncomesSchema>;
 export type EmployeeIncomeDetail = z.infer<typeof employeeIncomeResponseSchema>;
 export type EmployeePaginatedIncomes = z.infer<typeof employeePaginatedIncomesSchema>;
 export type IncomeRepository = {

@@ -47,6 +47,9 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Deactivating, deleting or resetting a user password revokes all of that user's sessions.
 - User deletion is logical: `deleted_at` and `deleted_by` preserve audit history, normal reads exclude deleted accounts, and deletion plus session revocation is one database transaction.
 - A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
+- Every active fixed schedule has one responsible professional and a positive integer monthly price. Employee schedules are forced to use the actor as the responsible professional; only manager mutations may reassign another professional.
+- Monthly subscription payments are recorded as immutable `fixed_subscription` incomes with their own per-period row in `fixed_customer_monthly_payment_attempts`. A new attempt reuses the same `(customer, period)` key only after a manager voids the previous active attempt, reopening the month without losing history. The same physical month cannot be paid twice while the previous attempt is active.
+- Customer visit history, dashboard totals and Caja snapshots continue to come from active normal sales; `fixed_subscription` rows contribute to the daily cash close but are excluded from "visits" counters and customer-visit financial projections.
 - Database tables have RLS enabled with no browser policies. Only the server secret role can access them.
 - SQL in `supabase/queries` is the source of truth and is designed for manual execution in the Supabase SQL Editor.
 - Products retain creator/updater audit users, are deactivated rather than deleted, and expose inactive records only to owner/admin.
@@ -74,13 +77,14 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/app/api/services`, `src/lib/services`: persistent role-aware service catalog and logical lifecycle.
 - `src/app/api/customers`, `src/lib/customers`: authenticated customer persistence with manager-only logical deletion.
 - `src/app/api/fixed-customer-occurrences`, `src/lib/fixed-customers`: weekly occurrence reads and audited attendance transitions.
+- `src/app/api/fixed-customer-months`, `src/lib/fixed-customer-payments`: role-scoped monthly-payment domain, atomic pay RPC and the manager/employee-safe projection RPCs.
 - `src/app/api/incomes`, `src/lib/incomes`: transactional sale creation, scoped history/detail, voiding and browser API client.
 - `src/app/api/cash`, `src/lib/cash`, `src/components/cash`: manager-only live cash, immutable closure history, audited post-close adjustments and the read-only `/cash` workspace.
 - `src/app/api/work-sessions`, `src/lib/work-sessions`, `src/components/work-sessions`, `src/app/(dashboard)/work-sessions`: role-scoped work-session API, persistence, persistent employee clock control and Presentismo workspace; migration `019` owns clock lifecycle, audited corrections and server-derived income linkage.
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `019` and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `021` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

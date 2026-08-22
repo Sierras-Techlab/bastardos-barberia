@@ -4,12 +4,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   fixedCustomerMonthSchema,
   fixedCustomerMonthsSchema,
-  payFixedCustomerMonthSchema,
-  type PayFixedCustomerMonthValues,
 } from "@/lib/fixed-customer-payments/schemas";
 import type { FixedCustomerPaymentsRepository } from "@/lib/fixed-customer-payments/contracts";
 import type {
-  FixedCustomerMonth,
   FixedCustomerMonthQuery,
   PayFixedCustomerMonthInput,
 } from "@/types/fixed-customer-payment";
@@ -84,5 +81,3 @@ export const fixedCustomerPaymentRepository: FixedCustomerPaymentsRepository = {
     return parsed.data;
   },
 };
-
-export type PayFixedCustomerMonthRpcValues = PayFixedCustomerMonthValues;

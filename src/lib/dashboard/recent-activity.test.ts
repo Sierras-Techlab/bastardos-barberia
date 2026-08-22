@@ -12,6 +12,8 @@ const income: IncomeListItem = {
   id: "20000000-0000-4000-8000-000000000001",
   createdAt: "2026-08-11T14:48:00.000Z",
   businessDate: "2026-08-11",
+  sourceType: "sale",
+  subscription: null,
   employee: {
     id: "00000000-0000-4000-8000-000000000003",
     firstName: "Fer",

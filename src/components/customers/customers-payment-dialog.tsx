@@ -37,8 +37,6 @@ export const CustomersPaymentDialog = ({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
     fixedCustomerPaymentClient.get(customer.id, period ?? currentMonthPeriod())
       .then((result) => {
         if (!active) return;

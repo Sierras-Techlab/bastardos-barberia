@@ -8,6 +8,7 @@ import {
   paginatedIncomesSchema,
   type IncomeRepository,
   type IncomeScope,
+  type PaginatedIncomes,
 } from "@/lib/incomes/contracts";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { IncomeListQuery } from "@/types/income";
@@ -100,10 +101,14 @@ export const incomeRepository: IncomeRepository = {
   async list(scope, query) {
     const { data, error } = await getSupabaseAdmin().rpc("list_incomes", listParams(scope, query));
     if (error) rpcFailure("list incomes", error);
-    const schema = isEmployeeViewer(scope) ? employeePaginatedIncomesSchema : paginatedIncomesSchema;
-    const parsed = schema.safeParse(data);
+    if (isEmployeeViewer(scope)) {
+      const parsed = employeePaginatedIncomesSchema.safeParse(data);
+      if (!parsed.success) return databaseFailure("validate incomes", parsed.error);
+      return parsed.data;
+    }
+    const parsed = paginatedIncomesSchema.safeParse(data);
     if (!parsed.success) return databaseFailure("validate incomes", parsed.error);
-    return parsed.data;
+    return parsed.data as PaginatedIncomes;
   },
   async listResponsibleEmployees(requestingUserId) {
     const { data, error } = await getSupabaseAdmin().rpc("list_income_responsible_users", { requesting_user_id: requestingUserId });

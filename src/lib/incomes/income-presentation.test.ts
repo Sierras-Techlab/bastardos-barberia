@@ -37,7 +37,6 @@ it("labels subscription incomes and exposes Mensualidad as a stable kind", () =>
     ...base,
     id: "income-2",
     sourceType: "fixed_subscription",
-    kind: "subscription",
     subscription: {
       sourceType: "fixed_subscription",
       period: "2026-08",

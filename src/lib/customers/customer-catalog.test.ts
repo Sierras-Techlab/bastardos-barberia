@@ -26,7 +26,7 @@ describe("customer catalog", () => {
 
   it("filters customers by fixed schedule without losing text search", () => {
     const customers = [
-      { ...data.customers[0], fixedSchedule: { weekday: 4 as const, time: "10:00" } },
+      { ...data.customers[0], fixedSchedule: { weekday: 4 as const, time: "10:00", responsibleProfessional: { id: "00000000-0000-4000-8000-000000000099", firstName: "Pro", lastName: "One" }, monthlyPrice: 15000 } },
       { ...data.customers[1], fixedSchedule: null },
     ];
 

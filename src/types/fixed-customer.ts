@@ -9,7 +9,7 @@ export type FixedSchedule = {
 export type FixedScheduleInput = {
   weekday: IsoWeekday;
   time: string;
-  responsibleUserId: string;
+  responsibleUserId?: string;
   monthlyPrice: number;
 };
 export type FixedOccurrenceStatus = "pending" | "attended" | "missed";

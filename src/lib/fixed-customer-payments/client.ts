@@ -26,10 +26,11 @@ export const fixedCustomerPaymentClient: FixedCustomerPaymentClient = {
     return data.items;
   },
   pay: async (input) => {
+    const { mode, ...rest } = input;
     const response = await fetch("/api/fixed-customer-months/pay", noStoreRequest({
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: input.mode, ...input }),
+      body: JSON.stringify({ mode, ...rest }),
     }));
     if (!response.ok) {
       const error = await response.json().catch(() => ({ code: "UNKNOWN", message: "No se pudo registrar el cobro." }));

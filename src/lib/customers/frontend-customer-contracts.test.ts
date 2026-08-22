@@ -45,6 +45,7 @@ it("rejects non-positive or non-integer monthly prices on both shapes", () => {
 });
 
 it("allows omitting responsibleUserId so employees can submit forced-self schedules", () => {
-  const { responsibleUserId: _ignored, ...rest } = validScheduleInput;
+  const { responsibleUserId, ...rest } = validScheduleInput;
+  void responsibleUserId;
   expect(fixedScheduleInputSchema.safeParse(rest).success).toBe(true);
 });

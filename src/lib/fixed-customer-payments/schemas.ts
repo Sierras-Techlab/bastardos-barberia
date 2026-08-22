@@ -1,6 +1,9 @@
 import { z } from "zod";
-import type { ManagerPaymentInput, EmployeePaymentInput } from "@/types/payment-method";
+import type { IncomePaymentInput } from "@/types/payment-method";
 import type { FixedCustomerMonthQuery } from "@/types/fixed-customer-payment";
+
+type ManagerPaymentInput = Extract<IncomePaymentInput, { amount: number }>;
+type EmployeePaymentInput = Extract<IncomePaymentInput, { basisPoints: number }>;
 
 const periodSchema = z.string().regex(
   /^(\d{4})-(0[1-9]|1[0-2])$/,

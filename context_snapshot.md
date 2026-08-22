@@ -4,12 +4,14 @@ Captured: 2026-08-22
 
 ## Repository state
 
-- Active worktree branch: `feat/changes-fullstack`. Blocks `019` and `020` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `020`.
-- The approved operational-control architecture covers ordered blocks `019` through `023`; blocks `019` and `020` are implemented locally, while `021`, `022` and `023` remain planning-only.
-- The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and identifies `021` as the next implementation block.
+- Active worktree branch: `feat/changes-fullstack`. Blocks `019`, `020` and `021` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `021`.
+- The approved operational-control architecture covers ordered blocks `019` through `023`; blocks `019`, `020` and `021` are implemented locally, while `022` and `023` remain planning-only.
+- The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and identifies `022` as the next implementation block.
+- **Implemented locally — 021:** migration `021_fixed_customer_monthly_payments.sql` requires `responsible_user_id` and `monthly_price` on every active fixed schedule (preflight aborts with `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED`), adds `incomes.source_type` with `sale | fixed_subscription` plus a one-active-subscription unique index, installs the append-only `fixed_customer_monthly_payment_attempts` table and exposes `list_fixed_customer_months`, `pay_fixed_customer_month` and `get_fixed_customer_month`. The pay RPC atomically locks customer/schedule/responsible user, calculates the manager-amount / employee-basis-points allocation, persists the subscription income with a `subscription_concept` snapshot, links the attempt and leaves the canonical `create_income` RPC untouched. `void_income` now also marks the linked payment attempt as voided, reopening the month without deleting history.
+- **Pending Supabase application — 021:** manually execute `021_fixed_customer_monthly_payments.sql` after installed migration `020`, then run its rollback-wrapped acceptance scenarios and the README preflight for legacy schedules. No remote SQL was executed by this worktree.
 - **Implemented locally — 020:** migration `020_income_pricing_owner_commissions_and_employee_privacy.sql` removes the `012` owner-zero rules, persists catalog/charged/adjustment snapshots per line, accepts basis-point payments from employees, permits zero-total manager sales without payments and exposes sanitized employee JSON via `income_as_employee_json`. The repository parses manager and employee projections with strict role-aware Zod schemas; the route handler picks the schema by the authenticated user's role.
 - **Pending Supabase application — 020:** manually execute `020_income_pricing_owner_commissions_and_employee_privacy.sql` after installed migration `019`, then run its rollback-wrapped acceptance scenarios. No remote SQL was executed by this worktree.
-- **Implemented locally — 019:** migration, strict role-scoped domain/repository contracts, authenticated no-store API/client, persistent employee clock control, Presentismo history and manager correction UI. Only employees can clock themselves; actor/timestamps are server-derived. An employee sale requires that employee's open session. Managers do not require a session; a manager sale attributed to an employee links the employee's open session when one exists, otherwise retains the explicit `outsideWorkSession` audit flag. Corrections require a reason plus the visible `updatedAt` version, reject stale snapshots under the row lock and append immutable prior/new timestamps. Browser successes are parsed with the employee or manager Zod schema before UI state changes. Exact-session metrics exclude voided incomes; manager rows/cards show gross, net and that session's employee commission, while employee payloads omit gross/net.
+- **Implemented locally — 019:** migration, strict role-scoped domain/repository contracts, authenticated no-store API/client, persistent employee clock control, Presentismo history and manager correction UI. Only employees can clock themselves; actor/timestamps are server-derived. An employee sale requires that employee's open session. Managers do not require a session; a manager sale attributed to an employee links that employee's open session when one exists, otherwise retains the explicit `outsideWorkSession` audit flag. Manager corrections require a reason plus the visible `updatedAt` version, reject stale snapshots under the row lock and append immutable prior/new timestamps. Browser successes are parsed with the employee or manager Zod schema before UI state changes. Exact-session metrics exclude voided incomes; manager rows/cards show gross, net and that session's employee commission, while employee payloads omit gross/net.
 - **Pending Supabase application — 019:** manually execute `019_employee_work_sessions.sql` after installed migration `018`, then run its documented rollback-wrapped acceptance block and object/RLS/grant/trigger checks. No remote SQL was executed by this worktree.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
 - Commercial operations V2 is implemented locally through migrations `010` through `013`. The exact installed revision of the shared Supabase project must be verified before applying later migrations; this task did not mutate the remote database.
@@ -19,6 +21,7 @@ Captured: 2026-08-22
 - Dynamic payment methods plan `016` is implemented end to end: the strict catalog/API plus generalized income contracts, selector, manager administration, history filters, dashboard presentation and concurrency-safe deletion for unused methods. The user confirmed payment-method deletion is functional against the configured Supabase project.
 - Safe product-category deletion is implemented through incremental migration `017`, a manager-only domain/API contract and the category administration UI. Referenced categories remain protected.
 - Automatic Caja is implemented through migration `018`, strict server-only RPC adapters, manager-only APIs and the responsive `/cash` workspace. The user executed the migration and confirmed `/cash` is functional; this pagination task did not independently inspect the installed SQL objects.
+- Fixed-customer monthly payments: `src/lib/fixed-customer-payments` (schemas/service/repository/contracts/client) plus `src/app/api/fixed-customer-months` (list/pay/get routes), `src/components/fixed-customers/fixed-customer-payment-dialog.tsx`, `src/components/customers/customers-workspace.tsx` and `customers-payment-dialog.tsx` are implemented. The `CustomerEditorDialog` exposes a manager-only professional selector and accepts `monthlyPrice`; employee submissions are forced to the actor by the canonical actor-aware service.
 
 ## Delivered behavior
 
@@ -116,6 +119,7 @@ Captured: 2026-08-22
 - Work-session Task 4 plus its two fix rounds passed focused component/page slices and final verification with 164 files / 624 tests, ESLint, Next.js type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack build.
 - Work-session Task 5 documentation verification passed `npm test` (164 files / 624 tests), ESLint, Next.js type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The documented Supabase acceptance remains unexecuted.
 - Block `020` final verification passed `npm test` (165 files / 682 tests), ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The documented Supabase acceptance scenarios for charged-price overrides, basis-point payments, zero-total manager sales, employee sanitized projection and configurable owner commission remain unexecuted locally because no remote database was touched.
+- Block `021` final verification passed `npm test` (172 files / 736 tests), ESLint with zero warnings, Next.js 16.3 route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The documented Supabase acceptance — `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED` preflight, manager/employee payment modes, employee session requirement, owner/employee rates, reassignment-before-collection, duplicate/retry, void/re-pay, cash totals and unchanged visits — remains unexecuted locally because no remote database was touched.
 
 ## Known boundaries
 
@@ -131,16 +135,15 @@ Captured: 2026-08-22
 
 ## Recommended next task
 
-Push block `020` commits to `feat/changes-fullstack` once authorized. When remote SQL is authorized, install migration `020` after `019` and run the documented rollback acceptance plus object/RLS/grant/trigger checks. Then plan and implement block `021` (fixed-customer monthly payments) using the roadmap index. No remote database mutation was performed for the local implementation.
+Push block `021` commits to `feat/changes-fullstack` once authorized. When remote SQL is authorized, install migration `021` after `020` and run the documented preflight plus rollback acceptance and object/RLS/grant/trigger checks. Then plan and implement block `022` (manual cash lifecycle) using the roadmap index. No remote database mutation was performed for the local implementation.
 
 ## Context maintenance rule
 
 Update this file after every completed task with the active branch, delivered behavior, unresolved external actions, known boundaries and the single best next task. Update `product.md` whenever scope, module status or objectives change; update `AGENTS.md` only when durable architecture or workflow changes.
 
-## Fresh final verification — block 019 Final Fix Round 1
+## Fresh final verification — block 021
 
-- Current branch test suite: 164 files / 634 tests passed.
-- ESLint passed with zero warnings; Next.js route type generation and standalone TypeScript passed.
-- The Next.js 16.3.0 production build passed with Webpack, and `git diff --check` passed.
-- Focused GREEN evidence: concurrency 6 files / 36 tests; income error mapping 3 files / 22 tests; strict browser parsing 4 files / 21 tests; exact-session manager commission 2 files / 11 tests.
-- Migration `019` and its rollback-wrapped SQL acceptance remain unapplied locally/remotely by this task, as intended.
+- Current branch test suite: 172 files / 736 tests passed.
+- ESLint passed with zero warnings; Next.js 16.3 route type generation, standalone TypeScript and `git diff --check` all passed.
+- The Next.js 16.3 Webpack production build completed successfully and `/api/fixed-customer-months` (list, pay, get) routes are emitted alongside the existing API surface.
+- Migration `021` and its rollback-wrapped SQL acceptance remain unapplied locally/remotely by this task, as intended. The preflight query documented in the README must be executed against the configured Supabase project before applying the script; `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED` will abort if any active schedule still lacks `responsible_user_id` or `monthly_price`.

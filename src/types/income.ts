@@ -43,8 +43,8 @@ export type IncomeListSubscription = {
   barbershopNet: number;
 };
 export type IncomeListItem = {
-  id: string; createdAt: string; businessDate: string; sourceType: IncomeSourceType; employee: Employee; customer: Employee | null;
-  service: IncomeListService | null; products: IncomeListProduct[]; subscription: IncomeListSubscription | null;
+  id: string; createdAt: string; businessDate: string; sourceType?: IncomeSourceType; employee: Employee; customer: Employee | null;
+  service: IncomeListService | null; products: IncomeListProduct[]; subscription?: IncomeListSubscription | null;
   payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; grossTotal?: number; status: IncomeStatus;
 };
 export type Income = IncomeListItem;

@@ -42,6 +42,7 @@ export const FixedCustomerPaymentDialog = ({
   onClose,
   onPaid,
 }: FixedCustomerPaymentDialogProps) => {
+  void currentUserId;
   const isManager = currentUserRole === "owner" || currentUserRole === "admin";
   const monthlyPrice = month.viewer === "manager" ? month.monthlyPrice : 0;
   const customerName = `${month.customer.firstName} ${month.customer.lastName}`;
