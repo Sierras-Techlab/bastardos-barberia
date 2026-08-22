@@ -14,6 +14,7 @@ export type CustomersWorkspaceProps = {
   currentUserRole: "owner" | "admin" | "employee";
   professionals: CustomerEditorProfessional[];
   paymentMethods: PaymentMethod[];
+  today: string;
 };
 
 export const CustomersWorkspace = ({
@@ -23,6 +24,7 @@ export const CustomersWorkspace = ({
   currentUserRole,
   professionals,
   paymentMethods,
+  today,
 }: CustomersWorkspaceProps) => {
   const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
   const [paidMarker, setPaidMarker] = useState<{ customerId: string; period: string } | null>(null);
@@ -40,6 +42,7 @@ export const CustomersWorkspace = ({
       currentUserRole={currentUserRole}
       availableProfessionals={professionals}
       onOpenFixedPayment={setPayingCustomer}
+      today={today}
     />
     {payingCustomer && (
       <CustomersPaymentDialog
