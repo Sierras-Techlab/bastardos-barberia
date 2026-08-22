@@ -9,7 +9,7 @@ import { validateUniqueCustomerContact } from "@/lib/customers/customer-catalog"
 import { formatFixedSchedule } from "@/lib/customers/fixed-customers";
 import { fixedScheduleSchema, frontendCustomerEditorSchema, type FrontendCustomerEditorInput } from "@/lib/customers/frontend-customer-contracts";
 import type { Customer } from "@/types/customer";
-import type { IsoWeekday } from "@/types/fixed-customer";
+import type { FixedScheduleInput, IsoWeekday } from "@/types/fixed-customer";
 
 export type CustomerEditorDialogProps = {
   mode: "create" | "edit";
@@ -37,6 +37,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
   const [hasFixedSchedule, setHasFixedSchedule] = useState(Boolean(customer?.fixedSchedule));
   const [weekday, setWeekday] = useState<IsoWeekday>(customer?.fixedSchedule?.weekday ?? 1);
   const [time, setTime] = useState(customer?.fixedSchedule?.time ?? "");
+  const [monthlyPrice, setMonthlyPrice] = useState<string>(customer?.fixedSchedule ? String(customer.fixedSchedule.monthlyPrice / 100) : "");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
@@ -44,12 +45,18 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (savingRef.current) return;
+    const parsedSchedule: FixedScheduleInput | null = hasFixedSchedule ? {
+      weekday,
+      time,
+      responsibleUserId: customer?.fixedSchedule?.responsibleProfessional.id,
+      monthlyPrice: Math.round(Number(monthlyPrice || "0") * 100),
+    } : null;
     const parsed = frontendCustomerEditorSchema.safeParse({
       firstName,
       lastName,
       email,
       phone,
-      fixedSchedule: hasFixedSchedule ? { weekday, time } : null,
+      fixedSchedule: parsedSchedule,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Revisá los datos ingresados.");
@@ -73,7 +80,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
     }
   };
 
-  const schedulePreview = fixedScheduleSchema.safeParse({ weekday, time });
+  const schedulePreview = fixedScheduleSchema.partial({ responsibleProfessional: true, monthlyPrice: true }).safeParse({ weekday, time });
   return <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
     <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
       <form noValidate onSubmit={submit}>
@@ -96,7 +103,8 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
           {hasFixedSchedule && <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5 text-sm font-medium">Día fijo<select aria-label="Día fijo" value={weekday} onChange={(event) => setWeekday(Number(event.target.value) as IsoWeekday)} className={`${fieldClassName} w-full px-3 text-sm`}>{weekdayOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
             <label className="space-y-1.5 text-sm font-medium">Hora fija<Input aria-label="Hora fija" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={fieldClassName} /></label>
-            {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data)}</p>}
+            <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Precio mensual (ARS)<Input aria-label="Precio mensual" type="number" inputMode="decimal" min="0" step="0.01" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} className={fieldClassName} /></label>
+            {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data as { weekday: IsoWeekday; time: string })}</p>}
           </div>}
         </section>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

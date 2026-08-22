@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import { CustomerEditorDialog } from "@/components/customers/customer-editor-dialog";
 
+const professional = { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" };
+
 it("keeps optional email and draft state when async creation fails", async () => {
   const user = userEvent.setup(); const onSave = vi.fn().mockRejectedValue(new Error("Ya existe un cliente con ese teléfono."));
   render(<CustomerEditorDialog mode="create" customer={null} customers={[]} onClose={vi.fn()} onSave={onSave} />);
@@ -21,12 +23,13 @@ it("adds one required weekly schedule and shows its readable preview", async () 
   await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.selectOptions(screen.getByLabelText("Día fijo"), "4");
   await user.type(screen.getByLabelText("Hora fija"), "10:00");
+  await user.type(screen.getByLabelText("Precio mensual"), "150");
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");
   await user.type(screen.getByLabelText("Teléfono"), "3515550200");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
-  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: { weekday: 4, time: "10:00" } }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: { weekday: 4, time: "10:00", monthlyPrice: 15000 } }));
 });
 
 it("requires a valid time when a fixed schedule is enabled", async () => {
@@ -53,7 +56,7 @@ it("loads and can disable an existing fixed schedule", async () => {
     phone: "3515550200",
     visits: 4,
     createdAt: "2026-08-01T10:00:00.000Z",
-    fixedSchedule: { weekday: 4 as const, time: "10:00" },
+    fixedSchedule: { weekday: 4 as const, time: "10:00", responsibleProfessional: professional, monthlyPrice: 15000 },
     fixedScheduleVersion: 1,
   };
   render(<CustomerEditorDialog mode="edit" customer={customer} customers={[customer]} onClose={vi.fn()} onSave={onSave} />);

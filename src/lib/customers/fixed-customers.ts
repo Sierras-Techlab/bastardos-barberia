@@ -9,7 +9,7 @@ const weekdayNames: Record<IsoWeekday, string> = {
   6: "sábados",
   7: "domingos",
 };
-export const formatFixedSchedule = (schedule: FixedSchedule) =>
+export const formatFixedSchedule = (schedule: { weekday: IsoWeekday; time: string }) =>
   `Todos los ${weekdayNames[schedule.weekday]} a las ${schedule.time}`;
 export const sortFixedOccurrences = (occurrences: FixedCustomerOccurrence[]) =>
   [...occurrences].sort((left, right) =>

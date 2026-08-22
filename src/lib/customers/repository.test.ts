@@ -56,10 +56,27 @@ describe("customer repository", () => {
     query.select.mockReturnValue(query);
     query.eq.mockReturnValue(query);
     query.is.mockReturnValue(query);
-    query.maybeSingle.mockResolvedValue({ data: { ...row, fixed_schedule: [{ weekday: 4, local_time: "10:00:00", is_active: true, version: 1 }] }, error: null });
+    query.maybeSingle.mockResolvedValue({ data: {
+      ...row,
+      fixed_schedule: [{
+        weekday: 4,
+        local_time: "10:00:00",
+        is_active: true,
+        version: 1,
+        monthly_price: 15000,
+        responsible_user: { id: "00000000-0000-4000-8000-000000000003", first_name: "Fer", last_name: "Pérez" },
+      }],
+    }, error: null });
     getSupabaseAdmin.mockReturnValue({ rpc, from: vi.fn().mockReturnValue(query) });
 
-    await customerRepository.create({ firstName: "Ana", lastName: "Pérez", phone: row.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" }, createdBy: row.created_by });
+    await customerRepository.create({
+      firstName: "Ana",
+      lastName: "Pérez",
+      phone: row.phone,
+      email: null,
+      fixedSchedule: { weekday: 4, time: "10:00", responsibleUserId: "00000000-0000-4000-8000-000000000003", monthlyPrice: 15000 },
+      createdBy: row.created_by,
+    });
     await customerRepository.update(row.id, { fixedSchedule: null, expectedScheduleVersion: 1, updatedBy: row.updated_by });
 
     expect(rpc).toHaveBeenNthCalledWith(1, "create_customer", {
@@ -68,7 +85,12 @@ describe("customer repository", () => {
       new_last_name: "Pérez",
       new_phone: row.phone,
       new_email: null,
-      fixed_schedule: { weekday: 4, time: "10:00" },
+      fixed_schedule: {
+        weekday: 4,
+        time: "10:00",
+        responsible_user_id: "00000000-0000-4000-8000-000000000003",
+        monthly_price: 15000,
+      },
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "update_customer", expect.objectContaining({
       target_customer_id: row.id,
@@ -77,6 +99,44 @@ describe("customer repository", () => {
       new_fixed_schedule: null,
       expected_schedule_version: 1,
     }));
+  });
+
+  it("maps the schedule row with responsible professional identity and monthly price", () => {
+    const scheduleRow = {
+      ...row,
+      fixed_schedule: [{
+        weekday: 4,
+        local_time: "10:00:00",
+        is_active: true,
+        version: 2,
+        monthly_price: 25000,
+        responsible_user: { id: "00000000-0000-4000-8000-000000000003", first_name: "Fer", last_name: "Pérez" },
+      }],
+    };
+    expect(toCustomer(scheduleRow as unknown as Parameters<typeof toCustomer>[0])).toMatchObject({
+      fixedSchedule: {
+        weekday: 4,
+        time: "10:00",
+        responsibleProfessional: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" },
+        monthlyPrice: 25000,
+      },
+      fixedScheduleVersion: 2,
+    });
+  });
+
+  it("returns null schedule when the joined row is inactive even if a professional exists", () => {
+    const scheduleRow = {
+      ...row,
+      fixed_schedule: [{
+        weekday: 4,
+        local_time: "10:00:00",
+        is_active: false,
+        version: 3,
+        monthly_price: 25000,
+        responsible_user: { id: "00000000-0000-4000-8000-000000000003", first_name: "Fer", last_name: "Pérez" },
+      }],
+    };
+    expect(toCustomer(scheduleRow as unknown as Parameters<typeof toCustomer>[0])).toMatchObject({ fixedSchedule: null, fixedScheduleVersion: 3 });
   });
 
   it("returns the strict financial projection for active customer visits", async () => {
