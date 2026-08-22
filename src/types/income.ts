@@ -2,6 +2,7 @@ import type { PaymentMethod, IncomePayment, IncomePaymentInput } from "@/types/p
 
 export type { IncomePayment, IncomePaymentInput } from "@/types/payment-method";
 export type UserRole = "owner" | "admin" | "employee";
+export type IncomeSourceType = "sale" | "fixed_subscription";
 export type Employee = { id: string; firstName: string; lastName: string };
 export type Customer = Employee & { phone?: string };
 export type Service = { id: string; name: string; price: number };
@@ -22,12 +23,29 @@ export type CreateIncomeInput = {
   productPriceOverrides?: Record<string, { chargedUnitPrice: number; reason: string }>;
 };
 export type IncomeStatus = "active" | "voided";
-export type IncomeKind = "service" | "products" | "combined";
+export type IncomeKind = "service" | "products" | "combined" | "subscription";
+export type IncomeSubscriptionConcept = {
+  period: string;
+  monthlyPrice: number;
+  commissionAmount: number;
+  barbershopNet: number;
+  responsibleUserId: string;
+  label: string;
+};
 export type IncomeListService = Service & { commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
 export type IncomeListProduct = { id: string; name: string; unitPrice: number; quantity: number; commission: import("@/types/income-commissions").IncomeItemCommissionSnapshot };
+export type IncomeListSubscription = {
+  sourceType: "fixed_subscription";
+  period: string;
+  monthlyPrice: number;
+  label: string;
+  employeeEarning: number;
+  barbershopNet: number;
+};
 export type IncomeListItem = {
-  id: string; createdAt: string; businessDate: string; employee: Employee; customer: Employee | null;
-  service: IncomeListService | null; products: IncomeListProduct[]; payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; grossTotal?: number; status: IncomeStatus;
+  id: string; createdAt: string; businessDate: string; sourceType: IncomeSourceType; employee: Employee; customer: Employee | null;
+  service: IncomeListService | null; products: IncomeListProduct[]; subscription: IncomeListSubscription | null;
+  payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; grossTotal?: number; status: IncomeStatus;
 };
 export type Income = IncomeListItem;
 export type IncomeService = { create(input: CreateIncomeInput): Promise<Income> };

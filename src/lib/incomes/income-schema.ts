@@ -151,7 +151,7 @@ export const incomeIdSchema = z.uuid("El ingreso no es válido.");
 export const incomeListQuerySchema = z.object({
   query: z.string().trim().max(120).optional(), dateFrom: z.iso.date().optional(), dateTo: z.iso.date().optional(),
   userId: z.uuid().optional(), paymentMethodId: z.uuid().optional(),
-  kind: z.enum(["service", "products", "combined"]).optional(), status: z.enum(["active", "voided"]).optional(),
+  kind: z.enum(["service", "products", "combined", "subscription"]).optional(), status: z.enum(["active", "voided"]).optional(),
   page: z.number().int().positive().default(1), pageSize: z.number().int().min(1).max(100).default(10),
 }).strict();
 

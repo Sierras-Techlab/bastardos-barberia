@@ -37,7 +37,7 @@ export type CashSaleAuditItem = {
   createdAt: string;
   employee: CashPerson;
   customerName: string | null;
-  kind: "service" | "products" | "combined";
+  kind: "service" | "products" | "combined" | "subscription";
   statusAtClose: "active" | "voided";
   currentStatus: "active" | "voided";
   grossTotal: number;

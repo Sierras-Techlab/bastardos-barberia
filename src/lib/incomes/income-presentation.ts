@@ -7,3 +7,18 @@ export const getIncomePaymentLabel = (income: IncomeListItem) => {
 
 export const getIncomeCommissionAmount = (income: IncomeListItem) =>
   income.commission.total;
+
+export const getIncomeKindLabel = (income: IncomeListItem) => {
+  if (income.sourceType === "fixed_subscription") return "Mensualidad";
+  if (income.kind === "service") return "Servicio";
+  if (income.kind === "products") return "Productos";
+  if (income.kind === "combined") return "Combinado";
+  return "Suscripción";
+};
+
+export const getIncomeDescription = (income: IncomeListItem) => {
+  if (income.sourceType === "fixed_subscription" && income.subscription) {
+    return `Mensualidad ${income.subscription.label}`;
+  }
+  return getIncomePaymentLabel(income);
+};

@@ -77,7 +77,7 @@ const cashSaleAuditItemSchema = z
     createdAt: z.iso.datetime({ offset: true }),
     employee: cashPersonSchema,
     customerName: z.string().min(1).nullable(),
-    kind: z.enum(["service", "products", "combined"]),
+    kind: z.enum(["service", "products", "combined", "subscription"]),
     statusAtClose: z.enum(["active", "voided"]),
     currentStatus: z.enum(["active", "voided"]),
     grossTotal: integer.positive(),
