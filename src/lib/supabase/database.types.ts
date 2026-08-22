@@ -115,6 +115,8 @@ export type CustomerFixedScheduleRow = {
   is_active: boolean;
   version: number;
   effective_from: string;
+  responsible_user_id: string;
+  monthly_price: number;
   created_by: string;
   updated_by: string;
   created_at: string;
@@ -134,7 +136,23 @@ export type FixedCustomerOccurrenceRow = {
   created_at: string;
 };
 
-export type IncomePaymentMethod = "cash" | "transfer";
+export type FixedCustomerMonthlyPaymentStatus = "pending" | "paid" | "voided";
+export type FixedCustomerMonthlyPaymentAttemptRow = {
+  id: string;
+  customer_id: string;
+  period: string;
+  request_id: string;
+  registered_by: string;
+  income_id: string | null;
+  status: FixedCustomerMonthlyPaymentStatus;
+  voided_at: string | null;
+  voided_by: string | null;
+  paid_at: string | null;
+  created_at: string;
+};
+
+export type IncomeSourceType = "sale" | "fixed_subscription";
+export type IncomePaymentMethod = "cash" | "transfer" | "mixed";
 export type IncomeStatus = "active" | "voided";
 
 export type EmployeeWorkSessionRow = {
@@ -184,6 +202,10 @@ export type IncomeRow = {
   full_service_commission_authorized_by: string | null;
   work_session_id: string | null;
   outside_work_session: boolean;
+  source_type: IncomeSourceType;
+  fixed_customer_id: string | null;
+  fixed_period: string | null;
+  subscription_concept: unknown;
   status: IncomeStatus;
   created_at: string;
   business_date: string;
