@@ -1,11 +1,12 @@
 # Context snapshot
 
-Captured: 2026-08-21
+Captured: 2026-08-22
 
 ## Repository state
 
 - Active worktree branch: `codex/019-employee-work-sessions`. Block `019` is implemented locally on top of the automatic Caja baseline through migration `018`; this snapshot intentionally does not anchor the active work to a self-referential commit hash.
 - The approved operational-control architecture remains the roadmap for ordered blocks `019` through `023`; block `019` is implemented locally, while later blocks remain planning-only.
+- The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and identifies `020` as the next implementation block.
 - **Implemented locally — 019:** migration, strict role-scoped domain/repository contracts, authenticated no-store API/client, persistent employee clock control, Presentismo history and manager correction UI. Only employees can clock themselves; actor/timestamps are server-derived. An employee sale requires that employee's open session. Managers do not require a session; a manager sale attributed to an employee links the employee's open session when one exists, otherwise retains the explicit `outsideWorkSession` audit flag. Corrections require a reason plus the visible `updatedAt` version, reject stale snapshots under the row lock and append immutable prior/new timestamps. Browser successes are parsed with the employee or manager Zod schema before UI state changes. Exact-session metrics exclude voided incomes; manager rows/cards show gross, net and that session's employee commission, while employee payloads omit gross/net.
 - **Pending Supabase application — 019:** manually execute `019_employee_work_sessions.sql` after installed migration `018`, then run its documented rollback-wrapped acceptance block and object/RLS/grant/trigger checks. No remote SQL was executed by this worktree.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
@@ -124,7 +125,7 @@ Captured: 2026-08-21
 
 ## Recommended next task
 
-When separately authorized, install migration `019` after `018` in Supabase and run the documented rollback-wrapped acceptance plus object/RLS/grant/trigger checks. No remote database mutation, push or merge was performed for the local implementation.
+Integrate the reviewed `codex/019-employee-work-sessions` branch into the intended shared feature branch, then resume from block `020` using the roadmap index. Separately, when remote SQL is authorized, install migration `019` after `018` and run the documented rollback acceptance plus object/RLS/grant/trigger checks. No remote database mutation, push or merge was performed for the local implementation.
 
 ## Context maintenance rule
 

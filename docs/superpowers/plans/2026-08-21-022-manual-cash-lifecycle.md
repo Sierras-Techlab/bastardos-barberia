@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
+**Status:** Planned and not implemented. Requires normal and fixed-subscription income behavior through block `021` and evolves the existing canonical Caja model.
+
 ## Global Constraints
 
 - Run after migration `021` and cover both normal and subscription incomes.

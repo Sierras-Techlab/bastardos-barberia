@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-21
+Last updated: 2026-08-22
 
 ## Vision
 
@@ -35,6 +35,8 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
+
+The resumable status and execution order for the complete operational-control roadmap is documented in `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. The detailed block plans remain authoritative for TDD execution: `019` is implemented and reviewed locally; `020`, `021`, `022` and `023` remain planned in that order.
 
 The approved next roadmap is split into five deployable blocks: `019` employee work sessions and presentism; `020` manager price overrides, configurable owner commission and employee-safe financial projections; `021` professional-owned fixed customers with atomic monthly payments; `022` manual cash opening/counting with automatic pending-confirmation fallback; and `023` customer last visit derived from active normal sales. Block `019` is implemented locally across migration, domain, authenticated API and responsive UI, but `019_employee_work_sessions.sql` has not been applied to the configured Supabase project. Its persistent clock is employee-only and server-authoritative for actor/timestamps; employee sales require an open session, while managers do not and manager-to-employee sales either link that employee's open session or record `outsideWorkSession`. Manager corrections require a reason, compare the visible `updatedAt` version under lock and retain immutable prior/new timestamps, so stale dialogs cannot reopen or overwrite a newer session. Exact-session metrics exclude voids; the manager projection includes gross, barbershop net and employee commission, while employee responses expose only their commission. The current `012` owner-zero and `018` automatic read-only Caja behavior remains authoritative until its matching block is installed.
 

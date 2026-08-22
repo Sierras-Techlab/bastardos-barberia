@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
+**Status:** Planned and not implemented. This is the next local implementation block after the reviewed `019` contracts; migration order remains `019` then `020`.
+
 ## Global Constraints
 
 - Run after migration `019` and preserve work-session trigger/linkage.

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
+**Status:** Planned and not implemented. Requires the canonical pricing, owner-commission, payment-mode and privacy contracts delivered by block `020`.
+
 ## Global Constraints
 
 - Run after migration `020` and reuse its exact manager/employee payment modes and privacy projections.

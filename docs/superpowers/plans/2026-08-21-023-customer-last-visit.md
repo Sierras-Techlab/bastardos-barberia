@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
+**Status:** Planned and not implemented. Runs after block `022` and derives its projection from active normal sales without storing mutable visit state on customers.
+
 ## Global Constraints
 
 - Run after migration `022`.

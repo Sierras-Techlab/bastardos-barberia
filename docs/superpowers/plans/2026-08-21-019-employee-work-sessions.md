@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
+**Status:** Implemented, independently reviewed and locally verified on 2026-08-22. Migration `019` and authenticated desktop/390×844 QA remain pending external execution. Final verification: 164 test files / 634 tests plus lint, typegen, TypeScript, Webpack build and diff-check.
+
 ## Global Constraints
 
 - Only current-role `employee` users clock themselves in or out; owner/admin never require a work session for their own sales.
@@ -37,7 +39,7 @@
 - Produces `WorkSession`, `WorkSessionMetrics`, `WorkSessionCorrectionInput`, `WorkSessionListQuery` and `WorkSessionRepository`.
 - Produces `getCurrentWorkSession`, `startWorkSession`, `endWorkSession`, `listWorkSessions` and `correctWorkSession`.
 
-- [ ] **Step 1: Write strict failing schema tests**
+- [x] **Step 1: Write strict failing schema tests**
 
 Use separate public shapes so manager money cannot enter an employee value:
 
@@ -48,6 +50,7 @@ type WorkSessionBase = {
   businessDate: string;
   startedAt: string;
   endedAt: string | null;
+  updatedAt: string;
   state: "open" | "closed";
 };
 
@@ -67,21 +70,22 @@ export type ManagerWorkSession = WorkSessionBase & {
 };
 
 export type WorkSessionCorrectionInput = {
+  expectedUpdatedAt: string;
   startedAt: string;
   endedAt: string | null;
   reason: string;
 };
 ```
 
-Tests reject unknown fields, offset-less timestamps, negative money/minutes, a closed session without `endedAt`, an open session with `endedAt`, whitespace-only reason and an employee payload containing manager-only metrics.
+Tests reject unknown fields, offset-less timestamps including `updatedAt`/`expectedUpdatedAt`, negative money/minutes, a closed session without `endedAt`, an open session with `endedAt`, whitespace-only reason and an employee payload containing manager-only metrics.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run `npm test -- src/lib/work-sessions/schemas.test.ts src/lib/work-sessions/service.test.ts`.
 
 Expected: FAIL because the modules do not exist.
 
-- [ ] **Step 3: Implement schemas, repository interface and services**
+- [x] **Step 3: Implement schemas, repository interface and services**
 
 Service authorization must be explicit:
 
@@ -105,7 +109,7 @@ export const correctWorkSession = (actor: SafeUser, id: string, input: WorkSessi
 
 Manager list results retain gross/net; employee results use a separate schema that omits those keys.
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 Run focused tests and `npx tsc --noEmit`.
 
@@ -126,9 +130,9 @@ Commit: `feat(presentism): add work session domain`
 **Interfaces:**
 - Produces tables `employee_work_sessions`, `employee_work_session_corrections`.
 - Adds `incomes.work_session_id` and `incomes.outside_work_session`.
-- Produces canonical RPCs `start_work_session(uuid)`, `end_work_session(uuid)`, `correct_work_session(uuid,uuid,timestamptz,timestamptz,text)`, `get_current_work_session(uuid)` and `list_work_sessions(uuid,uuid,date,date,integer,integer)`.
+- Produces canonical RPCs `start_work_session(uuid)`, `end_work_session(uuid)`, `correct_work_session(uuid,uuid,timestamptz,timestamptz,timestamptz,text)`, `get_current_work_session(uuid)` and `list_work_sessions(uuid,uuid,date,date,integer,integer)`.
 
-- [ ] **Step 1: Write failing structural and repository tests**
+- [x] **Step 1: Write failing structural and repository tests**
 
 ```ts
 expect(sql).toMatch(/create table public\.employee_work_sessions/i);
@@ -141,13 +145,13 @@ expect(sql).toMatch(/enable row level security/i);
 expect(sql).not.toMatch(/_v2/i);
 ```
 
-Repository tests assert exact RPC names/arguments and map `WORK_SESSION_ALREADY_OPEN`, `WORK_SESSION_NOT_OPEN`, `WORK_SESSION_CONFLICT`, `INVALID_WORK_SESSION_RANGE` and `EMPLOYEE_WORK_SESSION_REQUIRED` to stable `AppError` values.
+Work-session repository tests assert exact RPC names/arguments and map `WORK_SESSION_ALREADY_OPEN`, `WORK_SESSION_NOT_OPEN`, `WORK_SESSION_CONFLICT` and `INVALID_WORK_SESSION_RANGE` to stable `AppError` values. The income repository maps trigger-owned `EMPLOYEE_WORK_SESSION_REQUIRED` to its stable HTTP 409 conflict.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run `npm test -- src/lib/work-sessions/migration-019.test.ts src/lib/work-sessions/repository.test.ts`.
 
-- [ ] **Step 3: Implement tables, RPCs and trigger**
+- [x] **Step 3: Implement tables, RPCs and trigger**
 
 The trigger must lock the actor and applicable open-session row, never accept a browser session ID, and apply:
 
@@ -167,13 +171,13 @@ else
 end if;
 ```
 
-RPC list JSON branches by requesting role so employee JSON has no gross/net keys. Correction inserts the immutable audit row before updating the session.
+RPC list JSON branches by requesting role so employee JSON has no gross/net keys. Correction locks the session, rejects a stale `expected_updated_at`, then inserts the immutable audit row before updating the session.
 
-- [ ] **Step 4: Add rollback-wrapped acceptance checks**
+- [x] **Step 4: Add rollback-wrapped acceptance checks**
 
-Cover clock-in, duplicate clock-in, employee sale rejection without session, linked employee sale, manager outside-session sale, manager correction with prior/new timestamps, clock-out, second same-day session and void-excluded metrics.
+Cover clock-in, duplicate clock-in, employee sale rejection without session, linked employee sale, manager outside-session sale, manager correction with prior/new timestamps, stale correction-versus-exit, stale correction-versus-correction, clock-out, second same-day session and void-excluded metrics.
 
-- [ ] **Step 5: Implement repository parsing and run GREEN**
+- [x] **Step 5: Implement repository parsing and run GREEN**
 
 Run focused tests, `npx tsc --noEmit` and `git diff --check`.
 
@@ -200,21 +204,21 @@ Commit: `feat(presentism): persist audited work sessions`
 **Interfaces:**
 - Produces no-store `workSessionClient.current/list`, mutation methods `start/end/correct`, and the five API boundaries from the spec.
 
-- [ ] **Step 1: Read the local Next.js 16 guides and write failing route tests**
+- [x] **Step 1: Read the local Next.js 16 guides and write failing route tests**
 
 Read `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md` and the dynamic-route parameter guide under `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions` before editing routes.
 
 Assert `requireUser()` or `requireManager()` runs before body/query/path validation, timestamps are absent from start/end browser bodies, dynamic params are awaited, and clients send `cache: "no-store"`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run `npm test -- src/app/api/work-sessions src/lib/work-sessions/client.test.ts`.
 
-- [ ] **Step 3: Implement minimal handlers and client**
+- [x] **Step 3: Implement minimal handlers and client**
 
-`POST /start` and `/end` accept no JSON body. `PATCH /[id]` accepts only the strict correction input. `GET /work-sessions` scopes managers by optional `employeeId`; employees are forced to self in the service.
+`POST /start` and `/end` accept no JSON body. `PATCH /[id]` accepts only the strict correction input including `expectedUpdatedAt`. `GET /work-sessions` scopes managers by optional `employeeId`; employees are forced to self in the service. Browser success payloads are parsed with strict employee or manager Zod schemas before reaching UI state.
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 Run the focused slice and TypeScript.
 
@@ -245,19 +249,19 @@ Commit: `feat(presentism): expose work session API`
 - Managers receive a Presentismo navigation page with employee filtering, gross/net metrics and correction dialog.
 - The income page receives `currentWorkSession` and blocks employee submission before loading the full editor when none is open.
 
-- [ ] **Step 1: Write failing UI tests**
+- [x] **Step 1: Write failing UI tests**
 
-Cover employee `Marcar entrada`, live elapsed state, `Marcar salida`, no control for manager, employee history without gross/net labels, manager correction reason required, manager financial metrics and employee sale-entry CTA `Iniciá tu jornada para cargar ventas`.
+Cover employee `Marcar entrada`, live elapsed state, `Marcar salida`, no control for manager, employee history without gross/net labels, manager correction reason/version required, manager gross/net/employee-commission metrics per exact session and employee sale-entry CTA `Iniciá tu jornada para cargar ventas`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run `npm test -- src/components/work-sessions src/app/'(dashboard)'/work-sessions src/app/'(dashboard)'/layout.test.tsx src/app/'(dashboard)'/incomes/new/page.test.tsx`.
 
-- [ ] **Step 3: Implement the responsive UI**
+- [x] **Step 3: Implement the responsive UI**
 
 Put `WorkSessionControl` in the shared layout only for employees. Add `/work-sessions` to both operational employee navigation and manager administration. Use server-loaded initial data, no hidden manager fields in employee props, Sonner success/error feedback and the existing dialog/card/table patterns.
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 Run the focused tests, lint and TypeScript.
 
@@ -273,11 +277,11 @@ Commit: `feat(presentism): add clock and session workspace`
 - Modify: `context_snapshot.md`
 - Modify: `supabase/queries/README.md`
 
-- [ ] **Step 1: Update documentation only for delivered behavior**
+- [x] **Step 1: Update documentation only for delivered behavior**
 
 Record employee-only clocking, manager correction audit, sale guard, outside-session manager attribution, per-session metrics and migration order `019`.
 
-- [ ] **Step 2: Run complete verification**
+- [x] **Step 2: Run complete verification**
 
 ```bash
 npm test
@@ -296,6 +300,6 @@ Execute `019` after `018`, run the rollback-wrapped acceptance block and verify 
 
 Exercise clock in/out, manager history/correction and the employee sale guard with no console errors or horizontal overflow.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit: `docs(presentism): record work session rollout`
