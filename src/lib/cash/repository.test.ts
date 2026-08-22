@@ -35,6 +35,17 @@ const day = {
   businessDate: "2026-08-14",
   state: "closed",
   closedAt: "2026-08-15T03:00:00.000Z",
+  lifecycle: {
+    openingBalance: 0,
+    openingSource: "first_income",
+    openedAt: "2026-08-14T12:00:00.000Z",
+    openedBy: { id: actorId, firstName: "Uriel", lastName: "Alessandro" },
+    expectedCash: 16000,
+    countedCash: 16000,
+    difference: 0,
+    closeMode: "automatic",
+    reconciliationState: "confirmed",
+  },
   summary,
   payments: [
     {
@@ -73,6 +84,7 @@ describe("cashRepository", () => {
           businessDate: day.businessDate,
           state: "closed",
           closedAt: day.closedAt,
+          lifecycle: day.lifecycle,
           summary,
         },
       ],

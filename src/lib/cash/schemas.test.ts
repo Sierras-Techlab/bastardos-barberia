@@ -3,15 +3,31 @@ import { describe, expect, it } from "vitest";
 import {
   cashDaySchema,
   cashHistoryQuerySchema,
+  closeCashInputSchema,
+  confirmCashInputSchema,
+  openCashInputSchema,
 } from "@/lib/cash/schemas";
 
 const id = "00000000-0000-4000-8000-000000000001";
+
+const baseLifecycle = {
+  openingBalance: 0,
+  openingSource: "first_income",
+  openedAt: "2026-08-14T12:00:00.000Z",
+  openedBy: { id, firstName: "Uriel", lastName: "Alessandro" },
+  expectedCash: 31000,
+  countedCash: 30000,
+  difference: -1000,
+  closeMode: "automatic",
+  reconciliationState: "pending_confirmation",
+};
 
 const cashDay = {
   id,
   businessDate: "2026-08-14",
   state: "closed",
   closedAt: "2026-08-15T03:00:00.000Z",
+  lifecycle: baseLifecycle,
   summary: {
     salesGrossTotal: 31000,
     salesCommissionTotal: 7200,
@@ -93,6 +109,64 @@ describe("cashDaySchema", () => {
     };
 
     expect(cashDaySchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("cash lifecycle", () => {
+  it("rejects counted cash with no difference", () => {
+    const result = cashDaySchema.safeParse({
+      ...cashDay,
+      lifecycle: { ...baseLifecycle, countedCash: 1000, difference: null },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects mismatched difference and counted cash", () => {
+    const result = cashDaySchema.safeParse({
+      ...cashDay,
+      lifecycle: { ...baseLifecycle, countedCash: 30000, difference: 1000 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a confirmed state without counted cash", () => {
+    const result = cashDaySchema.safeParse({
+      ...cashDay,
+      lifecycle: { ...baseLifecycle, countedCash: null, difference: null, reconciliationState: "confirmed" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts not_applicable lifecycle without close mode", () => {
+    const lifecycle = {
+      openingBalance: 0,
+      openingSource: null,
+      openedAt: null,
+      openedBy: null,
+      expectedCash: 0,
+      countedCash: null,
+      difference: null,
+      closeMode: null,
+      reconciliationState: "not_applicable",
+    };
+    expect(cashDaySchema.safeParse({ ...cashDay, lifecycle }).success).toBe(true);
+  });
+});
+
+describe("cash input schemas", () => {
+  it("rejects negative opening balance", () => {
+    expect(openCashInputSchema.safeParse({ openingBalance: -1 }).success).toBe(false);
+  });
+
+  it("rejects negative counted cash on close or confirm", () => {
+    expect(closeCashInputSchema.safeParse({ countedCash: -100 }).success).toBe(false);
+    expect(confirmCashInputSchema.safeParse({ countedCash: -100 }).success).toBe(false);
+  });
+
+  it("accepts a zero opening balance and zero counted cash", () => {
+    expect(openCashInputSchema.safeParse({ openingBalance: 0 }).success).toBe(true);
+    expect(closeCashInputSchema.safeParse({ countedCash: 0 }).success).toBe(true);
+    expect(confirmCashInputSchema.safeParse({ countedCash: 0 }).success).toBe(true);
   });
 });
 

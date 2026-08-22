@@ -19,7 +19,7 @@ const databaseFailure = (operation: string, error: unknown): never => {
   throw new Error("No se pudo consultar la caja.");
 };
 
-const rpcFailure = (operation: string, error: DatabaseError): never => {
+const mapCashRpcError = (operation: string, error: DatabaseError): never => {
   const message = error.message ?? "";
 
   if (message.includes("MANAGER_REQUIRED")) {
@@ -27,6 +27,34 @@ const rpcFailure = (operation: string, error: DatabaseError): never => {
       "FORBIDDEN",
       "No tenés permisos para consultar la caja.",
       403,
+    );
+  }
+  if (message.includes("CASH_PAYMENT_METHOD_REQUIRED")) {
+    throw new AppError(
+      "CASH_PAYMENT_METHOD_REQUIRED",
+      "Debe existir un medio de pago Efectivo para abrir la caja.",
+      409,
+    );
+  }
+  if (message.includes("CASH_ALREADY_OPEN")) {
+    throw new AppError(
+      "CASH_ALREADY_OPEN",
+      "La caja de hoy ya fue abierta.",
+      409,
+    );
+  }
+  if (message.includes("CASH_NOT_OPEN")) {
+    throw new AppError(
+      "CASH_NOT_OPEN",
+      "No hay una caja abierta para cerrar.",
+      409,
+    );
+  }
+  if (message.includes("CASH_ALREADY_CONFIRMED")) {
+    throw new AppError(
+      "CASH_ALREADY_CONFIRMED",
+      "Esta caja ya fue confirmada.",
+      409,
     );
   }
   if (message.includes("INVALID_CASH_DATE_RANGE")) {
@@ -43,8 +71,30 @@ const rpcFailure = (operation: string, error: DatabaseError): never => {
       400,
     );
   }
+  if (message.includes("INVALID_OPENING_BALANCE")) {
+    throw new AppError(
+      "INVALID_OPENING_BALANCE",
+      "El saldo inicial no puede ser negativo.",
+      400,
+    );
+  }
+  if (message.includes("INVALID_COUNTED_CASH")) {
+    throw new AppError(
+      "INVALID_COUNTED_CASH",
+      "El conteo no puede ser negativo.",
+      400,
+    );
+  }
 
   return databaseFailure(operation, error);
+};
+
+const rpcFailure = mapCashRpcError;
+
+const parseCashDay = (operation: string, data: unknown) => {
+  const parsed = cashDaySchema.safeParse(data);
+  if (!parsed.success) return databaseFailure(operation, parsed.error);
+  return parsed.data;
 };
 
 export const cashRepository: CashRepository = {
@@ -57,12 +107,7 @@ export const cashRepository: CashRepository = {
     if (error) rpcFailure("get daily cash", error);
     if (data === null) return null;
 
-    const parsed = cashDaySchema.safeParse(data);
-    if (!parsed.success) {
-      return databaseFailure("validate daily cash", parsed.error);
-    }
-
-    return parsed.data;
+    return parseCashDay("validate daily cash", data);
   },
 
   async list(actorId, query) {
@@ -82,5 +127,35 @@ export const cashRepository: CashRepository = {
     }
 
     return parsed.data;
+  },
+
+  async open(actorId, input) {
+    const { data, error } = await getSupabaseAdmin().rpc("open_daily_cash", {
+      actor_user_id: actorId,
+      target_business_date: input.businessDate,
+      opening_balance: input.openingBalance,
+    });
+    if (error) mapCashRpcError("open daily cash", error);
+    return parseCashDay("validate opened daily cash", data);
+  },
+
+  async close(actorId, input) {
+    const { data, error } = await getSupabaseAdmin().rpc("close_daily_cash", {
+      actor_user_id: actorId,
+      target_business_date: input.businessDate,
+      counted_cash: input.countedCash,
+    });
+    if (error) mapCashRpcError("close daily cash", error);
+    return parseCashDay("validate closed daily cash", data);
+  },
+
+  async confirm(actorId, registerId, input) {
+    const { data, error } = await getSupabaseAdmin().rpc("confirm_daily_cash", {
+      actor_user_id: actorId,
+      target_register_id: registerId,
+      counted_cash: input.countedCash,
+    });
+    if (error) mapCashRpcError("confirm daily cash", error);
+    return parseCashDay("validate confirmed daily cash", data);
   },
 };
