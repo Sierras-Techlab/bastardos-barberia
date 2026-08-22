@@ -39,3 +39,5 @@ export const summarizeUserPage = (items: SafeUser[]) => ({
 
 export const getUserInitials = (user: SafeUser) =>
   ((user.firstName[0] ?? "") + (user.lastName[0] ?? "")).toUpperCase();
+
+export const formatCommissionRate = (rate: number): string => `${rate}%`;
