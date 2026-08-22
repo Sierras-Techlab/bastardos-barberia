@@ -25,6 +25,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 19. `019_employee_work_sessions.sql`
 20. `020_income_pricing_owner_commissions_and_employee_privacy.sql`
 21. `021_fixed_customer_monthly_payments.sql`
+22. `022_manual_cash_lifecycle.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -39,6 +40,8 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `020_income_pricing_owner_commissions_and_employee_privacy.sql` removes the owner-zero rule introduced by `012`, lets managers override charged prices with reason and computes commission on the charged subtotal. It accepts manager exact amounts and employee integer basis points (summing to 10000), allows zero-total sales without payments and exposes a sanitized `income_as_employee_json` projection that omits catalog/charged prices, payments, totals and barbershop net. Run it after `019`; the canonical `create_income`, `list_incomes`, `get_income_detail` and `income_as_json` names remain unchanged.
 
 `021_fixed_customer_monthly_payments.sql` adds `responsible_user_id` and `monthly_price` to fixed schedules, requires them on every active row, extends `incomes` with `source_type = 'fixed_subscription'` plus a unique active subscription per `(customer, period)` index, installs the append-only `fixed_customer_monthly_payment_attempts` table and exposes `list_fixed_customer_months`, `pay_fixed_customer_month` and `get_fixed_customer_month`. The migration aborts with `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED` if any active schedule is missing a professional or a positive price; resolve those rows before applying. The canonical `create_income` RPC remains unchanged: subscription rows are inserted directly with the appropriate `source_type` by `pay_fixed_customer_month`. `void_income` now also marks the linked payment attempt as voided, reopening the month without deleting history. Run it after `020`.
+
+`022_manual_cash_lifecycle.sql` evolves the automatic Caja into a manager-controlled lifecycle: `opening_balance`, `opening_source`, `close_mode`, `expected_cash`, `counted_cash`, `difference_cash` and `reconciliation_state` are added to `daily_cash_registers`. Legacy `018` registers are backfilled as zero opening, `first_income`, `automatic`, `pending_confirmation`; their financial snapshots stay immutable. The migration preflight aborts with `CASH_PAYMENT_METHOD_REQUIRED` unless exactly one normalized payment method named `Efectivo` exists. The payment-method RPCs reject rename/deactivate/delete of the protected record via `CASH_PAYMENT_METHOD_PROTECTED`. New RPCs `open_daily_cash`, `close_daily_cash`, `confirm_daily_cash` and the protected `ensure_daily_cash_open` (called by both `create_income` and `pay_fixed_customer_month`) use the same advisory lock as the daily register and persist a unified lifecycle block via the promoted `cash_day_as_json`. Run it after `021`.
 
 Verify the automatic cash objects and cron job:
 
