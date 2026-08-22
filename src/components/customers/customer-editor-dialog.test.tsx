@@ -59,11 +59,29 @@ it("loads and can disable an existing fixed schedule", async () => {
     fixedSchedule: { weekday: 4 as const, time: "10:00", responsibleProfessional: professional, monthlyPrice: 15000 },
     fixedScheduleVersion: 1,
   };
-  render(<CustomerEditorDialog mode="edit" customer={customer} customers={[customer]} onClose={vi.fn()} onSave={onSave} />);
+  render(<CustomerEditorDialog mode="edit" customer={customer} customers={[customer]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={onSave} />);
   expect(screen.getByRole("checkbox", { name: /es cliente habitual/i })).toBeChecked();
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
   await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   expect(screen.queryByLabelText("Día fijo")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: null }));
+});
+
+it("hides the professional selector for employees and shows the manager dropdown when a fixed schedule is enabled", () => {
+  const customerWithSchedule = {
+    id: "10000000-0000-4000-8000-000000000001",
+    firstName: "J",
+    lastName: "C",
+    email: null,
+    phone: "1",
+    visits: 0,
+    createdAt: "2026-08-01T10:00:00.000Z",
+    fixedSchedule: { weekday: 4 as const, time: "10:00", responsibleProfessional: professional, monthlyPrice: 15000 },
+    fixedScheduleVersion: 1,
+  };
+  const { rerender } = render(<CustomerEditorDialog mode="edit" customer={customerWithSchedule} customers={[customerWithSchedule]} currentUserRole="employee" onClose={vi.fn()} onSave={vi.fn()} />);
+  expect(screen.queryByLabelText("Profesional responsable")).not.toBeInTheDocument();
+  rerender(<CustomerEditorDialog mode="edit" customer={customerWithSchedule} customers={[customerWithSchedule]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={vi.fn()} />);
+  expect(screen.getByLabelText("Profesional responsable")).toBeInTheDocument();
 });

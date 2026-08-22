@@ -14,9 +14,10 @@ const client = (): CustomerClient => ({
   remove: vi.fn(async (id) => ({ id })),
   listVisits: vi.fn(async () => ({ items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } })),
 });
+const baseProps = { currentUserId: "00000000-0000-4000-8000-000000000099", currentUserRole: "owner" as const };
 
 it("renders metrics and responsive customer representations", () => {
-  render(<CustomersView data={data} canDelete />);
+  render(<CustomersView data={data} canDelete {...baseProps} />);
   expect(screen.getByRole("region", { name: "Resumen de clientes" })).toBeVisible();
   expect(screen.getByRole("table", { name: "Listado de clientes" })).toBeVisible();
   expect(screen.getByRole("list", { name: "Listado móvil de clientes" })).toBeVisible();
@@ -24,7 +25,7 @@ it("renders metrics and responsive customer representations", () => {
 });
 
 it("searches customers and sorts by visits", async () => {
-  const user = userEvent.setup(); render(<CustomersView data={data} canDelete />);
+  const user = userEvent.setup(); render(<CustomersView data={data} canDelete {...baseProps} />);
   await user.type(screen.getByRole("searchbox", { name: "Buscar clientes" }), "lucas");
   expect(screen.getAllByText("Lucas Ferreyra")).toHaveLength(2);
   await user.clear(screen.getByRole("searchbox", { name: "Buscar clientes" }));
@@ -36,7 +37,7 @@ it("filters customers with fixed schedules and clears the filter", async () => {
   const user = userEvent.setup();
   const fixedCustomer = {
     ...data.customers[0],
-    fixedSchedule: { weekday: 4 as const, time: "10:00" },
+    fixedSchedule: { weekday: 4 as const, time: "10:00", responsibleProfessional: { id: baseProps.currentUserId, firstName: "Owner", lastName: "Owner" }, monthlyPrice: 15000 },
     fixedScheduleVersion: 1,
   };
   const regularCustomer = {
@@ -49,6 +50,7 @@ it("filters customers with fixed schedules and clears the filter", async () => {
     <CustomersView
       data={{ customers: [fixedCustomer, regularCustomer] }}
       canDelete
+      {...baseProps}
     />,
   );
 
@@ -64,7 +66,7 @@ it("filters customers with fixed schedules and clears the filter", async () => {
 
 it("creates and edits through persistence without editing visits", async () => {
   const user = userEvent.setup(); const customerClient = client();
-  render(<><CustomersView data={data} canDelete customerClient={customerClient} /><DashboardToaster /></>);
+  render(<><CustomersView data={data} canDelete customerClient={customerClient} {...baseProps} /><DashboardToaster /></>);
   await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
   let dialog = screen.getByRole("dialog");
   await user.type(within(dialog).getByLabelText("Nombre"), "Ana");
@@ -85,7 +87,7 @@ it("creates and edits through persistence without editing visits", async () => {
 });
 
 it("allows employees to create and edit but hides deletion", () => {
-  render(<CustomersView data={data} canDelete={false} />);
+  render(<CustomersView data={data} canDelete={false} currentUserId="00000000-0000-4000-8000-000000000099" currentUserRole="employee" />);
   expect(screen.getByRole("button", { name: "Nuevo cliente" })).toBeVisible();
   expect(screen.getAllByRole("button", { name: "Editar Lucas Ferreyra" })).toHaveLength(2);
   expect(screen.queryByRole("button", { name: "Eliminar Lucas Ferreyra" })).not.toBeInTheDocument();
@@ -93,7 +95,7 @@ it("allows employees to create and edit but hides deletion", () => {
 
 it("manager deletion requires confirmation", async () => {
   const user = userEvent.setup(); const customerClient = client();
-  render(<><CustomersView data={data} canDelete customerClient={customerClient} /><DashboardToaster /></>);
+  render(<><CustomersView data={data} canDelete customerClient={customerClient} {...baseProps} /><DashboardToaster /></>);
   await user.click(screen.getAllByRole("button", { name: "Eliminar Lucas Ferreyra" })[0]);
   await user.click(screen.getByRole("button", { name: "Eliminar cliente" }));
   await waitFor(() => expect(customerClient.remove).toHaveBeenCalledWith(data.customers.find(({ firstName }) => firstName === "Lucas")!.id));
@@ -101,7 +103,7 @@ it("manager deletion requires confirmation", async () => {
 });
 
 it("does not render a mailto action for missing email", () => {
-  render(<CustomersView data={{ customers: [{ ...data.customers[0], email: null }] }} canDelete={false} />);
+  render(<CustomersView data={{ customers: [{ ...data.customers[0], email: null }] }} canDelete={false} {...baseProps} />);
   expect(document.querySelector('a[href^="mailto:"]')).toBeNull();
 });
 
@@ -118,7 +120,7 @@ it("opens visit details from desktop and mobile visit controls", async () => {
     }],
     pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
   });
-  render(<CustomersView data={data} canDelete customerClient={customerClient} />);
+  render(<CustomersView data={data} canDelete customerClient={customerClient} {...baseProps} />);
 
   const controls = screen.getAllByRole("button", { name: "Ver 18 visitas de Lucas Ferreyra" });
   expect(controls).toHaveLength(2);

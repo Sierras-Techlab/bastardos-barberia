@@ -1,5 +1,11 @@
 import type { FixedCustomerMonth, FixedCustomerMonthQuery, PayFixedCustomerMonthInput } from "@/types/fixed-customer-payment";
 
+export type FixedCustomerPaymentClient = {
+  list(query: FixedCustomerMonthQuery): Promise<FixedCustomerMonth[]>;
+  pay(input: PayFixedCustomerMonthInput & { mode: "manager" | "employee" }): Promise<FixedCustomerMonth>;
+  get(customerId: string, period: string): Promise<FixedCustomerMonth | null>;
+};
+
 const buildQuery = (query: FixedCustomerMonthQuery): string => {
   const params = new URLSearchParams();
   params.set("period", query.period);
@@ -9,8 +15,8 @@ const buildQuery = (query: FixedCustomerMonthQuery): string => {
 
 const noStoreRequest = (init?: RequestInit): RequestInit => ({ ...init, cache: "no-store" });
 
-export const fixedCustomerPaymentClient = {
-  list: async (query: FixedCustomerMonthQuery): Promise<FixedCustomerMonth[]> => {
+export const fixedCustomerPaymentClient: FixedCustomerPaymentClient = {
+  list: async (query) => {
     const response = await fetch(`/api/fixed-customer-months?${buildQuery(query)}`, noStoreRequest());
     if (!response.ok) {
       const error = await response.json().catch(() => ({ code: "UNKNOWN", message: "No se pudo obtener la lista de meses." }));
@@ -19,7 +25,7 @@ export const fixedCustomerPaymentClient = {
     const data: { items: FixedCustomerMonth[] } = await response.json();
     return data.items;
   },
-  pay: async (input: PayFixedCustomerMonthInput & { mode: "manager" | "employee" }): Promise<FixedCustomerMonth> => {
+  pay: async (input) => {
     const response = await fetch("/api/fixed-customer-months/pay", noStoreRequest({
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -32,7 +38,7 @@ export const fixedCustomerPaymentClient = {
     const data: { month: FixedCustomerMonth } = await response.json();
     return data.month;
   },
-  get: async (customerId: string, period: string): Promise<FixedCustomerMonth | null> => {
+  get: async (customerId, period) => {
     const params = new URLSearchParams({ customerId, period });
     const response = await fetch(`/api/fixed-customer-months/get?${params.toString()}`, noStoreRequest());
     if (response.status === 404) return null;
