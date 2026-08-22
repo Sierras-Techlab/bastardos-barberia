@@ -11,7 +11,7 @@ export type Customer = {
   createdAt: string;
   fixedSchedule: FixedSchedule | null;
   fixedScheduleVersion: number | null;
-  lastVisitBusinessDate: string | null;
+  lastVisitBusinessDate?: string | null;
 };
 
 export type CustomerCatalogData = { customers: Customer[] };

@@ -49,7 +49,8 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
 - Every active fixed schedule has one responsible professional and a positive integer monthly price. Employee schedules are forced to use the actor as the responsible professional; only manager mutations may reassign another professional.
 - Monthly subscription payments are recorded as immutable `fixed_subscription` incomes with their own per-period row in `fixed_customer_monthly_payment_attempts`. A new attempt reuses the same `(customer, period)` key only after a manager voids the previous active attempt, reopening the month without losing history. The same physical month cannot be paid twice while the previous attempt is active.
-- Customer visit history, dashboard totals and Caja snapshots continue to come from active normal sales; `fixed_subscription` rows contribute to the daily cash close but are excluded from "visits" counters and customer-visit financial projections.
+- Customer visit history, dashboard totals and Caja snapshots continue to come from active normal sales; `fixed_subscription` rows contribute to the daily cash close but are excluded from "visits" counters and customer-visit financial projections. Each customer's last qualifying visit date is derived from the latest active normal sale through a canonical partial index and never stored as a mutable customer column.
+- The canonical payment method named `Efectivo` is the only one that affects physical cash reconciliation. Renaming, deactivating or deleting that record is rejected by the payment-method RPCs and the database enforces a unique `system_code = 'cash'` index.
 - Database tables have RLS enabled with no browser policies. Only the server secret role can access them.
 - SQL in `supabase/queries` is the source of truth and is designed for manual execution in the Supabase SQL Editor.
 - Products retain creator/updater audit users, are deactivated rather than deleted, and expose inactive records only to owner/admin.
@@ -84,7 +85,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `021` and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `023` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

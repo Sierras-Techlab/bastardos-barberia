@@ -46,11 +46,11 @@ const formatLongDate = (date: string) =>
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(`${date}T12:00:00-03:00`));
 
-const reconciliationBadge: Record<typeof initialDay.lifecycle.reconciliationState, { label: string; className: string } | null> = {
+const reconciliationBadge: Record<"not_applicable" | "pending_confirmation" | "confirmed", { label: string; className: string } | null> = {
   not_applicable: null,
-  pending_confirmation: { label: "Pendiente de confirmaciÃ³n", className: "bg-amber-100 text-amber-800 hover:bg-amber-100" },
+  pending_confirmation: { label: "Pendiente de confirmación", className: "bg-amber-100 text-amber-800 hover:bg-amber-100" },
   confirmed: { label: "Confirmada", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
-} as unknown as Record<"not_applicable" | "pending_confirmation" | "confirmed", { label: string; className: string } | null>;
+};
 
 export const CashView = ({
   initialDay,

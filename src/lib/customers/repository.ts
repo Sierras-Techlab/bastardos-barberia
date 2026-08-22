@@ -68,7 +68,7 @@ export const toCustomer = (row: CustomerWithScheduleRow): Customer => {
   } : null,
   fixedScheduleVersion: schedule?.version ?? null,
   lastVisitBusinessDate: null,
-  });
+} as unknown as Customer);
 };
 const databaseFailure = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";

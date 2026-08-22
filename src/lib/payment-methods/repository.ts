@@ -16,7 +16,7 @@ type PaymentMethodRow = {
   name: string;
   normalized_name: string;
   is_active: boolean;
-  system_code: string | null;
+  system_code?: string | null;
   created_by: string;
   updated_by: string;
   created_at: string;
