@@ -2,6 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/cash",
+}));
+
 import { CashView } from "@/components/cash/cash-view";
 import type { CashDay, PaginatedCashHistory } from "@/types/cash";
 
@@ -29,6 +34,17 @@ const liveDay: CashDay = {
   businessDate: "2026-08-15",
   state: "live",
   closedAt: null,
+  lifecycle: {
+    openingBalance: 0,
+    openingSource: null,
+    openedAt: null,
+    openedBy: null,
+    expectedCash: 0,
+    countedCash: null,
+    difference: null,
+    closeMode: null,
+    reconciliationState: "not_applicable",
+  },
   summary,
   payments: [
     {
@@ -62,6 +78,7 @@ const history: PaginatedCashHistory = {
       businessDate: "2026-08-14",
       state: "closed",
       closedAt: "2026-08-15T03:00:00.000Z",
+      lifecycle: liveDay.lifecycle,
       summary,
     },
   ],
@@ -79,7 +96,7 @@ describe("CashView", () => {
     );
 
     expect(screen.getByText("Caja de hoy")).toBeVisible();
-    expect(screen.getByText("Cierre guardado")).toBeVisible();
+    expect(screen.getByText("Sin abrir")).toBeVisible();
     expect(screen.getByText("Efectivo")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Cargar ingreso" }),
@@ -116,10 +133,24 @@ describe("CashView", () => {
       businessDate: "2026-08-14",
       state: "closed" as const,
       closedAt: "2026-08-15T03:00:00.000Z",
+      lifecycle: {
+        openingBalance: 0,
+        openingSource: "first_income" as const,
+        openedAt: "2026-08-14T12:00:00.000Z",
+        openedBy: { id, firstName: "Uriel", lastName: "Alessandro" },
+        expectedCash: 31000,
+        countedCash: 31000,
+        difference: 0,
+        closeMode: "automatic" as const,
+        reconciliationState: "confirmed" as const,
+      },
     };
     const cashClient = {
       getDay: vi.fn().mockResolvedValue(closedDay),
       list: vi.fn(),
+      open: vi.fn(),
+      close: vi.fn(),
+      confirm: vi.fn(),
     };
 
     render(
