@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { SafeUser } from "@/lib/auth/types";
-import type { CreateIncomeInput, Income, IncomeListItem, IncomeListQuery, PaginatedIncomes } from "@/types/income";
+import type { CreateIncomeInput, IncomeListQuery, PaginatedIncomes } from "@/types/income";
 
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
 const paymentSchema = z.object({ paymentMethodId: z.uuid(), methodName: z.string().min(1), amount: z.number().int().positive() }).strict();

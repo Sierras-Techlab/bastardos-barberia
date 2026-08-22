@@ -4,9 +4,11 @@ Captured: 2026-08-22
 
 ## Repository state
 
-- Active worktree branch: `codex/019-employee-work-sessions`. Block `019` is implemented locally on top of the automatic Caja baseline through migration `018`; this snapshot intentionally does not anchor the active work to a self-referential commit hash.
-- The approved operational-control architecture remains the roadmap for ordered blocks `019` through `023`; block `019` is implemented locally, while later blocks remain planning-only.
-- The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and identifies `020` as the next implementation block.
+- Active worktree branch: `feat/changes-fullstack`. Blocks `019` and `020` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `020`.
+- The approved operational-control architecture covers ordered blocks `019` through `023`; blocks `019` and `020` are implemented locally, while `021`, `022` and `023` remain planning-only.
+- The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and identifies `021` as the next implementation block.
+- **Implemented locally — 020:** migration `020_income_pricing_owner_commissions_and_employee_privacy.sql` removes the `012` owner-zero rules, persists catalog/charged/adjustment snapshots per line, accepts basis-point payments from employees, permits zero-total manager sales without payments and exposes sanitized employee JSON via `income_as_employee_json`. The repository parses manager and employee projections with strict role-aware Zod schemas; the route handler picks the schema by the authenticated user's role.
+- **Pending Supabase application — 020:** manually execute `020_income_pricing_owner_commissions_and_employee_privacy.sql` after installed migration `019`, then run its rollback-wrapped acceptance scenarios. No remote SQL was executed by this worktree.
 - **Implemented locally — 019:** migration, strict role-scoped domain/repository contracts, authenticated no-store API/client, persistent employee clock control, Presentismo history and manager correction UI. Only employees can clock themselves; actor/timestamps are server-derived. An employee sale requires that employee's open session. Managers do not require a session; a manager sale attributed to an employee links the employee's open session when one exists, otherwise retains the explicit `outsideWorkSession` audit flag. Corrections require a reason plus the visible `updatedAt` version, reject stale snapshots under the row lock and append immutable prior/new timestamps. Browser successes are parsed with the employee or manager Zod schema before UI state changes. Exact-session metrics exclude voided incomes; manager rows/cards show gross, net and that session's employee commission, while employee payloads omit gross/net.
 - **Pending Supabase application — 019:** manually execute `019_employee_work_sessions.sql` after installed migration `018`, then run its documented rollback-wrapped acceptance block and object/RLS/grant/trigger checks. No remote SQL was executed by this worktree.
 - The former `.worktrees/commercial-operations-v2` worktree was removed after the integration. The local `codex/commercial-operations-v2` branch remains only as a historical pointer to commit `158680c`.
@@ -20,9 +22,10 @@ Captured: 2026-08-22
 
 ## Delivered behavior
 
-- User administration persists integer service/product commission rates from 0 through 100, initially zero.
-- The responsive user directory exposes each employee's service and product commission percentages, and commission inputs can be cleared and replaced without retaining a leading zero while still rejecting empty or invalid values on submit.
-- Owner commission configuration is displayed as `No aplica`; owner fields are hidden in the editor and both application services and PostgreSQL normalize owner service/product rates to zero.
+- User administration persists integer service/product commission rates from 0 through 100. Owner rates are configurable; existing owners remain at zero until edited.
+- The responsive user directory exposes every user's service and product commission percentages and supports editing them without retaining a leading zero while still rejecting empty or invalid values on submit.
+- Block `020` adds catalog/charged-price snapshots plus a per-line override actor and reason. A line may be discounted, surcharged or set to zero, and the charged subtotal drives commission and barbershop net.
+- Block `020` accepts integer basis-point payment allocations from employees (summing to 10000) and exact ARS amounts from managers. The server distributes the deterministic remainder to the last allocation; a zero-total manager sale is allowed only with no payment rows.
 - Authenticated sessions hydrate both commission rates, so an employee loading `/incomes/new` receives the same persisted commission configuration used by manager-selected employees.
 - `/incomes/new` enforces role-aware responsible employees: employees are forced to themselves; owner/admin may choose any active user, loading every result page rather than truncating the selector at 100 users.
 - A sale accepts one or more distinct payment-method UUID allocations with positive integer amounts whose exact sum is validated against server-authoritative prices and total; responses retain immutable method-name snapshots.
@@ -112,6 +115,7 @@ Captured: 2026-08-22
 - Work-session Task 3 first failed RED because its six new test suites imported the intentionally absent API/client modules. After the minimal implementation, its focused slice passed 6 files / 13 tests; Next.js route type generation, TypeScript and `git diff --check` passed. Final verification passed 160 files / 601 tests, ESLint and the Next.js 16.3 Turbopack production build; no remote SQL was applied.
 - Work-session Task 4 plus its two fix rounds passed focused component/page slices and final verification with 164 files / 624 tests, ESLint, Next.js type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack build.
 - Work-session Task 5 documentation verification passed `npm test` (164 files / 624 tests), ESLint, Next.js type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The documented Supabase acceptance remains unexecuted.
+- Block `020` final verification passed `npm test` (165 files / 682 tests), ESLint, Next.js route type generation, standalone TypeScript, `git diff --check` and the Next.js 16.3 Webpack production build. The documented Supabase acceptance scenarios for charged-price overrides, basis-point payments, zero-total manager sales, employee sanitized projection and configurable owner commission remain unexecuted locally because no remote database was touched.
 
 ## Known boundaries
 
@@ -120,12 +124,14 @@ Captured: 2026-08-22
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 - The latest `016_payment_methods.sql` includes the legacy `income_payments.method` compatibility repair used by the functioning dynamic payment flow.
-- The approved roadmap intentionally supersedes two current rules only when its matching SQL and application blocks are installed: owners will become commission-configurable in `020`, and Caja will gain opening/counting/confirmation in `022`. Until then, owner rates remain forced to zero and Caja remains read-only with automatic closure.
+- The approved roadmap intentionally supersedes two current rules only when its matching SQL and application blocks are installed: block `020` makes owner commission configurable with charged-price overrides, and `022` will let Caja gain opening/counting/confirmation. Block `020` is implemented locally; until its migration is applied to the configured project, owner rates remain forced to zero by `012` and Caja remains read-only with automatic closure from `018`.
+- Block `020` employee-safe financial projections and basis-point payment entry are wired through the repository and route handler, but the income entry/history/dashboard components still render with the manager shape. Full employee sanitization at the UI boundary is a follow-up that does not require another database migration.
+- Migration `020` materializes the `income_as_employee_json` projection, the `get_income_detail` viewer-dispatching RPC and the rewritten `list_incomes` RPC. The SQL is structurally covered by the migration test; real-Supabase acceptance remains unexecuted.
 - Historical manager filter coverage for employees later promoted to a manager role remains outside the current catalog contract. Excluding logically deleted users follows the existing lifecycle ruling; this final-fix round intentionally does not change either historical-filter boundary.
 
 ## Recommended next task
 
-Integrate the reviewed `codex/019-employee-work-sessions` branch into the intended shared feature branch, then resume from block `020` using the roadmap index. Separately, when remote SQL is authorized, install migration `019` after `018` and run the documented rollback acceptance plus object/RLS/grant/trigger checks. No remote database mutation, push or merge was performed for the local implementation.
+Push block `020` commits to `feat/changes-fullstack` once authorized. When remote SQL is authorized, install migration `020` after `019` and run the documented rollback acceptance plus object/RLS/grant/trigger checks. Then plan and implement block `021` (fixed-customer monthly payments) using the roadmap index. No remote database mutation was performed for the local implementation.
 
 ## Context maintenance rule
 

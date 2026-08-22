@@ -1,7 +1,6 @@
 import type {
   CommissionPreviewSnapshot,
   CommissionPreviewInput,
-  IncomePayment,
 } from "@/types/income-commissions";
 import type { IncomePaymentInput } from "@/types/payment-method";
 import type { IncomeStatus } from "@/types/income";
