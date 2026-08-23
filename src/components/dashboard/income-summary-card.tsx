@@ -38,30 +38,34 @@ export const IncomeSummaryCard = ({ summary, isEmployee }: Props) => {
       <Link href="/incomes" className={cn(buttonVariants({ variant: "outline" }), "rounded-xl bg-white")}>Ver ingresos <ArrowUpRight /></Link>
     </div>
 
-    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={`mt-5 grid gap-3 sm:grid-cols-2 ${isEmployee ? "xl:grid-cols-2" : "xl:grid-cols-4"}`}>
       <article className="rounded-2xl border border-white/10 bg-[#202023] p-4 text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
         <CircleDollarSign className="size-4 text-red-400" />
         <p className="mt-5 text-2xl font-semibold">{currencyFormatter.format(summary.today.total)}</p>
-        <p className="mt-1 text-xs text-white/55">Total del día</p>
+        <p className="mt-1 text-xs text-white/55">{isEmployee ? "Tu facturación" : "Total del día"}</p>
       </article>
       <article className="rounded-2xl border border-white/10 bg-primary p-4 text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
         <ReceiptText className="size-4 text-white/80" />
         <p className="mt-5 text-2xl font-semibold">{summary.today.count} {summary.today.count === 1 ? "venta" : "ventas"}</p>
-        <p className="mt-1 text-xs text-white">Ingresos registrados</p>
+        <p className="mt-1 text-xs text-white">{isEmployee ? "Ingresos que registraste" : "Ingresos registrados"}</p>
       </article>
-      <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-        <Banknote className="size-4 text-primary" />
-        <p className="mt-5 text-xl font-semibold">{currencyFormatter.format(summary.today.average)}</p>
-        <p className="mt-1 text-xs text-muted-foreground">Promedio por venta</p>
-      </article>
-      <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-        <WalletCards className="size-4 text-primary" />
-        <div className="mt-4 space-y-1.5">
-          {summary.today.paymentTotals.length > 0
-            ? summary.today.paymentTotals.map((payment) => <p key={payment.paymentMethodId} className="text-sm font-semibold">{payment.name} {currencyFormatter.format(payment.amount)}</p>)
-            : <p className="text-sm text-muted-foreground">Sin pagos registrados</p>}
-        </div>
-      </article>
+      {!isEmployee && (
+        <>
+          <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+            <Banknote className="size-4 text-primary" />
+            <p className="mt-5 text-xl font-semibold">{currencyFormatter.format(summary.today.average)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Promedio por venta</p>
+          </article>
+          <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+            <WalletCards className="size-4 text-primary" />
+            <div className="mt-4 space-y-1.5">
+              {summary.today.paymentTotals.length > 0
+                ? summary.today.paymentTotals.map((payment) => <p key={payment.paymentMethodId} className="text-sm font-semibold">{payment.name} {currencyFormatter.format(payment.amount)}</p>)
+                : <p className="text-sm text-muted-foreground">Sin pagos registrados</p>}
+            </div>
+          </article>
+        </>
+      )}
     </div>
 
     <div className="mt-5">

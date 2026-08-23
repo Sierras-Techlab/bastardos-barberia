@@ -42,3 +42,13 @@ it("uses personal copy for employees", () => {
   render(<IncomeSummaryCard summary={summary} isEmployee />);
   expect(screen.getByRole("heading", { name: "Tus ingresos de hoy" })).toBeVisible();
 });
+
+it("hides manager-only totals and payment breakdown for employees", () => {
+  render(<IncomeSummaryCard summary={summary} isEmployee />);
+  expect(screen.queryByText("Promedio por venta")).not.toBeInTheDocument();
+  expect(screen.queryByText("Efectivo $ 22.000")).not.toBeInTheDocument();
+  expect(screen.queryByText("Transferencia $ 7.000")).not.toBeInTheDocument();
+  expect(screen.queryByText("Tarjeta $ 6.000")).not.toBeInTheDocument();
+  expect(screen.getByText("$ 35.000")).toBeVisible();
+  expect(screen.getByText("2 ventas")).toBeVisible();
+});
