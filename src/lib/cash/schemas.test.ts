@@ -151,6 +151,80 @@ describe("cash lifecycle", () => {
     };
     expect(cashDaySchema.safeParse({ ...cashDay, lifecycle }).success).toBe(true);
   });
+
+  it("accepts an open persisted register with no closure yet", () => {
+    const lifecycle = {
+      openingBalance: 0,
+      openingSource: "first_income" as const,
+      openedAt: "2026-08-15T12:00:00.000Z",
+      openedBy: { id: "00000000-0000-4000-8000-000000000001", firstName: "Lautaro", lastName: "Bastardos" },
+      expectedCash: 0,
+      countedCash: null,
+      difference: null,
+      closeMode: null,
+      reconciliationState: "not_applicable" as const,
+    };
+    const openPersisted = {
+      id: null,
+      businessDate: "2026-08-15",
+      state: "live" as const,
+      closedAt: null,
+      lifecycle,
+      summary: {
+        salesGrossTotal: 0,
+        salesCommissionTotal: 0,
+        salesBarbershopNet: 0,
+        adjustmentGrossTotal: 0,
+        adjustmentCommissionTotal: 0,
+        adjustmentBarbershopNet: 0,
+        grossTotal: 0,
+        commissionTotal: 0,
+        barbershopNet: 0,
+        serviceTotal: 0,
+        productTotal: 0,
+        saleCount: 0,
+        activeSaleCount: 0,
+        voidedSaleCount: 0,
+        adjustmentCount: 0,
+      },
+      payments: [],
+      sales: [],
+      adjustments: [],
+    };
+    expect(cashDaySchema.safeParse(openPersisted).success).toBe(true);
+  });
+
+  it("accepts a manual confirmed close with zero or non-zero difference", () => {
+    const lifecycle = {
+      openingBalance: 0,
+      openingSource: "manual" as const,
+      openedAt: "2026-08-15T12:00:00.000Z",
+      openedBy: { id: "00000000-0000-4000-8000-000000000001", firstName: "Lautaro", lastName: "Bastardos" },
+      expectedCash: 16500,
+      countedCash: 16500,
+      difference: 0,
+      closeMode: "manual" as const,
+      reconciliationState: "confirmed" as const,
+    };
+    const manualConfirmedClose = { ...cashDay, lifecycle };
+    expect(cashDaySchema.safeParse(manualConfirmedClose).success).toBe(true);
+  });
+
+  it("accepts an automatic pending close without counted cash", () => {
+    const lifecycle = {
+      openingBalance: 0,
+      openingSource: "first_income" as const,
+      openedAt: "2026-08-15T12:00:00.000Z",
+      openedBy: { id: "00000000-0000-4000-8000-000000000001", firstName: "Lautaro", lastName: "Bastardos" },
+      expectedCash: 0,
+      countedCash: null,
+      difference: null,
+      closeMode: "automatic" as const,
+      reconciliationState: "pending_confirmation" as const,
+    };
+    const automaticPendingClose = { ...cashDay, lifecycle };
+    expect(cashDaySchema.safeParse(automaticPendingClose).success).toBe(true);
+  });
 });
 
 describe("cash input schemas", () => {
