@@ -8,7 +8,93 @@ Captured: 2026-08-22
 - Do **not** apply migrations `020` through `023` to the shared Supabase project yet. In particular, `021` references a missing attempts `status` column and has projection/client unit mismatches; `022` has invalid migration order/lifecycle SQL and does not correctly promote the canonical read path; employee income entry/history/dashboard remain wired to manager-shaped or amount-based contracts.
 - The authoritative repair guide is `docs/superpowers/plans/2026-08-23-operational-control-corrective-repair.md`. It supersedes the previous recommendation to deploy the five-block chain immediately. The installed remote baseline must remain separate from repository HEAD until the guide's real PostgreSQL acceptance gate passes.
 
+## In-progress corrective repair (Task 1 partial)
+
+The corrective repair is in progress on `feat/changes-fullstack`. Task 1 of the plan is partially implemented but not yet green:
+
+**Done in commit `76426b3` (Task 1 partial):**
+- `IncomeFormData` is a discriminated union `ManagerIncomeFormData | EmployeeIncomeFormData`. Employee projection exposes `earning`/`earningUnit` instead of `price`. The manager projection keeps `price`.
+- `managerIncomeFormSchema` and `employeeIncomeFormSchema` are separate Zod schemas with role-specific payment discriminated unions (`amount` for manager, `basisPoints` for employee). `priceOverrideSchema` accepts nonnegative integers (manager can give a line for free). Zero-total manager sale is allowed with empty payments.
+- `PaymentMethodSelector` is a discriminated `mode: "manager" | "employee"` prop rendering either integer ARS inputs or basis-point inputs. The previous "Agregar medio" generic button was replaced with per-method toggle buttons because the test contract expects per-method names.
+- `role-safety.test.tsx` is the new RED that asserts employee payload never leaks `price|catalogUnitPrice|chargedUnitPrice|total|payments|barbershopNet|registeredBy`, employee submit always sends `basisPoints` (summing 10000), manager submit sends exact integer ARS amounts, and negative amounts are rejected by the selector.
+
+**Broken by Task 1 partial (work the next chat must do):**
+- 2 of 6 new `role-safety.test.tsx` cases fail: "submits an employee sale with a single payment method using basis points" and "submits a manager sale with exact ARS amounts and combined methods". The "Confirmar ingreso" dialog never opens in either case. The form's `handleReview` already returns `setReviewValues(validValues)` when payment sum matches but the dialog is not visible. Likely causes to investigate:
+  - the PaymentMethodSelector's `useEffect` mutates `form.setValue("payments", ...)` on mount, which may race with the default `basisPoints: 10000` for employee; or
+  - react-hook-form's `useForm` re-initializes `defaultValues` when props change, dropping the auto-populated payment; or
+  - the `employeeIncomeFormSchema` refinement that requires `serviceId || products.length > 0` fails because `useForm` validates against stale state.
+- All Task 1 RED test must pass with the dialog opening and submissions firing, before Task 1 is committed and the next task can start.
+- After Task 1 is green, the 11-test `income-form.test.tsx` must still pass. Several historic tests there still rely on the implicit `amount`-based payments (e.g. `expect(input.payments).toEqual([{ paymentMethodId, amount }])`); they may need to be split into a `managerForm.test.tsx` so the discriminated contracts are explicit.
+
 ## Repository state
+
+## Corrective repair remaining work (must finish before deploying migrations 020–023)
+
+Authoritative guide: docs/superpowers/plans/2026-08-23-operational-control-corrective-repair.md. The repair is **interrupted mid-Task 1**; the next chat must continue with the in-progress work before starting Tasks 2–7.
+
+### Task 1 — Role-safe income entry and employee privacy (PARTIALLY GREEN)
+
+Status: 2 of 6 new ole-safety.test.tsx cases fail because the 'Confirmar ingreso' dialog never opens. The form's handleReview returns setReviewValues(validValues) only when the payment sum matches, but the dialog is not visible.
+
+**Next chat must do:**
+- Diagnose why the dialog doesn't open. Likely candidates: react-hook-form re-initializing defaultValues on prop change, the PaymentMethodSelector's useEffect mutating the form, or stale serviceId validation.
+- Once the 2 failing cases pass, income-form.test.tsx will likely regress because historic tests assume mount-based payments. Split them into a managerForm.test.tsx that uses the manager schema, and keep the form's employee flow tested by ole-safety.test.tsx.
+- All 6 ole-safety.test.tsx cases must pass before Task 1 closes. Run the focused RED (
+pm test --run src/components/incomes/role-safety src/components/incomes/income-form) plus 
+px tsc --noEmit, 
+pm run lint, git diff --check before committing.
+- Commit with ix(incomes): complete role-safe entry contracts (the partial commit used the same message; the final commit may reuse it).
+
+### Task 2 — Income history and dashboard projections (PENDING)
+
+Goal: define ManagerPaginatedIncomes and EmployeePaginatedIncomes, parse each API success envelope with the schema selected by the viewer, never cast employee data to manager shape, never use s never or s unknown as ..., render the employee dashboard with employeeCommission only, and write RED for the history list and dashboard for the employee viewer. The (home)/page.tsx and incomes/page.tsx must use the discriminated union.
+
+Files: src/types/income.ts, src/lib/incomes/client.ts, src/app/(dashboard)/incomes/page.tsx, src/app/(dashboard)/(home)/page.tsx, src/components/incomes/incomes-view.tsx, src/components/incomes/income-table.tsx, src/components/incomes/income-mobile-list.tsx, src/components/incomes/income-detail-sheet.tsx, src/components/dashboard/income-summary-card.tsx and matching tests. Also remove the s never in the page components and the dashboard's ilter((item) => item && typeof item === 'object' && !('employeeCommission' in item)) that discards employee records.
+
+### Task 3 — Rebuild migration 021 (PENDING)
+
+Goal: write the canonical schema to a clean PostgREST-installable file with ttempts.status (active|voided) + check constraint, partial unique index for active (customer, period), role text snapshot (not numeric), canonical pay_fixed_customer_month that does NOT call ensure_daily_cash_open (022 will own universal opening), the role as text, and a hexadecimal fingerprint via encode(extensions.digest(...), 'hex') if the column is text. Also rewrite get_fixed_customer_month to synthesize a pending object from the active schedule when no attempt exists. Use an AFTER UPDATE OF status trigger to mark the linked attempt voided when oid_income flips the income, preserving the canonical void function.
+
+Files: supabase/queries/021_fixed_customer_monthly_payments.sql, src/lib/fixed-customer-payments/migration-021.test.ts, src/lib/supabase/operational-control-migrations.test.ts, src/lib/supabase/database.types.ts, supabase/queries/README.md. Make sure the client and dialog tests (Task 4) still pass.
+
+### Task 4 — Reconcile 021 client and UI (PENDING)
+
+Goal: read API success envelopes { data: { items } } and { data: { month } } with strict Zod, raise FixedCustomerPaymentApiError(status, code, message, fields?) on failure, ensure the ARS integer flows without /100/*100 (15000 stored, 15000 sent), accept combined { paymentMethodId, amount }[] for managers, and the employee dialog never renders monthlyPrice. Files: src/lib/fixed-customer-payments/client.ts, src/lib/fixed-customer-payments/client.test.ts, src/app/api/fixed-customer-months/route.test.ts, src/components/customers/customer-editor-dialog.tsx, src/components/fixed-customers/fixed-customer-payment-dialog.tsx, src/components/customers/customers-workspace.tsx.
+
+### Task 5 — Verify 023 (LIKELY GREEN)
+
+Step 1: add behavioral regression cases (no visits, one active sale, void hides newest, subscription ignored, Buenos Aires date ordering).
+Step 2: run focused tests, correct only verified defects. The current migration likely needs no production change.
+Step 3: commit only if production or test files changed, with ix(customers): preserve qualifying last visit.
+
+### Task 6 — Real PostgreSQL acceptance (PENDING; CANNOT EXECUTE)
+
+The plan requires real database acceptance against a disposable Supabase project. Without a remote execution environment we cannot satisfy this gate from the chat. The next chat must:
+- Apply migrations 001 through 023 in order to a disposable test project.
+- Run the documented acceptance sections per block (Task 6 Steps 2–5).
+- Save exact commands, exit results and representative sanitized JSON.
+- If a script fails, fix the canonical SQL in place (no _v2 objects), regenerate the operational-control-migrations.test.ts guards, re-run.
+
+### Task 7 — Final verification and documentation (PENDING)
+
+Run the full verification set: 
+px next typegen, 
+px tsc --noEmit, 
+pm test, 
+pm run lint, 
+pm run build. Then reconcile AGENTS.md, context_snapshot.md, product.md, the four 2026-08-21-02x-*.md plans, and 2026-08-22-operational-control-roadmap-status.md. Record the verified handoff and commit with docs(operations): record verified stabilization rollout. Do not claim remote deployment unless Tasks 1–6 are green and the operator's actual Supabase run is recorded.
+
+## Definition of done (verbatim from the corrective repair plan)
+
+- Employee sale entry sends basis points, never catalog prices, and successfully creates an authoritative income.
+- Employee history/dashboard/detail show only their earning and sanitized concepts.
+- Migration 021 installs and supports pending/pay/duplicate/retry/void/re-pay without invalid columns or casts.
+- Migration 022 installs after 021; manual and automatic Caja states match the approved lifecycle.
+- Expected physical cash uses only Efectivo plus opening balance and cash adjustments.
+- Subscription payments enter the day's income and Caja without becoming customer visits.
+- Last visit derives only from the latest active normal sale.
+- Clean PostgreSQL installation and end-to-end manager/employee scenarios pass.
+- Full tests, lint, TypeScript, build and diff checks pass after the final production change.
 
 - Active worktree branch: `feat/changes-fullstack`. Blocks `019`, `020`, `021`, `022` and `023` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `023`.
 - The approved operational-control architecture covers ordered blocks `019` through `023`; all five blocks are implemented locally.
