@@ -9,7 +9,7 @@ const failure = (operation: string, error: unknown): never => {
   if (description.includes("FIXED_OCCURRENCE_ALREADY_RESOLVED")) throw new AppError("FIXED_OCCURRENCE_ALREADY_RESOLVED", "La asistencia ya fue resuelta.", 409);
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
   console.error(`Database operation failed: ${operation} (${code})`);
-  throw new Error("No se pudo completar la operaciÃ³n en la base de datos.");
+  throw new Error("No se pudo completar la operación en la base de datos.");
 };
 
 export const fixedCustomerRepository: FixedCustomerRepository = {

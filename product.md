@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 
 ## Vision
 
@@ -9,7 +9,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 ## Users and permissions
 
 - Owner: full access. At least one active owner must always exist.
-- Owner sales belong entirely to the barbershop and never generate owner commission; future owner compensation must be modeled as a cash/expense movement.
+- Owner commission rates are manager-configurable; future owner-attributed sales snapshot the configured rate and separate the owner's earning from barbershop net.
 - Admin: full access for the current phase.
 - Employee: authenticated operational access; granular restrictions will be defined with future modules.
 - Accounts are created only by owner/admin. There is no self-registration or password recovery flow today.
@@ -19,7 +19,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Module | State | Current result / objective |
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
-| User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner rates are authoritatively normalized to 0 by migration 012, pending manual installation. |
+| User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; migration `020` removes the former owner-zero invariant for future sales. |
 | Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
 | Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, independently rounded item snapshots, owner-safe previews, audited 100% service/product-line exceptions, manager-controlled charged-price overrides with reason, employee percentage payment entry, employee-sanitized projections; migrations 010 through 015 plus 020 remain pending manual installation. |
 | Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
@@ -27,17 +27,17 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
 | Sales and cash | Implemented locally | Persistent sales feed a manager-only Caja workspace. Migration `022` adds manual open/close/confirm with automatic first-income opening and automatic pending-confirmation closing; reconciliation never recomputes closed snapshots. Migration `018` historical snapshots remain immutable and the canonical `Efectivo` payment method is protected by `system_code='cash'`. Expenses remain separate. |
-| Presentismo | Implemented locally | Employee-only persistent clock, responsive role-scoped history and optimistic manager correction UI are backed by migration `019`, authenticated API and a no-store browser client with strict role-specific response parsing. Employee sales require an open session; manager-to-employee sales link an open session or record an outside-session audit flag. Manual Supabase installation of `019` remains pending. |
+| Presentismo | Installed in test | Employee-only persistent clock, responsive role-scoped history and optimistic manager correction UI are backed by migration `019`, authenticated API and a no-store browser client with strict role-specific response parsing. Employee sales require an open session; manager-to-employee sales link an open session or record an outside-session audit flag. |
 | Products | Implemented locally | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic category administration with permanent deletion restricted to categories that were never assigned to a product. Migrations `014` and incremental `017` remain pending manual installation; inactive items show `No disponible` regardless of retained stock. |
 | Payment methods | Implemented locally | Audited dynamic catalog and allocations, manager create/rename/deactivate/reactivate UI, historical filters/dashboard totals and permanent deletion restricted to unused methods. Migration `016` must be rerun manually before using deletion against Supabase. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
-| Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, audited attended/missed occurrences and a query-derived "Última visita" column derived from the latest active normal sale through migration `023`. Migrations `013` and `023` remain pending manual installation. |
+| Customers | Implemented locally | Persistent directory, optional weekly schedule with responsible professional and monthly price, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, audited attended/missed occurrences and a query-derived "Última visita" column derived from the latest active normal sale through migration `023`. Migration `025` repairs schedule creation/editing on databases upgraded through `021`. |
 | Fixed-customer monthly payments | Implemented locally | Manager-controlled monthly price and professional assignment, role-aware collection (manager amount / employee basis points), atomic subscription income with append-only attempts, employee-safe financial projections, void-reopens-month behaviour and dashboard/cash integration; migration 021 remains pending manual installation. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective
 
-The resumable status and execution order for the complete operational-control roadmap is documented in `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. The detailed block plans remain authoritative for TDD execution: `019` is implemented and reviewed locally; `020`, `021`, `022` and `023` remain planned in that order.
+The test database has migrations `019` through `023` installed. Incremental repairs `024` and `025` must be applied in order: `024` restores the role-aware income-list response contract and `025` aligns habitual-customer mutations with the professional/monthly-price contract introduced by `021`.
 
 The approved next roadmap is split into five deployable blocks: `019` employee work sessions and presentism; `020` manager price overrides, configurable owner commission and employee-safe financial projections; `021` professional-owned fixed customers with atomic monthly payments; `022` manual cash opening/counting with automatic pending-confirmation fallback; and `023` customer last visit derived from active normal sales. Blocks `019`, `020` and `021` are implemented locally across migration, domain, authenticated API and responsive UI, but their migrations remain pending manual installation in the configured Supabase project. Block `021` adds `responsible_user_id` + `monthly_price` to fixed schedules, atomic monthly collection via `pay_fixed_customer_month`, append-only `fixed_customer_monthly_payment_attempts`, employee-safe financial projections, a manager professional selector inside the customer editor and a `Cobrar mensualidad` action scoped to the active professional. Customer visit totals and the `visits` counter continue to count only active normal sales; subscription incomes affect Caja and dashboards without inflating visit history. The current `012` owner-zero and `018` automatic read-only Caja behavior remains authoritative until its matching block is installed.
 

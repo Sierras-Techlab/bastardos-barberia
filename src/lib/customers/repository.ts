@@ -33,7 +33,7 @@ const paginatedCustomerVisitsSchema = z.object({
   }).strict(),
 }).strict();
 
-const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version,monthly_price,responsible_user:users(id,first_name,last_name))";
+const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version,monthly_price,responsible_user:users!customer_fixed_schedules_responsible_user_id_fkey(id,first_name,last_name))";
 type CustomerScheduleRow = {
   weekday: number;
   local_time: string;
@@ -84,7 +84,7 @@ const mutationFailure = (operation: string, error: { code?: string; details?: st
     throw new AppError("CUSTOMER_PHONE_EXISTS", "Ya existe un cliente con ese teléfono.", 409);
   }
   if (description.includes("FIXED_SCHEDULE_INVALID")) {
-    throw new AppError("FIXED_SCHEDULE_INVALID", "El horario habitual no es vÃ¡lido.", 400);
+    throw new AppError("FIXED_SCHEDULE_INVALID", "El horario habitual no es válido.", 400);
   }
   if (description.includes("FIXED_SCHEDULE_CONFLICT")) {
     throw new AppError("FIXED_SCHEDULE_CONFLICT", "El horario habitual fue modificado por otro usuario.", 409);

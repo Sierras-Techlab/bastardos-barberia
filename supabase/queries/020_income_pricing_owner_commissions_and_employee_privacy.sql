@@ -934,7 +934,7 @@ as $$
     'concepts', coalesce((
       select jsonb_agg(
         jsonb_build_object(
-          'id', ii.product_id,
+          'id', coalesce(ii.service_id, ii.product_id),
           'type', case when ii.item_type = 'service' then 'service' else 'product' end,
           'name', ii.name_snapshot,
           'quantity', ii.quantity,
@@ -1050,6 +1050,8 @@ as $$
         ) order by ii.created_at, ii.id
       )
       from public.income_items ii
+      left join public.users item_authorizer
+        on item_authorizer.id = ii.full_commission_authorized_by
       where ii.income_id = i.id and ii.item_type = 'product'
     ), '[]'::jsonb),
     'payments', coalesce((
@@ -1111,7 +1113,15 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_ACTOR';
   end if;
 
-  if actor_record.role_id = 3 and not can_view_all then
+  if actor_record.role_id = 3 then
+    if not exists (
+      select 1
+      from public.incomes i
+      where i.id = target_income_id
+        and i.employee_id = requesting_user_id
+    ) then
+      return null;
+    end if;
     detail := public.income_as_employee_json(target_income_id);
   else
     detail := public.income_as_json(target_income_id);
@@ -1138,8 +1148,8 @@ create or replace function public.list_incomes(
   filter_date_to date,
   filter_payment_method_id uuid,
   filter_kind text,
-  filter_query text,
   filter_status text,
+  filter_query text,
   page_number integer,
   page_size integer
 )
@@ -1150,17 +1160,14 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_record record;
-  offset_value integer := (page_number - 1) * page_size;
-  total_count integer;
-  total_pages integer;
-  rows_json jsonb := '[]'::jsonb;
-  payment_totals_json jsonb := '[]'::jsonb;
-  metrics_json jsonb;
-  is_employee_viewer boolean := false;
-  items jsonb;
+  requester_role_id smallint;
+  effective_can_view_all boolean;
+  safe_page integer := greatest(coalesce(page_number, 1), 1);
+  safe_page_size integer := least(greatest(coalesce(page_size, 10), 1), 100);
+  normalized_query text := public.normalize_catalog_name(coalesce(filter_query, ''));
+  result jsonb;
 begin
-  select id, role_id into actor_record
+  select role_id into requester_role_id
   from public.users
   where id = requesting_user_id and is_active and deleted_at is null;
 
@@ -1168,64 +1175,121 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_ACTOR';
   end if;
 
-  is_employee_viewer := actor_record.role_id = 3 and not can_view_all;
+  effective_can_view_all := can_view_all and requester_role_id in (1, 2);
 
-  select count(*)::integer
-  into total_count
-  from public.incomes i
-  where (filter_user_id is null or i.employee_id = filter_user_id)
-    and (filter_date_from is null or i.business_date >= filter_date_from)
-    and (filter_date_to is null or i.business_date <= filter_date_to)
-    and (
-      filter_payment_method_id is null or exists (
+  if filter_payment_method_id is not null and not exists (
+    select 1 from public.payment_methods where id = filter_payment_method_id
+  ) then
+    raise exception using errcode = '22023', message = 'INVALID_INCOME_FILTER';
+  end if;
+  if filter_kind is not null and filter_kind not in ('service', 'products', 'combined') then
+    raise exception using errcode = '22023', message = 'INVALID_INCOME_FILTER';
+  end if;
+  if filter_status is not null and filter_status not in ('active', 'voided') then
+    raise exception using errcode = '22023', message = 'INVALID_INCOME_FILTER';
+  end if;
+
+  with filtered as materialized (
+    select i.*
+    from public.incomes i
+    join public.users employee on employee.id = i.employee_id
+    left join public.customers c on c.id = i.customer_id
+    where (effective_can_view_all or i.employee_id = requesting_user_id)
+      and (not effective_can_view_all or filter_user_id is null or i.employee_id = filter_user_id)
+      and (filter_date_from is null or i.business_date >= filter_date_from)
+      and (filter_date_to is null or i.business_date <= filter_date_to)
+      and (filter_payment_method_id is null or exists (
         select 1 from public.income_payments ip
         where ip.income_id = i.id and ip.payment_method_id = filter_payment_method_id
-      )
-    )
-    and (filter_status is null or i.status::text = filter_status);
-
-  total_pages := case when total_count = 0 then 0 else ceil(total_count::numeric / page_size)::integer end;
-
-  select jsonb_build_object(
-    'items',
-    coalesce(jsonb_agg(item_row order by item_row->>'createdAt' desc, item_row->>'id' desc), '[]'::jsonb),
-    'pagination', jsonb_build_object(
-      'page', page_number,
-      'pageSize', page_size,
-      'total', total_count,
-      'totalPages', total_pages
-    ),
-    'metrics', jsonb_build_object(
-      'grossTotal', coalesce(sum((item_row->>'grossTotal')::bigint) filter (where item_row->>'status' = 'active'), 0),
-      'commissionTotal', coalesce(sum((item_row->>'commissionTotal')::bigint) filter (where item_row->>'status' = 'active'), 0),
-      'barbershopNet', coalesce(sum((item_row->>'barbershopNet')::bigint) filter (where item_row->>'status' = 'active'), 0),
-      'count', count(*) filter (where item_row->>'status' = 'active'),
-      'average', case
-        when count(*) filter (where item_row->>'status' = 'active') = 0 then 0
-        else (coalesce(sum((item_row->>'grossTotal')::bigint) filter (where item_row->>'status' = 'active'), 0)
-          / count(*) filter (where item_row->>'status' = 'active'))::bigint
-      end
-    )
-  )
-  into metrics_json
-  from (
-    select case when is_employee_viewer then public.income_as_employee_json(p.id) else public.income_as_json(p.id) end as item_row
-    from public.incomes p
-    where (filter_user_id is null or p.employee_id = filter_user_id)
-      and (filter_date_from is null or p.business_date >= filter_date_from)
-      and (filter_date_to is null or p.business_date <= filter_date_to)
+      ))
+      and (filter_status is null or i.status::text = filter_status)
       and (
-        filter_payment_method_id is null or exists (
-          select 1 from public.income_payments ip
-          where ip.income_id = p.id and ip.payment_method_id = filter_payment_method_id
+        filter_kind is null
+        or (filter_kind = 'service'
+          and exists (select 1 from public.income_items x where x.income_id = i.id and x.item_type = 'service')
+          and not exists (select 1 from public.income_items x where x.income_id = i.id and x.item_type = 'product'))
+        or (filter_kind = 'products'
+          and exists (select 1 from public.income_items x where x.income_id = i.id and x.item_type = 'product')
+          and not exists (select 1 from public.income_items x where x.income_id = i.id and x.item_type = 'service'))
+        or (filter_kind = 'combined'
+          and exists (select 1 from public.income_items x where x.income_id = i.id and x.item_type = 'service')
+          and exists (select 1 from public.income_items x where x.income_id = i.id and x.item_type = 'product'))
+      )
+      and (
+        normalized_query = ''
+        or public.normalize_catalog_name(employee.first_name || ' ' || employee.last_name) like '%' || normalized_query || '%'
+        or public.normalize_catalog_name(coalesce(c.first_name || ' ' || c.last_name, '')) like '%' || normalized_query || '%'
+        or exists (
+          select 1 from public.income_items x
+          where x.income_id = i.id
+            and public.normalize_catalog_name(x.name_snapshot) like '%' || normalized_query || '%'
         )
       )
-      and (filter_status is null or p.status::text = filter_status)
-    order by p.created_at desc, p.id desc
-    limit page_size offset offset_value
-  ) bounded;
+  ), totals as (
+    select
+      count(*)::integer as total_count,
+      coalesce(sum(gross_total) filter (where status = 'active'), 0)::bigint as gross_total,
+      coalesce(sum(commission_total) filter (where status = 'active'), 0)::bigint as commission_total,
+      coalesce(sum(barbershop_net) filter (where status = 'active'), 0)::bigint as barbershop_net,
+      (count(*) filter (where status = 'active'))::integer as active_count
+    from filtered
+  ), payment_totals as (
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'paymentMethodId', pm.id,
+      'name', pm.name,
+      'amount', coalesce(sums.amount, 0)::bigint
+    ) order by pm.created_at, pm.id), '[]'::jsonb) as totals_json
+    from public.payment_methods pm
+    left join (
+      select ip.payment_method_id, sum(ip.amount) as amount
+      from filtered f
+      join public.income_payments ip on ip.income_id = f.id
+      where f.status = 'active'
+      group by ip.payment_method_id
+    ) sums on sums.payment_method_id = pm.id
+  ), page_rows as (
+    select * from filtered
+    order by created_at desc, id desc
+    offset ((safe_page - 1) * safe_page_size)
+    limit safe_page_size
+  )
+  select case when effective_can_view_all then
+    jsonb_build_object(
+      'items', coalesce((select jsonb_agg(public.income_as_json(p.id) order by p.created_at desc, p.id desc) from page_rows p), '[]'::jsonb),
+      'metrics', jsonb_build_object(
+        'grossTotal', totals.gross_total,
+        'commissionTotal', totals.commission_total,
+        'barbershopNet', totals.barbershop_net,
+        'count', totals.active_count,
+        'average', case when totals.active_count = 0 then 0 else round(totals.gross_total::numeric / totals.active_count) end,
+        'paymentTotals', payment_totals.totals_json
+      ),
+      'pagination', jsonb_build_object(
+        'page', safe_page,
+        'pageSize', safe_page_size,
+        'total', totals.total_count,
+        'totalPages', case when totals.total_count = 0 then 0 else ceiling(totals.total_count::numeric / safe_page_size)::integer end
+      )
+    )
+  else
+    jsonb_build_object(
+      'items', coalesce((select jsonb_agg(public.income_as_employee_json(p.id) order by p.created_at desc, p.id desc) from page_rows p), '[]'::jsonb),
+      'metrics', jsonb_build_object(
+        'count', totals.active_count,
+        'employeeCommissionTotal', totals.commission_total
+      ),
+      'pagination', jsonb_build_object(
+        'page', safe_page,
+        'pageSize', safe_page_size,
+        'total', totals.total_count,
+        'totalPages', case when totals.total_count = 0 then 0 else ceiling(totals.total_count::numeric / safe_page_size)::integer end
+      )
+    )
+  end
+  into result
+  from totals cross join payment_totals;
 
-  return metrics_json;
+  return result;
 end;
 $$;
 

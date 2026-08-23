@@ -113,7 +113,7 @@ export const CashView = ({
     try {
       const updated = await cashClient.open(input);
       setDay(updated);
-      toast.success("Caja abierta. Ahora podÃ©s cargar ingresos.");
+      toast.success("Caja abierta. Ahora podés cargar ingresos.");
       router.push("/incomes/new");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "No se pudo abrir la caja.");
@@ -128,7 +128,7 @@ export const CashView = ({
     try {
       const updated = await cashClient.close(input);
       setDay(updated);
-      toast.success("Caja cerrada. QuedÃ³ pendiente de confirmaciÃ³n.");
+      toast.success("Caja cerrada. Quedó pendiente de confirmación.");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "No se pudo cerrar la caja.");
     } finally {
@@ -189,8 +189,8 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               {day.state === "live"
                 ? day.id === null
-                  ? "Aun no abriste la caja de hoy. DefinÃ­ el saldo inicial fÃ­sico antes de cargar ingresos."
-                  : "Se actualiza automÃ¡ticamente con los ingresos y anulaciones del dÃ­a."
+                  ? "Aún no abriste la caja de hoy. Definí el saldo inicial físico antes de cargar ingresos."
+                  : "Se actualiza automáticamente con los ingresos y anulaciones del día."
                 : "Este cierre es inmutable; las anulaciones posteriores se registran como ajustes auditados."}
             </p>
           </div>
@@ -232,9 +232,9 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <LifecycleField label="Saldo inicial" value={lifecycle ? formatArs(lifecycle.openingBalance) : "â€”"} hint={lifecycle?.openingSource === "manual" ? "Apertura manual" : lifecycle?.openingSource === "first_income" ? "Apertura automÃ¡tica" : null} />
-          <LifecycleField label="Efectivo esperado" value={lifecycle ? formatArs(lifecycle.expectedCash) : "â€”"} />
-          <LifecycleField label="Conteo fÃ­sico" value={lifecycle.countedCash !== null ? formatArs(lifecycle.countedCash) : "â€”"} hint={lifecycle.countedCash !== null ? differenceLabel(lifecycle.difference) : null} accent={lifecycle.countedCash !== null && lifecycle.difference !== 0} />
+          <LifecycleField label="Saldo inicial" value={lifecycle ? formatArs(lifecycle.openingBalance) : "—"} hint={lifecycle?.openingSource === "manual" ? "Apertura manual" : lifecycle?.openingSource === "first_income" ? "Apertura automática" : null} />
+          <LifecycleField label="Efectivo esperado" value={lifecycle ? formatArs(lifecycle.expectedCash) : "—"} />
+          <LifecycleField label="Conteo físico" value={lifecycle.countedCash !== null ? formatArs(lifecycle.countedCash) : "—"} hint={lifecycle.countedCash !== null ? differenceLabel(lifecycle.difference) : null} accent={lifecycle.countedCash !== null && lifecycle.difference !== 0} />
         </div>
       </section>
 
@@ -245,7 +245,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
           {day.adjustments.length > 0 && (
             <section className="rounded-[1.6rem] border border-primary/15 bg-primary/5 p-5">
               <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Ajustes auditados</p>
-              <p className="mt-2 text-lg font-semibold">{day.adjustments.length} {day.adjustments.length === 1 ? "anulaciÃ³n posterior" : "anulaciones posteriores"}</p>
+              <p className="mt-2 text-lg font-semibold">{day.adjustments.length} {day.adjustments.length === 1 ? "anulación posterior" : "anulaciones posteriores"}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">Impacto neto: {formatArs(day.summary.adjustmentBarbershopNet)}</p>
             </section>
           )}
@@ -257,7 +257,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
       {history.pagination.totalPages > 1 && (
         <div className="flex items-center justify-between gap-4">
           <Button type="button" variant="outline" disabled={loadingHistory || history.pagination.page <= 1} onClick={() => void loadHistoryPage(history.pagination.page - 1)}>Anterior</Button>
-          <span className="text-sm text-muted-foreground">PÃ¡gina {history.pagination.page} de {history.pagination.totalPages}</span>
+          <span className="text-sm text-muted-foreground">Página {history.pagination.page} de {history.pagination.totalPages}</span>
           <Button type="button" variant="outline" disabled={loadingHistory || history.pagination.page >= history.pagination.totalPages} onClick={() => void loadHistoryPage(history.pagination.page + 1)}>Siguiente</Button>
         </div>
       )}

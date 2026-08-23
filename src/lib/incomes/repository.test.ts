@@ -25,7 +25,7 @@ const productCommission = {
   fullCommission: true,
   authorizedBy: manager,
 };
-const item = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" }, registeredBy: manager, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", catalogUnitPrice: 13000, chargedUnitPrice: 13000, catalogSubtotal: 13000, chargedSubtotal: 13000, adjustmentAmount: 0, commission: serviceCommission }, products: [{ id: "50000000-0000-4000-8000-000000000001", name: "Cera", catalogUnitPrice: 10000, chargedUnitPrice: 10000, catalogSubtotal: 20000, chargedSubtotal: 20000, adjustmentAmount: 0, quantity: 2, commission: productCommission }], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 33000 }], commission: { total: 26500, barbershopNet: 6500 }, total: 33000, grossTotal: 33000, status: "active" };
+const item = { id: "20000000-0000-4000-8000-000000000001", createdAt: "2026-08-11T12:00:00.000Z", businessDate: "2026-08-11", employee: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez" }, registeredBy: manager, customer: null, service: { id: "30000000-0000-4000-8000-000000000001", name: "Barba", price: 13000, catalogUnitPrice: 13000, chargedUnitPrice: 13000, catalogSubtotal: 13000, chargedSubtotal: 13000, adjustmentAmount: 0, priceOverrideReason: null, commission: serviceCommission }, products: [{ id: "50000000-0000-4000-8000-000000000001", name: "Cera", unitPrice: 10000, catalogUnitPrice: 10000, chargedUnitPrice: 10000, catalogSubtotal: 20000, chargedSubtotal: 20000, adjustmentAmount: 0, priceOverrideReason: null, quantity: 2, commission: productCommission }], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Efectivo", amount: 33000, basisPoints: null }], commission: { total: 26500, barbershopNet: 6500 }, total: 33000, grossTotal: 33000, status: "active" };
 const employeeItem = {
   id: item.id,
   createdAt: item.createdAt,
@@ -55,6 +55,29 @@ it("returns the sanitized manager projection when a manager fetches a sale", asy
   const rpc = vi.fn().mockResolvedValueOnce({ data: item.id, error: null }).mockResolvedValueOnce({ data: item, error: null });
   getSupabaseAdmin.mockReturnValue({ rpc });
   await expect(incomeRepository.create(managerActor, input)).resolves.toEqual(item);
+});
+
+it("accepts the charged-price manager projection in income history", async () => {
+  const response = {
+    items: [item],
+    metrics: {
+      grossTotal: 33000,
+      commissionTotal: 26500,
+      barbershopNet: 6500,
+      count: 1,
+      average: 33000,
+      paymentTotals: [{ paymentMethodId: item.payments[0].paymentMethodId, name: "Efectivo", amount: 33000 }],
+    },
+    pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+  };
+  getSupabaseAdmin.mockReturnValue({ rpc: vi.fn().mockResolvedValue({ data: response, error: null }) });
+
+  await expect(
+    incomeRepository.list(
+      { requestingUserId: managerActor.id, canViewAll: true, userId: null },
+      { page: 1, pageSize: 10 },
+    ),
+  ).resolves.toEqual(response);
 });
 
 it("requires historical method-name snapshots in income responses", async () => {

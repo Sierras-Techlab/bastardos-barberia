@@ -180,6 +180,8 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                     id="customerId"
                     customers={customers}
                     value={field.value}
+                    currentUserRole={data.currentUser.role}
+                    availableProfessionals={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]}
                     onChange={field.onChange}
                     onCustomerCreated={(customer) => {
                       setCustomers((current) => [...current, customer]);

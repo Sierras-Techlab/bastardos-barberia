@@ -92,6 +92,35 @@ describe("migration 020 charged prices and owner privacy contract", () => {
     expect(sql).toContain("'priceOverrideReason'");
   });
 
+  it("joins the product commission authorizer used by income_as_json", () => {
+    const sql = migration();
+    const incomeAsJson = sql.match(
+      /create or replace function public\.income_as_json[\s\S]*?create or replace function public\.get_income_detail/i,
+    )?.[0];
+
+    expect(incomeAsJson).toBeDefined();
+    expect(incomeAsJson).toMatch(
+      /'products'[\s\S]*?from public\.income_items ii\s+left join public\.users item_authorizer\s+on item_authorizer\.id = ii\.full_commission_authorized_by\s+where ii\.income_id = i\.id and ii\.item_type = 'product'/i,
+    );
+  });
+
+  it("preserves the installed list_incomes parameter names and positions", () => {
+    const sql = migration();
+
+    expect(sql).toMatch(
+      /create or replace function public\.list_incomes\(\s*requesting_user_id uuid,\s*can_view_all boolean,\s*filter_user_id uuid,\s*filter_date_from date,\s*filter_date_to date,\s*filter_payment_method_id uuid,\s*filter_kind text,\s*filter_status text,\s*filter_query text,\s*page_number integer,\s*page_size integer\s*\)/i,
+    );
+  });
+
+  it("returns role-scoped list metrics matching both server contracts", () => {
+    const sql = migration();
+
+    expect(sql).toContain("effective_can_view_all");
+    expect(sql).toContain("'paymentTotals'");
+    expect(sql).toContain("'employeeCommissionTotal'");
+    expect(sql).toMatch(/coalesce\(ii\.service_id, ii\.product_id\)/i);
+  });
+
   it("publishes a sanitized employee projection that omits price, payments and totals", () => {
     const sql = migration();
     expect(sql).toMatch(/create or replace function public\.income_as_employee_json\s*\(/i);

@@ -97,6 +97,8 @@ describe("CashView", () => {
 
     expect(screen.getByText("Caja de hoy")).toBeVisible();
     expect(screen.getByText("Sin abrir")).toBeVisible();
+    expect(screen.getByText(/Aún no abriste la caja de hoy\. Definí el saldo inicial físico/)).toBeVisible();
+    expect(screen.getByText("—")).toBeVisible();
     expect(screen.getByText("Efectivo")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Cargar ingreso" }),

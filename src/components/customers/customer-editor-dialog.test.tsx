@@ -7,7 +7,7 @@ const professional = { id: "00000000-0000-4000-8000-000000000003", firstName: "F
 
 it("keeps optional email and draft state when async creation fails", async () => {
   const user = userEvent.setup(); const onSave = vi.fn().mockRejectedValue(new Error("Ya existe un cliente con ese teléfono."));
-  render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" onClose={vi.fn()} onSave={onSave} />);
+  render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={onSave} />);
   await user.type(screen.getByLabelText("Nombre"), "Ana"); await user.type(screen.getByLabelText("Apellido"), "Pérez"); await user.type(screen.getByLabelText("Teléfono"), "3515550101");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un cliente con ese teléfono.");
@@ -18,18 +18,35 @@ it("keeps optional email and draft state when async creation fails", async () =>
 it("adds one required weekly schedule and shows its readable preview", async () => {
   const user = userEvent.setup();
   const onSave = vi.fn().mockResolvedValue({});
-  render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" onClose={vi.fn()} onSave={onSave} />);
+  render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={onSave} />);
   expect(screen.queryByLabelText("Día fijo")).not.toBeInTheDocument();
   await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.selectOptions(screen.getByLabelText("Día fijo"), "4");
   await user.type(screen.getByLabelText("Hora fija"), "10:00");
+  await user.selectOptions(screen.getByLabelText("Profesional responsable"), professional.id);
   await user.type(screen.getByLabelText("Precio mensual"), "150");
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");
   await user.type(screen.getByLabelText("Teléfono"), "3515550200");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
-  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: { weekday: 4, time: "10:00", monthlyPrice: 15000 } }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: { weekday: 4, time: "10:00", responsibleUserId: professional.id, monthlyPrice: 15000 } }));
+});
+
+it("requires managers to choose a responsible professional for a habitual customer", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn();
+  render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={onSave} />);
+  await user.type(screen.getByLabelText("Nombre"), "Juan");
+  await user.type(screen.getByLabelText("Apellido"), "Cruz");
+  await user.type(screen.getByLabelText("Teléfono"), "3515550200");
+  await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
+  await user.type(screen.getByLabelText("Hora fija"), "10:00");
+  await user.type(screen.getByLabelText("Precio mensual"), "150");
+  await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+
+  expect(screen.getByRole("alert")).toHaveTextContent("Seleccioná un profesional responsable.");
+  expect(onSave).not.toHaveBeenCalled();
 });
 
 it("requires a valid time when a fixed schedule is enabled", async () => {

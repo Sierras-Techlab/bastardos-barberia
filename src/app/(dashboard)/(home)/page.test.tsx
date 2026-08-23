@@ -91,7 +91,7 @@ it("renders only the three approved dashboard blocks", async () => {
   expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("md:grid-cols-2", "xl:grid-cols-1");
   expect(screen.queryByText("Servicios destacados")).not.toBeInTheDocument();
   expect(screen.queryByText("Actividad reciente")).not.toBeInTheDocument();
-  expect(screen.queryByText(/demostraciÃ³n/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/demostración/i)).not.toBeInTheDocument();
 });
 
 it("uses a spaced twelve-column desktop layout with constrained children", async () => {

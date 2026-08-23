@@ -1,10 +1,18 @@
 # Context snapshot
 
-Captured: 2026-08-22
+Captured: 2026-08-23
 
 ## Repository state
 
-- Active worktree branch: `feat/changes-fullstack`. Blocks `019`, `020`, `021`, `022` and `023` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `023`.
+- Active branch: `codex/fix-operational-migrations`, based on `feat/changes-fullstack`.
+- The user confirmed migrations `019` through `023` are installed in the test Supabase project. A read-only RPC probe then confirmed the installed `list_incomes` manager payload omitted `metrics.paymentTotals`, causing server validation to fail on the dashboard.
+- Migration `021` was repaired to use the canonical schedule, role, work-session, income, payment and void-audit contracts. Migration `022` was repaired to use physical payment-method deletion, canonical role IDs and immutable Caja snapshot columns, and to connect first-income opening plus manual/automatic closure to the existing `018` projections.
+- Migration `020` now joins the product-line commission authorizer inside `income_as_json` and preserves the parameter-name positions installed by `016` for `list_incomes`; the previous defects aborted installation with PostgreSQL errors `42P01` and `42P13`.
+- Migration `024_income_list_contract_repair.sql` is pending manual execution after installed `023`. It repairs the installed income-list JSON contract without rerunning structural migrations.
+- Migration `025_fixed_customer_schedule_mutation_repair.sql` is pending manual execution after `024`. It fixes the installed `021` mismatch that rejected every habitual-customer schedule carrying its required responsible professional and monthly price. Valid schedule times remain any `HH:mm` value from `00:00` through `23:59`.
+- The inline customer creator in `/incomes/new` now receives the authenticated role and complete active-user catalog. Owner/admin must select a responsible professional; employees remain self-assigned by the server. Caja and related customer/fixed-customer messages no longer contain mojibake, and Caja's hero copy describes its current manual open/close lifecycle.
+- Customer reads now disambiguate `customer_fixed_schedules.responsible_user_id` from the schedule table's other user foreign keys in PostgREST. This removes `PGRST201` after a successful customer RPC; a client affected before the repair may already be persisted because the failure happened only during the follow-up read.
+- Customer catalog validation now accepts ISO datetimes with explicit offsets such as PostgreSQL's `+00:00`, in addition to `Z`. This fixes the `/customers` render failure on newly persisted RPC rows without weakening date validation.
 - The approved operational-control architecture covers ordered blocks `019` through `023`; all five blocks are implemented locally.
 - The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and marks the roadmap as fully implemented pending remote application.
 - **Implemented locally — 023:** migration `023_customer_last_visit.sql` adds a partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status='active'` and `source_type='sale'` and promotes `list_customers(actor_user_id)` plus `get_customer_visits` to derive each customer's last active sale business date in `America/Argentina/Buenos_Aires`. Voids and `fixed_subscription` incomes are excluded; a void immediately reveals the previous qualifying sale. No mutable customer column is added and the projection never exposes payment, commission, employee or price data. The customer directory adds a "Última visita" column rendered with `formatLastVisit` (date + relative label like "hoy", "ayer", "hace N días/semanas/meses/años" or "próxima").
@@ -159,3 +167,11 @@ Update this file after every completed task with the active branch, delivered be
 - `/api/cash/open`, `/api/cash/close` and `/api/cash/[id]/confirm` routes are emitted alongside the existing `/api/cash` surface; the cash client exposes `open`, `close` and `confirm` mutations and the `/cash` workspace renders three dialogs with `Abrir caja`, `Cerrar caja` and `Confirmar conteo`.
 - `/api/customers` continues to serve the canonical `list_customers` projection that derives each customer's `lastVisitBusinessDate` from the latest active normal sale; the customer directory renders the new "Última visita" column with `formatLastVisit` (date label + relative label).
 - Migrations `022` and `023` and their rollback-wrapped SQL acceptance remain unapplied locally/remotely by this task, as intended. The `022` preflight requires exactly one normalized payment method named `Efectivo` (`CASH_PAYMENT_METHOD_REQUIRED`) and the `021` preflight requires every active fixed schedule to carry `responsible_user_id` and a positive `monthly_price` (`LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED`). Apply `019` → `020` → `021` → `022` → `023` in order, running each rollback block before moving on.
+
+## Fresh verification — Caja encoding and habitual-customer repair
+
+- The six focused cash/customer/income/migration files passed 28 tests. ESLint and the Next.js 16.3 Webpack production build passed.
+- The complete suite passed 792 of 793 tests; its only failure was the known parallel-load timeout in `products-view.test.tsx`. That file passed all 10 tests immediately when rerun in isolation.
+- After the PostgREST relationship repair, 26 focused customer tests, ESLint and the Webpack production build passed. The complete suite again passed 792 of 793 tests; the only failure moved to the unrelated product-category UI timeout, whose file passed all 4 tests immediately in isolation.
+- The PostgreSQL datetime-offset regression passed its red/green cycle: 3 focused customer files / 18 tests, focused ESLint and `git diff --check` all passed.
+- The database still requires manual execution of `024_income_list_contract_repair.sql` followed by `025_fixed_customer_schedule_mutation_repair.sql` before the repaired income-list and habitual-customer contracts are active remotely.

@@ -3,7 +3,12 @@ import type { SafeUser } from "@/lib/auth/types";
 import type { CreateIncomeInput, IncomeListQuery } from "@/types/income";
 
 const employeeSchema = z.object({ id: z.uuid(), firstName: z.string(), lastName: z.string() }).strict();
-const paymentSchema = z.object({ paymentMethodId: z.uuid(), methodName: z.string().min(1), amount: z.number().int().positive() }).strict();
+const paymentSchema = z.object({
+  paymentMethodId: z.uuid(),
+  methodName: z.string().min(1),
+  amount: z.number().int().positive(),
+  basisPoints: z.number().int().min(0).max(10000).nullable().optional(),
+}).strict();
 const itemCommissionSchema = z.object({
   subtotal: z.number().int().nonnegative(),
   catalogSubtotal: z.number().int().nonnegative().optional(),
@@ -17,22 +22,26 @@ const itemCommissionSchema = z.object({
 const managerServiceSchema = z.object({
   id: z.uuid(),
   name: z.string(),
+  price: z.number().int().nonnegative().optional(),
   catalogUnitPrice: z.number().int().nonnegative(),
   chargedUnitPrice: z.number().int().nonnegative(),
   catalogSubtotal: z.number().int().nonnegative(),
   chargedSubtotal: z.number().int().nonnegative(),
   adjustmentAmount: z.number().int(),
+  priceOverrideReason: z.string().nullable().optional(),
   commission: itemCommissionSchema,
 }).strict();
 const legacyServiceSchema = serviceSchemaBackwardCompatible();
 const managerProductSchema = z.object({
   id: z.uuid(),
   name: z.string(),
+  unitPrice: z.number().int().nonnegative().optional(),
   catalogUnitPrice: z.number().int().nonnegative(),
   chargedUnitPrice: z.number().int().nonnegative(),
   catalogSubtotal: z.number().int().nonnegative(),
   chargedSubtotal: z.number().int().nonnegative(),
   adjustmentAmount: z.number().int(),
+  priceOverrideReason: z.string().nullable().optional(),
   quantity: z.number().int().positive(),
   commission: itemCommissionSchema,
 }).strict();
@@ -58,7 +67,7 @@ export const managerIncomeResponseSchema = z.object({
   customer: employeeSchema.nullable(),
   service: managerServiceSchema.nullable(),
   products: z.array(managerProductSchema),
-  payments: z.array(paymentSchema).min(1),
+  payments: z.array(paymentSchema),
   commission: commissionSchema,
   total: z.number().int().nonnegative(),
   grossTotal: z.number().int().nonnegative(),
@@ -81,7 +90,7 @@ export const employeeIncomeResponseSchema = z.object({
   status: z.enum(["active", "voided"]),
 }).strict();
 export const paginatedIncomesSchema = z.object({
-  items: z.array(incomeResponseSchema),
+  items: z.array(managerIncomeResponseSchema),
   metrics: z.object({ grossTotal: z.number().nonnegative(), commissionTotal: z.number().nonnegative(), barbershopNet: z.number().nonnegative(), count: z.number().int().nonnegative(), average: z.number().nonnegative(), paymentTotals: z.array(z.object({ paymentMethodId: z.uuid(), name: z.string().min(1), amount: z.number().int().nonnegative() }).strict()) }).strict(),
   pagination: z.object({ page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict(),
 }).strict();

@@ -18,6 +18,8 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/add column if not exists counted_cash bigint/i);
     expect(sql).toMatch(/add column if not exists difference_cash bigint/i);
     expect(sql).toMatch(/add column if not exists reconciliation_state text/i);
+    expect(sql).toMatch(/alter column closed_at drop not null/i);
+    expect(sql).toMatch(/alter column closed_at drop default/i);
   });
 
   it("backfills legacy 018 registers without losing snapshots", () => {
@@ -31,6 +33,15 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/CASH_PAYMENT_METHOD_REQUIRED/);
     expect(sql).toMatch(/update public\.payment_methods\s+set system_code = 'cash'/i);
     expect(sql).toMatch(/payment_methods_cash_system_unique/i);
+  });
+
+  it("uses the physical-deletion payment-method schema without deleted_at", () => {
+    expect(sql).not.toMatch(/from public\.payment_methods[\s\S]{0,180}deleted_at/i);
+  });
+
+  it("resolves manager roles through the canonical role_id", () => {
+    expect(sql).not.toMatch(/\brole_name\b/i);
+    expect(sql).toMatch(/role_id in\s*\(\s*1\s*,\s*2\s*\)/i);
   });
 
   it("rejects rename/deactivate/delete of the protected Efectivo record", () => {
@@ -51,11 +62,25 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/on conflict \(business_date\) do nothing/i);
   });
 
-  it("promotes cash_day_as_json to expose lifecycle fields", () => {
-    expect(sql).toMatch(/create or replace function public\.cash_day_as_json/i);
+  it("auto-opens cash from every newly inserted income", () => {
+    expect(sql).toMatch(/after insert on public\.incomes/i);
+    expect(sql).toMatch(/ensure_daily_cash_open/i);
+  });
+
+  it("promotes the canonical cash read RPCs to expose lifecycle fields", () => {
+    expect(sql).toMatch(/create or replace function public\.cash_day_as_json\(\s*target_business_date date,\s*target_cash_id uuid,\s*is_live boolean/i);
+    expect(sql).toMatch(/create or replace function public\.get_daily_cash/i);
+    expect(sql).toMatch(/create or replace function public\.list_daily_cash/i);
     expect(sql).toMatch(/'openingBalance'/i);
     expect(sql).toMatch(/'expectedCash'/i);
     expect(sql).toMatch(/'reconciliationState'/i);
+  });
+
+  it("reads the canonical immutable cash snapshot columns", () => {
+    expect(sql).not.toMatch(/cash_register_id/i);
+    expect(sql).not.toMatch(/dcs\.created_at\b/i);
+    expect(sql).not.toMatch(/dcs\.customer_name\b/i);
+    expect(sql).not.toMatch(/dca\.original_business_date/i);
   });
 
   it("rejects negative opening balance or counted cash inputs", () => {

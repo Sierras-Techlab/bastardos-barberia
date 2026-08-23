@@ -70,6 +70,10 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
       setError(parsed.error.issues[0]?.message ?? "Revisá los datos ingresados.");
       return;
     }
+    if (hasFixedSchedule && isManager && !professionalId) {
+      setError("Seleccioná un profesional responsable.");
+      return;
+    }
     const duplicate = validateUniqueCustomerContact(parsed.data, customers, customer?.id);
     if (duplicate) {
       setError(duplicate);
@@ -111,7 +115,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
           {hasFixedSchedule && <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5 text-sm font-medium">Día fijo<select aria-label="Día fijo" value={weekday} onChange={(event) => setWeekday(Number(event.target.value) as IsoWeekday)} className={`${fieldClassName} w-full px-3 text-sm`}>{weekdayOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
             <label className="space-y-1.5 text-sm font-medium">Hora fija<Input aria-label="Hora fija" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={fieldClassName} /></label>
-            {isManager ? <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Profesional responsable<select aria-label="Profesional responsable" value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} className={`${fieldClassName} w-full px-3 text-sm`}><option value="">Sin asignar</option>{activeProfessionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.firstName} {professional.lastName}</option>)}</select></label> : <p className="text-xs text-muted-foreground sm:col-span-2">El profesional responsable se asigna a vos automáticamente.</p>}
+            {isManager ? <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Profesional responsable<select aria-label="Profesional responsable" value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} className={`${fieldClassName} w-full px-3 text-sm`}><option value="" disabled>Seleccionar profesional</option>{activeProfessionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.firstName} {professional.lastName}</option>)}</select></label> : <p className="text-xs text-muted-foreground sm:col-span-2">El profesional responsable se asigna a vos automáticamente.</p>}
             <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Precio mensual (ARS)<Input aria-label="Precio mensual" type="number" inputMode="decimal" min="0" step="0.01" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} className={fieldClassName} /></label>
             {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data as { weekday: IsoWeekday; time: string })}</p>}
           </div>}

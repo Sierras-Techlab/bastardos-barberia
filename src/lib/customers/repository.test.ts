@@ -40,6 +40,9 @@ describe("customer repository", () => {
     });
 
     await expect(customerRepository.latest()).resolves.toEqual(toCustomer(row));
+    expect(query.select).toHaveBeenCalledWith(expect.stringContaining(
+      "responsible_user:users!customer_fixed_schedules_responsible_user_id_fkey",
+    ));
     expect(query.is).toHaveBeenCalledWith("deleted_at", null);
     expect(query.order).toHaveBeenCalledWith("created_at", {
       ascending: false,

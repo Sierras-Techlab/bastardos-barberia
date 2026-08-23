@@ -18,6 +18,16 @@ describe("customer catalog", () => {
     expect(() => authorizeCustomerCatalogData({ ...data, extra: true })).toThrow();
   });
 
+  it("accepts PostgreSQL ISO datetimes with an explicit UTC offset", () => {
+    const customer = {
+      ...data.customers[0],
+      createdAt: "2026-08-23T03:40:15.123+00:00",
+    };
+
+    expect(authorizeCustomerCatalogData({ customers: [customer] }).customers[0].createdAt)
+      .toBe("2026-08-23T03:40:15.123+00:00");
+  });
+
   it("searches identity and normalized contact fields", () => {
     expect(filterCustomers(data.customers, "lucas").map(({ firstName }) => firstName)).toEqual(["Lucas"]);
     expect(filterCustomers(data.customers, "3515550101")).toHaveLength(1);

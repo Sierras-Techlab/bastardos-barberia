@@ -7,7 +7,7 @@ export class FixedCustomerApiError extends Error {
 const request = async <T>(url: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(url, init);
   const body = (await response.json()) as ErrorBody & { data?: T };
-  if (!response.ok) throw new FixedCustomerApiError(response.status, body.error?.code ?? "INTERNAL_ERROR", body.error?.message ?? "No se pudo completar la operaciÃ³n.");
+  if (!response.ok) throw new FixedCustomerApiError(response.status, body.error?.code ?? "INTERNAL_ERROR", body.error?.message ?? "No se pudo completar la operación.");
   return body.data as T;
 };
 export const fixedCustomerClient = {

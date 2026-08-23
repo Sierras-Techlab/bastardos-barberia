@@ -23,6 +23,49 @@ describe("migration 021 fixed customer monthly payments", () => {
     expect(sql).toMatch(/LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED/);
   });
 
+  it("does not read the removed legacy user_id schedule column", () => {
+    expect(sql).not.toMatch(/\buser_id\b/i);
+  });
+
+  it("resolves actor roles through the canonical roles table", () => {
+    expect(sql).not.toMatch(/\brole_name\b/i);
+    expect(sql).toMatch(/join public\.roles/i);
+  });
+
+  it("does not bypass the canonical income work-session trigger with a legacy table", () => {
+    expect(sql).not.toMatch(/public\.work_sessions/i);
+  });
+
+  it("derives the requested month from the RPC argument instead of the weekly schedule", () => {
+    expect(sql).not.toMatch(/\bs\.period\b/i);
+    expect(sql).toMatch(/'period', filter_period/i);
+  });
+
+  it("derives paid earnings from the immutable income snapshot", () => {
+    expect(sql).not.toMatch(/att\.employee_earning/i);
+    expect(sql).toMatch(/i\.commission_total/i);
+  });
+
+  it("persists subscription incomes with the canonical audited columns", () => {
+    expect(sql).toMatch(/insert into public\.incomes \([\s\S]*registered_by[\s\S]*employee_id[\s\S]*responsible_role_snapshot[\s\S]*request_fingerprint/i);
+    expect(sql).toMatch(/service_commission_base[\s\S]*commission_total[\s\S]*barbershop_net/i);
+  });
+
+  it("reads camelCase payment allocations and persists positive exact amounts", () => {
+    expect(sql).toMatch(/paymentMethodId/);
+    expect(sql).toMatch(/basisPoints/);
+    expect(sql).not.toMatch(/jsonb_to_recordset\(payment_items\)[\s\S]*payment_method_id uuid/i);
+  });
+
+  it("preserves the canonical void RPC and synchronizes monthly attempts with a trigger", () => {
+    expect(sql).not.toMatch(/create or replace function public\.void_income/i);
+    expect(sql).toMatch(/after update of status on public\.incomes/i);
+  });
+
+  it("uses configured owner commission instead of forcing it to zero", () => {
+    expect(sql).not.toMatch(/if actor_role = 'owner'[\s\S]*commission_amount := 0/i);
+  });
+
   it("adds source_type with sale and fixed_subscription and a one-active-subscription unique index", () => {
     expect(sql).toMatch(/add column if not exists source_type text/i);
     expect(sql).toMatch(/incomes_source_type_check check \(source_type in \('sale', 'fixed_subscription'\)\)/i);
@@ -47,7 +90,7 @@ describe("migration 021 fixed customer monthly payments", () => {
   });
 
   it("revokes and grants execute to service_role only on every new RPC", () => {
-    const rpcs = ["list_fixed_customer_months", "pay_fixed_customer_month", "get_fixed_customer_month", "void_income"];
+    const rpcs = ["list_fixed_customer_months", "pay_fixed_customer_month", "get_fixed_customer_month"];
     for (const rpc of rpcs) {
       const pattern = new RegExp(`grant execute on function[\\s\\S]*?public\\.${rpc}[\\s\\S]*?to service_role`, "i");
       expect(sql).toMatch(pattern);

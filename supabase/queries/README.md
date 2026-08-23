@@ -27,6 +27,8 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 21. `021_fixed_customer_monthly_payments.sql`
 22. `022_manual_cash_lifecycle.sql`
 23. `023_customer_last_visit.sql`
+24. `024_income_list_contract_repair.sql`
+25. `025_fixed_customer_schedule_mutation_repair.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -45,6 +47,10 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `022_manual_cash_lifecycle.sql` evolves the automatic Caja into a manager-controlled lifecycle: `opening_balance`, `opening_source`, `close_mode`, `expected_cash`, `counted_cash`, `difference_cash` and `reconciliation_state` are added to `daily_cash_registers`. Legacy `018` registers are backfilled as zero opening, `first_income`, `automatic`, `pending_confirmation`; their financial snapshots stay immutable. The migration preflight aborts with `CASH_PAYMENT_METHOD_REQUIRED` unless exactly one normalized payment method named `Efectivo` exists. The payment-method RPCs reject rename/deactivate/delete of the protected record via `CASH_PAYMENT_METHOD_PROTECTED`. New RPCs `open_daily_cash`, `close_daily_cash`, `confirm_daily_cash` and the protected `ensure_daily_cash_open` (called by both `create_income` and `pay_fixed_customer_month`) use the same advisory lock as the daily register and persist a unified lifecycle block via the promoted `cash_day_as_json`. Run it after `021`.
 
 `023_customer_last_visit.sql` adds a partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status='active'` and `source_type='sale'` and promotes `list_customers(actor_user_id)` plus `get_customer_visits` to derive each customer's last active sale business date in `America/Argentina/Buenos_Aires`. Voids and `fixed_subscription` incomes are excluded; a void immediately reveals the previous qualifying sale. No mutable customer column is added and the projection never exposes payment, commission, employee or price data. Run it after `022`.
+
+`024_income_list_contract_repair.sql` is an incremental repair for projects that already installed `020` through `023`. It restores manager `paymentTotals`, the employee-only commission metrics, role-derived row scoping and valid service concept IDs in `list_incomes`/`income_as_employee_json`. Run it once after `023`; do not rerun `020` on an upgraded database.
+
+`025_fixed_customer_schedule_mutation_repair.sql` updates the schedule mutation helper to the contract introduced by `021`: weekday, local time, responsible professional and positive monthly price. It also enforces that employees can only assign habitual customers to themselves. Run it once after `024`; without it, creating or editing a habitual customer is rejected as `FIXED_SCHEDULE_INVALID` even when the selected time is valid.
 
 Verify the automatic cash objects and cron job:
 
