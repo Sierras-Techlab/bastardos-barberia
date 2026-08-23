@@ -13,6 +13,7 @@ const paymentMethods = [
   { id: "60000000-0000-4000-8000-000000000003", name: "Tarjeta", isActive: true },
 ];
 const data: IncomeFormData = {
+  viewer: "manager",
   currentUser: { id: "00000000-0000-4000-8000-000000000003", firstName: "Fernanda", lastName: "Pérez", role: "employee" },
   customers: [], services: [{ id: serviceId, name: "Barba", price: 13000 }], products: [],
   paymentMethods,

@@ -102,7 +102,9 @@ const NewIncomePage = async () => {
   const availableUsers = users
     ? [users.items, ...remainingUserPages.map((page) => page.items)].flat()
     : [user];
+  const viewer: "manager" | "employee" = user.role.name === "employee" ? "employee" : "manager";
   const data: IncomeFormData = {
+    viewer,
     currentUser: {
       id: user.id,
       firstName: user.firstName,

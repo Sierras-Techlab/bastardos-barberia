@@ -9,7 +9,16 @@ export type Service = { id: string; name: string; price: number };
 export type Product = { id: string; name: string; price: number; stock: number };
 export type CurrentUser = Employee & { role: UserRole };
 export type IncomeFormEmployee = CurrentUser & { isActive: boolean; serviceCommissionRate: number; productCommissionRate: number };
-export type IncomeFormData = { currentUser: CurrentUser; customers: Customer[]; services: Service[]; products: Product[]; paymentMethods: PaymentMethod[]; employees?: IncomeFormEmployee[] };
+
+export type IncomeFormData = {
+  viewer: "manager" | "employee";
+  currentUser: CurrentUser;
+  services: Service[];
+  products: Product[];
+  customers: Customer[];
+  paymentMethods: PaymentMethod[];
+  employees?: IncomeFormEmployee[];
+};
 export type IncomeProductInput = { productId: string; quantity: number; grantFullCommission: boolean };
 export type CreateIncomeInput = {
   requestId: string;

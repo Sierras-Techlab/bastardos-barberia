@@ -6,6 +6,7 @@ import type { IncomeFormData } from "@/types/income";
 import { IncomeSummary } from "./income-summary";
 
 const data: IncomeFormData = {
+  viewer: "manager",
   currentUser: {
     id: "employee-1",
     firstName: "Lautaro",

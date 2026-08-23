@@ -71,12 +71,18 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const values = useWatch({ control: form.control }) as IncomeFormValues;
   const liveData = { ...data, customers };
 
+  const isManager = data.viewer === "manager";
+
   const handleReview = (validValues: IncomeFormValues) => {
     setSubmitError(null);
     const total = calculateIncomeTotal(validValues, data.services, data.products);
     const balance = calculatePaymentBalance(total, validValues.payments);
     if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => "amount" in payment && payment.amount <= 0)) {
       form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
+      return;
+    }
+    if (isManager && total === 0) {
+      form.setError("payments", { message: "Sin pagos cuando el total es 0." });
       return;
     }
     setReviewValues(validValues);
@@ -155,7 +161,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            {isManager && <div className="space-y-2">
               <label
                 htmlFor="employeeId"
                 className="text-sm font-medium text-foreground"
@@ -163,7 +169,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                 Empleado responsable
               </label>
               <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
-            </div>
+            </div>}
 
             <div className="space-y-2">
               <label

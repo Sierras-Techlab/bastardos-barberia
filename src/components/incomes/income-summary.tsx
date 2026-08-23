@@ -21,14 +21,11 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
   const service = data.services.find(
     (candidate) => candidate.id === values.serviceId,
   );
-  const total = calculateIncomeTotal(
-    values,
-    data.services,
-    data.products,
-  );
+  const total = calculateIncomeTotal(values, data.services, data.products);
   const paymentLabel = values.payments.length > 1
     ? `Combinado (${values.payments.length} medios)`
     : data.paymentMethods.find((method) => method.id === values.payments[0]?.paymentMethodId)?.name ?? "Sin seleccionar";
+  const showTotals = data.viewer === "manager";
 
   return (
     <Card
@@ -117,12 +114,14 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
               {paymentLabel}
             </span>
           </div>
-          <div className="flex items-end justify-between gap-4">
-            <span className="text-sm text-white/55">Total</span>
-            <span className="text-3xl font-semibold tracking-tight">
-              {formatArs(total)}
-            </span>
-          </div>
+          {showTotals && (
+            <div className="flex items-end justify-between gap-4">
+              <span className="text-sm text-white/55">Total</span>
+              <span className="text-3xl font-semibold tracking-tight">
+                {formatArs(total)}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

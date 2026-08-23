@@ -73,19 +73,19 @@ describe("priceOverrideSchema", () => {
     ).toBe(true);
   });
 
-  it("rejects a zero or negative charged unit price", () => {
-    expect(
-      priceOverrideSchema.safeParse({
-        chargedUnitPrice: 0,
-        reason: "Cortesía",
-      }).success,
-    ).toBe(false);
+  it("rejects a negative charged unit price but accepts zero with a reason", () => {
     expect(
       priceOverrideSchema.safeParse({
         chargedUnitPrice: -1,
         reason: "Cortesía",
       }).success,
     ).toBe(false);
+    expect(
+      priceOverrideSchema.safeParse({
+        chargedUnitPrice: 0,
+        reason: "Cortesía",
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects an empty or whitespace reason", () => {

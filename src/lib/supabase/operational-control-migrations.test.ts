@@ -17,7 +17,7 @@ describe("operational control migration cross compatibility", () => {
     });
 
     it("does not write to the legacy customer_fixed_schedules.user_id column", () => {
-      expect(sql021).not.toMatch(/customer_fixed_schedules[^;]*\buser_id\b/is);
+      expect(sql021).not.toMatch(/customer_fixed_schedules[\s\S]*?\buser_id\b/i);
     });
 
     it("does not rely on s.period from customer_fixed_schedules", () => {
@@ -43,7 +43,7 @@ describe("operational control migration cross compatibility", () => {
     });
 
     it("does not write to daily_cash_sales.payment_method_id", () => {
-      expect(sql022).not.toMatch(/daily_cash_sales[^;]*\bpayment_method_id\b/is);
+      expect(sql022).not.toMatch(/daily_cash_sales[\s\S]*?\bpayment_method_id\b/i);
     });
 
     it("does not produce a no-op set counted_cash = counted_cash assignment", () => {

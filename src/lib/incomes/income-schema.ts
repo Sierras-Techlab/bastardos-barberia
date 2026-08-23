@@ -18,7 +18,7 @@ export const employeeFormPaymentSchema = z.object({
 }).strict();
 
 export const priceOverrideSchema = z.object({
-  chargedUnitPrice: z.number().int().positive(),
+  chargedUnitPrice: z.number().int().nonnegative(),
   reason: z.string().trim().min(1).max(240),
 }).strict();
 
@@ -56,7 +56,7 @@ export const incomeFormSchema = z.object({
 });
 
 const priceOverrideFormSchema = z.object({
-  chargedUnitPrice: z.coerce.number().int().positive(),
+  chargedUnitPrice: z.coerce.number().int().nonnegative(),
   reason: z.string().trim().min(1, "Indicá el motivo del cambio de precio."),
 }).strict();
 
