@@ -14,7 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  employeeIncomeFormSchema,
   incomeFormSchema,
+  managerIncomeFormSchema,
   type IncomeFormValues,
 } from "@/lib/incomes/income-schema";
 import {
@@ -22,8 +24,7 @@ import {
   formatArs,
 } from "@/lib/incomes/income-calculations";
 import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
-import type { CreateIncomeInput, Income, IncomeFormData } from "@/types/income";
-import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
+import type { CreateIncomeInput, Income, IncomeFormData, ManagerService, ManagerProduct, EmployeeService, EmployeeProduct } from "@/types/income";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
 import { IncomeSummary } from "./income-summary";
@@ -57,33 +58,54 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const [customers, setCustomers] = useState(data.customers);
   const submittingRef = useRef(false);
   const requestIdRef = useRef(crypto.randomUUID());
+
+  const isManager = data.viewer === "manager";
+  const schema = isManager ? managerIncomeFormSchema : employeeIncomeFormSchema;
+  const activePaymentMethods = data.paymentMethods.filter((method) => method.isActive);
   const form = useForm<IncomeFormValues>({
-    resolver: zodResolver(incomeFormSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       customerId: null,
       employeeId: data.currentUser.id,
       serviceId: null,
       products: [],
-      payments: [],
+      payments: !isManager && activePaymentMethods.length === 1
+        ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
+        : [],
       grantFullServiceCommission: false,
     },
   });
+
   const values = useWatch({ control: form.control }) as IncomeFormValues;
   const liveData = { ...data, customers };
 
-  const isManager = data.viewer === "manager";
-
   const handleReview = (validValues: IncomeFormValues) => {
     setSubmitError(null);
-    const total = calculateIncomeTotal(validValues, data.services, data.products);
-    const balance = calculatePaymentBalance(total, validValues.payments);
-    if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => "amount" in payment && payment.amount <= 0)) {
-      form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
-      return;
-    }
-    if (isManager && total === 0) {
-      form.setError("payments", { message: "Sin pagos cuando el total es 0." });
-      return;
+    const services = (isManager ? data.services : (data.services as EmployeeService[]).map((s) => ({ id: s.id, name: s.name, price: 0 }))) as ManagerService[];
+    const products = (isManager ? data.products : (data.products as EmployeeProduct[]).map((p) => ({ id: p.id, name: p.name, price: 0, stock: p.stock }))) as ManagerProduct[];
+    const total = calculateIncomeTotal(validValues, services, products);
+    const employeeBasisSum = validValues.payments.reduce(
+      (sum, payment) => sum + ("basisPoints" in payment ? payment.basisPoints : 0),
+      0,
+    );
+    if (isManager) {
+      if (total === 0 && validValues.payments.length === 0) {
+        setReviewValues(validValues);
+        return;
+      }
+      const totalAmount = validValues.payments.reduce(
+        (sum, payment) => sum + ("amount" in payment ? payment.amount : 0),
+        0,
+      );
+      if (totalAmount !== total) {
+        form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
+        return;
+      }
+    } else {
+      if (employeeBasisSum !== 10000) {
+        form.setError("payments", { message: "Los porcentajes deben sumar 100%." });
+        return;
+      }
     }
     setReviewValues(validValues);
   };
@@ -96,13 +118,21 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       return;
     }
 
+    const payments: CreateIncomeInput["payments"] = isManager
+      ? reviewValues.payments
+          .filter((payment): payment is { paymentMethodId: string; amount: number } => "amount" in payment && payment.amount > 0)
+          .map((payment) => ({ paymentMethodId: payment.paymentMethodId, amount: payment.amount }))
+      : reviewValues.payments
+          .filter((payment): payment is { paymentMethodId: string; basisPoints: number } => "basisPoints" in payment && payment.basisPoints > 0)
+          .map((payment) => ({ paymentMethodId: payment.paymentMethodId, basisPoints: payment.basisPoints }));
+
     const input: CreateIncomeInput = {
       requestId: requestIdRef.current,
       employeeId: reviewValues.employeeId,
       customerId: reviewValues.customerId,
       serviceId: reviewValues.serviceId,
       products: reviewValues.products,
-      payments: reviewValues.payments.filter((payment) => payment.amount > 0),
+      payments,
       grantFullServiceCommission: reviewValues.grantFullServiceCommission,
     };
     submittingRef.current = true;
@@ -265,9 +295,10 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
               name="payments"
               render={({ field, fieldState }) => (
                 <PaymentMethodSelector
+                  mode={isManager ? "manager" : "employee"}
                   methods={data.paymentMethods}
                   payments={field.value}
-                  total={calculateIncomeTotal(values, data.services, data.products)}
+                  total={isManager ? calculateIncomeTotal(values, data.services as ManagerService[], data.products as ManagerProduct[]) : undefined}
                   onChange={field.onChange}
                   error={fieldState.error?.message}
                 />

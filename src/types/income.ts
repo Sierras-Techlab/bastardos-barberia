@@ -10,8 +10,11 @@ export type Product = { id: string; name: string; price: number; stock: number }
 export type CurrentUser = Employee & { role: UserRole };
 export type IncomeFormEmployee = CurrentUser & { isActive: boolean; serviceCommissionRate: number; productCommissionRate: number };
 
-export type IncomeFormData = {
-  viewer: "manager" | "employee";
+export type EmployeeCatalogService = { id: string; name: string; earning: number };
+export type EmployeeCatalogProduct = { id: string; name: string; earning: number; stock: number };
+
+export type ManagerIncomeFormData = {
+  viewer: "manager";
   currentUser: CurrentUser;
   services: Service[];
   products: Product[];
@@ -19,6 +22,17 @@ export type IncomeFormData = {
   paymentMethods: PaymentMethod[];
   employees?: IncomeFormEmployee[];
 };
+
+export type EmployeeIncomeFormData = {
+  viewer: "employee";
+  currentUser: CurrentUser;
+  services: EmployeeCatalogService[];
+  products: EmployeeCatalogProduct[];
+  customers: Customer[];
+  paymentMethods: PaymentMethod[];
+};
+
+export type IncomeFormData = ManagerIncomeFormData | EmployeeIncomeFormData;
 export type IncomeProductInput = { productId: string; quantity: number; grantFullCommission: boolean };
 export type CreateIncomeInput = {
   requestId: string;

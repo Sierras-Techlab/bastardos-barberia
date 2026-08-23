@@ -82,7 +82,7 @@ it("adds and removes distinct allocations up to every active method", async () =
 
   await user.click(screen.getByRole("button", { name: "Combinado" }));
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 49000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={onChange} />);
-  await user.click(screen.getByRole("button", { name: /agregar medio/i }));
+  await user.click(screen.getByRole("button", { name: /agregar tarjeta/i }));
   expect(onChange).toHaveBeenLastCalledWith([
     { paymentMethodId: methods[0].id, amount: 49000 },
     { paymentMethodId: methods[1].id, amount: 0 },
@@ -90,7 +90,7 @@ it("adds and removes distinct allocations up to every active method", async () =
   ]);
 
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 19000 }, { paymentMethodId: methods[2].id, amount: 10000 }]} total={49000} onChange={onChange} />);
-  expect(screen.getByRole("button", { name: /agregar medio/i })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: /agregar tarjeta/i })).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: /quitar tarjeta/i }));
   expect(onChange).toHaveBeenLastCalledWith([
     { paymentMethodId: methods[0].id, amount: 20000 },
@@ -100,13 +100,13 @@ it("adds and removes distinct allocations up to every active method", async () =
 
 it("reports remaining, exact and excess allocations", () => {
   const { rerender } = render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 39000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByRole("status")).toHaveTextContent("Faltan $ 10.000");
+  expect(screen.getByText(/faltan \$ 10\.000/i)).toBeVisible();
 
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByRole("status")).toHaveTextContent("Importe distribuido correctamente");
+  expect(screen.getByText(/importe distribuido correctamente/i)).toBeVisible();
 
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 50000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByRole("status")).toHaveTextContent("Sobran $ 1.000");
+  expect(screen.getByText(/sobran \$ 1\.000/i)).toBeVisible();
 });
 
 it("clears allocations for methods that disappear from the active catalog", () => {

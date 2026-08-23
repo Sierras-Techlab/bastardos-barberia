@@ -2,6 +2,12 @@
 
 Captured: 2026-08-22
 
+## Corrective audit — 2026-08-23
+
+- A fresh cross-layer audit found deployment-blocking inconsistencies in the current implementations of blocks `020`, `021` and `022`, despite `npm test` (184 files / 797 tests), TypeScript, ESLint and the production build passing.
+- Do **not** apply migrations `020` through `023` to the shared Supabase project yet. In particular, `021` references a missing attempts `status` column and has projection/client unit mismatches; `022` has invalid migration order/lifecycle SQL and does not correctly promote the canonical read path; employee income entry/history/dashboard remain wired to manager-shaped or amount-based contracts.
+- The authoritative repair guide is `docs/superpowers/plans/2026-08-23-operational-control-corrective-repair.md`. It supersedes the previous recommendation to deploy the five-block chain immediately. The installed remote baseline must remain separate from repository HEAD until the guide's real PostgreSQL acceptance gate passes.
+
 ## Repository state
 
 - Active worktree branch: `feat/changes-fullstack`. Blocks `019`, `020`, `021`, `022` and `023` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `023`.
