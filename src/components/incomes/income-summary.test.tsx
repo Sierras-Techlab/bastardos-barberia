@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 
-import type { IncomeFormValues } from "@/lib/incomes/income-schema";
+import type { ManagerIncomeFormValues } from "@/lib/incomes/income-schema";
 import type { IncomeFormData } from "@/types/income";
 import { IncomeSummary } from "./income-summary";
 
@@ -21,15 +21,18 @@ const data: IncomeFormData = {
     { id: "product-1", name: "Pomada", price: 10000, stock: 5 },
   ],
   paymentMethods: [{ id: "60000000-0000-4000-8000-000000000002", name: "Transferencia", isActive: true }],
+  employees: [],
 };
 
-const values: IncomeFormValues = {
+const values: ManagerIncomeFormValues = {
   employeeId: "employee-1",
   customerId: "customer-1",
   serviceId: "service-1",
   products: [{ productId: "product-1", quantity: 2, grantFullCommission: false }],
   payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 36000 }],
   grantFullServiceCommission: false,
+  servicePriceOverride: null,
+  productPriceOverrides: [],
 };
 
 it("shows the itemized sale and its hand-calculated total", () => {

@@ -106,6 +106,10 @@ export const employeeIncomeFormSchema = z.object({
   message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
 });
 
+export type ManagerIncomeFormValues = z.infer<typeof managerIncomeFormSchema>;
+export type EmployeeIncomeFormValues = z.infer<typeof employeeIncomeFormSchema>;
+export type IncomeFormValues = ManagerIncomeFormValues | EmployeeIncomeFormValues;
+
 export const employeeIncomeFormPaymentSchema = z.object({
   paymentMethodId: z.uuid(),
   basisPoints: z.coerce.number().int().min(0).max(10000),
@@ -187,7 +191,6 @@ export const incomeListQuerySchema = z.object({
   page: z.number().int().positive().default(1), pageSize: z.number().int().min(1).max(100).default(10),
 }).strict();
 
-export type IncomeFormValues = z.infer<typeof incomeFormSchema>;
 export type ManagerCreateIncomeValues = z.infer<typeof managerCreateIncomeSchema>;
 export type EmployeeCreateIncomeValues = z.infer<typeof employeeCreateIncomeSchema>;
 export type EmployeeFormPaymentValues = z.infer<typeof employeeFormPaymentSchema>;

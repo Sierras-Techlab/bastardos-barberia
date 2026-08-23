@@ -2,7 +2,7 @@ import { BadgePercent } from "lucide-react";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import { calculateCommissionPreview } from "@/lib/incomes/income-commissions";
 import type { IncomeFormValues } from "@/lib/incomes/income-schema";
-import type { IncomeFormData } from "@/types/income";
+import type { IncomeFormData, IncomeFormEmployee } from "@/types/income";
 
 type Props = {
   values: IncomeFormValues;
@@ -10,13 +10,24 @@ type Props = {
   onGrantFullServiceCommission?: (checked: boolean) => void;
 };
 
+const fallbackEmployee: IncomeFormEmployee = {
+  id: "",
+  firstName: "",
+  lastName: "",
+  role: "employee",
+  isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
+};
+
 export const CommissionPreview = ({
   values,
   data,
   onGrantFullServiceCommission,
 }: Props) => {
+  const employees = data.viewer === "manager" ? data.employees : undefined;
   const employee =
-    data.employees?.find((item) => item.id === values.employeeId) ??
+    employees?.find((item) => item.id === values.employeeId) ??
     (data.currentUser.id === values.employeeId
       ? {
           ...data.currentUser,
@@ -24,19 +35,24 @@ export const CommissionPreview = ({
           serviceCommissionRate: 0,
           productCommissionRate: 0,
         }
-      : undefined);
+      : fallbackEmployee);
   if (!employee) return null;
 
   if (data.viewer === "employee") {
-    const rate = values.grantFullServiceCommission ? 100 : employee.serviceCommissionRate;
     const service = data.services.find((item) => item.id === values.serviceId);
-    const serviceTotal = service ? Math.round((service.price * rate) / 100) : 0;
-    const productTotal = values.products.reduce((sum, item) => {
+    const serviceEarning = service && "earning" in service ? service.earning : 0;
+    const productEarnings = values.products.reduce((sum, item) => {
       const product = data.products.find((candidate) => candidate.id === item.productId);
-      if (!product) return sum;
-      return sum + Math.round((product.price * item.quantity * employee.productCommissionRate) / 100);
+      if (!product || !("earning" in product)) return sum;
+      const isFullCommission = item.grantFullCommission;
+      const lineTotal = product.earning * item.quantity;
+      return sum + (isFullCommission ? lineTotal : Math.round((lineTotal * employee.productCommissionRate) / 100));
     }, 0);
-    const total = serviceTotal + productTotal;
+    const isFullServiceCommission = values.grantFullServiceCommission;
+    const serviceTotal = service
+      ? (isFullServiceCommission ? serviceEarning : Math.round((serviceEarning * employee.serviceCommissionRate) / 100))
+      : 0;
+    const total = serviceTotal + productEarnings;
     return <section aria-label="Tu ganancia" className="rounded-[1.6rem] bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2"><BadgePercent className="size-4 text-primary"/><h3 className="font-semibold">Tu ganancia</h3></div>
       <div className="mt-4 text-sm"><p className="text-xs text-muted-foreground">Comisión estimada</p><p className="mt-1 font-semibold">{formatArs(total)}</p></div>
@@ -45,8 +61,18 @@ export const CommissionPreview = ({
   }
 
   const service = data.services.find((item) => item.id === values.serviceId);
-  const serviceBase = service?.price ?? 0;
-  const preview = calculateCommissionPreview({ responsibleRole: employee?.role ?? "employee", serviceBase, serviceRate: employee?.serviceCommissionRate ?? 0, productRate: employee?.productCommissionRate ?? 0, grantFullServiceCommission: values.grantFullServiceCommission, products: values.products.flatMap((item) => { const product = data.products.find((candidate) => candidate.id === item.productId); return product ? [{ ...item, price: product.price }] : []; }) });
+  const serviceBase = service && "price" in service ? service.price : 0;
+  const preview = calculateCommissionPreview({
+    responsibleRole: employee?.role ?? "employee",
+    serviceBase,
+    serviceRate: employee?.serviceCommissionRate ?? 0,
+    productRate: employee?.productCommissionRate ?? 0,
+    grantFullServiceCommission: values.grantFullServiceCommission,
+    products: values.products.flatMap((item) => {
+      const product = data.products.find((candidate) => candidate.id === item.productId);
+      return product && "price" in product ? [{ ...item, price: product.price }] : [];
+    }),
+  });
   const manager = data.currentUser.role === "owner" || data.currentUser.role === "admin";
   const eligible = manager && employee?.role !== "owner" && Boolean(service) && employee?.id !== data.currentUser.id;
   return <section aria-label="Comisión estimada" className="rounded-[1.6rem] bg-white p-5 shadow-sm">

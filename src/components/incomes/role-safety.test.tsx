@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import { IncomeForm } from "@/components/incomes/income-form";
 import { CommissionPreview } from "@/components/incomes/commission-preview";
 import type { IncomeClient } from "@/lib/incomes/client";
-import type { CreateIncomeInput, IncomeFormData } from "@/types/income";
+import type { EmployeeIncomeFormValues } from "@/lib/incomes/income-schema";
+import type { CreateIncomeInput, Income, IncomeFormData } from "@/types/income";
 
 const ownerId = "00000000-0000-4000-8000-000000000001";
 const employeeId = "00000000-0000-4000-8000-800000000003";
@@ -24,16 +25,17 @@ const employeeFormData: IncomeFormData = {
     { id: cashId, name: "Efectivo", isActive: true },
     { id: transferId, name: "Transferencia", isActive: true },
   ],
-  employees: [{ id: employeeId, firstName: "Fer", lastName: "Pérez", role: "employee", isActive: true, serviceCommissionRate: 50, productCommissionRate: 10 }],
 };
 
-const employeeFormValues = {
+const employeeFormValues: EmployeeIncomeFormValues = {
   employeeId,
   customerId: null,
   serviceId,
   products: [{ productId, quantity: 1, grantFullCommission: true }],
   payments: [{ paymentMethodId: cashId, basisPoints: 10000 }],
   grantFullServiceCommission: true,
+  servicePriceOverride: null,
+  productPriceOverrides: [],
 };
 
 const managerFormData: IncomeFormData = {
@@ -55,13 +57,13 @@ const managerFormData: IncomeFormData = {
 const captureCreate = () => {
   const calls: CreateIncomeInput[] = [];
   const client: Pick<IncomeClient, "create"> = {
-    create: vi.fn(async (input) => {
+    create: vi.fn(async (input: CreateIncomeInput): Promise<Income> => {
       calls.push(input);
       return {
         id: "20000000-0000-4000-8000-000000000001",
         createdAt: "2026-08-23T15:00:00.000Z",
         businessDate: "2026-08-23",
-        sourceType: "sale",
+        sourceType: "sale" as const,
         employee: { id: employeeId, firstName: "Fer", lastName: "Pérez" },
         registeredBy: { id: ownerId, firstName: "Lautaro", lastName: "Bastardos" },
         customer: null,
@@ -72,13 +74,13 @@ const captureCreate = () => {
         commission: { total: 0, barbershopNet: 0 },
         total: 15000,
         status: "active",
-      };
+      } as Income;
     }),
   };
   return { client, calls };
 };
 
-const FORBIDDEN_KEYS = ["price", "catalogUnitPrice", "chargedUnitPrice", "total", "payments", "barbershopNet", "registeredBy"];
+const FORBIDDEN_KEYS = ["price", "catalogUnitPrice", "chargedUnitPrice", "total", "barbershopNet", "registeredBy", "amount"];
 
 describe("020 application layer role safety", () => {
   it("hides the manager-only professional selector and renders the form for an employee", () => {
@@ -129,8 +131,12 @@ describe("020 application layer role safety", () => {
     await user.click(screen.getByRole("button", { name: /Corte/i }));
     await user.click(screen.getByRole("button", { name: /cera/i }));
     await user.click(screen.getByRole("button", { name: /Transferencia/i }));
-    await user.type(screen.getByLabelText("Monto en Efectivo"), "100");
-    await user.type(screen.getByLabelText("Monto en Transferencia"), "50");
+    const efectivoInput = screen.getByLabelText("Monto en Efectivo");
+    const transferenciaInput = screen.getByLabelText("Monto en Transferencia");
+    await user.clear(efectivoInput);
+    await user.type(efectivoInput, "10000");
+    await user.clear(transferenciaInput);
+    await user.type(transferenciaInput, "5000");
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     await waitFor(() => expect(calls).toHaveLength(1));
@@ -146,7 +152,9 @@ describe("020 application layer role safety", () => {
     const client: Pick<IncomeClient, "create"> = { create: vi.fn() };
     render(<IncomeForm data={managerFormData} incomeClient={client} />);
     await user.click(screen.getByRole("button", { name: /Corte/i }));
-    await user.type(screen.getByLabelText("Monto en Efectivo"), "-100");
+    const efectivoInput = screen.getByLabelText("Monto en Efectivo");
+    await user.clear(efectivoInput);
+    await user.type(efectivoInput, "-100");
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     expect(screen.getByRole("alert").textContent).toMatch(/distribu/i);
   });

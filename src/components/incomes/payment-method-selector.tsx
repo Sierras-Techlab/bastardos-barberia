@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { formatArs } from "@/lib/incomes/income-calculations";
 import type { IncomePaymentInput, PaymentMethod } from "@/types/payment-method";
 
 const isManagerPayment = (
@@ -27,9 +27,6 @@ type Props = {
   error?: string;
 };
 
-const selectClassName =
-  "h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30";
-
 export const PaymentMethodSelector = ({ mode = "manager", methods, payments, total, onChange, error }: Props) => {
   const activeMethods = useMemo(() => methods.filter((method) => method.isActive), [methods]);
   const activeIds = useMemo(() => new Set(activeMethods.map((method) => method.id)), [activeMethods]);
@@ -46,9 +43,7 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
       return true;
     });
     const next = valid.length > 0
-      ? valid.length === 1 && payments.length > 1
-        ? [{ paymentMethodId: valid[0].paymentMethodId, amount: total ?? 0 }]
-        : valid
+      ? valid
       : activeMethods[0] && total
         ? [{ paymentMethodId: activeMethods[0].id, amount: total }]
         : [];
@@ -66,15 +61,22 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
   }, [onChange, payments, total, mode]);
 
   const selectedIds = new Set(payments.map((payment) => payment.paymentMethodId));
-  const available = activeMethods.filter((method) => !selectedIds.has(method.id));
   const combined = payments.length > 1;
-  const selectedMethodId = payments.length === 1 ? payments[0].paymentMethodId : null;
 
   const selectSingle = (paymentMethodId: string) => {
+    if (selectedIds.has(paymentMethodId)) return;
+    if (payments.length === 0) {
+      if (mode === "manager") {
+        onChange([{ paymentMethodId, amount: total ?? 0 }]);
+      } else {
+        onChange([{ paymentMethodId, basisPoints: 10000 }]);
+      }
+      return;
+    }
     if (mode === "manager") {
-      onChange([{ paymentMethodId, amount: total ?? 0 }]);
+      onChange([...payments, { paymentMethodId, amount: 0 }]);
     } else {
-      onChange([{ paymentMethodId, basisPoints: 10000 }]);
+      onChange([...payments, { paymentMethodId, basisPoints: 0 }]);
     }
   };
 
@@ -119,6 +121,11 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
     0,
   );
   const employeeRemainingBasis = 10000 - employeeTotalBasis;
+  const managerTotalAmount = payments.reduce(
+    (sum, payment) => sum + (isManagerPayment(payment) ? payment.amount : 0),
+    0,
+  );
+  const managerRemainingAmount = (total ?? 0) - managerTotalAmount;
 
   return (
     <div className="space-y-3">
@@ -132,10 +139,7 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
               variant={isSelected ? "default" : "outline"}
               size="sm"
               aria-pressed={isSelected}
-              onClick={() => {
-                if (isSelected) return;
-                selectSingle(method.id);
-              }}
+              onClick={() => selectSingle(method.id)}
               className="rounded-xl"
             >
               {isSelected ? <WalletCards /> : <Plus />}
@@ -156,12 +160,6 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
           </Button>
         )}
       </div>
-
-      {mode === "manager" && combined && (
-        <Button type="button" variant="ghost" size="sm" onClick={selectCombined} className="rounded-xl">
-          <Split /> Combinar
-        </Button>
-      )}
 
       {payments.length > 0 && (
         <div className="space-y-2">
@@ -215,12 +213,29 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
         </div>
       )}
 
-      {mode === "manager" && payments.length > 0 && (
-        <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${combined ? "bg-amber-50" : "bg-emerald-50"}`}>
-          <span className="font-medium">{combined ? "Combinado" : "Saldo restante"}</span>
-          <span className={combined ? "text-amber-700" : "text-emerald-700"}>
-            {combined ? `${payments.length} medios` : `Asignado ${total ?? 0}`}
+      {mode === "manager" && combined && payments.length > 0 && (
+        <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
+          managerRemainingAmount === 0
+            ? "bg-emerald-50 text-emerald-700"
+            : managerRemainingAmount > 0
+              ? "bg-amber-50 text-amber-700"
+              : "bg-red-50 text-red-700"
+        }`}>
+          <span className="font-medium">
+            {managerRemainingAmount === 0
+              ? "Importe distribuido correctamente"
+              : managerRemainingAmount > 0
+                ? `Faltan ${formatArs(managerRemainingAmount)}`
+                : `Sobran ${formatArs(Math.abs(managerRemainingAmount))}`}
           </span>
+          <span className="text-xs">{payments.length} medios</span>
+        </div>
+      )}
+
+      {mode === "manager" && !combined && payments.length > 0 && isManagerPayment(payments[0]) && (
+        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <span className="font-medium">Asignado {formatArs(payments[0].amount)}</span>
+          <span className="text-xs text-muted-foreground">Método único</span>
         </div>
       )}
 

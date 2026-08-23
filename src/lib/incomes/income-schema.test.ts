@@ -5,7 +5,6 @@ import {
   employeeCreateIncomeSchema,
   incomeFormSchema,
   managerCreateIncomeSchema,
-  managerIncomeFormSchema,
   employeeIncomeFormSchema,
   priceOverrideSchema,
 } from "./income-schema";

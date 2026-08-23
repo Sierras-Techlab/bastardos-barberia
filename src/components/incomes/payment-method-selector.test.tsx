@@ -36,7 +36,7 @@ it("renders active methods and combined as selectable cards", () => {
   expect(screen.queryByRole("button", { name: "Cheque" })).not.toBeInTheDocument();
 });
 
-it("selects one method for the complete total", async () => {
+it("adds the clicked method to existing single allocations as combined", async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(
@@ -50,7 +50,8 @@ it("selects one method for the complete total", async () => {
 
   await user.click(screen.getByRole("button", { name: "Tarjeta" }));
   expect(onChange).toHaveBeenLastCalledWith([
-    { paymentMethodId: methods[2].id, amount: 49000 },
+    { paymentMethodId: methods[0].id, amount: 49000 },
+    { paymentMethodId: methods[2].id, amount: 0 },
   ]);
 });
 
@@ -82,7 +83,7 @@ it("adds and removes distinct allocations up to every active method", async () =
 
   await user.click(screen.getByRole("button", { name: "Combinado" }));
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 49000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={onChange} />);
-  await user.click(screen.getByRole("button", { name: /agregar tarjeta/i }));
+  await user.click(screen.getByRole("button", { name: "Tarjeta" }));
   expect(onChange).toHaveBeenLastCalledWith([
     { paymentMethodId: methods[0].id, amount: 49000 },
     { paymentMethodId: methods[1].id, amount: 0 },
@@ -90,7 +91,6 @@ it("adds and removes distinct allocations up to every active method", async () =
   ]);
 
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 19000 }, { paymentMethodId: methods[2].id, amount: 10000 }]} total={49000} onChange={onChange} />);
-  expect(screen.queryByRole("button", { name: /agregar tarjeta/i })).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: /quitar tarjeta/i }));
   expect(onChange).toHaveBeenLastCalledWith([
     { paymentMethodId: methods[0].id, amount: 20000 },
@@ -100,13 +100,13 @@ it("adds and removes distinct allocations up to every active method", async () =
 
 it("reports remaining, exact and excess allocations", () => {
   const { rerender } = render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 39000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByText(/faltan \$ 10\.000/i)).toBeVisible();
+  expect(screen.getByText(/faltan \$ ?10\.000/i)).toBeVisible();
 
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={vi.fn()} />);
   expect(screen.getByText(/importe distribuido correctamente/i)).toBeVisible();
 
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 50000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByText(/sobran \$ 1\.000/i)).toBeVisible();
+  expect(screen.getByText(/sobran \$ ?1\.000/i)).toBeVisible();
 });
 
 it("clears allocations for methods that disappear from the active catalog", () => {
@@ -115,5 +115,5 @@ it("clears allocations for methods that disappear from the active catalog", () =
 
   rerender(<PaymentMethodSelector methods={[methods[0], { ...methods[1], isActive: false }, methods[2]]} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={onChange} />);
 
-  expect(onChange).toHaveBeenLastCalledWith([{ paymentMethodId: methods[0].id, amount: 49000 }]);
+  expect(onChange).toHaveBeenLastCalledWith([{ paymentMethodId: methods[0].id, amount: 20000 }]);
 });

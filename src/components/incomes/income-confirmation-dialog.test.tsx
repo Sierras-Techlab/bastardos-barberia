@@ -3,18 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import incomeFormMock from "@/data/income-form.mock.json";
-import type { IncomeFormValues } from "@/lib/incomes/income-schema";
+import type { ManagerIncomeFormValues } from "@/lib/incomes/income-schema";
 import type { IncomeFormData } from "@/types/income";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 
 const data = incomeFormMock as IncomeFormData;
-const values: IncomeFormValues = {
+const values: ManagerIncomeFormValues = {
   employeeId: data.currentUser.id,
   customerId: null,
   serviceId: "service-haircut-eyebrows",
   products: [{ productId: "product-hair-wax", quantity: 2, grantFullCommission: false }],
   payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 39800 }],
   grantFullServiceCommission: false,
+  servicePriceOverride: null,
+  productPriceOverrides: [],
 };
 
 it("reviews the exact draft before allowing confirmation", async () => {

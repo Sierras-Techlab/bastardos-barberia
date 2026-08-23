@@ -15,16 +15,24 @@ import {
 } from "@/components/ui/card";
 import {
   employeeIncomeFormSchema,
-  incomeFormSchema,
   managerIncomeFormSchema,
+  type EmployeeIncomeFormValues,
   type IncomeFormValues,
+  type ManagerIncomeFormValues,
 } from "@/lib/incomes/income-schema";
 import {
   calculateIncomeTotal,
   formatArs,
 } from "@/lib/incomes/income-calculations";
 import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
-import type { CreateIncomeInput, Income, IncomeFormData, ManagerService, ManagerProduct, EmployeeService, EmployeeProduct } from "@/types/income";
+import type {
+  CreateIncomeInput,
+  EmployeeCatalogProduct,
+  EmployeeCatalogService,
+  Income,
+  IncomeFormData,
+  IncomeFormEmployee,
+} from "@/types/income";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
 import { IncomeSummary } from "./income-summary";
@@ -48,6 +56,31 @@ const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
   minute: "2-digit",
 });
 
+const buildTotalInputs = (data: IncomeFormData) => {
+  if (data.viewer === "manager") {
+    return {
+      services: data.services,
+      products: data.products,
+    };
+  }
+  const services: EmployeeCatalogService[] = data.services;
+  const products: EmployeeCatalogProduct[] = data.products;
+  return {
+    services: services.map((service) => ({ id: service.id, name: service.name, price: service.earning })),
+    products: products.map((product) => ({ id: product.id, name: product.name, price: product.earning, stock: product.stock })),
+  };
+};
+
+const employeeFallback: IncomeFormEmployee = {
+  id: "",
+  firstName: "",
+  lastName: "",
+  role: "employee",
+  isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
+};
+
 export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeFormProps) => {
   const [reviewValues, setReviewValues] = useState<IncomeFormValues | null>(
     null,
@@ -62,39 +95,48 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const isManager = data.viewer === "manager";
   const schema = isManager ? managerIncomeFormSchema : employeeIncomeFormSchema;
   const activePaymentMethods = data.paymentMethods.filter((method) => method.isActive);
-  const form = useForm<IncomeFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      customerId: null,
-      employeeId: data.currentUser.id,
-      serviceId: null,
-      products: [],
-      payments: !isManager && activePaymentMethods.length === 1
-        ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
-        : [],
-      grantFullServiceCommission: false,
-    },
+  const form = useForm<ManagerIncomeFormValues | EmployeeIncomeFormValues>({
+    resolver: zodResolver(schema) as never,
+    defaultValues: isManager
+      ? ({
+          customerId: null,
+          employeeId: data.currentUser.id,
+          serviceId: null,
+          products: [],
+          payments: [],
+          grantFullServiceCommission: false,
+          servicePriceOverride: null,
+          productPriceOverrides: [],
+        } satisfies ManagerIncomeFormValues)
+      : ({
+          customerId: null,
+          employeeId: data.currentUser.id,
+          serviceId: null,
+          products: [],
+          payments: activePaymentMethods.length > 0
+            ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
+            : [],
+          grantFullServiceCommission: false,
+          servicePriceOverride: null,
+          productPriceOverrides: [],
+        } satisfies EmployeeIncomeFormValues),
   });
 
-  const values = useWatch({ control: form.control }) as IncomeFormValues;
+  const values = useWatch({ control: form.control }) as ManagerIncomeFormValues | EmployeeIncomeFormValues;
   const liveData = { ...data, customers };
+  const totalInputs = buildTotalInputs(data);
 
-  const handleReview = (validValues: IncomeFormValues) => {
+  const handleReview = (validValues: ManagerIncomeFormValues | EmployeeIncomeFormValues) => {
     setSubmitError(null);
-    const services = (isManager ? data.services : (data.services as EmployeeService[]).map((s) => ({ id: s.id, name: s.name, price: 0 }))) as ManagerService[];
-    const products = (isManager ? data.products : (data.products as EmployeeProduct[]).map((p) => ({ id: p.id, name: p.name, price: 0, stock: p.stock }))) as ManagerProduct[];
-    const total = calculateIncomeTotal(validValues, services, products);
-    const employeeBasisSum = validValues.payments.reduce(
-      (sum, payment) => sum + ("basisPoints" in payment ? payment.basisPoints : 0),
-      0,
-    );
+    const total = calculateIncomeTotal(validValues, totalInputs.services, totalInputs.products);
     if (isManager) {
-      if (total === 0 && validValues.payments.length === 0) {
-        setReviewValues(validValues);
+      const managerValues = validValues as ManagerIncomeFormValues;
+      if (total === 0 && managerValues.payments.length === 0) {
+        setReviewValues(managerValues);
         return;
       }
-      const totalAmount = validValues.payments.reduce(
-        (sum, payment) => sum + ("amount" in payment ? payment.amount : 0),
+      const totalAmount = managerValues.payments.reduce(
+        (sum, payment) => sum + payment.amount,
         0,
       );
       if (totalAmount !== total) {
@@ -102,12 +144,17 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
         return;
       }
     } else {
+      const employeeValues = validValues as EmployeeIncomeFormValues;
+      const employeeBasisSum = employeeValues.payments.reduce(
+        (sum, payment) => sum + payment.basisPoints,
+        0,
+      );
       if (employeeBasisSum !== 10000) {
         form.setError("payments", { message: "Los porcentajes deben sumar 100%." });
         return;
       }
     }
-    setReviewValues(validValues);
+    setReviewValues(validValues as IncomeFormValues);
   };
 
   const handleConfirm = async () => {
@@ -119,11 +166,11 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     }
 
     const payments: CreateIncomeInput["payments"] = isManager
-      ? reviewValues.payments
-          .filter((payment): payment is { paymentMethodId: string; amount: number } => "amount" in payment && payment.amount > 0)
+      ? (reviewValues as ManagerIncomeFormValues).payments
+          .filter((payment) => payment.amount > 0)
           .map((payment) => ({ paymentMethodId: payment.paymentMethodId, amount: payment.amount }))
-      : reviewValues.payments
-          .filter((payment): payment is { paymentMethodId: string; basisPoints: number } => "basisPoints" in payment && payment.basisPoints > 0)
+      : (reviewValues as EmployeeIncomeFormValues).payments
+          .filter((payment) => payment.basisPoints > 0)
           .map((payment) => ({ paymentMethodId: payment.paymentMethodId, basisPoints: payment.basisPoints }));
 
     const input: CreateIncomeInput = {
@@ -158,14 +205,31 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   };
 
   const handleReset = () => {
-    form.reset({
-      customerId: null,
-      employeeId: data.currentUser.id,
-      serviceId: null,
-      products: [],
-      payments: [],
-      grantFullServiceCommission: false,
-    });
+    form.reset(
+      isManager
+        ? ({
+            customerId: null,
+            employeeId: data.currentUser.id,
+            serviceId: null,
+            products: [],
+            payments: [],
+            grantFullServiceCommission: false,
+            servicePriceOverride: null,
+            productPriceOverrides: [],
+          } satisfies ManagerIncomeFormValues)
+        : ({
+            customerId: null,
+            employeeId: data.currentUser.id,
+            serviceId: null,
+            products: [],
+            payments: activePaymentMethods.length > 0
+              ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
+              : [],
+            grantFullServiceCommission: false,
+            servicePriceOverride: null,
+            productPriceOverrides: [],
+          } satisfies EmployeeIncomeFormValues),
+    );
     setCreatedIncome(null);
     setSubmitError(null);
     setReviewValues(null);
@@ -177,7 +241,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
 
   return (
     <form
-      onSubmit={form.handleSubmit(handleReview)}
+      onSubmit={form.handleSubmit(handleReview as never)}
       className="grid items-start gap-5 pb-24 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.38fr)] xl:pb-0"
       noValidate
     >
@@ -191,14 +255,14 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            {isManager && <div className="space-y-2">
+            {isManager && data.viewer === "manager" && <div className="space-y-2">
               <label
                 htmlFor="employeeId"
                 className="text-sm font-medium text-foreground"
               >
                 Empleado responsable
               </label>
-              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
+              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [employeeFallback]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
             </div>}
 
             <div className="space-y-2">
@@ -275,7 +339,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   products={data.products}
                   value={field.value}
                   onChange={field.onChange}
-                  canGrantFullCommission={(data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
+                  canGrantFullCommission={isManager && data.viewer === "manager" && (data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
                 />
               )}
             />
@@ -298,7 +362,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   mode={isManager ? "manager" : "employee"}
                   methods={data.paymentMethods}
                   payments={field.value}
-                  total={isManager ? calculateIncomeTotal(values, data.services as ManagerService[], data.products as ManagerProduct[]) : undefined}
+                  total={isManager ? calculateIncomeTotal(values, totalInputs.services, totalInputs.products) : undefined}
                   onChange={field.onChange}
                   error={fieldState.error?.message}
                 />
@@ -324,16 +388,18 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           aria-label="Acción de ingreso"
           className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 rounded-2xl bg-white/95 p-2 shadow-xl ring-1 ring-black/5 backdrop-blur xl:static xl:block xl:bg-transparent xl:p-0 xl:shadow-none xl:ring-0"
         >
-          <div className="min-w-0 flex-1 px-2 xl:hidden">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Total actual
-            </span>
-            <span className="block truncate text-lg font-semibold tracking-tight">
-              {formatArs(
-                calculateIncomeTotal(values, data.services, data.products),
-              )}
-            </span>
-          </div>
+          {isManager && (
+            <div className="min-w-0 flex-1 px-2 xl:hidden">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Total actual
+              </span>
+              <span className="block truncate text-lg font-semibold tracking-tight">
+                {formatArs(
+                  calculateIncomeTotal(values, totalInputs.services, totalInputs.products),
+                )}
+              </span>
+            </div>
+          )}
           <Button
             type="submit"
             size="lg"

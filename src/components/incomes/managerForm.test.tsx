@@ -6,6 +6,8 @@ import type { IncomeClient } from "@/lib/incomes/client";
 import type { Income, IncomeFormData } from "@/types/income";
 import type { CreateIncomeInput } from "@/types/income";
 
+describe("IncomeForm (manager)", () => {
+
 const serviceId = "30000000-0000-4000-8000-000000000001";
 const paymentMethods = [
   { id: "60000000-0000-4000-8000-000000000001", name: "Efectivo", isActive: true },
@@ -55,7 +57,6 @@ const result = (input: CreateIncomeInput): Income => ({
 const client = (create = vi.fn(async (input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
 const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 
-describe("IncomeForm", () => {
   it("lets a manager select the responsible employee", () => {
     render(<IncomeForm data={{ ...data, currentUser: { ...data.currentUser, role: "owner" } }} incomeClient={client()} />);
     expect(screen.getByRole("combobox", { name: /empleado responsable/i })).toBeInTheDocument();
