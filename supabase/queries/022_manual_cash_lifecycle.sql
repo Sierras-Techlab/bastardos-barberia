@@ -1,5 +1,6 @@
--- Bastardos Barberia: manual cash lifecycle with opening, automatic pending close
--- and confirmed counted-cash reconciliation. Run after 021_fixed_customer_monthly_payments.sql.
+-- Bastardos Barberia: manager-controlled cash lifecycle evolving the
+-- automatic 018 register into a manual open/close/confirm workflow that
+-- preserves 018 financial snapshots. Run after 021_fixed_customer_monthly_payments.sql.
 
 begin;
 
@@ -8,7 +9,7 @@ begin;
 -- ---------------------------------------------------------------------------
 
 alter table public.daily_cash_registers
-  add column if not exists opening_balance bigint not null default 0,
+  add column if not exists opening_balance bigint,
   add column if not exists opening_source text,
   add column if not exists opened_at timestamptz,
   add column if not exists opened_by uuid references public.users(id) on delete restrict,
@@ -18,49 +19,60 @@ alter table public.daily_cash_registers
   add column if not exists difference_cash bigint,
   add column if not exists reconciliation_state text not null default 'not_applicable';
 
--- ---------------------------------------------------------------------------
--- 2. Backfill legacy 018 registers
--- ---------------------------------------------------------------------------
-
+-- Backfill legacy 018 rows: opening = 0, automatic, pending_confirmation.
 update public.daily_cash_registers
-set opening_balance = 0,
+set opening_balance = coalesce(opening_balance, 0),
     opening_source = 'first_income',
-    opened_at = closed_at,
+    opened_at = coalesce(opened_at, closed_at),
+    opened_by = coalesce(opened_by, (
+      select registered_by from public.incomes
+      where date_trunc('day', created_at at time zone 'America/Argentina/Buenos_Aires') = daily_cash_registers.business_date
+        and registered_by is not null
+      order by created_at asc limit 1
+    )),
     close_mode = 'automatic',
-    expected_cash = sales_gross_total,
-    difference_cash = 0,
+    expected_cash = coalesce(expected_cash, sales_gross_total + opening_balance),
     reconciliation_state = 'pending_confirmation'
-where reconciliation_state = 'not_applicable';
+where reconciliation_state = 'not_applicable'
+  and closed_at is not null;
+
+-- Open registers (no closure yet) project as not_applicable until closed.
+update public.daily_cash_registers
+set reconciliation_state = 'pending_confirmation',
+    close_mode = 'automatic',
+    expected_cash = sales_gross_total + coalesce(opening_balance, 0),
+    opened_at = coalesce(opened_at, now())
+where closed_at is null
+  and reconciliation_state <> 'pending_confirmation';
+
+-- The 018 register table already allows closed_at null for live rows.
+-- We do not impose NOT NULL on opened_by/opening_balance so legacy rows
+-- created without an explicit manager remain valid.
 
 alter table public.daily_cash_registers
-  alter column opening_source set not null,
-  alter column opened_at set not null,
-  alter column opened_by set not null,
-  alter column close_mode set not null,
-  alter column expected_cash set not null,
-  add constraint daily_cash_opening_balance_check check (opening_balance >= 0),
-  add constraint daily_cash_opening_source_check check (opening_source in ('manual', 'first_income')),
-  add constraint daily_cash_close_mode_check check (close_mode in ('manual', 'automatic')),
+  add constraint daily_cash_opening_balance_check check (opening_balance is null or opening_balance >= 0),
+  add constraint daily_cash_opening_source_check check (opening_source is null or opening_source in ('manual', 'first_income')),
+  add constraint daily_cash_close_mode_check check (close_mode is null or close_mode in ('manual', 'automatic')),
   add constraint daily_cash_reconciliation_state_check check (
     reconciliation_state in ('not_applicable', 'pending_confirmation', 'confirmed')
   ),
   add constraint daily_cash_count_difference_check check (
     (counted_cash is null and difference_cash is null)
-    or (counted_cash is not null and difference_cash is not null and counted_cash - expected_cash = difference_cash)
+    or (counted_cash is not null and difference_cash is not null and difference_cash = counted_cash - expected_cash)
   );
 
 -- ---------------------------------------------------------------------------
--- 3. Ensure exactly one Efectivo payment method with system_code = 'cash'
+-- 2. Protected payment method (Efectivo = system_code 'cash')
 -- ---------------------------------------------------------------------------
 
 do $$
 declare
-  efectivo_count integer;
+  cash_count integer;
 begin
-  select count(*) into efectivo_count
+  select count(*) into cash_count
     from public.payment_methods
-    where normalized_name = 'efectivo' and deleted_at is null;
-  if efectivo_count <> 1 then
+    where system_code = 'cash' and deleted_at is null;
+  if cash_count <> 1 then
     raise exception using errcode = 'P0001', message = 'CASH_PAYMENT_METHOD_REQUIRED';
   end if;
 end;
@@ -82,10 +94,6 @@ alter table public.payment_methods
     system_code is null or system_code = 'cash'
   );
 
--- The 018 `create_payment_method`/`update_payment_method`/`delete_payment_method`
--- RPCs must reject rename/deactivate/delete of the protected Efectivo record.
--- They are replaced here with the additional guardrails.
-
 create or replace function public.create_payment_method(
   actor_user_id uuid,
   payment_method_name text
@@ -101,7 +109,7 @@ declare
 begin
   if not exists (
     select 1 from public.users
-    where id = actor_user_id and is_active and deleted_at is null and role_name in ('owner', 'admin')
+    where id = actor_user_id and is_active and deleted_at is null and role_id in (1, 2)
   ) then
     raise exception using errcode = '22023', message = 'FORBIDDEN';
   end if;
@@ -134,18 +142,17 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_name text;
   current_normalized text;
   normalized text;
 begin
   if not exists (
     select 1 from public.users
-    where id = actor_user_id and is_active and deleted_at is null and role_name in ('owner', 'admin')
+    where id = actor_user_id and is_active and deleted_at is null and role_id in (1, 2)
   ) then
     raise exception using errcode = '22023', message = 'FORBIDDEN';
   end if;
 
-  select name, normalized_name into current_name, current_normalized
+  select normalized_name into current_normalized
     from public.payment_methods
     where id = target_payment_method_id and deleted_at is null
     for update;
@@ -170,11 +177,10 @@ begin
     ) then
       raise exception using errcode = '22023', message = 'PAYMENT_METHOD_NAME_EXISTS';
     end if;
-    current_name := payment_method_name;
   end if;
 
   update public.payment_methods
-  set name = current_name,
+  set name = coalesce(payment_method_name, name),
       normalized_name = normalized,
       is_active = coalesce(payment_method_is_active, is_active),
       updated_by = actor_user_id,
@@ -207,7 +213,7 @@ declare
 begin
   if not exists (
     select 1 from public.users
-    where id = actor_user_id and is_active and deleted_at is null and role_name in ('owner', 'admin')
+    where id = actor_user_id and is_active and deleted_at is null and role_id in (1, 2)
   ) then
     raise exception using errcode = '22023', message = 'FORBIDDEN';
   end if;
@@ -251,7 +257,7 @@ grant execute on function public.update_payment_method(uuid, uuid, text, boolean
 grant execute on function public.delete_payment_method(uuid, uuid) to service_role;
 
 -- ---------------------------------------------------------------------------
--- 4. ensure_daily_cash_open (used by both create_income and pay_fixed_customer_month)
+-- 3. ensure_daily_cash_open — only service_role, idempotent at zero balance
 -- ---------------------------------------------------------------------------
 
 create or replace function public.ensure_daily_cash_open(
@@ -304,7 +310,7 @@ revoke execute on function public.ensure_daily_cash_open(uuid, date) from public
 grant execute on function public.ensure_daily_cash_open(uuid, date) to service_role;
 
 -- ---------------------------------------------------------------------------
--- 5. open_daily_cash, close_daily_cash, confirm_daily_cash
+-- 4. open_daily_cash, close_daily_cash, confirm_daily_cash
 -- ---------------------------------------------------------------------------
 
 create or replace function public.open_daily_cash(
@@ -318,12 +324,11 @@ security definer
 set search_path = ''
 as $$
 declare
-  register_id uuid;
-  json jsonb;
+  new_id uuid;
 begin
   if not exists (
     select 1 from public.users
-    where id = actor_user_id and is_active and deleted_at is null and role_name in ('owner', 'admin')
+    where id = actor_user_id and is_active and deleted_at is null and role_id in (1, 2)
   ) then
     raise exception using errcode = '22023', message = 'FORBIDDEN';
   end if;
@@ -335,11 +340,7 @@ begin
     pg_catalog.hashtextextended('daily-cash:' || target_business_date::text, 0)
   );
 
-  select id into register_id
-    from public.daily_cash_registers
-    where business_date = target_business_date
-    for update;
-  if found then
+  if exists (select 1 from public.daily_cash_registers where business_date = target_business_date) then
     raise exception using errcode = 'P0001', message = 'CASH_ALREADY_OPEN';
   end if;
 
@@ -355,10 +356,9 @@ begin
     0, 0, 0,
     opening_balance, 'manual', now(), actor_user_id,
     'automatic', opening_balance, 'pending_confirmation'
-  ) returning id into register_id;
+  ) returning id into new_id;
 
-  json := public.cash_day_as_json(register_id);
-  return json;
+  return public.cash_day_as_json(new_id);
 end;
 $$;
 
@@ -379,11 +379,10 @@ declare
   register_id uuid;
   expected_value bigint;
   diff_value bigint;
-  json jsonb;
 begin
   if not exists (
     select 1 from public.users
-    where id = actor_user_id and is_active and deleted_at is null and role_name in ('owner', 'admin')
+    where id = actor_user_id and is_active and deleted_at is null and role_id in (1, 2)
   ) then
     raise exception using errcode = '22023', message = 'FORBIDDEN';
   end if;
@@ -404,24 +403,22 @@ begin
   end if;
 
   diff_value := counted_cash - expected_value;
-
   if diff_value = 0 then
     update public.daily_cash_registers
-    set counted_cash = counted_cash,
-        difference_cash = diff_value,
+    set counted_cash = $3,
+        difference_cash = $4,
         reconciliation_state = 'confirmed',
-        close_mode = coalesce(close_mode, 'automatic'),
+        close_mode = coalesce(close_mode, 'manual'),
         closed_at = coalesce(closed_at, now())
     where id = register_id;
   else
     update public.daily_cash_registers
-    set counted_cash = counted_cash,
-        difference_cash = diff_value
+    set counted_cash = $3,
+        difference_cash = $4
     where id = register_id;
   end if;
 
-  json := public.cash_day_as_json(register_id);
-  return json;
+  return public.cash_day_as_json(register_id);
 end;
 $$;
 
@@ -441,11 +438,10 @@ as $$
 declare
   expected_value bigint;
   diff_value bigint;
-  json jsonb;
 begin
   if not exists (
     select 1 from public.users
-    where id = actor_user_id and is_active and deleted_at is null and role_name in ('owner', 'admin')
+    where id = actor_user_id and is_active and deleted_at is null and role_id in (1, 2)
   ) then
     raise exception using errcode = '22023', message = 'FORBIDDEN';
   end if;
@@ -473,13 +469,12 @@ begin
   diff_value := counted_cash - expected_value;
 
   update public.daily_cash_registers
-  set counted_cash = counted_cash,
-      difference_cash = diff_value,
+  set counted_cash = $3,
+      difference_cash = $4,
       reconciliation_state = 'confirmed'
   where id = target_register_id;
 
-  json := public.cash_day_as_json(target_register_id);
-  return json;
+  return public.cash_day_as_json(target_register_id);
 end;
 $$;
 
@@ -487,7 +482,7 @@ revoke execute on function public.confirm_daily_cash(uuid, uuid, bigint) from pu
 grant execute on function public.confirm_daily_cash(uuid, uuid, bigint) to service_role;
 
 -- ---------------------------------------------------------------------------
--- 6. Promoted cash_day_as_json with lifecycle block
+-- 5. cash_day_as_json: uses 018 daily_cash_id + created_at_snapshot
 -- ---------------------------------------------------------------------------
 
 create or replace function public.cash_day_as_json(target_id uuid)
@@ -506,12 +501,12 @@ begin
     'state', case when r.closed_at is null then 'live' else 'closed' end,
     'closedAt', r.closed_at,
     'lifecycle', jsonb_build_object(
-      'openingBalance', r.opening_balance,
+      'openingBalance', coalesce(r.opening_balance, 0),
       'openingSource', r.opening_source,
       'openedAt', r.opened_at,
       'openedBy', case when u.id is null then null
         else jsonb_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name) end,
-      'expectedCash', coalesce(r.expected_cash, r.sales_gross_total + r.opening_balance),
+      'expectedCash', coalesce(r.expected_cash, r.sales_gross_total + coalesce(r.opening_balance, 0)),
       'countedCash', r.counted_cash,
       'difference', r.difference_cash,
       'closeMode', r.close_mode,
@@ -536,36 +531,31 @@ begin
     ),
     'payments', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'paymentMethodId', pm.id,
-        'name', pm.name,
-        'salesAmount', coalesce(sum(case when s.status = 'active' then ip.amount else 0 end), 0),
-        'adjustmentAmount', coalesce(sum(case when s.status = 'voided' then -ip.amount else 0 end), 0),
-        'netAmount', coalesce(sum(case when s.status = 'active' then ip.amount else -ip.amount end), 0)
-      ) order by pm.name)
+        'paymentMethodId', pt.payment_method_id,
+        'name', pt.method_name_snapshot,
+        'salesAmount', pt.sales_amount,
+        'adjustmentAmount', pt.adjustment_amount,
+        'netAmount', pt.net_amount
+      ) order by pt.method_name_snapshot)
       from public.daily_cash_payment_totals pt
-      join public.payment_methods pm on pm.id = pt.payment_method_id
-      left join public.daily_cash_sales dcs on dcs.cash_register_id = r.id and dcs.payment_method_id = pt.payment_method_id
-      left join public.income_payments ip on ip.payment_method_id = pt.payment_method_id
-      left join public.incomes s on s.id = ip.income_id
-      where pt.cash_register_id = r.id
-      group by pm.id, pm.name
+      where pt.daily_cash_id = r.id
     ), '[]'::jsonb),
     'sales', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', dcs.income_id,
-        'createdAt', dcs.created_at,
+        'createdAt', dcs.created_at_snapshot,
         'employee', jsonb_build_object('id', emp.id, 'firstName', emp.first_name, 'lastName', emp.last_name),
-        'customerName', dcs.customer_name,
+        'customerName', dcs.customer_name_snapshot,
         'kind', dcs.kind,
         'statusAtClose', dcs.status_at_close,
         'currentStatus', dcs.current_status,
         'grossTotal', dcs.gross_total,
         'commissionTotal', dcs.commission_total,
         'barbershopNet', dcs.barbershop_net
-      ) order by dcs.created_at)
+      ) order by dcs.created_at_snapshot desc, dcs.income_id)
       from public.daily_cash_sales dcs
       join public.users emp on emp.id = dcs.employee_id
-      where dcs.cash_register_id = r.id
+      where dcs.daily_cash_id = r.id
     ), '[]'::jsonb),
     'adjustments', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -580,7 +570,7 @@ begin
       ) order by dca.created_at)
       from public.daily_cash_adjustments dca
       join public.users creator on creator.id = dca.created_by
-      where dca.cash_register_id = r.id
+      where dca.original_daily_cash_id = r.id
     ), '[]'::jsonb)
   ) into result
   from public.daily_cash_registers r
