@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
-**Status:** Planned and not implemented. This is the next local implementation block after the reviewed `019` contracts; migration order remains `019` then `020`.
+**Status:** Implemented and stabilized. Migration `020` removes the legacy owner-zero rule introduced by `012`, persists `gross_total` and per-line catalog/charged/adjustment snapshots, accepts manager integer-ARS amounts and employee basis points (0..10000) summing to 10000, and exposes a sanitized `income_as_employee_json` projection for the employee viewer (no catalog/charged prices, no payment amounts, no totals, no barbershop net, no registrant identity). Owner commission rates are configurable by managers; non-zero rates produce normal commission snapshots for owner-attributed sales. The application layer uses `role_id in (1, 2)` and the form contracts expose a `viewer: "manager" | "employee"` discriminator so the browser never sees financial details it should not. The plan was rewritten during stabilization (see `2026-08-23-operational-control-stabilization.md`).
 
 ## Global Constraints
 

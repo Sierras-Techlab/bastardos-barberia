@@ -16,9 +16,9 @@ describe("migration 023 customer last visit", () => {
     expect(sql).toMatch(/source_type = 'sale'/i);
   });
 
-  it("promotes canonical list_customers and get_customer_visits without _v2", () => {
+  it("promotes canonical list_customers without _v2", () => {
     expect(sql).toMatch(/create or replace function public\.list_customers/i);
-    expect(sql).toMatch(/create or replace function public\.get_customer_visits/i);
+    expect(sql).not.toMatch(/create or replace function public\.get_customer_visits/i);
     expect(sql).toMatch(/'lastVisitBusinessDate'/);
   });
 

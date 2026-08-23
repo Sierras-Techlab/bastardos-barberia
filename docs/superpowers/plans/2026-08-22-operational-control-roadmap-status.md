@@ -32,10 +32,10 @@ The exact installed revision of the shared Supabase project must still be checke
 | Order | Block | Status | Outcome / next gate |
 | --- | --- | --- | --- |
 | 1 | [`019` Employee work sessions](./2026-08-21-019-employee-work-sessions.md) | Implemented and reviewed locally | Apply after `018`, run object/RLS/grant/trigger checks and rollback acceptance, then authenticated desktop/mobile QA. |
-| 2 | [`020` Pricing, owner commissions and employee privacy](./2026-08-21-020-income-pricing-owner-commissions-and-employee-privacy.md) | Planned; next implementation block | Preserve `019` linkage while replacing owner-zero rules, adding audited charged-price overrides and employee-safe financial projections. |
-| 3 | [`021` Fixed-customer monthly payments](./2026-08-21-021-fixed-customer-monthly-payments.md) | Planned | Requires the payment modes, owner commission and privacy contracts from `020`. |
-| 4 | [`022` Manual cash lifecycle](./2026-08-21-022-manual-cash-lifecycle.md) | Planned | Requires normal and subscription income flows through `021`; evolves canonical Caja rather than creating parallel tables. |
-| 5 | [`023` Customer last visit](./2026-08-21-023-customer-last-visit.md) | Planned | Runs after `022`; derives the last qualifying visit from active normal sales without a mutable customer column. |
+| 2 | [`020` Pricing, owner commissions and employee privacy](./2026-08-21-020-income-pricing-owner-commissions-and-employee-privacy.md) | Implemented and stabilized | Apply after `019`, run rollback acceptance, then owner/admin/employee QA. |
+| 3 | [`021` Fixed-customer monthly payments](./2026-08-21-021-fixed-customer-monthly-payments.md) | Implemented and stabilized | Apply after `020` (legacy fixed-schedule preflight must pass) and run rollback acceptance, then owner/employee/manager QA. |
+| 4 | [`022` Manual cash lifecycle](./2026-08-21-022-manual-cash-lifecycle.md) | Implemented and stabilized | Apply after `021` (Efectivo payment method must exist) and run rollback acceptance, then manual + automatic open/close/confirm QA. |
+| 5 | [`023` Customer last visit](./2026-08-21-023-customer-last-visit.md) | Implemented and stabilized | Apply after `022` and run rollback acceptance, then directory desktop/mobile QA. |
 
 ## Block 019 delivered locally
 
@@ -59,21 +59,7 @@ The exact installed revision of the shared Supabase project must still be checke
 
 ## Remaining execution order
 
-### Block 020 — next
-
-Implement the detailed `020` plan task by task. Its migration removes only the rules that force owner commission to zero; existing owner values remain zero until edited. Manager price overrides snapshot catalog value, charged value, adjustment actor/reason and commission calculated on the charged subtotal. Employee entry/history/dashboard contracts must omit gross, prices, discounts, payment amounts and barbershop net at the serialization boundary.
-
-### Block 021
-
-After `020` is verified, extend effective-dated fixed schedules with one responsible professional and monthly price. Paying a month must atomically create a real subscription income, payment allocations, commission snapshot, Caja effect and work-session linkage; voiding that income reopens the month without deleting history.
-
-### Block 022
-
-After subscription incomes exist, evolve the canonical Caja model with manual opening balance, manual confirmed close, automatic first-income opening at zero, automatic pending-confirmation close and counted-versus-expected reconciliation. Opening balance represents only physical cash already in the drawer and is never revenue.
-
-### Block 023
-
-Finally, derive each customer's last qualifying visit from active normal sale `business_date`. Exclude voids and subscription income, expose no financial/employee data and avoid a denormalized mutable customer column.
+The five roadmap blocks `019`–`023` are all implemented and stabilized locally on `feat/changes-fullstack`. The canonical migration files (`019`–`023`) are ready for manual Supabase application in order, with their respective preflight checks and rollback acceptance blocks documented in the SQL files. The stabilization plan `2026-08-23-operational-control-stabilization.md` records the corrections that closed the application/SQL contract gaps detected in the integrated verification (TDD RED safety net for legacy identifiers in `021`/`022`, role-aware form contracts in `020`, canonical schema in `021`, `018`-snapshot integration in `022`, and stripped parallel `get_customer_visits` in `023`).
 
 ## Completion gate for every remaining block
 
