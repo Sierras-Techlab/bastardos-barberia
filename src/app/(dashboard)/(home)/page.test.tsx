@@ -103,9 +103,26 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
 });
 
 it("keeps employee dashboard data scoped by the server service", async () => {
+  const employeeIncomePage = {
+    items: [{
+      id: "20000000-0000-4000-8000-000000000001",
+      createdAt: new Date().toISOString(),
+      businessDate: currentRange.dateTo,
+      customer: null,
+      concepts: [{ id: "10000000-0000-4000-8000-000000000001", type: "service", name: "Corte real", quantity: 1, earning: 16000 }],
+      employeeCommission: 16000,
+      status: "active",
+    }],
+    metrics: { count: 1, employeeCommissionTotal: 16000 },
+    pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+  };
+  listIncomes.mockResolvedValueOnce(employeeIncomePage);
   requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
   await renderHome();
   expect(screen.getByRole("heading", { name: "Tus ingresos de hoy" })).toBeVisible();
+  expect(screen.getByText("Lo generado para vos")).toBeVisible();
+  expect(screen.getByText("$ 16.000")).toBeVisible();
+  expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
   expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
 });
 

@@ -6,12 +6,12 @@ import {
   formatIncomeConcept,
   formatIncomeDateTime,
 } from "@/lib/incomes/income-list";
-import type { IncomeListItem } from "@/types/income";
-import { getIncomeCommissionAmount, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
+import type { IncomeListRow } from "@/types/income";
+import { getIncomeCommissionAmount, getIncomePaymentLabel, getIncomeTotalAmount } from "@/lib/incomes/income-presentation";
 
 type IncomeMobileListProps = {
-  incomes: IncomeListItem[];
-  onSelect: (income: IncomeListItem) => void;
+  incomes: IncomeListRow[];
+  onSelect: (income: IncomeListRow) => void;
 };
 
 export const IncomeMobileList = ({
@@ -19,7 +19,12 @@ export const IncomeMobileList = ({
   onSelect,
 }: IncomeMobileListProps) => (
   <div className="space-y-3" aria-label="Historial de ingresos móvil">
-    {incomes.map((income) => (
+    {incomes.map((income) => {
+      const employeeName = "employee" in income && income.employee
+        ? `${income.employee.firstName} ${income.employee.lastName}`
+        : null;
+      const total = getIncomeTotalAmount(income);
+      return (
         <button
           key={income.id}
           type="button"
@@ -43,9 +48,7 @@ export const IncomeMobileList = ({
 
           <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/5 pt-3">
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>
-                {income.employee.firstName} {income.employee.lastName}
-              </p>
+              {employeeName ? <p>{employeeName}</p> : null}
               <p className="flex items-center gap-1.5">
                 <CreditCard className="size-3.5" />
                 {getIncomePaymentLabel(income)}
@@ -61,18 +64,23 @@ export const IncomeMobileList = ({
                   Anulado
                 </Badge>
               )}
-              <p
-                className={`text-lg font-semibold ${
-                  income.status === "voided"
-                    ? "text-muted-foreground line-through"
-                    : ""
-                }`}
-              >
-                {formatArs(income.total)}
-              </p>
+              {total > 0 ? (
+                <p
+                  className={`text-lg font-semibold ${
+                    income.status === "voided"
+                      ? "text-muted-foreground line-through"
+                      : ""
+                  }`}
+                >
+                  {formatArs(total)}
+                </p>
+              ) : (
+                <p className="text-xs font-medium text-muted-foreground">Sólo comisión</p>
+              )}
             </div>
           </div>
         </button>
-    ))}
+      );
+    })}
   </div>
 );

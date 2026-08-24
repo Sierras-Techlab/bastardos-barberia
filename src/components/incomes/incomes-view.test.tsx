@@ -5,22 +5,26 @@ import { IncomesView } from "@/components/incomes/incomes-view";
 import { DashboardToaster } from "@/components/ui/dashboard-toaster";
 import mock from "@/data/incomes.mock";
 import type { IncomeClient } from "@/lib/incomes/client";
-import type { IncomeListItem, PaginatedIncomes } from "@/types/income";
+import type { IncomeListItem, ManagerPaginatedIncomes } from "@/types/income";
 
 const items = mock.incomes.slice(0, 2).map((item) => ({ ...item, businessDate: item.createdAt.slice(0, 10) })) as IncomeListItem[];
 const grossTotal = items.reduce((sum, item) => sum + item.total, 0);
 const paymentMethods = mock.paymentMethods;
-const data: PaginatedIncomes = { items, metrics: { grossTotal, commissionTotal: 0, barbershopNet: grossTotal, count: 2, average: 32500, paymentTotals: [{ paymentMethodId: paymentMethods[0].id, name: paymentMethods[0].name, amount: 16000 }, { paymentMethodId: paymentMethods[1].id, name: paymentMethods[1].name, amount: 49000 }] }, pagination: { page: 1, pageSize: 10, total: 2, totalPages: 1 } };
+const data: ManagerPaginatedIncomes = { items, metrics: { grossTotal, commissionTotal: 0, barbershopNet: grossTotal, count: 2, average: 32500, paymentTotals: [{ paymentMethodId: paymentMethods[0].id, name: paymentMethods[0].name, amount: 16000 }, { paymentMethodId: paymentMethods[1].id, name: paymentMethods[1].name, amount: 49000 }] }, pagination: { page: 1, pageSize: 10, total: 2, totalPages: 1 } };
 const currentUser = { id: items[0].employee.id, firstName: "Lautaro", lastName: "Bastardos", role: "owner" as const };
 const initialQuery = { dateFrom: "2026-08-01", dateTo: "2026-08-31", page: 1, pageSize: 10 };
-const client = (): Pick<IncomeClient, "list" | "void"> => ({ list: vi.fn().mockResolvedValue(data), void: vi.fn(async (id) => ({ ...items.find((item) => item.id === id)!, status: "voided" as const })) });
+const client = (): Pick<IncomeClient, "listAs" | "list" | "void"> => ({
+  listAs: vi.fn().mockResolvedValue(data),
+  list: vi.fn().mockResolvedValue(data),
+  void: vi.fn(async (id) => ({ ...items.find((item) => item.id === id)!, status: "voided" as const })),
+});
 
 it("uses server-filtered results and lets managers filter registering users", async () => {
   const user = userEvent.setup(); const incomeClient = client();
   render(<IncomesView data={data} initialQuery={initialQuery} currentUser={currentUser} employees={items.map(({ employee }) => employee)} paymentMethods={paymentMethods} canViewAll canVoid incomeClient={incomeClient} />);
   expect(screen.getByText("2 movimientos")).toBeVisible();
   await user.selectOptions(screen.getByRole("combobox", { name: /empleado/i }), items[1].employee.id);
-  await waitFor(() => expect(incomeClient.list).toHaveBeenCalledWith(expect.objectContaining({ userId: items[1].employee.id, page: 1 })));
+  await waitFor(() => expect(incomeClient.listAs).toHaveBeenCalledWith("owner", expect.objectContaining({ userId: items[1].employee.id, page: 1 })));
 });
 
 it("does not expose the user filter or void action to employees", async () => {
@@ -39,7 +43,7 @@ it("voids once after confirmation and refetches metrics", async () => {
   await user.click(screen.getByRole("button", { name: /anular venta/i }));
   await user.click(screen.getByRole("button", { name: /^anular venta$/i }));
   await waitFor(() => expect(incomeClient.void).toHaveBeenCalledOnce());
-  expect(incomeClient.list).toHaveBeenCalled();
+  expect(incomeClient.listAs).toHaveBeenCalled();
   expect(await screen.findByText("Venta anulada correctamente.")).toBeVisible();
 });
 
@@ -67,7 +71,7 @@ it("uses one server paginator for the income table", async () => {
     pagination: { page: 1, pageSize: 10, total: 12, totalPages: 2 },
   };
   const incomeClient = client();
-  vi.mocked(incomeClient.list).mockResolvedValueOnce(secondPage);
+  vi.mocked(incomeClient.listAs).mockResolvedValueOnce(secondPage);
 
   render(
     <IncomesView
@@ -89,7 +93,8 @@ it("uses one server paginator for the income table", async () => {
   await user.click(screen.getByRole("button", { name: "Siguiente" }));
 
   await waitFor(() =>
-    expect(incomeClient.list).toHaveBeenCalledWith(
+    expect(incomeClient.listAs).toHaveBeenCalledWith(
+      "owner",
       expect.objectContaining({ page: 2, pageSize: 10 }),
     ),
   );
