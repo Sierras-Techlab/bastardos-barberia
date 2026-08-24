@@ -23,7 +23,7 @@ it("adds one required weekly schedule and shows its readable preview", async () 
   await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.selectOptions(screen.getByLabelText("Día fijo"), "4");
   await user.type(screen.getByLabelText("Hora fija"), "10:00");
-  await user.type(screen.getByLabelText("Precio mensual"), "150");
+  await user.type(screen.getByLabelText("Precio mensual"), "15000");
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");

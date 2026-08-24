@@ -48,7 +48,9 @@ describe("FixedCustomerPaymentDialog", () => {
         onPaid={vi.fn()}
       />,
     );
-    await user.type(screen.getByLabelText("Monto en Efectivo"), "150");
+    const montoInput = screen.getByLabelText("Monto en Efectivo");
+    await user.clear(montoInput);
+    await user.type(montoInput, "15000");
     await user.click(screen.getByRole("button", { name: /confirmar cobro/i }));
     await waitFor(() => expect(pay).toHaveBeenCalled());
     expect(pay).toHaveBeenCalledWith(expect.objectContaining({

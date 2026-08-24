@@ -110,3 +110,4 @@ export const fixedCustomerMonthSchema = z.union([
 export const fixedCustomerMonthsSchema = z.array(fixedCustomerMonthSchema);
 
 export type PayFixedCustomerMonthValues = z.infer<typeof payFixedCustomerMonthSchema>;
+export const payFixedCustomerMonthInputSchema = payFixedCustomerMonthSchema;

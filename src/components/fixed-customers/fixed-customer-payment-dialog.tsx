@@ -56,7 +56,7 @@ export const FixedCustomerPaymentDialog = ({
   const activeMethods = useMemo(() => paymentMethods.filter((method) => method.isActive), [paymentMethods]);
 
   const managerTotal = (() => {
-    return Object.values(managerAmounts).reduce((sum, value) => sum + Math.round(Number(value || "0") * 100), 0);
+    return Object.values(managerAmounts).reduce((sum, value) => sum + Math.max(0, Math.round(Number(value || "0"))), 0);
   })();
   const managerAllocated = managerTotal;
   const managerRemaining = monthlyPrice - managerAllocated;
@@ -81,7 +81,7 @@ export const FixedCustomerPaymentDialog = ({
       const payments: PayFixedCustomerMonthInput["payments"] = isManager
         ? Object.entries(managerAmounts)
             .filter(([, value]) => Number(value) > 0)
-            .map(([paymentMethodId, value]) => ({ paymentMethodId, amount: Math.round(Number(value) * 100) }))
+            .map(([paymentMethodId, value]) => ({ paymentMethodId, amount: Math.max(0, Math.round(Number(value))) }))
         : Object.entries(basisPoints)
             .filter(([, points]) => points > 0)
             .map(([paymentMethodId, points]) => ({ paymentMethodId, basisPoints: points }));
@@ -132,6 +132,7 @@ export const FixedCustomerPaymentDialog = ({
             <div className="rounded-2xl border border-black/8 bg-white p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Importe total</p>
               <p className="mt-1 text-2xl font-semibold">$ {monthlyPrice.toLocaleString("es-AR")}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Monto entero en ARS.</p>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Medios de pago (monto entero en ARS)</p>
