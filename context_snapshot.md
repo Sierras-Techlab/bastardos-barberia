@@ -26,6 +26,14 @@ The corrective repair is in progress on `feat/changes-fullstack`. Task 1 of the 
 - The historic `income-form.test.tsx` is renamed to `managerForm.test.tsx` so the manager form suite owns the manager schema and `role-safety.test.tsx` owns the employee schema; the 11 manager scenarios still pass.
 - Full verification: 184 files / 802 tests pass, TypeScript clean, ESLint clean, `npm run build` succeeds, `git diff --check` clean.
 
+**Closed in commits `b594ac7` + `33aea01` (Task 2 completion):**
+- `ManagerPaginatedIncomes` and `EmployeePaginatedIncomes` are defined as separate discriminated projections of the API envelope; `PaginatedIncomes` is their union and `IncomeListRow` is the per-row union used by table, mobile list, detail sheet and presentation helpers.
+- `incomeClient.listAs(role, query)` and `incomeClient.getAs(role, id)` parse the API success envelope with the schema selected by the viewer (manager or sanitized employee); the broad cast-through-unknown pattern is removed from `/incomes` and `/incomes/[id]`.
+- The home page no longer filters out records with `employeeCommission` and no longer casts them to manager shape; `IncomeSummaryCard` accepts the `DashboardIncomeSummary | EmployeeDashboardIncomeSummary` discriminated union, replacing the `isEmployee` flag with a real `viewer` discriminant ("Lo generado para vos" / "Comisión diaria registrada" for employees; "Facturación bruta" / "Neto barbería" for managers).
+- `IncomeVoidDialog` is restricted to manager-shape rows via the `IncomesView` guard so the dialog never renders for an employee.
+- `IncomesView` tests are split into a manager describe (5 cases) and an employee describe with 3 RED cases that assert the sanitized "Tus ventas registradas" header, the absence of the manager-only filters and a detail sheet that never leaks catalog/total/payment/registered-by phrases.
+- Full verification: 184 files / 807 tests pass, TypeScript clean, ESLint clean.
+
 ## Repository state
 
 ## Corrective repair remaining work (must finish before deploying migrations 020�023)
