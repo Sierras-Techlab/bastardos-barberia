@@ -54,7 +54,7 @@ const result = (input: CreateIncomeInput): Income => ({
   total: 13000,
   status: "active",
 });
-const client = (create = vi.fn(async (input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
+const client = (create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
 const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 
   it("lets a manager select the responsible employee", () => {
@@ -66,20 +66,19 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     const user = userEvent.setup(); render(<IncomeForm data={{ ...data, paymentMethods: [] }} incomeClient={client()} />);
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     expect(await screen.findByText("Seleccioná un servicio o agregá al menos un producto.")).toBeVisible();
-    expect(screen.getByText("Seleccioná un medio de pago.")).toBeVisible();
   });
   it("sends a generated request id and no actor, total or date", async () => {
-    const user = userEvent.setup(); const create = vi.fn(async (input: CreateIncomeInput) => result(input));
+    const user = userEvent.setup(); const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));
     render(<IncomeForm data={data} incomeClient={client(create)} />); await review(user); await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
-    const input = create.mock.calls[0][0];
+    const input = create.mock.calls[0][1];
     expect(input.requestId).toMatch(/^[0-9a-f-]{36}$/); expect(input.employeeId).toBe(data.currentUser.id); expect(input).not.toHaveProperty("total"); expect(input).not.toHaveProperty("createdAt");
     expect(await screen.findByRole("heading", { name: /ingreso registrado/i })).toBeVisible();
   });
   it("locks repeated confirmation while using one request id", async () => {
-    let resolve!: (income: Income) => void; const pending = new Promise<Income>((done) => { resolve = done; }); const create = vi.fn<(input: CreateIncomeInput) => Promise<Income>>(() => pending);
+    let resolve!: (income: Income) => void; const pending = new Promise<Income>((done) => { resolve = done; }); const create = vi.fn<(_role: string, input: CreateIncomeInput) => Promise<Income>>(() => pending);
     const user = userEvent.setup(); render(<IncomeForm data={data} incomeClient={client(create)} />); await review(user);
     const confirm = screen.getByRole("button", { name: /^confirmar ingreso$/i }); await user.dblClick(confirm);
-    expect(create).toHaveBeenCalledOnce(); resolve(result(create.mock.calls[0][0]));
+    expect(create).toHaveBeenCalledOnce(); resolve(result(create.mock.calls[0][1]));
     expect(await screen.findByRole("heading", { name: /ingreso registrado/i })).toBeVisible();
   });
   it("preserves the draft after insufficient stock", async () => {
@@ -92,7 +91,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     ["their own account", "00000000-0000-4000-8000-000000000001"],
     ["an owner", "00000000-0000-4000-8000-000000000004"],
   ])("clears all overrides when a manager changes attribution to %s", async (_label, targetEmployeeId) => {
-    const create = vi.fn(async (input: CreateIncomeInput) => result(input));
+    const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));
     const user = userEvent.setup();
     render(<IncomeForm data={managerData} incomeClient={client(create)} />);
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), "00000000-0000-4000-8000-000000000002");
@@ -105,7 +104,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     expect(screen.queryByRole("checkbox", { name: /regalar el 100%/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+    expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       employeeId: targetEmployeeId,
       grantFullServiceCommission: false,
       products: [{ productId: "product", quantity: 1, grantFullCommission: false }],
@@ -116,7 +115,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     ["removes", serviceId],
     ["changes", "30000000-0000-4000-8000-000000000002"],
   ])("clears the hidden service override when a manager %s the selected service", async (_label, nextServiceId) => {
-    const create = vi.fn(async (input: CreateIncomeInput) => result(input));
+    const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));
     const user = userEvent.setup();
     render(<IncomeForm data={managerData} incomeClient={client(create)} />);
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), "00000000-0000-4000-8000-000000000002");
@@ -126,14 +125,49 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.click(screen.getByRole("button", { name: nextServiceId === serviceId ? /barba/i : /corte/i }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+    expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       serviceId: nextServiceId === serviceId ? null : nextServiceId,
       grantFullServiceCommission: false,
     }));
   });
 
+  it("forwards a manager service discount as servicePriceOverride with reason", async () => {
+    const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));
+    const user = userEvent.setup();
+    render(<IncomeForm data={managerData} incomeClient={client(create)} />);
+    await user.click(screen.getByRole("button", { name: /barba/i }));
+    await user.click(screen.getByRole("checkbox", { name: /modificar precio de barba/i }));
+    const priceInput = screen.getByLabelText("Precio cobrado de Barba");
+    await user.clear(priceInput);
+    await user.type(priceInput, "10000");
+    await user.type(screen.getByLabelText("Motivo del cambio de precio de Barba"), "Promo cliente");
+    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
+    await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
+    expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      servicePriceOverride: { chargedUnitPrice: 10000, reason: "Promo cliente" },
+    }));
+  });
+
+  it("forwards per-product discounts as productPriceOverrides and accepts zero-priced products", async () => {
+    const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));
+    const user = userEvent.setup();
+    render(<IncomeForm data={managerData} incomeClient={client(create)} />);
+    await user.click(screen.getByRole("button", { name: /barba/i }));
+    await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
+    await user.click(screen.getByRole("checkbox", { name: /Modificar precio de Pomada × 1/i }));
+    const priceInput = screen.getByLabelText(/Precio cobrado de Pomada/i);
+    await user.clear(priceInput);
+    await user.type(priceInput, "0");
+    await user.type(screen.getByLabelText(/Motivo del cambio de precio de Pomada/i), "Cortesía");
+    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
+    await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
+    expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      productPriceOverrides: { product: { chargedUnitPrice: 0, reason: "Cortesía" } },
+    }));
+  });
+
   it("submits simultaneous full service and product lines for another non-owner", async () => {
-    const create = vi.fn(async (input: CreateIncomeInput) => result(input));
+    const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));
     const user = userEvent.setup();
     render(<IncomeForm data={managerData} incomeClient={client(create)} />);
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), "00000000-0000-4000-8000-000000000002");
@@ -149,7 +183,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     expect(dialog).toHaveTextContent("Pomada · 100%");
     expect(dialog).toHaveTextContent("Shampoo · 100%");
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+    expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       employeeId: "00000000-0000-4000-8000-000000000002",
       serviceId,
       grantFullServiceCommission: true,

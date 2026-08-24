@@ -74,7 +74,7 @@ describe("incomeClient", () => {
       return Response.json({ data: {} });
     });
     const input = { requestId: "40000000-0000-4000-8000-000000000001", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [{ productId: "50000000-0000-4000-8000-000000000001", quantity: 2, grantFullCommission: true }], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }], grantFullServiceCommission: false };
-    await incomeClient.create(input);
+    await incomeClient.create("owner", input);
     await incomeClient.list({ page: 1, pageSize: 10, dateFrom: "2026-08-01", paymentMethodId: "60000000-0000-4000-8000-000000000003" });
     await incomeClient.get("20000000-0000-4000-8000-000000000001");
     await incomeClient.void("20000000-0000-4000-8000-000000000001");
@@ -109,5 +109,20 @@ describe("incomeClient", () => {
     const detail = await incomeClient.getAs("employee", "20000000-0000-4000-8000-000000000001");
     expect(detail).toMatchObject({ employeeCommission: 5000 });
     expect((detail as { total?: number }).total).toBeUndefined();
+  });
+
+  it("parses the create response with the employee sanitized schema when viewer is employee", async () => {
+    fetchMock.mockImplementation(async () => Response.json(employeeDetailResponse));
+    const input = { requestId: "40000000-0000-4000-8000-0000000000aa", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10000 }], grantFullServiceCommission: false };
+    const income = await incomeClient.create("employee", input);
+    expect(income).toMatchObject({ employeeCommission: 5000 });
+    expect((income as { total?: number }).total).toBeUndefined();
+  });
+
+  it("parses the create response with the manager schema when viewer is owner", async () => {
+    fetchMock.mockImplementation(async () => Response.json(managerDetailResponse));
+    const input = { requestId: "40000000-0000-4000-8000-0000000000aa", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }], grantFullServiceCommission: false };
+    const income = await incomeClient.create("owner", input);
+    expect(income).toMatchObject({ total: 13000, payments: [{ amount: 13000 }] });
   });
 });

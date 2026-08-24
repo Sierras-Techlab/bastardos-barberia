@@ -74,7 +74,7 @@ const productOverridesFormSchema = z.array(
 
 export const managerIncomeFormSchema = z.object({
   ...sharedFormFields,
-  payments: z.array(managerFormPaymentSchema).min(1, "Seleccioná un medio de pago.").superRefine((payments, context) => {
+  payments: z.array(managerFormPaymentSchema).superRefine((payments, context) => {
     const ids = new Set<string>();
     for (const [index, payment] of payments.entries()) {
       if (ids.has(payment.paymentMethodId)) context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez.", path: [index, "paymentMethodId"] });
@@ -84,7 +84,8 @@ export const managerIncomeFormSchema = z.object({
   servicePriceOverride: priceOverrideFormSchema.nullable().default(null),
   productPriceOverrides: productOverridesFormSchema,
 }).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
-  message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
+  message: "Seleccioná un servicio o agregá al menos un producto.",
+  path: ["serviceId"],
 });
 
 export const employeeIncomeFormSchema = z.object({
@@ -127,18 +128,22 @@ const managerCreateBaseSchema = z.object({
       ids.add(product.productId);
     }
   }),
-  payments: z.array(managerCreatePaymentSchema).min(1).superRefine((payments, context) => {
+  payments: z.array(managerCreatePaymentSchema).superRefine((payments, context) => {
     const methodIds = new Set(payments.map(({ paymentMethodId }) => paymentMethodId));
     if (methodIds.size !== payments.length) {
       context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez." });
     }
   }),
   grantFullServiceCommission: z.boolean(),
-  servicePriceOverride: priceOverrideSchema.optional(),
+  servicePriceOverride: priceOverrideSchema.nullable().optional(),
   productPriceOverrides: managerProductPriceOverrideSchema.optional(),
 }).strict().superRefine((value, context) => {
   if (!sharedCreateRefinements.atLeastOneLine(value)) {
     context.addIssue({ code: "custom", message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"] });
+  }
+  const totalAmount = value.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  if (totalAmount > 0 && value.payments.length === 0) {
+    context.addIssue({ code: "custom", message: "Una venta con importe requiere al menos un medio de pago.", path: ["payments"] });
   }
   if (value.productPriceOverrides) {
     const productIds = new Set(value.products.map(({ productId }) => productId));

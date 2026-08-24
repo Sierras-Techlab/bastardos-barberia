@@ -1,4 +1,4 @@
-import type { CreateIncomeInput, EmployeeIncomeListItem, Income, IncomeListItem, IncomeListQuery, ManagerPaginatedIncomes, PaginatedIncomes, UserRole } from "@/types/income";
+import type { CreateIncomeInput, EmployeeIncomeListItem, IncomeListItem, IncomeListQuery, ManagerPaginatedIncomes, PaginatedIncomes, UserRole } from "@/types/income";
 import {
   employeeIncomeResponseSchema,
   employeePaginatedIncomesSchema,
@@ -29,7 +29,7 @@ const parseIncomeDetailForRole = (
 };
 
 export type IncomeClient = {
-  create(input: CreateIncomeInput): Promise<Income>;
+  create(role: UserRole, input: CreateIncomeInput): Promise<IncomeListItem | EmployeeIncomeListItem>;
   listAs(role: UserRole, query: IncomeListQuery): Promise<PaginatedIncomes>;
   list(query: IncomeListQuery): Promise<ManagerPaginatedIncomes>;
   getAs(role: UserRole, id: string): Promise<IncomeListItem | EmployeeIncomeListItem>;
@@ -38,7 +38,10 @@ export type IncomeClient = {
 };
 
 export const incomeClient: IncomeClient = {
-  create: (input) => request<Income>("/api/incomes", json("POST", input)),
+  create: (role, input) => request<IncomeListItem | EmployeeIncomeListItem>(
+    "/api/incomes",
+    { ...json("POST", input), headers: { "Content-Type": "application/json", "X-Bastardos-Viewer-Role": role } },
+  ),
   listAs: async (role, query) => {
     const raw = await request<unknown>(`/api/incomes?${queryString(query)}`, { cache: "no-store" });
     return parsePaginatedForRole(role, raw);

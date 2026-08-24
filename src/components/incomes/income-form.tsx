@@ -29,14 +29,16 @@ import type {
   CreateIncomeInput,
   EmployeeCatalogProduct,
   EmployeeCatalogService,
-  Income,
+  EmployeeIncomeListItem,
   IncomeFormData,
   IncomeFormEmployee,
+  IncomeListItem,
 } from "@/types/income";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
 import { IncomeSummary } from "./income-summary";
 import { IncomeSuccessState } from "./income-success-state";
+import { LinePriceEditor, type LinePriceOverride } from "./line-price-editor";
 import { PaymentMethodSelector } from "./payment-method-selector";
 import { ProductSelector } from "./product-selector";
 import { ServiceSelector } from "./service-selector";
@@ -85,7 +87,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const [reviewValues, setReviewValues] = useState<IncomeFormValues | null>(
     null,
   );
-  const [createdIncome, setCreatedIncome] = useState<Income | null>(null);
+  const [createdIncome, setCreatedIncome] = useState<IncomeListItem | EmployeeIncomeListItem | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState(data.customers);
@@ -141,6 +143,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       );
       if (totalAmount !== total) {
         form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
+        setSubmitError("Distribuí el importe total entre medios de pago válidos.");
         return;
       }
     } else {
@@ -151,6 +154,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       );
       if (employeeBasisSum !== 10000) {
         form.setError("payments", { message: "Los porcentajes deben sumar 100%." });
+        setSubmitError("Los porcentajes deben sumar 100%.");
         return;
       }
     }
@@ -173,6 +177,14 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           .filter((payment) => payment.basisPoints > 0)
           .map((payment) => ({ paymentMethodId: payment.paymentMethodId, basisPoints: payment.basisPoints }));
 
+    const managerReview = isManager ? (reviewValues as ManagerIncomeFormValues) : null;
+    const servicePriceOverride = managerReview?.servicePriceOverride ?? null;
+    const productPriceOverridesEntries = (managerReview?.productPriceOverrides ?? [])
+      .filter((entry) => entry.override !== null) as Array<{ productId: string; override: { chargedUnitPrice: number; reason: string } }>;
+    const productPriceOverrides = productPriceOverridesEntries.length > 0
+      ? Object.fromEntries(productPriceOverridesEntries.map((entry) => [entry.productId, entry.override]))
+      : undefined;
+
     const input: CreateIncomeInput = {
       requestId: requestIdRef.current,
       employeeId: reviewValues.employeeId,
@@ -181,13 +193,15 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       products: reviewValues.products,
       payments,
       grantFullServiceCommission: reviewValues.grantFullServiceCommission,
+      servicePriceOverride,
+      productPriceOverrides,
     };
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      const income = await incomeClient.create(input);
+      const income = await incomeClient.create(data.currentUser.role, input);
       setCreatedIncome(income);
       setReviewValues(null);
       requestIdRef.current = crypto.randomUUID();
@@ -236,7 +250,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   };
 
   if (createdIncome) {
-    return <IncomeSuccessState income={createdIncome} onReset={handleReset} />;
+    return <IncomeSuccessState income={createdIncome} viewerRole={data.currentUser.role} onReset={handleReset} />;
   }
 
   return (
@@ -315,11 +329,26 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   onChange={(serviceId) => {
                     field.onChange(serviceId);
                     form.setValue("grantFullServiceCommission", false);
+                    form.setValue("servicePriceOverride", null);
                   }}
                   error={fieldState.error?.message}
                 />
               )}
             />
+            {isManager && values.serviceId && (() => {
+              const catalogService = data.services.find((s) => "price" in s && s.id === values.serviceId);
+              if (!catalogService) return null;
+              return <Controller control={form.control} name="servicePriceOverride" render={({ field }) => (
+                <div className="mt-3">
+                  <LinePriceEditor
+                    catalogUnitPrice={"price" in catalogService ? catalogService.price : 0}
+                    label={catalogService.name}
+                    value={field.value as LinePriceOverride | null}
+                    onChange={(next) => field.onChange(next)}
+                  />
+                </div>
+              )} />;
+            })()}
           </CardContent>
         </Card>
 
@@ -343,6 +372,32 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                 />
               )}
             />
+            {isManager && values.products.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <Controller control={form.control} name="productPriceOverrides" render={({ field }) => (
+                  <>
+                    {values.products.map((productLine) => {
+                      const catalogProduct = data.products.find((p) => p.id === productLine.productId);
+                      if (!catalogProduct) return null;
+                      const currentOverrides = field.value as Array<{ productId: string; override: LinePriceOverride | null }>;
+                      const existing = currentOverrides.find((o) => o.productId === productLine.productId);
+                      return (
+                        <LinePriceEditor
+                          key={productLine.productId}
+                          catalogUnitPrice={"price" in catalogProduct ? catalogProduct.price : 0}
+                          label={`${catalogProduct.name} × ${productLine.quantity}`}
+                          value={existing?.override ?? null}
+                          onChange={(next) => {
+                            const others = currentOverrides.filter((o) => o.productId !== productLine.productId);
+                            field.onChange([...others, { productId: productLine.productId, override: next }]);
+                          }}
+                        />
+                      );
+                    })}
+                  </>
+                )} />
+              </div>
+            )}
           </CardContent>
         </Card>
 

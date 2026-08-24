@@ -6,7 +6,7 @@ import { IncomeForm } from "@/components/incomes/income-form";
 import { CommissionPreview } from "@/components/incomes/commission-preview";
 import type { IncomeClient } from "@/lib/incomes/client";
 import type { EmployeeIncomeFormValues } from "@/lib/incomes/income-schema";
-import type { CreateIncomeInput, Income, IncomeFormData } from "@/types/income";
+import type { CreateIncomeInput, Income, IncomeFormData, UserRole } from "@/types/income";
 
 const ownerId = "00000000-0000-4000-8000-000000000001";
 const employeeId = "00000000-0000-4000-8000-800000000003";
@@ -57,7 +57,7 @@ const managerFormData: IncomeFormData = {
 const captureCreate = () => {
   const calls: CreateIncomeInput[] = [];
   const client: Pick<IncomeClient, "create"> = {
-    create: vi.fn(async (input: CreateIncomeInput): Promise<Income> => {
+    create: vi.fn(async (_role: UserRole, input: CreateIncomeInput): Promise<Income> => {
       calls.push(input);
       return {
         id: "20000000-0000-4000-8000-000000000001",
@@ -156,6 +156,6 @@ describe("020 application layer role safety", () => {
     await user.clear(efectivoInput);
     await user.type(efectivoInput, "-100");
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
-    expect(screen.getByRole("alert").textContent).toMatch(/distribu/i);
+    expect(screen.getAllByRole("alert").some((node) => /distribu/i.test(node.textContent ?? ""))).toBe(true);
   });
 });

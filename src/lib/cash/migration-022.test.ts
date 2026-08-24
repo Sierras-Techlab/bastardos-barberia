@@ -10,6 +10,13 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).not.toMatch(/_v2/i);
   });
 
+  it("adds payment_methods.system_code before any query that reads it", () => {
+    const columnIdx = sql.search(/add column if not exists system_code text/i);
+    const preflightIdx = sql.search(/CASH_PAYMENT_METHOD_REQUIRED/i);
+    expect(columnIdx).toBeGreaterThan(0);
+    expect(preflightIdx).toBeGreaterThan(columnIdx);
+  });
+
   it("evolves daily_cash_registers without recreating it", () => {
     expect(sql).toMatch(/alter table public\.daily_cash_registers/i);
     expect(sql).toMatch(/add column if not exists opening_balance bigint/i);
@@ -18,6 +25,11 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/add column if not exists counted_cash bigint/i);
     expect(sql).toMatch(/add column if not exists difference_cash bigint/i);
     expect(sql).toMatch(/add column if not exists reconciliation_state text/i);
+  });
+
+  it("relaxes the legacy daily_cash_counts_check so a register may open with zero sales", () => {
+    expect(sql).toMatch(/drop constraint if exists daily_cash_counts_check/i);
+    expect(sql).not.toMatch(/sale_count \+ adjustment_count > 0/i);
   });
 
   it("backfills legacy 018 registers without losing snapshots", () => {
@@ -51,7 +63,23 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/on conflict \(business_date\) do nothing/i);
   });
 
-  it("promotes cash_day_as_json to expose lifecycle fields", () => {
+  it("computes expected_cash from opening_balance plus Efectivo-only payments", () => {
+    expect(sql).toMatch(/pm\.system_code = 'cash'/i);
+    expect(sql).not.toMatch(/sales_gross_total \+ opening_balance/i);
+  });
+
+  it("uses named PL/pgSQL variables and never references $4 in three-argument RPCs", () => {
+    expect(sql).not.toMatch(/= \$4,/i);
+    expect(sql).toMatch(/diff_value\s*:=\s*counted_cash\s*-\s*expected_value/i);
+  });
+
+  it("installs an AFTER INSERT income trigger that opens the daily cash register", () => {
+    expect(sql).toMatch(/trg_income_open_daily_cash/i);
+    expect(sql).toMatch(/after insert on public\.incomes/i);
+    expect(sql).toMatch(/create or replace function public\.trg_income_open_daily_cash/i);
+  });
+
+  it("promotes cash_day_as_json as the canonical read projection with lifecycle fields", () => {
     expect(sql).toMatch(/create or replace function public\.cash_day_as_json/i);
     expect(sql).toMatch(/'openingBalance'/i);
     expect(sql).toMatch(/'expectedCash'/i);

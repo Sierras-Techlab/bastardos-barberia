@@ -65,8 +65,31 @@ describe("operational control migration cross compatibility", () => {
       expect(sql022).not.toMatch(/daily_cash_sales[\s\S]*?\bpayment_method_id\b/i);
     });
 
-    it("does not produce a no-op set counted_cash = counted_cash assignment", () => {
-      expect(sql022).not.toMatch(/set\s+counted_cash\s*=\s*counted_cash\b/i);
+    it("adds payment_methods.system_code before any query that reads it", () => {
+      const columnIdx = sql022.search(/add column if not exists system_code text/i);
+      const preflightIdx = sql022.search(/CASH_PAYMENT_METHOD_REQUIRED/i);
+      expect(columnIdx).toBeGreaterThan(0);
+      expect(preflightIdx).toBeGreaterThan(columnIdx);
+    });
+
+    it("relaxes the legacy daily_cash_counts_check so a register may open with zero sales", () => {
+      expect(sql022).toMatch(/drop constraint if exists daily_cash_counts_check/i);
+      expect(sql022).not.toMatch(/sale_count \+ adjustment_count > 0/i);
+    });
+
+    it("uses named PL/pgSQL variables and never references $4 in three-argument RPCs", () => {
+      expect(sql022).not.toMatch(/= \$4,/i);
+      expect(sql022).toMatch(/diff_value\s*:=\s*counted_cash\s*-\s*expected_value/i);
+    });
+
+    it("computes expected_cash from opening_balance plus Efectivo-only payments", () => {
+      expect(sql022).toMatch(/pm\.system_code = 'cash'/i);
+      expect(sql022).not.toMatch(/sales_gross_total \+ opening_balance/i);
+    });
+
+    it("installs an AFTER INSERT income trigger that opens the daily cash register", () => {
+      expect(sql022).toMatch(/trg_income_open_daily_cash/i);
+      expect(sql022).toMatch(/after insert on public\.incomes/i);
     });
   });
 
