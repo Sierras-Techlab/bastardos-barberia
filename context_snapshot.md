@@ -64,6 +64,17 @@ The corrective repair is in progress on `feat/changes-fullstack`. Task 1 of the 
 - Migration 023 needs no production change. The behavioral regression tests document that only active normal sales qualify, fixed-subscription incomes are excluded, voids are filtered by the partial index, the per-customer newest sale wins via `DISTINCT ON` with ordered `business_date` and `created_at`, customers without active sales get a NULL `lastVisitBusinessDate` via `LEFT JOIN latest_sale`, and the date is projected through `America/Argentina/Buenos_Aires`.
 - Full verification: 184 files / 823 tests pass, TypeScript clean, ESLint clean.
 
+**Closed in commits `2fafb10` + `cf09259` (corrective-repair v2):**
+- **Migration 022:** `payment_methods.system_code` is added BEFORE any query reads it; the legacy `daily_cash_counts_check` is relaxed so a manager may open a register with zero sales; `close_daily_cash` and `confirm_daily_cash` use named PL/pgSQL variables (no more `$4` references); `expected_cash` is recomputed as `opening_balance + net Efectivo payments` instead of the gross sales total; an `AFTER INSERT` trigger on `public.incomes` calls `ensure_daily_cash_open(new.registered_by, new.business_date)` so the cash register opens on the first income without duplicating the call.
+- **Income client + success state:** `create(role, input)` parses the response with the manager or sanitized employee schema and returns `IncomeListItem | EmployeeIncomeListItem`. IncomeSuccessState renders the employee sanitized projection (only `employeeCommission`) without ever reading `total`.
+- **Income form:** `LinePriceEditor` is wired into both the service card and every product row; manager sales reach the server with `servicePriceOverride` and `productPriceOverrides`. The schema keeps manager payments optional for zero-total free sales.
+- **Migration 021:** every read projection carries the `viewer` discriminant; `fixed_customer_month_as_employee_json` omits `monthlyPrice`; `get_fixed_customer_month` falls back to `synthesize_pending_fixed_customer_month` (canonical YYYY-MM period) so the first payment dialog opens for unpaid periods; `compute_fixed_subscription_payments` rejects `basis_points <= 0` and `computed_amount <= 0`; `mark_fixed_subscription_attempt_voided` records `coalesce(new.voided_by, new.registered_by)` so the audit row reflects the manager that actually voided the subscription.
+- **Dashboard:** `buildIncomeSummaryForViewer` takes an explicit `UserRole` parameter; employees with no sales today still see the employee summary (RED test added).
+- Full verification: 184 files / 844 tests pass, TypeScript clean, ESLint clean.
+
+**Remaining outstanding work (Task 6 — real PostgreSQL acceptance):**
+- Operator must run the rollback-wrapped acceptance scenarios per block against a disposable Supabase project and capture the sanitized JSON outputs before the cumulative 019 → 023 chain is rolled out. Without that evidence, remote installation remains blocked.
+
 ## Repository state
 
 ## Corrective repair remaining work (must finish before deploying migrations 020�023)
