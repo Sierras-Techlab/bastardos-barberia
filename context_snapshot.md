@@ -2,6 +2,18 @@
 
 Captured: 2026-08-22
 
+## Verified stabilization handoff — 2026-08-23
+
+- All six tasks of the corrective repair plan are closed locally on `feat/changes-fullstack`. Final verification: `npx next typegen` clean, `npx tsc --noEmit` clean, `npm test` 184 files / 823 tests pass, `npm run lint` clean (zero warnings), `npm run build` (Next.js 16.3 Webpack) succeeds and `git diff --check` clean.
+- The commits land in this order:
+  - `334312c fix(incomes): complete role-safe entry contracts` (Task 1 — RED→GREEN close)
+  - `b594ac7 fix(incomes): render role-specific history and metrics` + `33aea01 test(incomes): add employee history and dashboard RED coverage` (Task 2)
+  - `0b6eb44 fix(subscriptions): rebuild migration 021 monthly payment contract` (Task 3)
+  - `5a8a015 fix(subscriptions): reconcile 021 client and UI contracts` (Task 4)
+  - `246a8af test(customers): add 023 behavioral regression cases` (Task 5 — migration SQL unchanged)
+- Task 6 (real PostgreSQL acceptance against a disposable Supabase project) cannot be executed from this chat. The operator must run the rollback-wrapped acceptance scenarios per block, capture the sanitized JSON outputs and attach the evidence to the deploy record. **Until that gate is recorded, the cumulative 019 → 023 chain must remain un-deployed.**
+- The committed repository HEAD is structurally verified; the installed remote Supabase is untouched by this worktree.
+
 ## Corrective audit — 2026-08-23
 
 - A fresh cross-layer audit found deployment-blocking inconsistencies in the current implementations of blocks `020`, `021` and `022`, despite `npm test` (184 files / 802 tests), TypeScript, ESLint and the production build passing.
@@ -33,6 +45,24 @@ The corrective repair is in progress on `feat/changes-fullstack`. Task 1 of the 
 - `IncomeVoidDialog` is restricted to manager-shape rows via the `IncomesView` guard so the dialog never renders for an employee.
 - `IncomesView` tests are split into a manager describe (5 cases) and an employee describe with 3 RED cases that assert the sanitized "Tus ventas registradas" header, the absence of the manager-only filters and a detail sheet that never leaks catalog/total/payment/registered-by phrases.
 - Full verification: 184 files / 807 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commit `0b6eb44` (Task 3 completion):**
+- Migration 021 installs `attempts.status` with a CHECK constraint and the partial unique index `fixed_payment_attempts_one_active_period` that guarantees exactly one active attempt per (customer, period).
+- `pay_fixed_customer_month` no longer calls `ensure_daily_cash_open`; migration 022 owns universal opening.
+- The role snapshot is read as canonical text (`'owner' | 'admin' | 'employee'`), the request fingerprint is stored as a hexadecimal text via `pg_catalog.encode(extensions.digest(...), 'hex')`, and no `uuid::jsonb` cast is used.
+- The canonical `void_income` RPC is preserved; an `AFTER UPDATE OF status` trigger on `public.incomes` flips the linked attempt to `voided` so audit/stock/post-close Caja semantics stay intact.
+- `get_fixed_customer_month` falls back to the most recent attempt and a new `synthesize_pending_fixed_customer_month` helper lets the first payment dialog open for an unpaid month.
+- The migration test asserts the new contracts; the cross-migration test adds guards for `ensure_daily_cash_open`, JWT settings, the `uuid::jsonb` cast and the canonical `void_income` replacement.
+- Full verification: 184 files / 818 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commit `5a8a015` (Task 4 completion):**
+- `FixedCustomerPaymentApiError(status, code, message, fields)` is raised from every list/pay/get envelope parse failure, and the success envelopes (`{ data: { items } }`, `{ data: { month } }`) are parsed with the strict Zod schemas from `schemas.ts`.
+- The legacy `*100` / `/100` conversions are stripped from the customer-editor and fixed-customer-payment dialogs; the form state stores the integer ARS value, the input step is `1`, and the dialog forwards the integer amount.
+- Full verification: 184 files / 819 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commit `246a8af` (Task 5 completion):**
+- Migration 023 needs no production change. The behavioral regression tests document that only active normal sales qualify, fixed-subscription incomes are excluded, voids are filtered by the partial index, the per-customer newest sale wins via `DISTINCT ON` with ordered `business_date` and `created_at`, customers without active sales get a NULL `lastVisitBusinessDate` via `LEFT JOIN latest_sale`, and the date is projected through `America/Argentina/Buenos_Aires`.
+- Full verification: 184 files / 823 tests pass, TypeScript clean, ESLint clean.
 
 ## Repository state
 
