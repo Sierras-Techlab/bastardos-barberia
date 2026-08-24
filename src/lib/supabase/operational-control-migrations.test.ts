@@ -8,7 +8,7 @@ const sql022 = readFileSync(join(process.cwd(), "supabase", "queries", "022_manu
 
 describe("operational control migration cross compatibility", () => {
   describe("021_fixed_customer_monthly_payments.sql", () => {
-    it("does not reference legacy role_name column", () => {
+    it("does not reference the legacy role_name column", () => {
       expect(sql021).not.toMatch(/\brole_name\b/i);
     });
 
@@ -17,7 +17,7 @@ describe("operational control migration cross compatibility", () => {
     });
 
     it("does not write to the legacy customer_fixed_schedules.user_id column", () => {
-      expect(sql021).not.toMatch(/customer_fixed_schedules[\s\S]*?\buser_id\b/i);
+      expect(sql021).not.toMatch(/customer_fixed_schedules[\s\S]*?\buser_id\b(?!\s*_snapshot)/i);
     });
 
     it("does not rely on s.period from customer_fixed_schedules", () => {
@@ -30,6 +30,25 @@ describe("operational control migration cross compatibility", () => {
 
     it("does not write request_id, user_id together into the attempts table", () => {
       expect(sql021).not.toMatch(/request_id,\s*user_id\b/i);
+    });
+
+    it("does not call ensure_daily_cash_open so migration 022 owns universal opening", () => {
+      const executableSql = sql021.replace(/--[^\n]*\n/g, "");
+      expect(executableSql).not.toMatch(/ensure_daily_cash_open/i);
+    });
+
+    it("does not read JWT settings to derive the viewer discriminant", () => {
+      expect(sql021).not.toMatch(/request\.jwt\.claim/i);
+      expect(sql021).not.toMatch(/current_setting/i);
+    });
+
+    it("uses a hexadecimal text fingerprint and never casts uuid to jsonb", () => {
+      expect(sql021).toMatch(/pg_catalog\.encode\([\s\S]+extensions\.digest\([\s\S]+'hex'[\s\S]+\)/i);
+      expect(sql021).not.toMatch(/uuid\]?::jsonb/i);
+    });
+
+    it("does not replace the canonical void_income RPC", () => {
+      expect(sql021).not.toMatch(/create or replace function public\.void_income/i);
     });
   });
 
@@ -53,8 +72,11 @@ describe("operational control migration cross compatibility", () => {
 
   describe("canonical schema invariants", () => {
     it("relies on role_id with owner/admin/employee integers for authorization", () => {
-      expect(sql021).toMatch(/role_id\s+in\s*\(\s*1\s*,\s*2\s*\)/i);
       expect(sql022).toMatch(/role_id\s+in\s*\(\s*1\s*,\s*2\s*\)/i);
+    });
+
+    it("selects the role as text for new subscription projections", () => {
+      expect(sql021).toMatch(/when 1 then 'owner' when 2 then 'admin' when 3 then 'employee'/i);
     });
 
     it("references the canonical employee_work_sessions table", () => {
