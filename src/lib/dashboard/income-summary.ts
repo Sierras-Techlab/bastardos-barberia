@@ -1,4 +1,4 @@
-import type { EmployeeIncomeListItem, IncomeListItem, IncomeListRow } from "@/types/income";
+import type { EmployeeIncomeListItem, IncomeListItem, IncomeListRow, UserRole } from "@/types/income";
 
 export type DashboardIncomeDay = { date: string; label: string; total: number; count: number };
 export type DashboardIncomeSummary = {
@@ -117,16 +117,27 @@ export const buildEmployeeDashboardIncomeSummary = (
 };
 
 export const buildIncomeSummaryForViewer = (
+  viewer: UserRole,
   incomes: IncomeListRow[],
   dateTo: string,
 ): DashboardIncomeSummary | EmployeeDashboardIncomeSummary => {
   if (incomes.length === 0) {
+    const emptyDates = datesEndingAt(dateTo);
+    if (viewer === "employee") {
+      return {
+        viewer: "employee",
+        today: { employeeCommission: 0, count: 0 },
+        series: emptyDates.map((date) => ({ date, label: weekdayLabel(date), total: 0, count: 0 })),
+      } satisfies EmployeeDashboardIncomeSummary;
+    }
     return {
       today: { total: 0, count: 0, average: 0, paymentTotals: [] },
-      series: datesEndingAt(dateTo).map((date) => ({ date, label: weekdayLabel(date), total: 0, count: 0 })),
+      series: emptyDates.map((date) => ({ date, label: weekdayLabel(date), total: 0, count: 0 })),
     } satisfies DashboardIncomeSummary;
   }
-  return isEmployeeRow(incomes[0])
-    ? buildEmployeeDashboardIncomeSummary(incomes, dateTo)
-    : buildDashboardIncomeSummary(incomes as IncomeListItem[], dateTo);
+  const firstIsEmployee = isEmployeeRow(incomes[0]);
+  if (viewer === "employee" || firstIsEmployee) {
+    return buildEmployeeDashboardIncomeSummary(incomes, dateTo);
+  }
+  return buildDashboardIncomeSummary(incomes as IncomeListItem[], dateTo);
 };

@@ -54,11 +54,12 @@ describe("migration 021 fixed customer monthly payments", () => {
     expect(sql).toMatch(/create table if not exists public\.fixed_customer_monthly_payment_attempts/i);
   });
 
-  it("exposes list, pay and get fixed customer month RPCs without a v2 suffix and adds a synthesize_pending helper", () => {
+  it("exposes list, pay, get, synthesize and the employee projection without a v2 suffix", () => {
     expect(sql).toMatch(/create or replace function public\.list_fixed_customer_months/i);
     expect(sql).toMatch(/create or replace function public\.pay_fixed_customer_month/i);
     expect(sql).toMatch(/create or replace function public\.get_fixed_customer_month/i);
     expect(sql).toMatch(/create or replace function public\.synthesize_pending_fixed_customer_month/i);
+    expect(sql).toMatch(/create or replace function public\.fixed_customer_month_as_employee_json/i);
   });
 
   it("stores subscription concept on the income and never modifies customer visits", () => {
@@ -73,6 +74,36 @@ describe("migration 021 fixed customer monthly payments", () => {
     expect(sql).not.toMatch(/create or replace function public\.void_income/i);
   });
 
+  it("records the actual voiding manager in attempts.voided_by, not the original registrant", () => {
+    expect(sql).toMatch(/voided_by\s*=\s*coalesce\(new\.voided_by,\s*new\.registered_by\)/i);
+  });
+
+  it("includes the viewer discriminant on every read projection", () => {
+    expect(sql).toMatch(/fixed_customer_month_as_json[\s\S]+'viewer',\s*'manager'/i);
+    expect(sql).toMatch(/fixed_customer_month_as_employee_json[\s\S]+'viewer',\s*'employee'/i);
+  });
+
+  it("never exposes monthlyPrice on the employee projection", () => {
+    const employeeJsonMatch = sql.match(/create or replace function public\.fixed_customer_month_as_employee_json[\s\S]+?return result;\s+end;\s*\$\$/i);
+    expect(employeeJsonMatch).toBeTruthy();
+    expect(employeeJsonMatch?.[0] ?? "").not.toMatch(/monthlyPrice/i);
+  });
+
+  it("uses the canonical YYYY-MM period in synthesize_pending", () => {
+    expect(sql).toMatch(/synthesize_pending_fixed_customer_month[\s\S]+'period',\s*target_period/i);
+  });
+
+  it("blocks zero-basis_points distributions inside compute_fixed_subscription_payments", () => {
+    expect(sql).toMatch(/basis_points is null or raw_item\.basis_points <= 0 or raw_item\.basis_points > 10000/i);
+    expect(sql).toMatch(/if computed_amount <= 0 then[\s\S]+raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT'/i);
+  });
+
+  it("calls synthesize_pending_fixed_customer_month when no attempt exists", () => {
+    const getMatch = sql.match(/create or replace function public\.get_fixed_customer_month[\s\S]+?end;\s*\$\$/i);
+    expect(getMatch).toBeTruthy();
+    expect(getMatch?.[0] ?? "").toMatch(/synthesize_pending_fixed_customer_month/i);
+  });
+
   it("revokes and grants execute to service_role only on every new RPC", () => {
     const rpcs = [
       "list_fixed_customer_months",
@@ -81,6 +112,7 @@ describe("migration 021 fixed customer monthly payments", () => {
       "synthesize_pending_fixed_customer_month",
       "compute_fixed_subscription_payments",
       "fixed_customer_month_as_json",
+      "fixed_customer_month_as_employee_json",
       "ensure_fixed_customer_active",
     ];
     for (const rpc of rpcs) {

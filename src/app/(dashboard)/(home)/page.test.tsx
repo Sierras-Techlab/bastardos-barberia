@@ -102,29 +102,44 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
   expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "gap-5", "xl:col-span-4");
 });
 
-it("keeps employee dashboard data scoped by the server service", async () => {
-  const employeeIncomePage = {
-    items: [{
-      id: "20000000-0000-4000-8000-000000000001",
-      createdAt: new Date().toISOString(),
-      businessDate: currentRange.dateTo,
-      customer: null,
-      concepts: [{ id: "10000000-0000-4000-8000-000000000001", type: "service", name: "Corte real", quantity: 1, earning: 16000 }],
-      employeeCommission: 16000,
-      status: "active",
-    }],
-    metrics: { count: 1, employeeCommissionTotal: 16000 },
-    pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
-  };
-  listIncomes.mockResolvedValueOnce(employeeIncomePage);
-  requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
-  await renderHome();
-  expect(screen.getByRole("heading", { name: "Tus ingresos de hoy" })).toBeVisible();
-  expect(screen.getByText("Lo generado para vos")).toBeVisible();
-  expect(screen.getByText("$ 16.000")).toBeVisible();
-  expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
-  expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
-});
+  it("keeps employee dashboard data scoped by the server service", async () => {
+    const employeeIncomePage = {
+      items: [{
+        id: "20000000-0000-4000-8000-000000000001",
+        createdAt: new Date().toISOString(),
+        businessDate: currentRange.dateTo,
+        customer: null,
+        concepts: [{ id: "10000000-0000-4000-8000-000000000001", type: "service", name: "Corte real", quantity: 1, earning: 16000 }],
+        employeeCommission: 16000,
+        status: "active",
+      }],
+      metrics: { count: 1, employeeCommissionTotal: 16000 },
+      pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+    };
+    listIncomes.mockResolvedValueOnce(employeeIncomePage);
+    requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
+    await renderHome();
+    expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
+    expect(screen.getByText("Lo generado para vos")).toBeVisible();
+    expect(screen.getByText("$ 16.000")).toBeVisible();
+    expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
+    expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
+  });
+
+  it("renders the employee summary for an employee with no sales today", async () => {
+    const emptyEmployeePage = {
+      items: [],
+      metrics: { count: 0, employeeCommissionTotal: 0 },
+      pagination: { page: 1, pageSize: 100, total: 0, totalPages: 1 },
+    };
+    listIncomes.mockResolvedValueOnce(emptyEmployeePage);
+    requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
+    await renderHome();
+    expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
+    expect(screen.getByText("Lo generado para vos")).toBeVisible();
+    expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
+    expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
+  });
 
 it("loads every result page before deriving the seven-day summary", async () => {
   listIncomes

@@ -248,6 +248,19 @@ begin
     if total_basis <> 10000 then
       raise exception using errcode = 'P0001', message = 'FIXED_MONTH_INVALID_PAYMENT';
     end if;
+    -- Reject distributions that would leave any method with basis 0 because
+    -- the deterministic remainder absorbs zeros and never credits them.
+    for raw_item in
+      select * from jsonb_to_recordset(payment_items) as x(
+        payment_method_id uuid,
+        amount bigint,
+        basis_points integer
+      )
+    loop
+      if raw_item.basis_points is null or raw_item.basis_points <= 0 or raw_item.basis_points > 10000 then
+        raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT';
+      end if;
+    end loop;
     for raw_item in
       select * from jsonb_to_recordset(payment_items) as x(
         payment_method_id uuid,
@@ -262,6 +275,9 @@ begin
       else
         computed_amount := (monthly_price * raw_item.basis_points) / 10000;
         computed_basis := raw_item.basis_points;
+      end if;
+      if computed_amount <= 0 then
+        raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT';
       end if;
       allocated_amount := allocated_amount + computed_amount;
       allocated_basis := allocated_basis + computed_basis;
@@ -454,7 +470,8 @@ begin
     'paidAt', att.paid_at,
     'incomeId', i.id,
     'employeeEarning', i.commission_total,
-    'monthlyPrice', i.total
+    'monthlyPrice', i.total,
+    'viewer', 'manager'
   ) into result
   from public.incomes i
   join public.customers c on c.id = i.customer_id
@@ -469,6 +486,41 @@ $$;
 
 revoke execute on function public.fixed_customer_month_as_json(uuid) from public, anon, authenticated;
 grant execute on function public.fixed_customer_month_as_json(uuid) to service_role;
+
+-- Employee-shaped projection of the same month; never exposes monthlyPrice.
+create or replace function public.fixed_customer_month_as_employee_json(target_income_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  result jsonb;
+begin
+  select jsonb_build_object(
+    'customer', jsonb_build_object('id', c.id, 'firstName', c.first_name, 'lastName', c.last_name),
+    'responsibleProfessional', jsonb_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name),
+    'period', i.fixed_period,
+    'status', case when i.status = 'active' and att.id is not null and att.status = 'active' then 'paid' else 'pending' end,
+    'paidAt', att.paid_at,
+    'incomeId', i.id,
+    'employeeEarning', i.commission_total,
+    'viewer', 'employee'
+  ) into result
+  from public.incomes i
+  join public.customers c on c.id = i.customer_id
+  join public.users u on u.id = i.employee_id
+  left join public.fixed_customer_monthly_payment_attempts att
+    on att.income_id = i.id and att.status = 'active'
+  where i.id = target_income_id;
+
+  return result;
+end;
+$$;
+
+revoke execute on function public.fixed_customer_month_as_employee_json(uuid) from public, anon, authenticated;
+grant execute on function public.fixed_customer_month_as_employee_json(uuid) to service_role;
 
 create or replace function public.list_fixed_customer_months(
   actor_user_id uuid,
@@ -581,7 +633,8 @@ begin
   end if;
 
   -- Prefer the active attempt first; otherwise fall back to the most
-  -- recent attempt regardless of status.
+  -- recent attempt regardless of status. When no attempt exists yet
+  -- synthesize a pending object so the first payment dialog can open.
   select public.fixed_customer_month_as_json(att.income_id) into result
     from public.fixed_customer_monthly_payment_attempts att
     where att.customer_id = target_customer_id
@@ -598,7 +651,15 @@ begin
       and att.period = target_period
     order by att.created_at desc
     limit 1;
-  return result;
+  if result is not null then
+    return result;
+  end if;
+
+  return public.synthesize_pending_fixed_customer_month(
+    actor_user_id,
+    target_customer_id,
+    target_period
+  );
 end;
 $$;
 
@@ -622,13 +683,13 @@ begin
   select jsonb_build_object(
     'customer', jsonb_build_object('id', c.id, 'firstName', c.first_name, 'lastName', c.last_name),
     'responsibleProfessional', jsonb_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name),
-    'period', s.customer_id::text || ':' || target_period,
+    'period', target_period,
     'status', 'pending',
     'paidAt', null,
     'incomeId', null,
     'employeeEarning', 0,
     'monthlyPrice', s.monthly_price,
-    'viewer', 'employee'
+    'viewer', 'manager'
   ) into result
   from public.customer_fixed_schedules s
   join public.customers c on c.id = s.customer_id and c.deleted_at is null
@@ -661,7 +722,7 @@ begin
     update public.fixed_customer_monthly_payment_attempts
       set status = 'voided',
           voided_at = now(),
-          voided_by = new.registered_by
+          voided_by = coalesce(new.voided_by, new.registered_by)
       where income_id = new.id
         and status = 'active';
   end if;
