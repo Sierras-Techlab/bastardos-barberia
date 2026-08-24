@@ -10,7 +10,20 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
-**Status captured:** 2026-08-22 on `codex/019-employee-work-sessions`.
+**Status captured:** 2026-08-23 on `feat/changes-fullstack` (corrective repair Tasks 1–5 closed locally; Task 6 real PostgreSQL acceptance pending operator execution).
+
+## Stabilization handoff
+
+The corrective repair plan `2026-08-23-operational-control-corrective-repair.md` has all six tasks closed on `feat/changes-fullstack`:
+
+- Task 1 (`fix(incomes): complete role-safe entry contracts`) closes the role-safe income entry RED and rebalances the form contracts.
+- Task 2 (`fix(incomes): render role-specific history and metrics`) wires `ManagerPaginatedIncomes` / `EmployeePaginatedIncomes`, the role-aware client parsers and the dashboard discriminated-union summary.
+- Task 3 (`fix(subscriptions): rebuild migration 021 monthly payment contract`) installs `attempts.status` + check + partial unique active index, removes the `ensure_daily_cash_open` call, preserves the canonical `void_income` via an `AFTER UPDATE OF status` trigger and synthesizes pending months for the first payment dialog.
+- Task 4 (`fix(subscriptions): reconcile 021 client and UI contracts`) adds `FixedCustomerPaymentApiError`, strict Zod parsing for every envelope and strips the legacy `*100` / `/100` ARS conversions.
+- Task 5 (`test(customers): add 023 behavioral regression cases`) documents the qualifying-last-visit contract; the migration SQL is unchanged.
+- Task 6 (real PostgreSQL acceptance) cannot be executed from this chat. The operator must run the rollback-wrapped acceptance scenarios per block against a disposable Supabase project, capture the sanitized JSON outputs and attach them to the deploy record before the cumulative 019 → 023 chain is rolled out.
+
+Final local verification: `npx next typegen` clean, `npx tsc --noEmit` clean, `npm test` 184 files / 823 tests pass, `npm run lint` zero warnings, `npm run build` (Next.js 16.3 Webpack) succeeds and `git diff --check` clean. The committed repository HEAD is structurally verified; the installed remote Supabase is untouched by this worktree.
 
 ## Source-of-truth order
 
