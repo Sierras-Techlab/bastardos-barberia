@@ -145,6 +145,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       servicePriceOverride: { chargedUnitPrice: 10000, reason: "Promo cliente" },
+      payments: [{ paymentMethodId: paymentMethods[0].id, amount: 10000 }],
     }));
   });
 

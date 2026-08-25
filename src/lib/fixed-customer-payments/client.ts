@@ -1,11 +1,9 @@
 import { z } from "zod";
 import type { EmployeeFixedCustomerMonth, FixedCustomerMonth, FixedCustomerMonthQuery, ManagerFixedCustomerMonth, PayFixedCustomerMonthInput } from "@/types/fixed-customer-payment";
 import {
-  fixedCustomerMonthIdentitySchema,
   fixedCustomerMonthSchema,
   fixedCustomerMonthsSchema,
   payFixedCustomerMonthInputSchema,
-  periodSchema,
 } from "@/lib/fixed-customer-payments/schemas";
 
 export class FixedCustomerPaymentApiError extends Error {
@@ -38,17 +36,6 @@ const payEnvelope = z.object({
   data: z.object({
     month: fixedCustomerMonthSchema,
   }),
-}).strict();
-
-const employeeMonthSchema = z.object({
-  customer: fixedCustomerMonthIdentitySchema,
-  responsibleProfessional: fixedCustomerMonthIdentitySchema,
-  period: periodSchema,
-  status: z.enum(["pending", "paid"]),
-  paidAt: z.iso.datetime({ offset: true }).nullable(),
-  incomeId: z.uuid().nullable(),
-  employeeEarning: z.number().int().nonnegative(),
-  viewer: z.literal("employee"),
 }).strict();
 
 export type FixedCustomerPaymentClient = {

@@ -7,6 +7,31 @@ const migrationPath = join(process.cwd(), "supabase", "queries", "021_fixed_cust
 const sql = readFileSync(migrationPath, "utf8");
 
 describe("migration 021 fixed customer monthly payments", () => {
+  it("consumes the repository camelCase payment JSON contract", () => {
+    expect(sql).toMatch(/item->>'paymentMethodId'/i);
+    expect(sql).toMatch(/item->>'basisPoints'/i);
+    expect(sql).not.toMatch(/jsonb_to_recordset\(payment_items\)[\s\S]*?payment_method_id uuid/i);
+  });
+
+  it("requires explicit legacy schedule mappings instead of inferring the creator", () => {
+    expect(sql).toMatch(/LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED/i);
+    expect(sql).not.toMatch(/responsible_user_id = coalesce\(responsible_user_id, created_by\)/i);
+    expect(sql.indexOf("LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED")).toBeLessThan(
+      sql.indexOf("begin;", sql.indexOf("LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED")),
+    );
+  });
+
+  it("fingerprints the normalized payment allocation and rejects mismatched retries", () => {
+    expect(sql).toMatch(/normalized_payments/i);
+    expect(sql).toMatch(/FIXED_MONTH_REQUEST_CONFLICT/i);
+    expect(sql).toMatch(/existing_income\.request_fingerprint <> fingerprint/i);
+    expect(sql).toMatch(/get stacked diagnostics violated_constraint = constraint_name/i);
+    const payBody = sql.match(/create or replace function public\.pay_fixed_customer_month[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+    expect(payBody.indexOf("where request_id = income_request_id")).toBeGreaterThan(0);
+    expect(payBody.indexOf("where request_id = income_request_id")).toBeLessThan(
+      payBody.indexOf("perform public.ensure_fixed_customer_active"),
+    );
+  });
   it("does not introduce version-suffixed objects", () => {
     expect(sql).not.toMatch(/_v2/i);
   });
@@ -102,6 +127,34 @@ describe("migration 021 fixed customer monthly payments", () => {
     const getMatch = sql.match(/create or replace function public\.get_fixed_customer_month[\s\S]+?end;\s*\$\$/i);
     expect(getMatch).toBeTruthy();
     expect(getMatch?.[0] ?? "").toMatch(/synthesize_pending_fixed_customer_month/i);
+  });
+
+  it("dispatches pay and get responses through the authenticated actor role", () => {
+    const payBody = sql.match(/create or replace function public\.pay_fixed_customer_month[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+    const getBody = sql.match(/create or replace function public\.get_fixed_customer_month[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+
+    expect(payBody).toMatch(/actor_role/i);
+    expect(payBody).toMatch(/fixed_customer_month_as_employee_json/i);
+    expect(getBody).toMatch(/actor_role/i);
+    expect(getBody).toMatch(/fixed_customer_month_as_employee_json/i);
+    expect(getBody).not.toMatch(/most recent attempt regardless of status/i);
+  });
+
+  it("omits monthlyPrice from employee list and pending projections", () => {
+    const listBody = sql.match(/create or replace function public\.list_fixed_customer_months[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+    const synthBody = sql.match(/create or replace function public\.synthesize_pending_fixed_customer_month[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+
+    expect(listBody).toMatch(/case\s+when actor_role in \('owner', 'admin'\)[\s\S]+jsonb_build_object\('monthlyPrice'/i);
+    expect(synthBody).toMatch(/viewer_role/i);
+    expect(synthBody).toMatch(/case\s+when viewer_role = 'employee'/i);
+  });
+
+  it("locks and validates every submitted payment method as active", () => {
+    const payBody = sql.match(/create or replace function public\.pay_fixed_customer_month[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+
+    expect(payBody).toMatch(/from public\.payment_methods pm[\s\S]+pm\.is_active[\s\S]+for share/i);
+    expect(payBody).toMatch(/FIXED_MONTH_PAYMENT_METHOD_NOT_AVAILABLE/i);
+    expect(payBody).not.toMatch(/payment_methods_lock_key/i);
   });
 
   it("revokes and grants execute to service_role only on every new RPC", () => {

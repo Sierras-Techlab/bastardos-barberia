@@ -17,7 +17,7 @@ const customerSchema = z.object({
   email: z.email().nullable(),
   phone: z.string().min(1),
   visits: z.number().int().nonnegative(),
-  createdAt: z.iso.datetime(),
+  createdAt: z.iso.datetime({ offset: true }),
   fixedSchedule: fixedScheduleSchema.nullable().default(null),
   fixedScheduleVersion: z.number().int().positive().nullable().default(null),
   lastVisitBusinessDate: z.iso.date().nullable().default(null),

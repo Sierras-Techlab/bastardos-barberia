@@ -15,19 +15,38 @@
 --     attempt to voided so the canonical void_income RPC keeps its existing
 --     audit/stock/post-close Caja semantics.
 
-begin;
-
 -- ---------------------------------------------------------------------------
 -- 1. Schedule ownership: responsible professional + positive monthly price
 -- ---------------------------------------------------------------------------
 
+-- These two nullable columns are intentionally installed before the migration
+-- transaction. If the legacy preflight stops the script, they remain available
+-- for an operator to map each active schedule explicitly before rerunning 021.
 alter table public.customer_fixed_schedules
   add column if not exists responsible_user_id uuid references public.users(id) on delete restrict,
   add column if not exists monthly_price bigint;
 
-update public.customer_fixed_schedules
-set responsible_user_id = coalesce(responsible_user_id, created_by)
-where responsible_user_id is null;
+do $$
+begin
+  if exists (
+    select 1
+    from public.customer_fixed_schedules s
+    left join public.users responsible on responsible.id = s.responsible_user_id
+    where s.is_active and (
+      s.responsible_user_id is null
+      or s.monthly_price is null
+      or s.monthly_price <= 0
+      or responsible.id is null
+      or not responsible.is_active
+      or responsible.deleted_at is not null
+    )
+  ) then
+    raise exception using errcode = 'P0001', message = 'LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED';
+  end if;
+end;
+$$;
+
+begin;
 
 alter table public.customer_fixed_schedules
   add constraint customer_fixed_schedules_monthly_price_check
@@ -197,11 +216,10 @@ begin
   total_count := jsonb_array_length(payment_items);
 
   for raw_item in
-    select * from jsonb_to_recordset(payment_items) as x(
-      payment_method_id uuid,
-      amount bigint,
-      basis_points integer
-    )
+    select (item->>'paymentMethodId')::uuid as payment_method_id,
+      (item->>'amount')::bigint as amount,
+      (item->>'basisPoints')::integer as basis_points
+    from jsonb_array_elements(payment_items) item
   loop
     if raw_item.payment_method_id is null then
       raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT';
@@ -238,9 +256,11 @@ begin
     end if;
     return query
       select raw_item.payment_method_id, raw_item.amount::bigint, null::integer
-      from jsonb_to_recordset(payment_items) as x(
-        payment_method_id uuid, amount bigint, basis_points integer
-      ) as raw_item;
+      from (
+        select (item->>'paymentMethodId')::uuid as payment_method_id,
+          (item->>'amount')::bigint as amount
+        from jsonb_array_elements(payment_items) item
+      ) raw_item;
     return;
   end if;
 
@@ -251,22 +271,20 @@ begin
     -- Reject distributions that would leave any method with basis 0 because
     -- the deterministic remainder absorbs zeros and never credits them.
     for raw_item in
-      select * from jsonb_to_recordset(payment_items) as x(
-        payment_method_id uuid,
-        amount bigint,
-        basis_points integer
-      )
+      select (item->>'paymentMethodId')::uuid as payment_method_id,
+        (item->>'amount')::bigint as amount,
+        (item->>'basisPoints')::integer as basis_points
+      from jsonb_array_elements(payment_items) item
     loop
       if raw_item.basis_points is null or raw_item.basis_points <= 0 or raw_item.basis_points > 10000 then
         raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT';
       end if;
     end loop;
     for raw_item in
-      select * from jsonb_to_recordset(payment_items) as x(
-        payment_method_id uuid,
-        amount bigint,
-        basis_points integer
-      )
+      select (item->>'paymentMethodId')::uuid as payment_method_id,
+        (item->>'amount')::bigint as amount,
+        (item->>'basisPoints')::integer as basis_points
+      from jsonb_array_elements(payment_items) item
     loop
       paid_count := paid_count + 1;
       if paid_count = total_count then
@@ -309,6 +327,7 @@ security definer
 set search_path = ''
 as $$
 declare
+  actor_role text;
   responsible_employee_id uuid;
   responsible_employee_role text;
   monthly_price bigint;
@@ -321,41 +340,75 @@ declare
   payment_row record;
   sale_created_at timestamptz := now();
   business_date date := (sale_created_at at time zone 'America/Argentina/Buenos_Aires')::date;
-  payment_methods_lock_key bigint;
+  submitted_payment_method_count integer;
+  locked_payment_method_count integer;
+  normalized_payments jsonb;
+  fingerprint text;
+  existing_income record;
+  violated_constraint text;
 begin
-  perform public.ensure_fixed_customer_active(actor_user_id, target_customer_id, target_period);
+  select case role_id when 1 then 'owner' when 2 then 'admin' when 3 then 'employee' end
+    into actor_role
+    from public.users
+    where id = actor_user_id and is_active and deleted_at is null;
+  if not found then
+    raise exception using errcode = '22023', message = 'INVALID_ACTOR';
+  end if;
 
-  perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended('fixed-month:' || target_customer_id::text || ':' || target_period, 0)
+  if pg_catalog.jsonb_typeof(payment_items) <> 'array'
+    or pg_catalog.jsonb_array_length(payment_items) = 0 then
+    raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT';
+  end if;
+  submitted_payment_method_count := pg_catalog.jsonb_array_length(payment_items);
+
+  begin
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'paymentMethodId', (item->>'paymentMethodId')::uuid,
+      'amount', (item->>'amount')::bigint,
+      'basisPoints', (item->>'basisPoints')::integer
+    ) order by (item->>'paymentMethodId')::uuid), '[]'::jsonb)
+    into normalized_payments
+    from jsonb_array_elements(payment_items) item;
+  exception when others then
+    raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT';
+  end;
+
+  fingerprint := pg_catalog.encode(
+    extensions.digest(pg_catalog.convert_to(jsonb_build_object(
+      'customerId', target_customer_id,
+      'period', target_period,
+      'payments', normalized_payments
+    )::text, 'UTF8'), 'sha256'),
+    'hex'
   );
 
-  -- Idempotent retry: if a previous attempt for the same (customer, period,
-  -- request_id) exists (active or voided), return that original income.
-  select income_id into new_income_id
-    from public.fixed_customer_monthly_payment_attempts
-    where customer_id = target_customer_id
-      and period = target_period
-      and request_id = income_request_id
-    limit 1;
-  if new_income_id is not null then
-    return public.fixed_customer_month_as_json(new_income_id);
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    actor_user_id::text || ':' || income_request_id::text, 0
+  ));
+
+  select id, request_fingerprint, source_type, fixed_customer_id, fixed_period
+  into existing_income
+  from public.incomes
+  where request_id = income_request_id and registered_by = actor_user_id;
+
+  if found then
+    if existing_income.source_type <> 'fixed_subscription'
+      or existing_income.fixed_customer_id is distinct from target_customer_id
+      or existing_income.fixed_period is distinct from target_period
+      or existing_income.request_fingerprint <> fingerprint
+    then
+      raise exception using errcode = 'P0001', message = 'FIXED_MONTH_REQUEST_CONFLICT';
+    end if;
+    if actor_role = 'employee' then
+      return public.fixed_customer_month_as_employee_json(existing_income.id);
+    end if;
+    return public.fixed_customer_month_as_json(existing_income.id);
   end if;
 
-  -- Idempotency fingerprint borrowed from create_income to allow retry.
-  if exists (
-    select 1 from public.incomes
-    where request_id = income_request_id
-      and registered_by = actor_user_id
-  ) then
-    select id into new_income_id
-      from public.incomes
-      where request_id = income_request_id
-        and registered_by = actor_user_id
-      limit 1;
-    if new_income_id is not null then
-      return public.fixed_customer_month_as_json(new_income_id);
-    end if;
-  end if;
+  perform public.ensure_fixed_customer_active(actor_user_id, target_customer_id, target_period);
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'fixed-month:' || target_customer_id::text || ':' || target_period, 0
+  ));
 
   select s.responsible_user_id, s.monthly_price
     into responsible_employee_id, monthly_price
@@ -370,6 +423,29 @@ begin
     into responsible_employee_role, employee_service_rate, employee_product_rate
     from public.users u
     where u.id = responsible_employee_id;
+
+  perform 1
+  from public.compute_fixed_subscription_payments(monthly_price, payment_items);
+
+  if exists (
+    select 1 from public.fixed_customer_monthly_payment_attempts
+    where customer_id = target_customer_id and period = target_period and status = 'active'
+  ) then
+    raise exception using errcode = 'P0001', message = 'FIXED_MONTH_ALREADY_PAID';
+  end if;
+
+  perform pm.id
+  from public.payment_methods pm
+  join pg_catalog.jsonb_array_elements(payment_items) submitted(item)
+    on (submitted.item->>'paymentMethodId')::uuid = pm.id
+  where pm.is_active
+  order by pm.id
+  for share of pm;
+  get diagnostics locked_payment_method_count = row_count;
+
+  if locked_payment_method_count <> submitted_payment_method_count then
+    raise exception using errcode = 'P0001', message = 'FIXED_MONTH_PAYMENT_METHOD_NOT_AVAILABLE';
+  end if;
 
   -- Commission is always monthly_price * service_commission_rate of the
   -- responsible professional, regardless of their role (owner included).
@@ -389,13 +465,7 @@ begin
     source_type, fixed_customer_id, fixed_period, subscription_concept
   ) values (
     income_request_id, actor_user_id, responsible_employee_id, responsible_employee_role,
-    pg_catalog.encode(
-      extensions.digest(
-        pg_catalog.convert_to('fixed-month:' || coalesce(target_customer_id::text, '') || ':' || target_period, 'UTF8'),
-        'sha256'
-      ),
-      'hex'
-    ),
+    fingerprint,
     target_customer_id, 'mixed', monthly_price, monthly_price,
     monthly_price, 0,
     employee_service_rate, employee_product_rate,
@@ -434,10 +504,23 @@ begin
     responsible_employee_id, new_income_id, sale_created_at
   ) returning id into attempt_id;
 
+  if actor_role = 'employee' then
+    return public.fixed_customer_month_as_employee_json(new_income_id);
+  end if;
   return public.fixed_customer_month_as_json(new_income_id);
 exception
   when unique_violation then
-    raise exception using errcode = 'P0001', message = 'FIXED_MONTH_ALREADY_PAID';
+    get stacked diagnostics violated_constraint = constraint_name;
+    if violated_constraint in (
+      'fixed_payment_attempts_one_active_period',
+      'incomes_one_subscription_per_period_key'
+    ) then
+      raise exception using errcode = 'P0001', message = 'FIXED_MONTH_ALREADY_PAID';
+    end if;
+    if violated_constraint = 'fixed_payment_attempts_request_unique' then
+      raise exception using errcode = 'P0001', message = 'FIXED_MONTH_REQUEST_CONFLICT';
+    end if;
+    raise;
 end;
 $$;
 
@@ -567,10 +650,11 @@ begin
       'status', case when att.id is not null and att.status = 'active' then 'paid' else 'pending' end,
       'paidAt', att.paid_at,
       'incomeId', att.income_id,
-      'employeeEarning', i.commission_total,
-      'monthlyPrice', s.monthly_price,
-      'viewer', case when actor_role in ('owner', 'admin') then 'manager' else 'employee' end
-    ) as row
+      'employeeEarning', coalesce(i.commission_total, 0)
+    ) || case when actor_role in ('owner', 'admin')
+      then jsonb_build_object('monthlyPrice', s.monthly_price, 'viewer', 'manager')
+      else jsonb_build_object('viewer', 'employee')
+    end as row
     from public.customer_fixed_schedules s
     join public.customers c on c.id = s.customer_id and c.deleted_at is null
     join public.users u on u.id = s.responsible_user_id and u.is_active and u.deleted_at is null
@@ -632,10 +716,12 @@ begin
     return null;
   end if;
 
-  -- Prefer the active attempt first; otherwise fall back to the most
-  -- recent attempt regardless of status. When no attempt exists yet
-  -- synthesize a pending object so the first payment dialog can open.
-  select public.fixed_customer_month_as_json(att.income_id) into result
+  -- An active attempt is paid. A voided attempt reopens the month, so when no
+  -- active attempt exists the current schedule is projected as pending.
+  select case when actor_role = 'employee'
+      then public.fixed_customer_month_as_employee_json(att.income_id)
+      else public.fixed_customer_month_as_json(att.income_id)
+    end into result
     from public.fixed_customer_monthly_payment_attempts att
     where att.customer_id = target_customer_id
       and att.period = target_period
@@ -645,20 +731,10 @@ begin
     return result;
   end if;
 
-  select public.fixed_customer_month_as_json(att.income_id) into result
-    from public.fixed_customer_monthly_payment_attempts att
-    where att.customer_id = target_customer_id
-      and att.period = target_period
-    order by att.created_at desc
-    limit 1;
-  if result is not null then
-    return result;
-  end if;
-
   return public.synthesize_pending_fixed_customer_month(
-    actor_user_id,
     target_customer_id,
-    target_period
+    target_period,
+    actor_role
   );
 end;
 $$;
@@ -667,9 +743,9 @@ revoke execute on function public.get_fixed_customer_month(uuid, boolean, uuid, 
 grant execute on function public.get_fixed_customer_month(uuid, boolean, uuid, text) to service_role;
 
 create or replace function public.synthesize_pending_fixed_customer_month(
-  actor_user_id uuid,
   target_customer_id uuid,
-  target_period text
+  target_period text,
+  viewer_role text
 )
 returns jsonb
 language plpgsql
@@ -680,7 +756,16 @@ as $$
 declare
   result jsonb;
 begin
-  select jsonb_build_object(
+  select case when viewer_role = 'employee' then jsonb_build_object(
+    'customer', jsonb_build_object('id', c.id, 'firstName', c.first_name, 'lastName', c.last_name),
+    'responsibleProfessional', jsonb_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name),
+    'period', target_period,
+    'status', 'pending',
+    'paidAt', null,
+    'incomeId', null,
+    'employeeEarning', 0,
+    'viewer', 'employee'
+  ) else jsonb_build_object(
     'customer', jsonb_build_object('id', c.id, 'firstName', c.first_name, 'lastName', c.last_name),
     'responsibleProfessional', jsonb_build_object('id', u.id, 'firstName', u.first_name, 'lastName', u.last_name),
     'period', target_period,
@@ -690,20 +775,19 @@ begin
     'employeeEarning', 0,
     'monthlyPrice', s.monthly_price,
     'viewer', 'manager'
-  ) into result
+  ) end into result
   from public.customer_fixed_schedules s
   join public.customers c on c.id = s.customer_id and c.deleted_at is null
   join public.users u on u.id = s.responsible_user_id and u.is_active and u.deleted_at is null
   where s.customer_id = target_customer_id
     and s.is_active
-    and s.monthly_price > 0
-    and s.responsible_user_id = actor_user_id;
+    and s.monthly_price > 0;
   return result;
 end;
 $$;
 
-revoke execute on function public.synthesize_pending_fixed_customer_month(uuid, uuid, text) from public, anon, authenticated;
-grant execute on function public.synthesize_pending_fixed_customer_month(uuid, uuid, text) to service_role;
+revoke execute on function public.synthesize_pending_fixed_customer_month(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.synthesize_pending_fixed_customer_month(uuid, text, text) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- 7. void_income marks the linked attempt as voided via an AFTER UPDATE OF

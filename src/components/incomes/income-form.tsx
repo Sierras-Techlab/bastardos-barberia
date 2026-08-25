@@ -193,8 +193,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       products: reviewValues.products,
       payments,
       grantFullServiceCommission: reviewValues.grantFullServiceCommission,
-      servicePriceOverride,
-      productPriceOverrides,
+      ...(isManager ? { servicePriceOverride, productPriceOverrides } : {}),
     };
     submittingRef.current = true;
     setIsSubmitting(true);

@@ -52,6 +52,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     if (savingRef.current) return;
     const parsedSchedule: FixedScheduleInput | null = hasFixedSchedule ? {
       weekday,

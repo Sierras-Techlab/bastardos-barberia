@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { expect, it, vi } from "vitest";
+
+import type { IncomePaymentInput } from "@/types/payment-method";
 
 import { PaymentMethodSelector } from "./payment-method-selector";
 
@@ -10,6 +13,24 @@ const methods = [
   { id: "60000000-0000-4000-8000-000000000003", name: "Tarjeta", isActive: true },
   { id: "60000000-0000-4000-8000-000000000004", name: "Cheque", isActive: false },
 ];
+
+const EmployeeSelectorHarness = ({ onChange }: { onChange: (payments: IncomePaymentInput[]) => void }) => {
+  const [payments, setPayments] = useState<IncomePaymentInput[]>([
+    { paymentMethodId: methods[0].id, basisPoints: 10000 },
+  ]);
+
+  return (
+    <PaymentMethodSelector
+      mode="employee"
+      methods={methods}
+      payments={payments}
+      onChange={(next) => {
+        onChange(next);
+        setPayments(next);
+      }}
+    />
+  );
+};
 
 it("auto-fills the first active method with the complete total", () => {
   const onChange = vi.fn();
@@ -116,4 +137,25 @@ it("clears allocations for methods that disappear from the active catalog", () =
   rerender(<PaymentMethodSelector methods={[methods[0], { ...methods[1], isActive: false }, methods[2]]} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={onChange} />);
 
   expect(onChange).toHaveBeenLastCalledWith([{ paymentMethodId: methods[0].id, amount: 20000 }]);
+});
+
+it("shows employee allocations as percentages while preserving basis points internally", async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<EmployeeSelectorHarness onChange={onChange} />);
+
+  const cashPercentage = screen.getByRole("spinbutton", { name: "Porcentaje en Efectivo" });
+  expect(cashPercentage).toHaveAttribute("max", "100");
+  expect(cashPercentage).toHaveValue(100);
+  expect(screen.getByText("Porcentaje distribuido")).toBeVisible();
+  expect(screen.getByText("100% / 100%")).toBeVisible();
+  expect(screen.queryByText(/basis points/i)).not.toBeInTheDocument();
+  expect(screen.queryByText("/10000")).not.toBeInTheDocument();
+
+  await user.clear(cashPercentage);
+  await user.type(cashPercentage, "50");
+
+  expect(onChange).toHaveBeenLastCalledWith([
+    { paymentMethodId: methods[0].id, basisPoints: 5000 },
+  ]);
 });

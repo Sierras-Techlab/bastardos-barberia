@@ -62,7 +62,15 @@ describe("operational control migration cross compatibility", () => {
     });
 
     it("does not write to daily_cash_sales.payment_method_id", () => {
-      expect(sql022).not.toMatch(/daily_cash_sales[\s\S]*?\bpayment_method_id\b/i);
+      const inserts = [
+        ...sql022.matchAll(
+          /insert into public\.daily_cash_sales\s*\(([^)]+)\)/gi,
+        ),
+      ];
+      expect(inserts.length).toBeGreaterThan(0);
+      for (const insert of inserts) {
+        expect(insert[1]).not.toMatch(/\bpayment_method_id\b/i);
+      }
     });
 
     it("adds payment_methods.system_code before any query that reads it", () => {

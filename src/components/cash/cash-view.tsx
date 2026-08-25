@@ -128,7 +128,7 @@ export const CashView = ({
     try {
       const updated = await cashClient.close(input);
       setDay(updated);
-      toast.success("Caja cerrada. QuedÃ³ pendiente de confirmaciÃ³n.");
+      toast.success("Caja cerrada y conteo confirmado.");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "No se pudo cerrar la caja.");
     } finally {
@@ -207,7 +207,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
             )}
             {canClose && (
               <Button type="button" variant="outline" className="rounded-xl" onClick={() => setClosing(true)}>
-                <ShieldCheck /> {lifecycle.closeMode === "manual" ? "Cerrar caja" : "Cargar conteo"}
+                <ShieldCheck /> Cerrar caja
               </Button>
             )}
             {canConfirm && (
@@ -273,7 +273,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
       {closing && lifecycle && (
         <CashCloseDialog
           expectedCash={lifecycle.expectedCash}
-          mode={lifecycle.closeMode ?? "automatic"}
+          mode="manual"
           onClose={() => setClosing(false)}
           onConfirm={onCloseCash}
         />

@@ -86,6 +86,34 @@ const history: PaginatedCashHistory = {
 };
 
 describe("CashView", () => {
+  it("treats an open persisted register as a manual close", async () => {
+    const browser = userEvent.setup();
+    const persistedLiveDay: CashDay = {
+      ...liveDay,
+      id,
+      lifecycle: {
+        ...liveDay.lifecycle,
+        openingSource: "first_income",
+        openedAt: "2026-08-15T12:00:00.000Z",
+        openedBy: { id, firstName: "Uriel", lastName: "Alessandro" },
+      },
+    };
+
+    render(
+      <CashView
+        initialDay={persistedLiveDay}
+        initialHistory={history}
+        viewerRole="owner"
+      />,
+    );
+
+    await browser.click(screen.getByRole("button", { name: "Cerrar caja" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Cerrar caja con conteo" }),
+    ).toBeVisible();
+  });
+
   it("shows today's economics, dynamic payments and both audit tables", () => {
     render(
       <CashView

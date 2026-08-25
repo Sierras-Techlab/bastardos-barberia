@@ -255,13 +255,13 @@
 - Consumes: 018 snapshot tables, 020/021 incomes and 016 payment methods.
 - Produces: manual open/close/confirm, automatic first-income open and automatic pending closure, with physical cash based only on `system_code='cash'`.
 
-- [ ] **Step 1: Add RED migration-order and lifecycle tests**
+- [x] **Step 1: Add RED migration-order and lifecycle tests**
 
   Tests must verify textual order: add `payment_methods.system_code`, backfill normalized Efectivo, then assert exactly one cash method. Assert 022 drops the old `closed_at NOT NULL/default` behavior and replaces the `daily_cash_counts_check` that rejects an empty opened register.
 
   Assert no `$4` references exist in three-argument RPCs. Assert 022 replaces `get_daily_cash`, `list_daily_cash` and the canonical JSON projection, not only adds an incompatible overload. Assert normal sales and subscriptions both trigger first-income opening.
 
-- [ ] **Step 2: Make open register rows structurally valid**
+- [x] **Step 2: Make open register rows structurally valid**
 
   Alter `closed_at` to drop `NOT NULL` and its automatic default. Drop/recreate the 018 count constraint so an open register with zero sales is valid. Add lifecycle checks equivalent to:
 
@@ -269,15 +269,15 @@
   - manually closed: `closed_at is not null`, `close_mode='manual'`, counted/difference present, state `confirmed` even when difference is non-zero;
   - automatically closed: `close_mode='automatic'`, initially `pending_confirmation`; confirmation stores counted/difference without recomputing financial snapshots.
 
-- [ ] **Step 3: Protect Efectivo in the correct order**
+- [x] **Step 3: Protect Efectivo in the correct order**
 
   Add `system_code` first, assign `'cash'` to exactly one normalized Efectivo row, then run the preflight and create the unique partial index. Protect that row by `system_code`, not by its mutable display name.
 
-- [ ] **Step 4: Implement universal automatic opening**
+- [x] **Step 4: Implement universal automatic opening**
 
   Install a security-definer `AFTER INSERT` income trigger that calls `ensure_daily_cash_open(NEW.registered_by, NEW.business_date)`. This covers ordinary sales and fixed subscriptions without duplicating calls in two creation RPCs. The helper inserts a zero-opening live register under the business-date advisory lock and is idempotent.
 
-- [ ] **Step 5: Calculate expected physical cash correctly**
+- [x] **Step 5: Calculate expected physical cash correctly**
 
   Use:
 
@@ -289,7 +289,7 @@
 
   Transfer, QR and any other dynamic method must never affect expected physical cash. Gross, commission and barbershop net remain separate financial metrics.
 
-- [ ] **Step 6: Promote canonical read/close functions**
+- [x] **Step 6: Promote canonical read/close functions**
 
   `get_daily_cash(today)` must return a synthetic unopened day when no register exists, or a live day with the real register id after opening. `list_daily_cash` returns only closed history with lifecycle included. Update the Zod lifecycle rule to allow a live opened day with a non-null id.
 
@@ -297,11 +297,11 @@
 
   Preserve same-day void exclusion and post-close negative adjustment behavior. Extend snapshot kind checks/mapping to `fixed_subscription` as `subscription`.
 
-- [ ] **Step 7: Correct Caja UI semantics**
+- [x] **Step 7: Correct Caja UI semantics**
 
   An opened live register always shows “Cerrar caja”. Manual close success must say it was closed and confirmed; only automatic closures show “Pendiente de confirmación” and the confirm action. Opening balance is displayed separately and never as an income.
 
-- [ ] **Step 8: Verify and commit**
+- [x] **Step 8: Verify locally; PostgreSQL acceptance remains Task 6**
 
   Run every cash migration/schema/repository/API/component test, then TypeScript and diff checks. Commit:
 
@@ -427,4 +427,3 @@
 - Last visit derives only from the latest active normal sale.
 - Clean PostgreSQL installation and end-to-end manager/employee scenarios pass.
 - Full tests, lint, TypeScript, build and diff checks pass after the final production change.
-

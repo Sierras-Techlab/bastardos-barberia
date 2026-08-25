@@ -104,6 +104,9 @@ describe("customer repository", () => {
       new_fixed_schedule: null,
       expected_schedule_version: 1,
     }));
+    expect(query.select).toHaveBeenCalledWith(expect.stringContaining(
+      "responsible_user:users!customer_fixed_schedules_responsible_user_id_fkey",
+    ));
   });
 
   it("maps the schedule row with responsible professional identity and monthly price", () => {

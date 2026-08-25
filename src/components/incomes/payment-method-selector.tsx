@@ -111,9 +111,10 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
     onChange([...rest, { paymentMethodId, amount: Math.max(0, Math.round(amount)) }]);
   };
 
-  const setEmployeeBasis = (paymentMethodId: string, basisPoints: number) => {
+  const setEmployeePercentage = (paymentMethodId: string, percentage: number) => {
     const rest = payments.filter((payment) => payment.paymentMethodId !== paymentMethodId);
-    onChange([...rest, { paymentMethodId, basisPoints: Math.max(0, Math.min(10000, Math.round(basisPoints))) }]);
+    const boundedPercentage = Math.max(0, Math.min(100, percentage));
+    onChange([...rest, { paymentMethodId, basisPoints: Math.round(boundedPercentage * 100) }]);
   };
 
   const employeeTotalBasis = payments.reduce(
@@ -192,16 +193,16 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
                   <span className="flex-1 text-sm font-medium">{method.name}</span>
                   <Input
                     type="number"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     min="0"
-                    max="10000"
-                    step="1"
-                    value={String(payment.basisPoints)}
-                    onChange={(event) => setEmployeeBasis(method.id, Number(event.target.value || 0))}
+                    max="100"
+                    step="0.01"
+                    value={String(payment.basisPoints / 100)}
+                    onChange={(event) => setEmployeePercentage(method.id, Number(event.target.value || 0))}
                     className="h-9 w-24 rounded-lg text-right"
                     aria-label={`Porcentaje en ${method.name}`}
                   />
-                  <span className="text-xs text-muted-foreground">/10000</span>
+                  <span className="text-xs text-muted-foreground">%</span>
                   <Button type="button" variant="ghost" size="icon" onClick={() => removePayment(method.id)} aria-label={`Quitar ${method.name}`} className="rounded-lg">
                     <Trash2 />
                   </Button>
@@ -241,8 +242,8 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
 
       {mode === "employee" && payments.length > 0 && (
         <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${employeeRemainingBasis === 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-          <span className="font-medium">Basis points</span>
-          <span>{employeeTotalBasis} / 10000</span>
+          <span className="font-medium">Porcentaje distribuido</span>
+          <span>{employeeTotalBasis / 100}% / 100%</span>
         </div>
       )}
 

@@ -17,7 +17,18 @@ alter table public.users
   add constraint users_product_commission_rate_check
     check (product_commission_rate between 0 and 100);
 
-create or replace function public.update_user_profile_v2(
+-- Replace the pre-commission profile RPC instead of creating a parallel v2
+-- overload. Re-running this migration also removes the temporary v2 routine
+-- created by earlier development revisions.
+drop function if exists public.update_user_profile(
+  uuid, boolean, text, boolean, text, boolean, smallint, boolean, boolean
+);
+drop function if exists public.update_user_profile_v2(
+  uuid, boolean, text, boolean, text, boolean, smallint, boolean, boolean,
+  boolean, smallint, boolean, smallint
+);
+
+create or replace function public.update_user_profile(
   target_user_id uuid,
   set_first_name boolean,
   new_first_name text,
@@ -106,12 +117,12 @@ begin
 end;
 $$;
 
-revoke execute on function public.update_user_profile_v2(
+revoke execute on function public.update_user_profile(
   uuid, boolean, text, boolean, text, boolean, smallint, boolean, boolean,
   boolean, smallint, boolean, smallint
 ) from public, anon, authenticated;
 
-grant execute on function public.update_user_profile_v2(
+grant execute on function public.update_user_profile(
   uuid, boolean, text, boolean, text, boolean, smallint, boolean, boolean,
   boolean, smallint, boolean, smallint
 ) to service_role;

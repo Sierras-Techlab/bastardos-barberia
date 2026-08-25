@@ -66,10 +66,13 @@ beforeEach(() => {
 
 describe("incomeClient", () => {
   it("creates, lists, gets and voids incomes without caching", async () => {
-    fetchMock.mockImplementation(async (url: string | URL | Request) => {
+    fetchMock.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
       const target = typeof url === "string" ? url : url.toString();
       if (target.endsWith("/void")) return Response.json(managerDetailResponse);
       if (target.includes("/api/incomes/")) return Response.json(managerDetailResponse);
+      if (target.endsWith("/api/incomes") && init?.method === "POST") {
+        return Response.json(managerDetailResponse);
+      }
       if (target.includes("/api/incomes")) return Response.json(managerListResponse);
       return Response.json({ data: {} });
     });
@@ -124,5 +127,19 @@ describe("incomeClient", () => {
     const input = { requestId: "40000000-0000-4000-8000-0000000000aa", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }], grantFullServiceCommission: false };
     const income = await incomeClient.create("owner", input);
     expect(income).toMatchObject({ total: 13000, payments: [{ amount: 13000 }] });
+  });
+
+  it("rejects a manager-shaped create response for an employee viewer", async () => {
+    fetchMock.mockImplementation(async () => Response.json(managerDetailResponse));
+    const input = { requestId: "40000000-0000-4000-8000-0000000000aa", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10000 }], grantFullServiceCommission: false };
+
+    await expect(incomeClient.create("employee", input)).rejects.toThrow();
+  });
+
+  it("rejects an employee-shaped create response for a manager viewer", async () => {
+    fetchMock.mockImplementation(async () => Response.json(employeeDetailResponse));
+    const input = { requestId: "40000000-0000-4000-8000-0000000000aa", employeeId: "00000000-0000-4000-8000-000000000003", customerId: null, serviceId: "30000000-0000-4000-8000-000000000001", products: [], payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }], grantFullServiceCommission: false };
+
+    await expect(incomeClient.create("owner", input)).rejects.toThrow();
   });
 });

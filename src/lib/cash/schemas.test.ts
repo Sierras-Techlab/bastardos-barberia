@@ -165,7 +165,7 @@ describe("cash lifecycle", () => {
       reconciliationState: "not_applicable" as const,
     };
     const openPersisted = {
-      id: null,
+      id,
       businessDate: "2026-08-15",
       state: "live" as const,
       closedAt: null,
@@ -224,6 +224,55 @@ describe("cash lifecycle", () => {
     };
     const automaticPendingClose = { ...cashDay, lifecycle };
     expect(cashDaySchema.safeParse(automaticPendingClose).success).toBe(true);
+  });
+
+  it("accepts a negative expected cash balance after a later cash adjustment", () => {
+    const lifecycle = {
+      ...baseLifecycle,
+      openingBalance: 0,
+      expectedCash: -5000,
+      countedCash: null,
+      difference: null,
+      closeMode: "automatic" as const,
+      reconciliationState: "pending_confirmation" as const,
+    };
+    const adjustmentOnlyClose = {
+      ...cashDay,
+      lifecycle,
+      summary: {
+        ...cashDay.summary,
+        salesGrossTotal: 0,
+        salesCommissionTotal: 0,
+        salesBarbershopNet: 0,
+        adjustmentGrossTotal: -5000,
+        adjustmentCommissionTotal: -2500,
+        adjustmentBarbershopNet: -2500,
+        grossTotal: -5000,
+        commissionTotal: -2500,
+        barbershopNet: -2500,
+        serviceTotal: -5000,
+        productTotal: 0,
+        saleCount: 0,
+        activeSaleCount: 0,
+        voidedSaleCount: 0,
+        adjustmentCount: 1,
+      },
+      payments: [{
+        paymentMethodId: id,
+        name: "Efectivo",
+        salesAmount: 0,
+        adjustmentAmount: -5000,
+        netAmount: -5000,
+      }],
+      sales: [],
+      adjustments: [{
+        ...cashDay.adjustments[0],
+        grossDelta: -5000,
+        commissionDelta: -2500,
+        barbershopNetDelta: -2500,
+      }],
+    };
+    expect(cashDaySchema.safeParse(adjustmentOnlyClose).success).toBe(true);
   });
 });
 

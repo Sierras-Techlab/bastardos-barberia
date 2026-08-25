@@ -32,6 +32,11 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).not.toMatch(/sale_count \+ adjustment_count > 0/i);
   });
 
+  it("drops the legacy closed_at default and NOT NULL before inserting live registers", () => {
+    expect(sql).toMatch(/alter column closed_at drop default/i);
+    expect(sql).toMatch(/alter column closed_at drop not null/i);
+  });
+
   it("backfills legacy 018 registers without losing snapshots", () => {
     expect(sql).toMatch(/update public\.daily_cash_registers/i);
     expect(sql).toMatch(/opening_source = 'first_income'/i);
@@ -43,6 +48,8 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/CASH_PAYMENT_METHOD_REQUIRED/);
     expect(sql).toMatch(/update public\.payment_methods\s+set system_code = 'cash'/i);
     expect(sql).toMatch(/payment_methods_cash_system_unique/i);
+    expect(sql).not.toMatch(/pm\.deleted_at/i);
+    expect(sql).not.toMatch(/from public\.payment_methods[^;]+deleted_at/i);
   });
 
   it("rejects rename/deactivate/delete of the protected Efectivo record", () => {
@@ -61,6 +68,7 @@ describe("migration 022 manual cash lifecycle", () => {
 
   it("uses on conflict to make the auto-open conflict-safe", () => {
     expect(sql).toMatch(/on conflict \(business_date\) do nothing/i);
+    expect(sql).toMatch(/CASH_ALREADY_CLOSED/i);
   });
 
   it("computes expected_cash from opening_balance plus Efectivo-only payments", () => {
@@ -84,6 +92,30 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/'openingBalance'/i);
     expect(sql).toMatch(/'expectedCash'/i);
     expect(sql).toMatch(/'reconciliationState'/i);
+    expect(sql).toMatch(/create or replace function public\.get_daily_cash/i);
+    expect(sql).toMatch(/create or replace function public\.list_daily_cash/i);
+    expect(sql).toMatch(/create or replace function public\.cash_day_as_json\(\s*target_business_date date,\s*target_cash_id uuid,\s*is_live boolean/i);
+  });
+
+  it("snapshots both manual and automatic closures, including subscriptions", () => {
+    expect(sql).toMatch(/create or replace function public\.snapshot_daily_cash/i);
+    expect(sql).toMatch(/perform public\.snapshot_daily_cash\(register_id, target_business_date/i);
+    expect(sql).toMatch(/perform public\.snapshot_daily_cash\(open_register\.id, open_register\.business_date/i);
+    expect(sql).toMatch(/'subscription'/i);
+  });
+
+  it("does not turn a live-register void or a free-sale void into a cash adjustment", () => {
+    const captureBody = sql.match(/create or replace function public\.capture_post_close_cash_void[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+    expect(captureBody).toMatch(/closed_at is not null/i);
+    expect(captureBody).toMatch(/new\.total = 0/i);
+  });
+
+  it("stores manual closes as confirmed even when the physical count differs", () => {
+    const closeBody = sql.match(/create or replace function public\.close_daily_cash[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+    expect(closeBody).toMatch(/close_mode\s*=\s*'manual'/i);
+    expect(closeBody).toMatch(/reconciliation_state\s*=\s*'confirmed'/i);
+    expect(closeBody).not.toMatch(/case when diff_value = 0/i);
+    expect(closeBody).toMatch(/bastardos_daily_cash_close/i);
   });
 
   it("rejects negative opening balance or counted cash inputs", () => {

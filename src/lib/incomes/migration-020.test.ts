@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, expectTypeOf, it } from "vitest";
@@ -13,6 +13,12 @@ const migrationPath = join(
 );
 
 const migration = () => readFileSync(migrationPath, "utf8");
+const repairMigrationPath = join(
+  process.cwd(),
+  "supabase",
+  "queries",
+  "025_create_income_override_record_repair.sql",
+);
 
 describe("migration 020 charged prices and owner privacy contract", () => {
   it("exposes the new per-line price override columns to server adapters", () => {
@@ -112,6 +118,32 @@ describe("migration 020 charged prices and owner privacy contract", () => {
     const sql = migration();
     expect(sql).not.toMatch(/drop column if exists public\.incomes\.work_session_id/i);
     expect(sql).not.toMatch(/drop column if exists public\.incomes\.outside_work_session/i);
+  });
+
+  it("does not shadow SQL relation aliases with PL/pgSQL record variables", () => {
+    const sql = migration();
+    const recordVariables = new Set(
+      [...sql.matchAll(/^\s*([a-z_][a-z0-9_]*)\s+record\s*;/gim)]
+        .map((match) => match[1].toLowerCase()),
+    );
+    const lateralAliases = new Set(
+      [...sql.matchAll(/\)\s+([a-z_][a-z0-9_]*)\s+on\s+true/gim)]
+        .map((match) => match[1].toLowerCase()),
+    );
+
+    expect([...recordVariables].filter((name) => lateralAliases.has(name))).toEqual([]);
+  });
+
+  it("ships an incremental canonical repair for databases that already ran 020", () => {
+    expect(existsSync(repairMigrationPath)).toBe(true);
+
+    const sql = readFileSync(repairMigrationPath, "utf8");
+    expect(sql).toMatch(/^begin;/m);
+    expect(sql).toMatch(/pg_get_functiondef/i);
+    expect(sql).toMatch(/public\.create_income\(uuid,uuid,uuid,uuid,uuid,jsonb,jsonb,boolean,jsonb,jsonb\)/i);
+    expect(sql).toContain("charged_product_record");
+    expect(sql).not.toMatch(/_v2/i);
+    expect(sql).toMatch(/commit;\s*$/);
   });
 
   it("persists a charged gross total on the parent income", () => {

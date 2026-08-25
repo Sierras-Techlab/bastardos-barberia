@@ -140,7 +140,7 @@ declare
   product_line_amount integer;
   service_record record;
   product_record record;
-  override_record record;
+  charged_product_record record;
   requested_product_count integer;
   found_product_count integer := 0;
   requested_payment_count integer;
@@ -675,7 +675,7 @@ begin
 
     product_charged := 0;
     product_amount := 0;
-    for override_record in
+    for charged_product_record in
       select
         (entry->>'productId')::uuid as product_id,
         (entry->>'chargedSubtotal')::integer as charged_subtotal,
@@ -685,10 +685,10 @@ begin
         entry->>'overrideReason' as override_reason
       from jsonb_array_elements(charged_totals) entry
     loop
-      product_charged := product_charged + override_record.charged_subtotal;
-      product_line_rate := override_record.commission_rate::smallint;
+      product_charged := product_charged + charged_product_record.charged_subtotal;
+      product_line_rate := charged_product_record.commission_rate::smallint;
       product_line_amount := round(
-        override_record.charged_subtotal::numeric * product_line_rate::numeric / 100
+        charged_product_record.charged_subtotal::numeric * product_line_rate::numeric / 100
       )::integer;
       product_amount := product_amount + product_line_amount;
     end loop;

@@ -33,7 +33,7 @@ const paginatedCustomerVisitsSchema = z.object({
   }).strict(),
 }).strict();
 
-const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version,monthly_price,responsible_user:users(id,first_name,last_name))";
+const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version,monthly_price,responsible_user:users!customer_fixed_schedules_responsible_user_id_fkey(id,first_name,last_name))";
 type CustomerScheduleRow = {
   weekday: number;
   local_time: string;

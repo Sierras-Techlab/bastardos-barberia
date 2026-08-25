@@ -38,10 +38,10 @@ export type IncomeClient = {
 };
 
 export const incomeClient: IncomeClient = {
-  create: (role, input) => request<IncomeListItem | EmployeeIncomeListItem>(
-    "/api/incomes",
-    { ...json("POST", input), headers: { "Content-Type": "application/json", "X-Bastardos-Viewer-Role": role } },
-  ),
+  create: async (role, input) => {
+    const raw = await request<unknown>("/api/incomes", json("POST", input));
+    return parseIncomeDetailForRole(role, raw);
+  },
   listAs: async (role, query) => {
     const raw = await request<unknown>(`/api/incomes?${queryString(query)}`, { cache: "no-store" });
     return parsePaginatedForRole(role, raw);

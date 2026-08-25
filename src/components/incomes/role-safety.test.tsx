@@ -119,6 +119,8 @@ describe("020 application layer role safety", () => {
     await waitFor(() => expect(calls).toHaveLength(1));
     const input = calls[0];
     expect(input.payments).toEqual([{ paymentMethodId: cashId, basisPoints: 10000 }]);
+    expect(input).not.toHaveProperty("servicePriceOverride");
+    expect(input).not.toHaveProperty("productPriceOverrides");
     FORBIDDEN_KEYS.forEach((key) => {
       expect(JSON.stringify(input)).not.toMatch(new RegExp(`"${key}"\\s*:`, "i"));
     });

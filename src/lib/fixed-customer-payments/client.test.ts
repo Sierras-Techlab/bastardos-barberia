@@ -73,4 +73,18 @@ describe("fixed customer payment client", () => {
     const body = JSON.parse((vi.mocked(globalThis.fetch).mock.calls[0]![1] as RequestInit).body as string);
     expect(body.payments[0].amount).toBe(15000);
   });
+
+  it("rejects zero-percent employee allocations before issuing a request", async () => {
+    await expect(fixedCustomerPaymentClient.pay({
+      mode: "employee",
+      requestId: "00000000-0000-4000-8000-0000000000aa",
+      customerId: "10000000-0000-4000-8000-000000000001",
+      period: "2026-08",
+      payments: [
+        { paymentMethodId: "00000000-0000-4000-8000-0000000000a1", basisPoints: 0 },
+        { paymentMethodId: "00000000-0000-4000-8000-0000000000a2", basisPoints: 10000 },
+      ],
+    })).rejects.toThrow();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });
