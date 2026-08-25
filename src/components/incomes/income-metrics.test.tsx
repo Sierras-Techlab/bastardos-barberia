@@ -47,9 +47,11 @@ it("shows zero sales when there are no active incomes", () => {
   expect(screen.getAllByText("0").length).toBeGreaterThan(0);
 });
 
-it("shows employee metrics without barbershop net", () => {
-  render(<IncomeMetrics role="employee" metrics={{ grossTotal: 50000, count: 2, average: 25000, paymentTotals: [], commissionTotal: 22500, barbershopNet: 27500 }} />);
-  expect(screen.getByText("Total vendido")).toBeVisible();
-  expect(screen.getByText("Mi comisión")).toBeVisible();
+it("shows employee metrics from the sanitized employeeCommissionTotal and never leaks manager totals", () => {
+  render(<IncomeMetrics role="employee" metrics={{ count: 2, employeeCommissionTotal: 10000 }} />);
+  expect(screen.getByText("Tu ingreso")).toBeVisible();
+  expect(screen.getByText("Tu ganancia promedio")).toBeVisible();
   expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
+  expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
+  expect(screen.queryByText("Mi comisión")).not.toBeInTheDocument();
 });

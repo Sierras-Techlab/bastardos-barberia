@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
-**Status:** Planned and not implemented. Requires normal and fixed-subscription income behavior through block `021` and evolves the existing canonical Caja model.
+**Status:** Implemented and stabilized. Migration `022` evolves the canonical `daily_cash_registers` with opening, closure mode and reconciliation fields while reusing the 018 `daily_cash_sales`, `daily_cash_payment_totals` and `daily_cash_adjustments` snapshots. Manual opening sets a non-negative integer ARS physical balance; automatic first-income opening persists at zero. Manual close always confirms (surplus/shortage accepted); automatic close remains `pending_confirmation` until a manager supplies a counted cash input. The canonical `Efectivo` payment method is protected by `system_code = 'cash'` and its rename/deactivate/delete is rejected by the payment-method RPCs. The application layer uses `role_id in (1, 2)` for authorization, never `role_name`. Reconciliation never recomputes closed financial snapshots. The plan was rewritten during stabilization (see `2026-08-23-operational-control-stabilization.md`).
 
 ## Global Constraints
 

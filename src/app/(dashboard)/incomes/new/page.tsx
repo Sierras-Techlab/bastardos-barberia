@@ -102,32 +102,50 @@ const NewIncomePage = async () => {
   const availableUsers = users
     ? [users.items, ...remainingUserPages.map((page) => page.items)].flat()
     : [user];
-  const data: IncomeFormData = {
-    currentUser: {
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role.name,
-    },
-    services: services.map(({ id, name, price }) => ({ id, name, price })),
-    products: products.map(({ id, name, price, stock }) => ({
-      id,
-      name,
-      price,
-      stock,
-    })),
-    customers,
-    paymentMethods,
-    employees: availableUsers.map((candidate) => ({
-      id: candidate.id,
-      firstName: candidate.firstName,
-      lastName: candidate.lastName,
-      role: candidate.role.name,
-      isActive: candidate.isActive,
-      serviceCommissionRate: candidate.serviceCommissionRate,
-      productCommissionRate: candidate.productCommissionRate,
-    })),
+  const viewer: "manager" | "employee" = user.role.name === "employee" ? "employee" : "manager";
+  const currentUser = {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role.name,
   };
+  const employeeServiceRate = user.role.name === "employee" ? user.serviceCommissionRate : 0;
+  const employeeProductRate = user.role.name === "employee" ? user.productCommissionRate : 0;
+  const data: IncomeFormData = viewer === "manager"
+    ? {
+        viewer,
+        currentUser,
+        services: services.map(({ id, name, price }) => ({ id, name, price })),
+        products: products.map(({ id, name, price, stock }) => ({ id, name, price, stock })),
+        customers,
+        paymentMethods,
+        employees: availableUsers.map((candidate) => ({
+          id: candidate.id,
+          firstName: candidate.firstName,
+          lastName: candidate.lastName,
+          role: candidate.role.name,
+          isActive: candidate.isActive,
+          serviceCommissionRate: candidate.serviceCommissionRate,
+          productCommissionRate: candidate.productCommissionRate,
+        })),
+      }
+    : {
+        viewer,
+        currentUser,
+        services: services.map((service) => ({
+          id: service.id,
+          name: service.name,
+          earning: Math.round((service.price * employeeServiceRate) / 100),
+        })),
+        products: products.map((product) => ({
+          id: product.id,
+          name: product.name,
+          earning: Math.round((product.price * employeeProductRate) / 100),
+          stock: product.stock,
+        })),
+        customers,
+        paymentMethods,
+      };
 
   return (
     <>

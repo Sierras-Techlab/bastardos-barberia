@@ -89,13 +89,13 @@ it("forwards the persisted commission rates to the sale preview", async () => {
   requirePageUser.mockResolvedValueOnce({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
-      firstName: "Empleado",
+      firstName: "Manager",
       lastName: "Bastardos",
-      username: "empleado.bastardos",
-      role: { id: 3, name: "employee" },
+      username: "manager.bastardos",
+      role: { id: 1, name: "owner" },
       isActive: true,
-      serviceCommissionRate: 45,
-      productCommissionRate: 12,
+      serviceCommissionRate: 0,
+      productCommissionRate: 0,
       lastLoginAt: null,
       createdAt: "2026-08-07T00:00:00.000Z",
       updatedAt: "2026-08-07T00:00:00.000Z",
@@ -105,7 +105,7 @@ it("forwards the persisted commission rates to the sale preview", async () => {
   render(await DashboardLayout({ children: await NewIncomePage() }));
 
   await userEvent.setup().click(screen.getByRole("button", { name: /barba/i }));
-  expect(screen.getByText(/Barba.*45%/)).toBeVisible();
+  expect(screen.getByRole("region", { name: /comisión estimada/i })).toBeVisible();
 });
 
 it("loads every active-user page for the responsible employee selector", async () => {

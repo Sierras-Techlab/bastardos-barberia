@@ -14,14 +14,14 @@ import {
 } from "@/components/ui/sheet";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import { formatIncomeDateTime } from "@/lib/incomes/income-list";
-import type { IncomeListItem, UserRole } from "@/types/income";
+import type { EmployeeIncomeListItem, IncomeListItem, IncomeListRow, UserRole } from "@/types/income";
 
 type IncomeDetailSheetProps = {
-  income: IncomeListItem | null;
+  income: IncomeListRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canVoid?: boolean;
-  onVoid?: (income: IncomeListItem) => void;
+  onVoid?: (income: IncomeListRow) => void;
   viewerRole?: UserRole;
 };
 
@@ -31,6 +31,9 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
     <dd className="text-right font-medium">{value}</dd>
   </div>
 );
+
+const isEmployeeRow = (row: IncomeListRow): row is EmployeeIncomeListItem =>
+  Array.isArray((row as EmployeeIncomeListItem).concepts);
 
 export const IncomeDetailSheet = ({
   income,
@@ -46,7 +49,7 @@ export const IncomeDetailSheet = ({
     ? `${income.customer.firstName} ${income.customer.lastName}`
     : "Sin cliente";
   const manager = viewerRole === "owner" || viewerRole === "admin";
-  const payments = income.payments;
+  const employee = isEmployeeRow(income) ? null : (income as IncomeListItem);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -64,18 +67,20 @@ export const IncomeDetailSheet = ({
         </SheetHeader>
 
         <div className="space-y-5 px-6 pb-6">
-          <section className="rounded-[1.35rem] bg-[#f6f5f2] p-4">
-            <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
-              Total
-            </p>
-            <p
-              className={`mt-1 text-3xl font-semibold ${
-                income.status === "voided" ? "text-muted-foreground line-through" : ""
-              }`}
-            >
-              {formatArs(income.total)}
-            </p>
-          </section>
+          {employee && (
+            <section className="rounded-[1.35rem] bg-[#f6f5f2] p-4">
+              <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
+                Total
+              </p>
+              <p
+                className={`mt-1 text-3xl font-semibold ${
+                  income.status === "voided" ? "text-muted-foreground line-through" : ""
+                }`}
+              >
+                {formatArs(employee.total)}
+              </p>
+            </section>
+          )}
 
           <section>
             <h3 className="mb-2 flex items-center gap-2 font-semibold">
@@ -83,17 +88,24 @@ export const IncomeDetailSheet = ({
               Concepto
             </h3>
             <div className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
-              {income.service && (
+              {employee?.service && (
                 <DetailRow
-                  label={income.service.name}
-                  value={formatArs(income.service.price)}
+                  label={employee.service.name}
+                  value={formatArs(employee.service.price)}
                 />
               )}
-              {income.products.map((product) => (
+              {employee?.products.map((product) => (
                 <DetailRow
                   key={product.id}
                   label={`${product.quantity} × ${product.name}`}
                   value={formatArs(product.unitPrice * product.quantity)}
+                />
+              ))}
+              {isEmployeeRow(income) && income.concepts.map((concept) => (
+                <DetailRow
+                  key={concept.id}
+                  label={`${concept.quantity} × ${concept.name}`}
+                  value={formatArs(concept.earning)}
                 />
               ))}
             </div>
@@ -105,33 +117,69 @@ export const IncomeDetailSheet = ({
               Venta
             </h3>
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
-              <DetailRow
-                label="Empleado responsable"
-                value={`${income.employee.firstName} ${income.employee.lastName}`}
-              />
-              {manager && <DetailRow label="Registrado por" value={`${income.registeredBy.firstName} ${income.registeredBy.lastName}`} />}
+              {employee && (
+                <DetailRow
+                  label="Empleado responsable"
+                  value={`${employee.employee.firstName} ${employee.employee.lastName}`}
+                />
+              )}
+              {manager && employee && (
+                <DetailRow
+                  label="Registrado por"
+                  value={`${employee.registeredBy.firstName} ${employee.registeredBy.lastName}`}
+                />
+              )}
               <DetailRow label="Cliente" value={customerName} />
-              {payments.map((payment) => <DetailRow key={payment.paymentMethodId} label={payment.methodName} value={formatArs(payment.amount)} />)}
+              {employee?.payments.map((payment) => (
+                <DetailRow
+                  key={payment.paymentMethodId}
+                  label={payment.methodName}
+                  value={formatArs(payment.amount)}
+                />
+              ))}
             </dl>
           </section>
 
           <section>
             <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-primary" />Comisión</h3>
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
-              <DetailRow label="Comisión devengada" value={formatArs(income.commission.total)} />
-              {income.service && <DetailRow label={`${income.service.name} (${income.service.commission.rate}%)`} value={formatArs(income.service.commission.amount)} />}
-              {income.products.map((product) => <DetailRow key={product.id} label={`${product.name} (${product.commission.rate}%)`} value={formatArs(product.commission.amount)} />)}
-              {[income.service?.commission, ...income.products.map((product) => product.commission)].filter((commission) => commission?.authorizedBy).map((commission, index) => (
-                <DetailRow
-                  key={`authorized-by-${index}`}
-                  label="Autorizado por"
-                  value={`${commission?.authorizedBy?.firstName} ${commission?.authorizedBy?.lastName}`}
-                />
-              ))}
-              {manager && <DetailRow label="Neto barbería" value={formatArs(income.commission.barbershopNet)} />}
+              {employee ? (
+                <>
+                  <DetailRow label="Comisión devengada" value={formatArs(employee.commission.total)} />
+                  {employee.service && (
+                    <DetailRow
+                      label={`${employee.service.name} (${employee.service.commission.rate}%)`}
+                      value={formatArs(employee.service.commission.amount)}
+                    />
+                  )}
+                  {employee.products.map((product) => (
+                    <DetailRow
+                      key={product.id}
+                      label={`${product.name} (${product.commission.rate}%)`}
+                      value={formatArs(product.commission.amount)}
+                    />
+                  ))}
+                  {[employee.service?.commission, ...employee.products.map((product) => product.commission)]
+                    .filter((commission) => commission?.authorizedBy)
+                    .map((commission, index) => (
+                      <DetailRow
+                        key={`authorized-by-${index}`}
+                        label="Autorizado por"
+                        value={`${commission?.authorizedBy?.firstName} ${commission?.authorizedBy?.lastName}`}
+                      />
+                    ))}
+                  {manager && <DetailRow label="Neto barbería" value={formatArs(employee.commission.barbershopNet)} />}
+                </>
+              ) : (
+                <DetailRow label="Tu ganancia" value={formatArs((income as EmployeeIncomeListItem).employeeCommission)} />
+              )}
             </dl>
-            {income.service?.commission?.fullCommission && <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>}
-            {income.status === "voided" && <p className="mt-2 text-xs text-muted-foreground">Importes excluidos de las métricas activas.</p>}
+            {employee?.service?.commission?.fullCommission && (
+              <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>
+            )}
+            {income.status === "voided" && (
+              <p className="mt-2 text-xs text-muted-foreground">Importes excluidos de las métricas activas.</p>
+            )}
           </section>
 
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -141,7 +189,13 @@ export const IncomeDetailSheet = ({
         </div>
 
         <SheetFooter className="border-t border-black/5 bg-white px-6 py-4">
-          {canVoid && income.status === "active" ? <Button type="button" variant="destructive" onClick={() => onVoid?.(income)}>Anular venta</Button> : income.status === "active" ? <p className="text-center text-xs text-muted-foreground">Venta de solo lectura</p> : <p className="text-center text-xs text-muted-foreground">Esta venta ya fue anulada</p>}
+          {canVoid && income.status === "active" ? (
+            <Button type="button" variant="destructive" onClick={() => onVoid?.(income)}>Anular venta</Button>
+          ) : income.status === "active" ? (
+            <p className="text-center text-xs text-muted-foreground">Venta de solo lectura</p>
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">Esta venta ya fue anulada</p>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

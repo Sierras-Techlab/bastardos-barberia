@@ -64,6 +64,29 @@ describe("calculateIncomeTotal", () => {
       ),
     ).toBe(0);
   });
+
+  it("uses charged manager overrides for the payable total", () => {
+    expect(
+      calculateIncomeTotal(
+        {
+          serviceId: "service-1",
+          servicePriceOverride: {
+            chargedUnitPrice: 10000,
+            reason: "Descuento habitual",
+          },
+          products: [{ productId: "product-1", quantity: 2 }],
+          productPriceOverrides: [
+            {
+              productId: "product-1",
+              override: { chargedUnitPrice: 0, reason: "Cortesía" },
+            },
+          ],
+        },
+        services,
+        products,
+      ),
+    ).toBe(10000);
+  });
 });
 
 describe("allocateByBasisPoints", () => {

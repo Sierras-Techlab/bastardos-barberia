@@ -50,10 +50,19 @@ export const FixedCustomerPaymentDialog = ({
   const periodLabel = formatPeriodLabel(month.period);
   const alreadyPaid = month.status === "paid";
   const isCurrentPeriod = month.period === currentMonthPeriod();
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [managerAmounts, setManagerAmounts] = useState<Record<string, string>>({});
   const [basisPoints, setBasisPoints] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const activeMethods = useMemo(() => paymentMethods.filter((method) => method.isActive), [paymentMethods]);
+
+  const managerTotal = (() => {
+    return Object.values(managerAmounts).reduce((sum, value) => sum + Math.max(0, Math.round(Number(value || "0"))), 0);
+  })();
+  const managerAllocated = managerTotal;
+  const managerRemaining = monthlyPrice - managerAllocated;
+  const managerExcess = managerRemaining < 0;
+  const managerShort = managerRemaining > 0;
+  const managerComplete = !managerExcess && !managerShort && managerAllocated > 0;
 
   const selectedBasisTotal = (() => {
     const totals = Object.values(basisPoints);
@@ -70,14 +79,19 @@ export const FixedCustomerPaymentDialog = ({
     try {
       const requestId = crypto.randomUUID();
       const payments: PayFixedCustomerMonthInput["payments"] = isManager
-        ? selectedMethod
-          ? [{ paymentMethodId: selectedMethod, amount: monthlyPrice }]
-          : []
+        ? Object.entries(managerAmounts)
+            .filter(([, value]) => Number(value) > 0)
+            .map(([paymentMethodId, value]) => ({ paymentMethodId, amount: Math.max(0, Math.round(Number(value))) }))
         : Object.entries(basisPoints)
             .filter(([, points]) => points > 0)
             .map(([paymentMethodId, points]) => ({ paymentMethodId, basisPoints: points }));
       if (payments.length === 0) {
-        toast.error("Seleccioná un medio de pago antes de cobrar.");
+        toast.error("Distribuí el importe total entre medios de pago.");
+        setSubmitting(false);
+        return;
+      }
+      if (isManager && !managerComplete) {
+        toast.error("La suma de medios de pago debe coincidir con el total.");
         setSubmitting(false);
         return;
       }
@@ -118,15 +132,18 @@ export const FixedCustomerPaymentDialog = ({
             <div className="rounded-2xl border border-black/8 bg-white p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Importe total</p>
               <p className="mt-1 text-2xl font-semibold">$ {monthlyPrice.toLocaleString("es-AR")}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Monto entero en ARS.</p>
             </div>
-            <div>
-              <p className="mb-2 text-sm font-medium">Medio de pago</p>
-              <div className="grid grid-cols-2 gap-2">
-                {activeMethods.map((method) => <button key={method.id} type="button" onClick={() => setSelectedMethod(method.id === selectedMethod ? null : method.id)} className={`rounded-2xl border px-3 py-2.5 text-left text-sm font-medium ${selectedMethod === method.id ? "border-primary bg-red-50 text-primary" : "border-black/10 bg-white"}`}>
-                  {method.name}
-                </button>)}
-                {activeMethods.length === 0 && <p className="text-sm text-muted-foreground">No hay medios de pago activos.</p>}
-              </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Medios de pago (monto entero en ARS)</p>
+              {activeMethods.map((method) => <label key={method.id} className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate font-medium">{method.name}</span>
+                <Input aria-label={`Monto en ${method.name}`} type="number" inputMode="numeric" min="0" step="1" value={managerAmounts[method.id] ?? ""} onChange={(event) => setManagerAmounts((current) => ({ ...current, [method.id]: event.target.value }))} className={`${fieldClassName} w-32 text-right`} />
+              </label>)}
+              {activeMethods.length === 0 && <p className="text-sm text-muted-foreground">No hay medios de pago activos.</p>}
+            </div>
+            <div className={`rounded-xl px-3 py-2 text-sm ${managerExcess ? "bg-red-50 text-red-700" : managerShort ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800"}`}>
+              {managerExcess ? `Excede $ ${(managerRemaining * -1).toLocaleString("es-AR")}` : managerShort ? `Faltan $ ${managerRemaining.toLocaleString("es-AR")}` : managerAllocated === 0 ? "Sin asignar" : "Importe asignado completo"}
             </div>
           </div>
         ) : (
@@ -156,7 +173,7 @@ export const FixedCustomerPaymentDialog = ({
 
         <DialogFooter className="-mx-5 -mb-5 flex flex-row items-center justify-end gap-2 p-5">
           <Button type="button" variant="outline" onClick={onClose} disabled={submitting} className="rounded-xl">Cancelar</Button>
-          <Button type="submit" disabled={submitting || alreadyPaid || (isManager ? !selectedMethod : basisExcess || basisShort)} className="rounded-xl">
+          <Button type="submit" disabled={submitting || alreadyPaid || (isManager ? !managerComplete : basisExcess || basisShort)} className="rounded-xl">
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <CircleCheck className="size-4" />}
             {alreadyPaid ? "Ya cobrada" : submitting ? "Cobrando..." : "Confirmar cobro"}
           </Button>

@@ -161,7 +161,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
   const isToday = day.businessDate === initialDay.businessDate;
   const canOpen = isManager && isToday && day.state === "live" && day.id === null;
   const canClose = isManager && isToday && day.state === "live" && day.id !== null;
-  const canConfirm = isManager && isToday && day.state === "closed" && lifecycle.reconciliationState === "pending_confirmation";
+  const canConfirm = isManager && day.state === "closed" && lifecycle.reconciliationState === "pending_confirmation";
 
   return (
     <div className="space-y-7" aria-busy={loadingDay || loadingHistory || loadingIncome || busyMutation}>

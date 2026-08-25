@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
-**Status:** Planned and not implemented. Requires the canonical pricing, owner-commission, payment-mode and privacy contracts delivered by block `020`.
+**Status:** Implemented and stabilized. Migration `021` requires every active fixed schedule to carry a `responsible_user_id` and a positive `monthly_price` (a `CHECK` constraint that allows historical inactive rows to keep nullable values replaces the old `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED` preflight), adds the canonical `incomes.source_type = 'fixed_subscription'` plus a one-active-subscription unique index, and installs the append-only `fixed_customer_monthly_payment_attempts` table. The `pay_fixed_customer_month` RPC atomically inserts the subscription income through the existing 019 work-session trigger, calculates commission as `monthly_price * service_commission_rate` of the responsible professional for any role (including owner), and uses the canonical `request_id, registered_by, employee_id, responsible_role_snapshot, request_fingerprint, ...` columns with the 020 privacy projections. Manager and employee payment modes (integer ARS vs basis points summing to 10000) are honoured. Voiding a paid month marks the attempt as `voided` without losing history. The plan was rewritten during stabilization (see `2026-08-23-operational-control-stabilization.md`).
 
 ## Global Constraints
 

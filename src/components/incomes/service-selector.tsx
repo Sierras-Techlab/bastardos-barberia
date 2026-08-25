@@ -4,8 +4,15 @@ import { cn } from "@/lib/utils";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import type { Service } from "@/types/income";
 
+type ServiceOption = Service | {
+  id: string;
+  name: string;
+  earning: number;
+  price?: never;
+};
+
 type ServiceSelectorProps = {
-  services: Service[];
+  services: ReadonlyArray<ServiceOption>;
   value: string | null;
   onChange: (serviceId: string | null) => void;
   error?: string;
@@ -21,6 +28,10 @@ export const ServiceSelector = ({
     <div className="grid gap-3 md:grid-cols-3">
       {services.map((service) => {
         const isSelected = value === service.id;
+        const displayValue = "price" in service && typeof service.price === "number"
+          ? service.price
+          : (service as { earning: number }).earning;
+        const isEarning = !("price" in service);
 
         return (
           <button
@@ -60,7 +71,10 @@ export const ServiceSelector = ({
                   isSelected ? "text-white" : "text-primary",
                 )}
               >
-                {formatArs(service.price)}
+                {formatArs(displayValue)}
+                {isEarning && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">tu ganancia</span>
+                )}
               </span>
             </span>
           </button>

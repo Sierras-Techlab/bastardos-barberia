@@ -180,7 +180,8 @@ describe("income list domain", () => {
       ...emptyFilters,
       paymentMethodId: cardId,
     })).toEqual([split]);
-    expect(calculateIncomeMetrics([split]).paymentTotals).toEqual([
+    const metrics = calculateIncomeMetrics([split]);
+    expect("paymentTotals" in metrics ? metrics.paymentTotals : []).toEqual([
       { paymentMethodId: cashId, name: "Efectivo", amount: 20000 },
       { paymentMethodId: transferId, name: "Transferencia", amount: 19000 },
       { paymentMethodId: cardId, name: "Tarjeta", amount: 10000 },

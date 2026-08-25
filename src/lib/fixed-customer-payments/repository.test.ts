@@ -50,6 +50,39 @@ describe("fixed customer payment repository", () => {
     })).rejects.toMatchObject({ code: "FIXED_MONTH_ALREADY_PAID", status: 409 });
   });
 
+  it("maps an inactive or missing payment method to a stable conflict", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "FIXED_MONTH_PAYMENT_METHOD_NOT_AVAILABLE" },
+    });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+
+    await expect(fixedCustomerPaymentRepository.pay("actor", {
+      requestId: "00000000-0000-4000-8000-0000000000aa",
+      customerId: "10000000-0000-4000-8000-000000000001",
+      period: "2026-08",
+      payments: [{ paymentMethodId: "00000000-0000-4000-8000-0000000000a1", amount: 15000 }],
+    })).rejects.toMatchObject({
+      code: "FIXED_MONTH_PAYMENT_METHOD_NOT_AVAILABLE",
+      status: 409,
+    });
+  });
+
+  it("maps a reused request id with different monthly-payment data to a stable conflict", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "FIXED_MONTH_REQUEST_CONFLICT" },
+    });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+
+    await expect(fixedCustomerPaymentRepository.pay("actor", {
+      requestId: "00000000-0000-4000-8000-0000000000aa",
+      customerId: "10000000-0000-4000-8000-000000000001",
+      period: "2026-08",
+      payments: [{ paymentMethodId: "00000000-0000-4000-8000-0000000000a1", amount: 15000 }],
+    })).rejects.toMatchObject({ code: "FIXED_MONTH_REQUEST_CONFLICT", status: 409 });
+  });
+
   it("returns null when get_fixed_customer_month resolves with no row", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
     getSupabaseAdmin.mockReturnValue({ rpc });

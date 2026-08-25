@@ -16,7 +16,7 @@ const managerPaymentSchema = z.object({
 }).strict();
 const employeePaymentSchema = z.object({
   paymentMethodId: z.uuid("Seleccioná un medio de pago válido."),
-  basisPoints: z.number().int().min(0).max(10000, "Los porcentajes van de 0 a 10000."),
+  basisPoints: z.number().int().min(1).max(10000, "Los porcentajes van de 1 a 10000."),
 }).strict();
 
 export const payFixedCustomerMonthSchema = z.discriminatedUnion("mode", [
@@ -110,3 +110,5 @@ export const fixedCustomerMonthSchema = z.union([
 export const fixedCustomerMonthsSchema = z.array(fixedCustomerMonthSchema);
 
 export type PayFixedCustomerMonthValues = z.infer<typeof payFixedCustomerMonthSchema>;
+export const payFixedCustomerMonthInputSchema = payFixedCustomerMonthSchema;
+export { periodSchema };

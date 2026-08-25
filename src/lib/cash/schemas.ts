@@ -18,7 +18,7 @@ const cashLifecycleSchema = z
     openingSource: z.enum(["manual", "first_income"]).nullable(),
     openedAt: z.iso.datetime({ offset: true }).nullable(),
     openedBy: cashPersonSchema.nullable(),
-    expectedCash: integer.nonnegative(),
+    expectedCash: integer,
     countedCash: integer.nonnegative().nullable(),
     difference: integer.nullable(),
     closeMode: z.enum(["manual", "automatic"]).nullable(),
@@ -114,7 +114,7 @@ const cashSaleAuditItemSchema = z
     kind: z.enum(["service", "products", "combined", "subscription"]),
     statusAtClose: z.enum(["active", "voided"]),
     currentStatus: z.enum(["active", "voided"]),
-    grossTotal: integer.positive(),
+    grossTotal: nonnegativeAmount,
     commissionTotal: nonnegativeAmount,
     barbershopNet: nonnegativeAmount,
   })

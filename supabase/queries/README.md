@@ -32,6 +32,8 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 26. `026_operating_expenses.sql`
 27. `027_expense_void_contract_repair.sql`
 28. `028_open_cash_projection_repair.sql`
+29. `029_user_commission_profile_rpc.sql`
+30. `030_create_income_override_record_repair.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -45,7 +47,7 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 
 `020_income_pricing_owner_commissions_and_employee_privacy.sql` removes the owner-zero rule introduced by `012`, lets managers override charged prices with reason and computes commission on the charged subtotal. It accepts manager exact amounts and employee integer basis points (summing to 10000), allows zero-total sales without payments and exposes a sanitized `income_as_employee_json` projection that omits catalog/charged prices, payments, totals and barbershop net. Run it after `019`; the canonical `create_income`, `list_incomes`, `get_income_detail` and `income_as_json` names remain unchanged.
 
-`021_fixed_customer_monthly_payments.sql` adds `responsible_user_id` and `monthly_price` to fixed schedules, requires them on every active row, extends `incomes` with `source_type = 'fixed_subscription'` plus a unique active subscription per `(customer, period)` index, installs the append-only `fixed_customer_monthly_payment_attempts` table and exposes `list_fixed_customer_months`, `pay_fixed_customer_month` and `get_fixed_customer_month`. The migration aborts with `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED` if any active schedule is missing a professional or a positive price; resolve those rows before applying. The canonical `create_income` RPC remains unchanged: subscription rows are inserted directly with the appropriate `source_type` by `pay_fixed_customer_month`. `void_income` now also marks the linked payment attempt as voided, reopening the month without deleting history. Run it after `020`.
+`021_fixed_customer_monthly_payments.sql` adds `responsible_user_id` and `monthly_price` to fixed schedules, requires them on every active row, extends `incomes` with `source_type = 'fixed_subscription'` plus a unique active subscription per `(customer, period)` index, installs the append-only `fixed_customer_monthly_payment_attempts` table and exposes `list_fixed_customer_months`, `pay_fixed_customer_month` and `get_fixed_customer_month`. The two nullable mapping columns are installed before the transactional preflight. If the script stops with `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED`, inspect the active rows, assign each real professional and positive monthly price explicitly, and rerun the complete `021` file; never infer the professional from `created_by`. The canonical `create_income` RPC remains unchanged: subscription rows are inserted directly with the appropriate `source_type` by `pay_fixed_customer_month`. `void_income` now also marks the linked payment attempt as voided, reopening the month without deleting history. Run it after `020`.
 
 `022_manual_cash_lifecycle.sql` evolves the automatic Caja into a manager-controlled lifecycle: `opening_balance`, `opening_source`, `close_mode`, `expected_cash`, `counted_cash`, `difference_cash` and `reconciliation_state` are added to `daily_cash_registers`. Legacy `018` registers are backfilled as zero opening, `first_income`, `automatic`, `pending_confirmation`; their financial snapshots stay immutable. The migration preflight aborts with `CASH_PAYMENT_METHOD_REQUIRED` unless exactly one normalized payment method named `Efectivo` exists. The payment-method RPCs reject rename/deactivate/delete of the protected record via `CASH_PAYMENT_METHOD_PROTECTED`. New RPCs `open_daily_cash`, `close_daily_cash`, `confirm_daily_cash` and the protected `ensure_daily_cash_open` (called by both `create_income` and `pay_fixed_customer_month`) use the same advisory lock as the daily register and persist a unified lifecycle block via the promoted `cash_day_as_json`. Run it after `021`.
 
@@ -218,6 +220,24 @@ begin
 end $$;
 
 rollback;
+```
+
+Two stabilization repair files also exist for databases that installed earlier development revisions. Their numeric prefixes overlap the expense branch's incremental chain, so select them from the database's actual installation history rather than treating them as additional steps in the clean `024` through `028` sequence above.
+
+`029_user_commission_profile_rpc.sql` repairs databases that installed the earlier development revision of `010`, where the commission-aware routine was accidentally named `update_user_profile_v2` while the server calls the canonical `update_user_profile` name. It removes the obsolete nine-argument routine and temporary `_v2` routine, installs the canonical thirteen-argument RPC, restores server-only grants and reloads the PostgREST schema cache. Run it after `028`; no tables or stored data are changed.
+
+`030_create_income_override_record_repair.sql` repairs databases that already installed the earlier development revision of `020`, whose canonical `create_income` function reused `override_record` as both a PL/pgSQL record variable and a SQL lateral alias. That collision aborts every sale with SQLSTATE `55000` (`record "override_record" is not assigned yet`). The repair renames only the internal accumulator variable in the existing canonical function, preserves its signature and permissions, creates no `_v2` objects and changes no stored data. Run it after `029`. Clean installations already contain the corrected `020`, so `030` safely becomes a no-op after verifying the canonical function.
+
+Verify the `025` repair after execution; both columns must report `true`:
+
+```sql
+select
+  pg_get_functiondef(
+    'public.create_income(uuid,uuid,uuid,uuid,uuid,jsonb,jsonb,boolean,jsonb,jsonb)'::regprocedure
+  ) ~* '[[:space:]]charged_product_record[[:space:]]+record[[:space:]]*;' as repaired_variable,
+  pg_get_functiondef(
+    'public.create_income(uuid,uuid,uuid,uuid,uuid,jsonb,jsonb,boolean,jsonb,jsonb)'::regprocedure
+  ) !~* '[[:space:]]override_record[[:space:]]+record[[:space:]]*;' as legacy_collision_removed;
 ```
 
 Verify the automatic cash objects and cron job:

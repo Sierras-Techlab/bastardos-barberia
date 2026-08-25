@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   createIncomeSchema,
   employeeCreateIncomeSchema,
-  employeeFormPaymentSchema,
   incomeFormSchema,
   managerCreateIncomeSchema,
+  employeeIncomeFormSchema,
   priceOverrideSchema,
 } from "./income-schema";
 
@@ -73,19 +73,19 @@ describe("priceOverrideSchema", () => {
     ).toBe(true);
   });
 
-  it("rejects a zero or negative charged unit price", () => {
-    expect(
-      priceOverrideSchema.safeParse({
-        chargedUnitPrice: 0,
-        reason: "Cortesía",
-      }).success,
-    ).toBe(false);
+  it("rejects a negative charged unit price but accepts zero with a reason", () => {
     expect(
       priceOverrideSchema.safeParse({
         chargedUnitPrice: -1,
         reason: "Cortesía",
       }).success,
     ).toBe(false);
+    expect(
+      priceOverrideSchema.safeParse({
+        chargedUnitPrice: 0,
+        reason: "Cortesía",
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects an empty or whitespace reason", () => {
@@ -202,23 +202,52 @@ describe("employeeCreateIncomeSchema", () => {
   });
 });
 
-describe("employeeFormPaymentSchema", () => {
+describe("employeeIncomeFormSchema", () => {
   it("accepts integer basis points inside the allowed range", () => {
-    expect(employeeFormPaymentSchema.safeParse({
-      paymentMethodId: "60000000-0000-4000-8000-000000000001",
-      basisPoints: 10000,
+    expect(employeeIncomeFormSchema.safeParse({
+      employeeId: "00000000-0000-4000-8000-000000000099",
+      customerId: null,
+      serviceId: "00000000-0000-4000-8000-000000000001",
+      products: [],
+      payments: [
+        {
+          paymentMethodId: "60000000-0000-4000-8000-000000000001",
+          basisPoints: 10000,
+        },
+      ],
+      grantFullServiceCommission: false,
     }).success).toBe(true);
   });
 
-  it("rejects negative or non-integer basis points", () => {
-    expect(employeeFormPaymentSchema.safeParse({
-      paymentMethodId: "60000000-0000-4000-8000-000000000001",
-      basisPoints: 0.5,
+  it("rejects when basis points do not sum to 10000", () => {
+    expect(employeeIncomeFormSchema.safeParse({
+      employeeId: "00000000-0000-4000-8000-000000000099",
+      customerId: null,
+      serviceId: "00000000-0000-4000-8000-000000000001",
+      products: [],
+      payments: [
+        {
+          paymentMethodId: "60000000-0000-4000-8000-000000000001",
+          basisPoints: 6000,
+        },
+      ],
+      grantFullServiceCommission: false,
     }).success).toBe(false);
-    expect(employeeFormPaymentSchema.safeParse({
-      paymentMethodId: "60000000-0000-4000-8000-000000000001",
-      basisPoints: -100,
-    }).success).toBe(false);
+  });
+
+  it("rejects a negative or non-integer basis points entry", () => {
+    const result = employeeIncomeFormSchema.safeParse({
+      employeeId: "00000000-0000-4000-8000-000000000099",
+      customerId: null,
+      serviceId: "00000000-0000-4000-8000-000000000001",
+      products: [],
+      payments: [
+        { paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: -100 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000002", basisPoints: 10200 },
+      ],
+      grantFullServiceCommission: false,
+    });
+    expect(result.success).toBe(false);
   });
 });
 

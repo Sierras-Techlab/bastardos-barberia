@@ -25,6 +25,23 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
   if (message.includes("FIXED_MONTH_INVALID_PERIOD")) {
     throw new AppError("FIXED_MONTH_INVALID_PERIOD", "El período seleccionado no es válido.", 400);
   }
+  if (message.includes("FIXED_MONTH_PAYMENT_METHOD_NOT_AVAILABLE")) {
+    throw new AppError(
+      "FIXED_MONTH_PAYMENT_METHOD_NOT_AVAILABLE",
+      "El medio de pago seleccionado ya no está disponible.",
+      409,
+    );
+  }
+  if (message.includes("FIXED_MONTH_REQUEST_CONFLICT")) {
+    throw new AppError(
+      "FIXED_MONTH_REQUEST_CONFLICT",
+      "Este intento de cobro ya fue usado con otros datos.",
+      409,
+    );
+  }
+  if (message.includes("CASH_ALREADY_CLOSED")) {
+    throw new AppError("CASH_ALREADY_CLOSED", "La caja del día ya está cerrada.", 409);
+  }
   if (message.includes("FIXED_MONTH_CUSTOMER_NOT_FOUND")) {
     throw new AppError("FIXED_MONTH_CUSTOMER_NOT_FOUND", "El cliente seleccionado no tiene un horario activo.", 404);
   }

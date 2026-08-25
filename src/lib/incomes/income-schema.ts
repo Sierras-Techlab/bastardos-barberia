@@ -12,13 +12,8 @@ const incomeFormPaymentSchema = z.object({
   amount: z.number().int().nonnegative(),
 }).strict();
 
-export const employeeFormPaymentSchema = z.object({
-  paymentMethodId: z.uuid(),
-  basisPoints: z.number().int().min(0).max(10000),
-}).strict();
-
 export const priceOverrideSchema = z.object({
-  chargedUnitPrice: z.number().int().positive(),
+  chargedUnitPrice: z.number().int().nonnegative(),
   reason: z.string().trim().min(1).max(240),
 }).strict();
 
@@ -33,16 +28,30 @@ const employeeCreatePaymentSchema = z.object({
   basisPoints: z.number().int().min(0).max(10000),
 }).strict();
 
+const managerFormPaymentSchema = z.object({
+  paymentMethodId: z.uuid(),
+  amount: z.number().int().nonnegative(),
+}).strict();
+const employeeFormPaymentSchema = z.object({
+  paymentMethodId: z.uuid(),
+  basisPoints: z.number().int().min(0).max(10000),
+}).strict();
+
 const sharedCreateRefinements = {
   atLeastOneLine: (value: { serviceId: string | null; products: Array<{ productId: string }> }) =>
     value.serviceId !== null || value.products.length > 0,
 };
 
-export const incomeFormSchema = z.object({
+const sharedFormFields = {
   employeeId: z.uuid("Seleccioná un empleado responsable."),
   customerId: z.string().nullable(),
   serviceId: z.string().nullable(),
   products: z.array(formProductSchema),
+  grantFullServiceCommission: z.boolean(),
+};
+
+export const incomeFormSchema = z.object({
+  ...sharedFormFields,
   payments: z.array(incomeFormPaymentSchema).min(1, "Seleccioná un medio de pago.").superRefine((payments, context) => {
     const ids = new Set<string>();
     for (const [index, payment] of payments.entries()) {
@@ -50,13 +59,12 @@ export const incomeFormSchema = z.object({
       ids.add(payment.paymentMethodId);
     }
   }),
-  grantFullServiceCommission: z.boolean(),
 }).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
   message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
 });
 
 const priceOverrideFormSchema = z.object({
-  chargedUnitPrice: z.coerce.number().int().positive(),
+  chargedUnitPrice: z.coerce.number().int().nonnegative(),
   reason: z.string().trim().min(1, "Indicá el motivo del cambio de precio."),
 }).strict();
 
@@ -64,15 +72,44 @@ const productOverridesFormSchema = z.array(
   z.object({ productId: z.string(), override: priceOverrideFormSchema.nullable() }).strict(),
 ).default([]);
 
-export const managerIncomeFormSchema = incomeFormSchema.extend({
+export const managerIncomeFormSchema = z.object({
+  ...sharedFormFields,
+  payments: z.array(managerFormPaymentSchema).superRefine((payments, context) => {
+    const ids = new Set<string>();
+    for (const [index, payment] of payments.entries()) {
+      if (ids.has(payment.paymentMethodId)) context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez.", path: [index, "paymentMethodId"] });
+      ids.add(payment.paymentMethodId);
+    }
+  }),
   servicePriceOverride: priceOverrideFormSchema.nullable().default(null),
   productPriceOverrides: productOverridesFormSchema,
-}).strict();
+}).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
+  message: "Seleccioná un servicio o agregá al menos un producto.",
+  path: ["serviceId"],
+});
 
-export const employeeIncomeFormSchema = incomeFormSchema.extend({
+export const employeeIncomeFormSchema = z.object({
+  ...sharedFormFields,
+  payments: z.array(employeeFormPaymentSchema).min(1, "Seleccioná un medio de pago.").superRefine((payments, context) => {
+    const total = payments.reduce((sum, payment) => sum + payment.basisPoints, 0);
+    if (total !== 10000) {
+      context.addIssue({ code: "custom", message: "Los porcentajes deben sumar 100%." });
+    }
+    const ids = new Set<string>();
+    for (const [index, payment] of payments.entries()) {
+      if (ids.has(payment.paymentMethodId)) context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez.", path: [index, "paymentMethodId"] });
+      ids.add(payment.paymentMethodId);
+    }
+  }),
   servicePriceOverride: z.null().default(null),
   productPriceOverrides: z.array(z.unknown()).default([]),
-}).strict();
+}).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
+  message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
+});
+
+export type ManagerIncomeFormValues = z.infer<typeof managerIncomeFormSchema>;
+export type EmployeeIncomeFormValues = z.infer<typeof employeeIncomeFormSchema>;
+export type IncomeFormValues = ManagerIncomeFormValues | EmployeeIncomeFormValues;
 
 export const employeeIncomeFormPaymentSchema = z.object({
   paymentMethodId: z.uuid(),
@@ -91,18 +128,22 @@ const managerCreateBaseSchema = z.object({
       ids.add(product.productId);
     }
   }),
-  payments: z.array(managerCreatePaymentSchema).min(1).superRefine((payments, context) => {
+  payments: z.array(managerCreatePaymentSchema).superRefine((payments, context) => {
     const methodIds = new Set(payments.map(({ paymentMethodId }) => paymentMethodId));
     if (methodIds.size !== payments.length) {
       context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez." });
     }
   }),
   grantFullServiceCommission: z.boolean(),
-  servicePriceOverride: priceOverrideSchema.optional(),
+  servicePriceOverride: priceOverrideSchema.nullable().optional(),
   productPriceOverrides: managerProductPriceOverrideSchema.optional(),
 }).strict().superRefine((value, context) => {
   if (!sharedCreateRefinements.atLeastOneLine(value)) {
     context.addIssue({ code: "custom", message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"] });
+  }
+  const totalAmount = value.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  if (totalAmount > 0 && value.payments.length === 0) {
+    context.addIssue({ code: "custom", message: "Una venta con importe requiere al menos un medio de pago.", path: ["payments"] });
   }
   if (value.productPriceOverrides) {
     const productIds = new Set(value.products.map(({ productId }) => productId));
@@ -155,7 +196,6 @@ export const incomeListQuerySchema = z.object({
   page: z.number().int().positive().default(1), pageSize: z.number().int().min(1).max(100).default(10),
 }).strict();
 
-export type IncomeFormValues = z.infer<typeof incomeFormSchema>;
 export type ManagerCreateIncomeValues = z.infer<typeof managerCreateIncomeSchema>;
 export type EmployeeCreateIncomeValues = z.infer<typeof employeeCreateIncomeSchema>;
 export type EmployeeFormPaymentValues = z.infer<typeof employeeFormPaymentSchema>;

@@ -87,7 +87,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `027` and their execution guide.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `030` and their execution guide.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.

@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
 
-**Status:** Planned and not implemented. Runs after block `022` and derives its projection from active normal sales without storing mutable visit state on customers.
+**Status:** Implemented and stabilized. Migration `023` adds a supporting partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status = 'active'`, `source_type = 'sale'` and `customer_id is not null`, and promotes the canonical `list_customers(actor_user_id)` RPC that derives each customer's last active sale business date in `America/Argentina/Buenos_Aires`. The projection never exposes payment, commission, employee, price, discount, or barbershop-net data, and voids and `fixed_subscription` incomes are excluded. The `get_customer_visits` parallel projection that an earlier draft included was removed during stabilization; the customer repository uses `list_customer_visits` from migration 013. No mutable customer column is added. The plan was rewritten during stabilization (see `2026-08-23-operational-control-stabilization.md`).
 
 ## Global Constraints
 

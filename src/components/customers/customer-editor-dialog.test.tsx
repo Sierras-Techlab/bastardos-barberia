@@ -15,6 +15,32 @@ it("keeps optional email and draft state when async creation fails", async () =>
   expect(screen.getByLabelText("Nombre")).toHaveValue("Ana");
 });
 
+it("does not submit a parent sale form when saving the customer dialog", async () => {
+  const user = userEvent.setup();
+  const parentSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+  const onSave = vi.fn().mockResolvedValue({});
+  render(
+    <form onSubmit={parentSubmit}>
+      <CustomerEditorDialog
+        mode="create"
+        customer={null}
+        customers={[]}
+        currentUserRole="owner"
+        onClose={vi.fn()}
+        onSave={onSave}
+      />
+    </form>,
+  );
+
+  await user.type(screen.getByLabelText("Nombre"), "Ana");
+  await user.type(screen.getByLabelText("Apellido"), "Pérez");
+  await user.type(screen.getByLabelText("Teléfono"), "3515550101");
+  await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+
+  expect(onSave).toHaveBeenCalledOnce();
+  expect(parentSubmit).not.toHaveBeenCalled();
+});
+
 it("adds one required weekly schedule and shows its readable preview", async () => {
   const user = userEvent.setup();
   const onSave = vi.fn().mockResolvedValue({});
@@ -24,7 +50,7 @@ it("adds one required weekly schedule and shows its readable preview", async () 
   await user.selectOptions(screen.getByLabelText("Día fijo"), "4");
   await user.type(screen.getByLabelText("Hora fija"), "10:00");
   await user.selectOptions(screen.getByLabelText("Profesional responsable"), professional.id);
-  await user.type(screen.getByLabelText("Precio mensual"), "150");
+  await user.type(screen.getByLabelText("Precio mensual"), "15000");
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");

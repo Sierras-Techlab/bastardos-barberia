@@ -44,7 +44,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
   const [hasFixedSchedule, setHasFixedSchedule] = useState(Boolean(customer?.fixedSchedule));
   const [weekday, setWeekday] = useState<IsoWeekday>(customer?.fixedSchedule?.weekday ?? 1);
   const [time, setTime] = useState(customer?.fixedSchedule?.time ?? "");
-  const [monthlyPrice, setMonthlyPrice] = useState<string>(customer?.fixedSchedule ? String(customer.fixedSchedule.monthlyPrice / 100) : "");
+  const [monthlyPrice, setMonthlyPrice] = useState<string>(customer?.fixedSchedule ? String(customer.fixedSchedule.monthlyPrice) : "");
   const [professionalId, setProfessionalId] = useState<string>(initialProfessionalId);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,12 +52,13 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     if (savingRef.current) return;
     const parsedSchedule: FixedScheduleInput | null = hasFixedSchedule ? {
       weekday,
       time,
       responsibleUserId: isManager && professionalId ? professionalId : undefined,
-      monthlyPrice: Math.round(Number(monthlyPrice || "0") * 100),
+      monthlyPrice: Math.max(0, Math.round(Number(monthlyPrice || "0"))),
     } : null;
     const parsed = frontendCustomerEditorSchema.safeParse({
       firstName,
@@ -116,7 +117,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
             <label className="space-y-1.5 text-sm font-medium">Día fijo<select aria-label="Día fijo" value={weekday} onChange={(event) => setWeekday(Number(event.target.value) as IsoWeekday)} className={`${fieldClassName} w-full px-3 text-sm`}>{weekdayOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
             <label className="space-y-1.5 text-sm font-medium">Hora fija<Input aria-label="Hora fija" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={fieldClassName} /></label>
             {isManager ? <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Profesional responsable<select aria-label="Profesional responsable" value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} className={`${fieldClassName} w-full px-3 text-sm`}><option value="" disabled>Seleccionar profesional</option>{activeProfessionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.firstName} {professional.lastName}</option>)}</select></label> : <p className="text-xs text-muted-foreground sm:col-span-2">El profesional responsable se asigna a vos automáticamente.</p>}
-            <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Precio mensual (ARS)<Input aria-label="Precio mensual" type="number" inputMode="decimal" min="0" step="0.01" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} className={fieldClassName} /></label>
+            <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Precio mensual (ARS)<Input aria-label="Precio mensual" type="number" inputMode="numeric" min="0" step="1" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} className={fieldClassName} /></label>
             {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data as { weekday: IsoWeekday; time: string })}</p>}
           </div>}
         </section>

@@ -44,7 +44,7 @@ export const CashOpenDialog = ({ openingBalance, onClose, onConfirm }: CashOpenD
           <DialogTitle>Abrir caja del día</DialogTitle>
           <DialogDescription>El saldo inicial representa efectivo físico previo, nunca ingresos del día.</DialogDescription>
         </DialogHeader>
-        <label className="block text-sm font-medium">Saldo inicial (ARS)
+        <label className="block text-sm font-medium">Saldo inicial (ARS entero)
           <Input aria-label="Saldo inicial" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
         </label>
         <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs text-amber-900">Después de abrir vas a poder cargar el primer ingreso del día.</div>

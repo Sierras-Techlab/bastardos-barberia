@@ -2,23 +2,50 @@ import type { Product, Service } from "@/types/income";
 
 type CalculableDraft = {
   serviceId: string | null;
+  servicePriceOverride?: { chargedUnitPrice: number; reason?: string } | null;
   products: Array<{
     productId: string;
     quantity: number;
   }>;
+  productPriceOverrides?: unknown[];
 };
+
+const isProductPriceOverride = (
+  value: unknown,
+): value is {
+  productId: string;
+  override: { chargedUnitPrice: number; reason?: string } | null;
+} =>
+  typeof value === "object" &&
+  value !== null &&
+  "productId" in value &&
+  typeof value.productId === "string" &&
+  "override" in value;
 
 export const calculateIncomeTotal = (
   draft: CalculableDraft,
   services: Service[],
   products: Product[],
 ) => {
-  const serviceTotal =
-    services.find((service) => service.id === draft.serviceId)?.price ?? 0;
+  const selectedService = services.find(
+    (service) => service.id === draft.serviceId,
+  );
+  const serviceTotal = selectedService
+    ? (draft.servicePriceOverride?.chargedUnitPrice ?? selectedService.price)
+    : 0;
 
   const productTotal = draft.products.reduce((total, item) => {
+    const product = products.find(({ id }) => id === item.productId);
+    if (!product) return total;
+    const override = draft.productPriceOverrides?.find(
+      (candidate) =>
+        isProductPriceOverride(candidate) &&
+        candidate.productId === item.productId,
+    );
     const price =
-      products.find((product) => product.id === item.productId)?.price ?? 0;
+      isProductPriceOverride(override) && override.override
+        ? override.override.chargedUnitPrice
+        : product.price;
 
     return total + price * item.quantity;
   }, 0);

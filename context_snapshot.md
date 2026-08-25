@@ -2,6 +2,102 @@
 
 Captured: 2026-08-24
 
+## Local corrective closeout — 2026-08-25
+
+- `origin/feat/changes-fullstack` at `d58fbf9` is merged into `feat/expenses`. Domain conflicts were resolved by retaining the stabilized income/customer/fixed-payment contracts and the verified Expenses/Caja behavior. Independently-created migration numbers were normalized into one sequence: existing `024` through `028` remain unchanged and the incoming user-profile/create-income repairs are now `029` and `030`.
+- Final post-merge verification is clean: 201 test files / 928 tests, ESLint, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack production build all pass.
+- Income creation HTTP 500 was reproduced safely against the configured Supabase project with a forced-rollback diagnostic request. PostgreSQL returned SQLSTATE `55000`: the migration `020` version of canonical `create_income` declared `override_record` as a PL/pgSQL record while reusing it as a lateral SQL alias, so the unassigned variable shadowed the relation alias. Migration `020` now uses the distinct `charged_product_record` accumulator, and incremental `030_create_income_override_record_repair.sql` repairs already-installed databases without `_v2` objects or stored-data changes. Applying `030` remains an operator action because this workspace has a service-role key but no PostgreSQL connection or Supabase Management/CLI credential capable of DDL.
+- Final local verification after the `create_income` repair is clean: `npx next typegen`, `npx tsc --noEmit`, 185 test files / 870 tests, ESLint with zero warnings, the Next.js 16.3 production build and `git diff --check` pass. Real verification of the repaired RPC requires applying `030` and retrying a sale against Supabase.
+- Employee income creation no longer sends manager-only price override fields as `null`. `IncomeForm` now includes `servicePriceOverride` and `productPriceOverrides` only for owner/admin payloads, matching the strict employee API schema and eliminating the pre-database HTTP 400. Role-safety regression coverage asserts both properties are absent from employee requests.
+- Creating a customer from `/incomes/new` no longer fails after the atomic insert: the repository now disambiguates the `customer_fixed_schedules.responsible_user_id -> users.id` PostgREST embed with its exact FK hint, eliminating the confirmed live `PGRST201`. The customer modal also stops its submit event at the dialog boundary, so it cannot submit/review the enclosing income form. Both defects have RED→GREEN regression coverage, and the corrected read projection succeeds against the configured Supabase database without returning customer data to the log.
+- `/incomes/new` now presents employee payment allocations as human percentages from 0% through 100% (two-decimal precision) instead of exposing raw 0..10000 basis points. A single method renders as 100%, combined methods can be entered as ordinary percentages, and the selector converts them back to integer basis points only at the existing application boundary; manager ARS allocations and the database contract are unchanged.
+- The current verification after the customer-create repair is clean: `npx next typegen`, `npx tsc --noEmit`, 185 test files / 868 tests, ESLint with zero warnings and the Next.js production build all pass.
+- User commission editing was failing with HTTP 500 because the server sends the thirteen-argument `update_user_profile` RPC while the earlier migration `010` had installed that commission-aware routine as `update_user_profile_v2` and retained the legacy nine-argument canonical function. Migration `010` now installs the canonical name for clean databases, and incremental migration `029_user_commission_profile_rpc.sql` safely repairs upgraded databases, removes the temporary `_v2` routine, restores server-only grants and reloads the PostgREST schema cache.
+- Regression coverage validates both clean installation and incremental repair contracts. Focused user migration/repository/endpoint tests pass (18 tests). Applying `029` to the configured Supabase database remains an operator action before the commission-editing fix is observable there.
+- A new source-level and behavioral audit repaired the remaining inconsistencies on `feat/changes-fullstack`; the remote Supabase project was not changed.
+- Income previews now calculate manager overrides from the charged line prices, and `IncomeClient.create(role, input)` parses the role-specific response without trusting a browser header.
+- Migration `021` now dispatches manager/employee projections from the authoritative actor role, validates and locks active payment methods, keeps `monthlyPrice` out of employee JSON and maps unavailable methods to an explicit `409` application error.
+- The final independent review additionally fixed the real camelCase JSON contract consumed by `021`, removed inferred legacy schedule ownership in favor of `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED`, and made monthly-payment retries compare an immutable normalized request fingerprint before consulting mutable schedule state.
+- Migration `022` was rebuilt in place (no `_v2` objects): live registers have nullable `closed_at`; manual close snapshots and confirms; automatic close snapshots and remains pending; confirmation never recomputes financials; physical expected cash uses only `system_code='cash'`; subscriptions have snapshot kind `subscription`; free sales and same-day live voids do not create invalid cash adjustments; the canonical 018 financial projection is retained behind the lifecycle wrapper.
+- Manual close and post-close voids now serialize through the same global lock. The first-income trigger rejects `CASH_ALREADY_CLOSED`, so a late or racing income rolls back instead of committing outside the immutable daily snapshot.
+- Caja UI now treats every persisted live register as a manual close and the strict schema accepts both persisted live IDs, zero-value audited sales and negative expected cash after a later cash adjustment.
+- `/customers` now accepts the ISO offset form returned by PostgreSQL `timestamptz` (for example `+00:00`) for `createdAt`; the previous Z-only Zod boundary caused the directory to fail before render.
+- Final local verification after the customer timestamp fix: `npx next typegen` passes; `npx tsc --noEmit` passes; `npm test` passes 184 files / 863 tests; `npm run lint` passes with zero warnings; `npm run build` succeeds on Next.js 16.3; and `git diff --check` is clean.
+- Real PostgreSQL acceptance against a disposable Supabase database remains mandatory before applying the cumulative `019` → `023` chain to the shared database.
+
+## Verified stabilization handoff — 2026-08-23
+
+- All six tasks of the corrective repair plan are closed locally on `feat/changes-fullstack`. Final verification: `npx next typegen` clean, `npx tsc --noEmit` clean, `npm test` 184 files / 823 tests pass, `npm run lint` clean (zero warnings), `npm run build` (Next.js 16.3 Webpack) succeeds and `git diff --check` clean.
+- The commits land in this order:
+  - `334312c fix(incomes): complete role-safe entry contracts` (Task 1 — RED→GREEN close)
+  - `b594ac7 fix(incomes): render role-specific history and metrics` + `33aea01 test(incomes): add employee history and dashboard RED coverage` (Task 2)
+  - `0b6eb44 fix(subscriptions): rebuild migration 021 monthly payment contract` (Task 3)
+  - `5a8a015 fix(subscriptions): reconcile 021 client and UI contracts` (Task 4)
+  - `246a8af test(customers): add 023 behavioral regression cases` (Task 5 — migration SQL unchanged)
+- Task 6 (real PostgreSQL acceptance against a disposable Supabase project) cannot be executed from this chat. The operator must run the rollback-wrapped acceptance scenarios per block, capture the sanitized JSON outputs and attach the evidence to the deploy record. **Until that gate is recorded, the cumulative 019 → 023 chain must remain un-deployed.**
+- The committed repository HEAD is structurally verified; the installed remote Supabase is untouched by this worktree.
+
+## Corrective audit — 2026-08-23
+
+- A fresh cross-layer audit found deployment-blocking inconsistencies in the current implementations of blocks `020`, `021` and `022`, despite `npm test` (184 files / 802 tests), TypeScript, ESLint and the production build passing.
+- Do **not** apply migrations `020` through `023` to the shared Supabase project yet. In particular, `021` references a missing attempts `status` column and has projection/client unit mismatches; `022` has invalid migration order/lifecycle SQL and does not correctly promote the canonical read path; employee income entry/history/dashboard remain wired to manager-shaped or amount-based contracts.
+- The authoritative repair guide is `docs/superpowers/plans/2026-08-23-operational-control-corrective-repair.md`. It supersedes the previous recommendation to deploy the five-block chain immediately. The installed remote baseline must remain separate from repository HEAD until the guide's real PostgreSQL acceptance gate passes.
+
+## In-progress corrective repair (Task 1 partial)
+
+The corrective repair is in progress on `feat/changes-fullstack`. Task 1 of the plan is partially implemented but not yet green:
+
+**Done in commit `76426b3` (Task 1 partial):**
+- `IncomeFormData` is a discriminated union `ManagerIncomeFormData | EmployeeIncomeFormData`. Employee projection exposes `earning`/`earningUnit` instead of `price`. The manager projection keeps `price`.
+- `managerIncomeFormSchema` and `employeeIncomeFormSchema` are separate Zod schemas with role-specific payment discriminated unions (`amount` for manager, `basisPoints` for employee). `priceOverrideSchema` accepts nonnegative integers (manager can give a line for free). Zero-total manager sale is allowed with empty payments.
+- `PaymentMethodSelector` is a discriminated `mode: "manager" | "employee"` prop rendering either integer ARS inputs or basis-point inputs. The previous "Agregar medio" generic button was replaced with per-method toggle buttons because the test contract expects per-method names.
+- `role-safety.test.tsx` is the new RED that asserts employee payload never leaks `price|catalogUnitPrice|chargedUnitPrice|total|payments|barbershopNet|registeredBy`, employee submit always sends `basisPoints` (summing 10000), manager submit sends exact integer ARS amounts, and negative amounts are rejected by the selector.
+
+**Closed in commit `334312c` (Task 1 completion):**
+- `IncomeForm` now auto-defaults the first active payment method for the employee viewer (regardless of how many methods are active) so the "Confirmar ingreso" dialog opens without forcing the operator to click a method when more than one is configured.
+- The page computes the employee earning from the authenticated user's service/product commission rates and projects it into `ServiceSelector`, `ProductSelector`, `IncomeSummary` and `CommissionPreview` without ever serializing the catalog price; the manager path still receives the full catalog price projection.
+- `PaymentMethodSelector` is a true ADD-on-click selector: clicking a non-selected method while another is selected adds it to combined mode (instead of silently replacing). The combined-mode badge reports `Faltan $ X` / `Importe distribuido correctamente` / `Sobran $ X`. Inactive-method clearing preserves per-method amounts (it no longer collapses back to the first method with the full total).
+- `role-safety.test.tsx` types integer ARS values via `user.clear` (no implicit `*100` conversion), drops the contradictory `payments` key from `FORBIDDEN_KEYS` and keeps manager and employee submit paths discriminated.
+- The historic `income-form.test.tsx` is renamed to `managerForm.test.tsx` so the manager form suite owns the manager schema and `role-safety.test.tsx` owns the employee schema; the 11 manager scenarios still pass.
+- Full verification: 184 files / 802 tests pass, TypeScript clean, ESLint clean, `npm run build` succeeds, `git diff --check` clean.
+
+**Closed in commits `b594ac7` + `33aea01` (Task 2 completion):**
+- `ManagerPaginatedIncomes` and `EmployeePaginatedIncomes` are defined as separate discriminated projections of the API envelope; `PaginatedIncomes` is their union and `IncomeListRow` is the per-row union used by table, mobile list, detail sheet and presentation helpers.
+- `incomeClient.listAs(role, query)` and `incomeClient.getAs(role, id)` parse the API success envelope with the schema selected by the viewer (manager or sanitized employee); the broad cast-through-unknown pattern is removed from `/incomes` and `/incomes/[id]`.
+- The home page no longer filters out records with `employeeCommission` and no longer casts them to manager shape; `IncomeSummaryCard` accepts the `DashboardIncomeSummary | EmployeeDashboardIncomeSummary` discriminated union, replacing the `isEmployee` flag with a real `viewer` discriminant ("Lo generado para vos" / "Comisión diaria registrada" for employees; "Facturación bruta" / "Neto barbería" for managers).
+- `IncomeVoidDialog` is restricted to manager-shape rows via the `IncomesView` guard so the dialog never renders for an employee.
+- `IncomesView` tests are split into a manager describe (5 cases) and an employee describe with 3 RED cases that assert the sanitized "Tus ventas registradas" header, the absence of the manager-only filters and a detail sheet that never leaks catalog/total/payment/registered-by phrases.
+- Full verification: 184 files / 807 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commit `0b6eb44` (Task 3 completion):**
+- Migration 021 installs `attempts.status` with a CHECK constraint and the partial unique index `fixed_payment_attempts_one_active_period` that guarantees exactly one active attempt per (customer, period).
+- `pay_fixed_customer_month` no longer calls `ensure_daily_cash_open`; migration 022 owns universal opening.
+- The role snapshot is read as canonical text (`'owner' | 'admin' | 'employee'`), the request fingerprint is stored as a hexadecimal text via `pg_catalog.encode(extensions.digest(...), 'hex')`, and no `uuid::jsonb` cast is used.
+- The canonical `void_income` RPC is preserved; an `AFTER UPDATE OF status` trigger on `public.incomes` flips the linked attempt to `voided` so audit/stock/post-close Caja semantics stay intact.
+- `get_fixed_customer_month` falls back to the most recent attempt and a new `synthesize_pending_fixed_customer_month` helper lets the first payment dialog open for an unpaid month.
+- The migration test asserts the new contracts; the cross-migration test adds guards for `ensure_daily_cash_open`, JWT settings, the `uuid::jsonb` cast and the canonical `void_income` replacement.
+- Full verification: 184 files / 818 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commit `5a8a015` (Task 4 completion):**
+- `FixedCustomerPaymentApiError(status, code, message, fields)` is raised from every list/pay/get envelope parse failure, and the success envelopes (`{ data: { items } }`, `{ data: { month } }`) are parsed with the strict Zod schemas from `schemas.ts`.
+- The legacy `*100` / `/100` conversions are stripped from the customer-editor and fixed-customer-payment dialogs; the form state stores the integer ARS value, the input step is `1`, and the dialog forwards the integer amount.
+- Full verification: 184 files / 819 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commit `246a8af` (Task 5 completion):**
+- Migration 023 needs no production change. The behavioral regression tests document that only active normal sales qualify, fixed-subscription incomes are excluded, voids are filtered by the partial index, the per-customer newest sale wins via `DISTINCT ON` with ordered `business_date` and `created_at`, customers without active sales get a NULL `lastVisitBusinessDate` via `LEFT JOIN latest_sale`, and the date is projected through `America/Argentina/Buenos_Aires`.
+- Full verification: 184 files / 823 tests pass, TypeScript clean, ESLint clean.
+
+**Closed in commits `2fafb10` + `cf09259` (corrective-repair v2):**
+- **Migration 022:** `payment_methods.system_code` is added BEFORE any query reads it; the legacy `daily_cash_counts_check` is relaxed so a manager may open a register with zero sales; `close_daily_cash` and `confirm_daily_cash` use named PL/pgSQL variables (no more `$4` references); `expected_cash` is recomputed as `opening_balance + net Efectivo payments` instead of the gross sales total; an `AFTER INSERT` trigger on `public.incomes` calls `ensure_daily_cash_open(new.registered_by, new.business_date)` so the cash register opens on the first income without duplicating the call.
+- **Income client + success state:** `create(role, input)` parses the response with the manager or sanitized employee schema and returns `IncomeListItem | EmployeeIncomeListItem`. IncomeSuccessState renders the employee sanitized projection (only `employeeCommission`) without ever reading `total`.
+- **Income form:** `LinePriceEditor` is wired into both the service card and every product row; manager sales reach the server with `servicePriceOverride` and `productPriceOverrides`. The schema keeps manager payments optional for zero-total free sales.
+- **Migration 021:** every read projection carries the `viewer` discriminant; `fixed_customer_month_as_employee_json` omits `monthlyPrice`; `get_fixed_customer_month` falls back to `synthesize_pending_fixed_customer_month` (canonical YYYY-MM period) so the first payment dialog opens for unpaid periods; `compute_fixed_subscription_payments` rejects `basis_points <= 0` and `computed_amount <= 0`; `mark_fixed_subscription_attempt_voided` records `coalesce(new.voided_by, new.registered_by)` so the audit row reflects the manager that actually voided the subscription.
+- **Dashboard:** `buildIncomeSummaryForViewer` takes an explicit `UserRole` parameter; employees with no sales today still see the employee summary (RED test added).
+- Full verification: 184 files / 844 tests pass, TypeScript clean, ESLint clean.
+
+**Remaining outstanding work (Task 6 — real PostgreSQL acceptance):**
+- Operator must run the rollback-wrapped acceptance scenarios per block against a disposable Supabase project and capture the sanitized JSON outputs before the cumulative 019 → 023 chain is rolled out. Without that evidence, remote installation remains blocked.
+
 ## Repository state
 
 - Active branch: `feat/expenses`.
@@ -18,6 +114,80 @@ Captured: 2026-08-24
 - The inline customer creator in `/incomes/new` now receives the authenticated role and complete active-user catalog. Owner/admin must select a responsible professional; employees remain self-assigned by the server. Caja and related customer/fixed-customer messages no longer contain mojibake, and Caja's hero copy describes its current manual open/close lifecycle.
 - Customer reads now disambiguate `customer_fixed_schedules.responsible_user_id` from the schedule table's other user foreign keys in PostgREST. This removes `PGRST201` after a successful customer RPC; a client affected before the repair may already be persisted because the failure happened only during the follow-up read.
 - Customer catalog validation now accepts ISO datetimes with explicit offsets such as PostgreSQL's `+00:00`, in addition to `Z`. This fixes the `/customers` render failure on newly persisted RPC rows without weakening date validation.
+<!-- Obsolete interrupted handoff retained only as merge provenance; the completed stabilization record above supersedes it.
+## Corrective repair remaining work (must finish before deploying migrations 020�023)
+
+Authoritative guide: docs/superpowers/plans/2026-08-23-operational-control-corrective-repair.md. The repair is **interrupted mid-Task 1**; the next chat must continue with the in-progress work before starting Tasks 2�7.
+
+### Task 1 � Role-safe income entry and employee privacy (PARTIALLY GREEN)
+
+Status: 2 of 6 new ole-safety.test.tsx cases fail because the 'Confirmar ingreso' dialog never opens. The form's handleReview returns setReviewValues(validValues) only when the payment sum matches, but the dialog is not visible.
+
+**Next chat must do:**
+- Diagnose why the dialog doesn't open. Likely candidates: react-hook-form re-initializing defaultValues on prop change, the PaymentMethodSelector's useEffect mutating the form, or stale serviceId validation.
+- Once the 2 failing cases pass, income-form.test.tsx will likely regress because historic tests assume mount-based payments. Split them into a managerForm.test.tsx that uses the manager schema, and keep the form's employee flow tested by ole-safety.test.tsx.
+- All 6 ole-safety.test.tsx cases must pass before Task 1 closes. Run the focused RED (
+pm test --run src/components/incomes/role-safety src/components/incomes/income-form) plus
+px tsc --noEmit,
+pm run lint, git diff --check before committing.
+- Commit with ix(incomes): complete role-safe entry contracts (the partial commit used the same message; the final commit may reuse it).
+
+### Task 2 � Income history and dashboard projections (PENDING)
+
+Goal: define ManagerPaginatedIncomes and EmployeePaginatedIncomes, parse each API success envelope with the schema selected by the viewer, never cast employee data to manager shape, never use s never or s unknown as ..., render the employee dashboard with employeeCommission only, and write RED for the history list and dashboard for the employee viewer. The (home)/page.tsx and incomes/page.tsx must use the discriminated union.
+
+Files: src/types/income.ts, src/lib/incomes/client.ts, src/app/(dashboard)/incomes/page.tsx, src/app/(dashboard)/(home)/page.tsx, src/components/incomes/incomes-view.tsx, src/components/incomes/income-table.tsx, src/components/incomes/income-mobile-list.tsx, src/components/incomes/income-detail-sheet.tsx, src/components/dashboard/income-summary-card.tsx and matching tests. Also remove the s never in the page components and the dashboard's ilter((item) => item && typeof item === 'object' && !('employeeCommission' in item)) that discards employee records.
+
+### Task 3 � Rebuild migration 021 (PENDING)
+
+Goal: write the canonical schema to a clean PostgREST-installable file with ttempts.status (active|voided) + check constraint, partial unique index for active (customer, period), role text snapshot (not numeric), canonical pay_fixed_customer_month that does NOT call ensure_daily_cash_open (022 will own universal opening), the role as text, and a hexadecimal fingerprint via encode(extensions.digest(...), 'hex') if the column is text. Also rewrite get_fixed_customer_month to synthesize a pending object from the active schedule when no attempt exists. Use an AFTER UPDATE OF status trigger to mark the linked attempt voided when oid_income flips the income, preserving the canonical void function.
+
+Files: supabase/queries/021_fixed_customer_monthly_payments.sql, src/lib/fixed-customer-payments/migration-021.test.ts, src/lib/supabase/operational-control-migrations.test.ts, src/lib/supabase/database.types.ts, supabase/queries/README.md. Make sure the client and dialog tests (Task 4) still pass.
+
+### Task 4 � Reconcile 021 client and UI (PENDING)
+
+Goal: read API success envelopes { data: { items } } and { data: { month } } with strict Zod, raise FixedCustomerPaymentApiError(status, code, message, fields?) on failure, ensure the ARS integer flows without /100/*100 (15000 stored, 15000 sent), accept combined { paymentMethodId, amount }[] for managers, and the employee dialog never renders monthlyPrice. Files: src/lib/fixed-customer-payments/client.ts, src/lib/fixed-customer-payments/client.test.ts, src/app/api/fixed-customer-months/route.test.ts, src/components/customers/customer-editor-dialog.tsx, src/components/fixed-customers/fixed-customer-payment-dialog.tsx, src/components/customers/customers-workspace.tsx.
+
+### Task 5 � Verify 023 (LIKELY GREEN)
+
+Step 1: add behavioral regression cases (no visits, one active sale, void hides newest, subscription ignored, Buenos Aires date ordering).
+Step 2: run focused tests, correct only verified defects. The current migration likely needs no production change.
+Step 3: commit only if production or test files changed, with ix(customers): preserve qualifying last visit.
+
+### Task 6 � Real PostgreSQL acceptance (PENDING; CANNOT EXECUTE)
+
+The plan requires real database acceptance against a disposable Supabase project. Without a remote execution environment we cannot satisfy this gate from the chat. The next chat must:
+- Apply migrations 001 through 023 in order to a disposable test project.
+- Run the documented acceptance sections per block (Task 6 Steps 2�5).
+- Save exact commands, exit results and representative sanitized JSON.
+- If a script fails, fix the canonical SQL in place (no _v2 objects), regenerate the operational-control-migrations.test.ts guards, re-run.
+
+### Task 7 � Final verification and documentation (PENDING)
+
+Run the full verification set:
+px next typegen,
+px tsc --noEmit,
+pm test,
+pm run lint,
+pm run build. Then reconcile AGENTS.md, context_snapshot.md, product.md, the four 2026-08-21-02x-*.md plans, and 2026-08-22-operational-control-roadmap-status.md. Record the verified handoff and commit with docs(operations): record verified stabilization rollout. Do not claim remote deployment unless Tasks 1�6 are green and the operator's actual Supabase run is recorded.
+
+## Definition of done (verbatim from the corrective repair plan)
+
+- Employee sale entry sends basis points, never catalog prices, and successfully creates an authoritative income.
+- Employee history/dashboard/detail show only their earning and sanitized concepts.
+- Migration 021 installs and supports pending/pay/duplicate/retry/void/re-pay without invalid columns or casts.
+- Migration 022 installs after 021; manual and automatic Caja states match the approved lifecycle.
+- Expected physical cash uses only Efectivo plus opening balance and cash adjustments.
+- Subscription payments enter the day's income and Caja without becoming customer visits.
+- Last visit derives only from the latest active normal sale.
+- Clean PostgreSQL installation and end-to-end manager/employee scenarios pass.
+- Full tests, lint, TypeScript, build and diff checks pass after the final production change.
+
+- Active worktree branch: `feat/changes-fullstack`. Blocks `019`, `020`, `021`, `022` and `023` are implemented locally on top of the automatic Caja baseline through migration `018` and the operational-control redesign through migration `023`.
+-->
+- The completed `feat/changes-fullstack` stabilization is incorporated into this merge: role-safe employee income entry, sanitized employee history/dashboard/detail, repaired monthly-payment contracts, the canonical Caja lifecycle and customer last-visit behavior are complete locally.
+- The configured test Supabase project is confirmed through migrations `019`-`023`. Disposable-project PostgreSQL acceptance evidence is still required before production rollout.
+- Pending test-project SQL is the unique ordered sequence `024_income_list_contract_repair.sql`, `025_fixed_customer_schedule_mutation_repair.sql`, `026_operating_expenses.sql`, `027_expense_void_contract_repair.sql`, `028_open_cash_projection_repair.sql`, `029_user_commission_profile_rpc.sql` and `030_create_income_override_record_repair.sql`.
 - The approved operational-control architecture covers ordered blocks `019` through `023`; all five blocks are implemented locally.
 - The resumable roadmap index is `docs/superpowers/plans/2026-08-22-operational-control-roadmap-status.md`. It links the approved spec and all five detailed plans, records deployment gates and marks the roadmap as fully implemented pending remote application.
 - **Implemented locally — 023:** migration `023_customer_last_visit.sql` adds a partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status='active'` and `source_type='sale'` and promotes `list_customers(actor_user_id)` plus `get_customer_visits` to derive each customer's last active sale business date in `America/Argentina/Buenos_Aires`. Voids and `fixed_subscription` incomes are excluded; a void immediately reveals the previous qualifying sale. No mutable customer column is added and the projection never exposes payment, commission, employee or price data. The customer directory adds a "Última visita" column rendered with `formatLastVisit` (date + relative label like "hoy", "ayer", "hace N días/semanas/meses/años" or "próxima").
@@ -145,19 +315,18 @@ Captured: 2026-08-24
 
 ## Known boundaries
 
-- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks. The user reports the configured project is functional through the `018` feature set; future schema changes must continue through ordered manual migrations.
-- Sale editing, expenses, counted-versus-expected cash reconciliation and reporting remain outside this milestone. Daily Caja and automatic historical closure are now implemented locally. Physical deletion remains intentionally limited to unused payment methods and product categories with zero product references; product records, services, customers and users retain their existing lifecycle rules.
+- SQL behavior is structurally covered by strict RPC/migration adapter tests and documented executable SQL acceptance blocks. The configured test project is confirmed through `023`; later incremental scripts remain manual operator actions.
+- Sale editing and reporting remain outside this milestone. Expenses and counted-versus-expected Caja reconciliation are implemented locally; Expenses intentionally do not alter Caja in the MVP.
 - The application and migration now share canonical `create_income` with per-product exception flags; migration `015` must be installed after `014` before this application slice can be deployed safely.
 - A dedicated fixed-customer management route is not part of this increment; scheduling remains in the shared customer create/edit modal.
 - The latest `016_payment_methods.sql` includes the legacy `income_payments.method` compatibility repair used by the functioning dynamic payment flow.
-- The approved roadmap intentionally supersedes two current rules only when its matching SQL and application blocks are installed: block `020` makes owner commission configurable with charged-price overrides, and `022` evolves Caja with manual open/close/confirm. Both blocks are implemented locally and await their remote migrations; until installed, owner rates remain forced to zero by `012` and Caja stays at its `018` automatic baseline.
-- Block `020` employee-safe financial projections and basis-point payment entry are wired through the repository and route handler, but the income entry/history/dashboard components still render with the manager shape. Full employee sanitization at the UI boundary is a follow-up that does not require another database migration.
+- Block `020` employee-safe projections and basis-point entry are implemented through the UI boundary; employee history, detail and dashboard no longer consume manager-shaped financial data.
 - Migration `020` materializes the `income_as_employee_json` projection, the `get_income_detail` viewer-dispatching RPC and the rewritten `list_incomes` RPC. The SQL is structurally covered by the migration test; real-Supabase acceptance remains unexecuted.
 - Historical manager filter coverage for employees later promoted to a manager role remains outside the current catalog contract. Excluding logically deleted users follows the existing lifecycle ruling; this final-fix round intentionally does not change either historical-filter boundary.
 
 ## Recommended next task
 
-Blocks `019`, `020`, `021`, `022` and `023` are implemented locally and the entire operational-control roadmap is ready for remote deployment. Apply migration `019`, then `020`, `021`, `022` and `023` in order, running each rollback-wrapped acceptance block before moving on. The pending preflight for migration `021` (legacy fixed schedules) and migration `022` (exactly one normalized payment method named `Efectivo`) must succeed against the configured Supabase project before applying the script; if either aborts, resolve the legacy data and rerun. Once all five migrations are applied, push the cumulative commits and validate the manager and employee flows end to end on `/cash`, `/incomes`, `/customers` and `/work-sessions`. No remote database mutation was performed by this worktree.
+Resolve the remaining code and SQL conflicts, run the complete verification suite, then apply the pending incremental scripts through `028` to the test project in dependency order. Validate role-safe incomes, fixed-customer schedules/payments, Expenses and Caja; production remains gated on recorded disposable-project PostgreSQL acceptance.
 
 ## Context maintenance rule
 

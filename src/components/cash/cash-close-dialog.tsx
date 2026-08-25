@@ -51,7 +51,7 @@ export const CashCloseDialog = ({ expectedCash, mode, onClose, onConfirm }: Cash
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Efectivo esperado</p>
           <p className="mt-1 text-2xl font-semibold">{formatArs(expectedCash)}</p>
         </div>
-        <label className="block text-sm font-medium">Conteo físico (ARS)
+        <label className="block text-sm font-medium">Conteo físico (ARS entero)
           <Input aria-label="Conteo físico" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
         </label>
         <div className={`rounded-xl px-3 py-2 text-sm ${difference === 0 ? "bg-emerald-50 text-emerald-800" : difference > 0 ? "bg-blue-50 text-blue-800" : "bg-red-50 text-red-700"}`}>
@@ -61,7 +61,7 @@ export const CashCloseDialog = ({ expectedCash, mode, onClose, onConfirm }: Cash
           <Button type="button" variant="outline" onClick={onClose} disabled={submitting} className="rounded-xl">Cancelar</Button>
           <Button type="submit" disabled={submitting} className="rounded-xl">
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <CircleCheck className="size-4" />}
-            {difference === 0 ? "Confirmar y cerrar" : "Registrar diferencia"}
+            {mode === "manual" ? (difference === 0 ? "Confirmar y cerrar" : "Cerrar y registrar diferencia") : "Confirmar conteo"}
           </Button>
         </DialogFooter>
       </form>

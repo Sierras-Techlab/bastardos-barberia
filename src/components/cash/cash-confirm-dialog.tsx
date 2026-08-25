@@ -15,10 +15,10 @@ export type CashConfirmDialogProps = {
 };
 
 export const CashConfirmDialog = ({ expectedCash, onClose, onConfirm }: CashConfirmDialogProps) => {
-  const [value, setValue] = useState<string>(String(expectedCash / 100));
+  const [value, setValue] = useState<string>(String(expectedCash));
   const [submitting, setSubmitting] = useState(false);
 
-  const counted = Math.round(Number(value || "0") * 100);
+  const counted = Math.round(Number(value || "0"));
   const difference = counted - expectedCash;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -50,8 +50,8 @@ export const CashConfirmDialog = ({ expectedCash, onClose, onConfirm }: CashConf
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Efectivo esperado</p>
           <p className="mt-1 text-2xl font-semibold">{formatArs(expectedCash)}</p>
         </div>
-        <label className="block text-sm font-medium">Conteo físico final (ARS)
-          <Input aria-label="Conteo físico final" type="number" inputMode="decimal" min="0" step="0.01" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
+        <label className="block text-sm font-medium">Conteo físico final (ARS entero)
+          <Input aria-label="Conteo físico final" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
         </label>
         <div className={`rounded-xl px-3 py-2 text-sm ${difference === 0 ? "bg-emerald-50 text-emerald-800" : difference > 0 ? "bg-blue-50 text-blue-800" : "bg-red-50 text-red-700"}`}>
           {difference === 0 ? "Sin diferencia" : difference > 0 ? `Sobran ${formatArs(difference)}` : `Faltan ${formatArs(Math.abs(difference))}`}

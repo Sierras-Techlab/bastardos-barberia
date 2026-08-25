@@ -18,14 +18,16 @@ describe("customer catalog", () => {
     expect(() => authorizeCustomerCatalogData({ ...data, extra: true })).toThrow();
   });
 
-  it("accepts PostgreSQL ISO datetimes with an explicit UTC offset", () => {
-    const customer = {
+  it("accepts PostgreSQL timestamptz offsets for createdAt", () => {
+    const postgresCustomer = {
       ...data.customers[0],
-      createdAt: "2026-08-23T03:40:15.123+00:00",
+      createdAt: "2026-08-24T21:15:30.123+00:00",
     };
 
-    expect(authorizeCustomerCatalogData({ customers: [customer] }).customers[0].createdAt)
-      .toBe("2026-08-23T03:40:15.123+00:00");
+    expect(
+      authorizeCustomerCatalogData({ customers: [postgresCustomer] }).customers[0]
+        .createdAt,
+    ).toBe(postgresCustomer.createdAt);
   });
 
   it("searches identity and normalized contact fields", () => {

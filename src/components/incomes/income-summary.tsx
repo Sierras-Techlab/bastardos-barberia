@@ -13,22 +13,36 @@ type IncomeSummaryProps = {
   data: IncomeFormData;
 };
 
+const getServicePrice = (service: IncomeFormData["services"][number]): number =>
+  "price" in service && typeof service.price === "number"
+    ? service.price
+    : "earning" in service ? service.earning : 0;
+
+const getProductPrice = (product: IncomeFormData["products"][number]): number =>
+  "price" in product && typeof product.price === "number"
+    ? product.price
+    : "earning" in product ? product.earning : 0;
+
 export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
-  const employee = data.employees?.find((candidate) => candidate.id === values.employeeId) ?? data.currentUser;
+  const employees = data.viewer === "manager" ? data.employees : undefined;
+  const employee = employees?.find((candidate) => candidate.id === values.employeeId) ?? data.currentUser;
   const customer = data.customers.find(
     (candidate) => candidate.id === values.customerId,
   );
   const service = data.services.find(
     (candidate) => candidate.id === values.serviceId,
   );
-  const total = calculateIncomeTotal(
-    values,
-    data.services,
-    data.products,
-  );
+  const totalInputs = data.viewer === "manager"
+    ? { services: data.services, products: data.products }
+    : {
+        services: data.services.map((entry) => ({ id: entry.id, name: entry.name, price: "earning" in entry ? entry.earning : 0 })),
+        products: data.products.map((entry) => ({ id: entry.id, name: entry.name, price: "earning" in entry ? entry.earning : 0, stock: entry.stock })),
+      };
+  const total = calculateIncomeTotal(values, totalInputs.services, totalInputs.products);
   const paymentLabel = values.payments.length > 1
     ? `Combinado (${values.payments.length} medios)`
     : data.paymentMethods.find((method) => method.id === values.payments[0]?.paymentMethodId)?.name ?? "Sin seleccionar";
+  const showTotals = data.viewer === "manager";
 
   return (
     <Card
@@ -74,7 +88,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
             <div className="flex items-start justify-between gap-4">
               <span className="text-white/70">{service.name}</span>
               <span className="shrink-0 font-medium">
-                {formatArs(service.price)}
+                {formatArs(getServicePrice(service))}
               </span>
             </div>
           )}
@@ -97,7 +111,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
                   {product.name} × {item.quantity}
                 </span>
                 <span className="shrink-0 font-medium">
-                  {formatArs(product.price * item.quantity)}
+                  {formatArs(getProductPrice(product) * item.quantity)}
                 </span>
               </div>
             );
@@ -117,12 +131,14 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
               {paymentLabel}
             </span>
           </div>
-          <div className="flex items-end justify-between gap-4">
-            <span className="text-sm text-white/55">Total</span>
-            <span className="text-3xl font-semibold tracking-tight">
-              {formatArs(total)}
-            </span>
-          </div>
+          {showTotals && (
+            <div className="flex items-end justify-between gap-4">
+              <span className="text-sm text-white/55">Total</span>
+              <span className="text-3xl font-semibold tracking-tight">
+                {formatArs(total)}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
