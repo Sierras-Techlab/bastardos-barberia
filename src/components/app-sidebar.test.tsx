@@ -108,6 +108,18 @@ it("links only managers to the active cash workspace", () => {
   expect(link).toHaveAttribute("data-active");
 });
 
+it("links only managers to expenses and keeps nested routes active", () => {
+  pathname.value = "/expenses/audit";
+  const { rerender } = render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={owner} /></SidebarProvider></TooltipProvider>,
+  );
+  const link = screen.getByRole("link", { name: "Gastos" });
+  expect(link).toHaveAttribute("href", "/expenses");
+  expect(link).toHaveAttribute("data-active");
+  rerender(<TooltipProvider><SidebarProvider><AppSidebar user={employee} /></SidebarProvider></TooltipProvider>);
+  expect(screen.queryByRole("link", { name: "Gastos" })).not.toBeInTheDocument();
+});
+
 it("keeps payment-method administration contextual to incomes", () => {
   render(
     <TooltipProvider>
@@ -175,4 +187,30 @@ it("links every authenticated role to services", () => {
   const link = screen.getByRole("link", { name: "Servicios" });
   expect(link).toHaveAttribute("href", "/services");
   expect(link).toHaveAttribute("data-active");
+});
+
+it("shows Presentismo exactly once under employee operation", () => {
+  pathname.value = "/work-sessions";
+  render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={employee} /></SidebarProvider></TooltipProvider>,
+  );
+
+  const links = screen.getAllByRole("link", { name: "Presentismo" });
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveAttribute("href", "/work-sessions");
+  expect(links[0]).toHaveAttribute("data-active");
+  expect(screen.queryByText("Administración")).not.toBeInTheDocument();
+});
+
+it("shows Presentismo exactly once under manager administration", () => {
+  pathname.value = "/work-sessions";
+  render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={owner} /></SidebarProvider></TooltipProvider>,
+  );
+
+  const links = screen.getAllByRole("link", { name: "Presentismo" });
+  expect(links).toHaveLength(1);
+  expect(links[0]).toHaveAttribute("href", "/work-sessions");
+  expect(links[0]).toHaveAttribute("data-active");
+  expect(screen.getByText("Administración")).toBeVisible();
 });

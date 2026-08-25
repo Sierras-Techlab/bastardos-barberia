@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 
-import type { IncomeFormValues } from "@/lib/incomes/income-schema";
+import type { ManagerIncomeFormValues } from "@/lib/incomes/income-schema";
 import type { IncomeFormData } from "@/types/income";
 import { IncomeSummary } from "./income-summary";
 
 const data: IncomeFormData = {
+  viewer: "manager",
   currentUser: {
     id: "employee-1",
     firstName: "Lautaro",
@@ -20,15 +21,18 @@ const data: IncomeFormData = {
     { id: "product-1", name: "Pomada", price: 10000, stock: 5 },
   ],
   paymentMethods: [{ id: "60000000-0000-4000-8000-000000000002", name: "Transferencia", isActive: true }],
+  employees: [],
 };
 
-const values: IncomeFormValues = {
+const values: ManagerIncomeFormValues = {
   employeeId: "employee-1",
   customerId: "customer-1",
   serviceId: "service-1",
   products: [{ productId: "product-1", quantity: 2, grantFullCommission: false }],
   payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 36000 }],
   grantFullServiceCommission: false,
+  servicePriceOverride: null,
+  productPriceOverrides: [],
 };
 
 it("shows the itemized sale and its hand-calculated total", () => {
@@ -48,4 +52,19 @@ it("labels an entry without a customer", () => {
   );
 
   expect(screen.getByText("Sin cliente asociado")).toBeInTheDocument();
+});
+
+it("shows charged line prices when a manager overrides catalog values", () => {
+  render(<IncomeSummary values={{
+    ...values,
+    servicePriceOverride: { chargedUnitPrice: 12000, reason: "Amigo" },
+    productPriceOverrides: [{
+      productId: "product-1",
+      override: { chargedUnitPrice: 8000, reason: "Amigo" },
+    }],
+  }} data={data} />);
+
+  expect(screen.getByText(/12\.000/)).toBeInTheDocument();
+  expect(screen.getByText(/16\.000/)).toBeInTheDocument();
+  expect(screen.getByText(/28\.000/)).toBeInTheDocument();
 });

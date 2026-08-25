@@ -6,6 +6,7 @@ import type { CustomerRepository } from "@/lib/customers/contracts";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CustomerRow } from "@/lib/supabase/database.types";
 import type { Customer } from "@/types/customer";
+import { authorizeCustomerCatalogData } from "@/lib/customers/customer-catalog";
 
 const paginatedCustomerVisitsSchema = z.object({
   items: z.array(z.object({
@@ -32,19 +33,42 @@ const paginatedCustomerVisitsSchema = z.object({
   }).strict(),
 }).strict();
 
-const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version)";
+const CUSTOMER_SELECT = "id,first_name,last_name,phone,normalized_phone,email,visits,created_by,updated_by,deleted_at,deleted_by,created_at,updated_at,fixed_schedule:customer_fixed_schedules(weekday,local_time,is_active,version,monthly_price,responsible_user:users!customer_fixed_schedules_responsible_user_id_fkey(id,first_name,last_name))";
+type CustomerScheduleRow = {
+  weekday: number;
+  local_time: string;
+  is_active: boolean;
+  version: number;
+  monthly_price: number | string;
+  responsible_user: { id: string; first_name: string; last_name: string } | Array<{ id: string; first_name: string; last_name: string }> | null;
+};
 type CustomerWithScheduleRow = CustomerRow & {
-  fixed_schedule?: { weekday: number; local_time: string; is_active: boolean; version: number } | Array<{ weekday: number; local_time: string; is_active: boolean; version: number }> | null;
+  fixed_schedule?: CustomerScheduleRow | Array<CustomerScheduleRow> | null;
+};
+const readSchedule = (row: CustomerWithScheduleRow) => {
+  const schedule = Array.isArray(row.fixed_schedule) ? row.fixed_schedule[0] : row.fixed_schedule;
+  if (!schedule) return null;
+  const responsible = Array.isArray(schedule.responsible_user) ? schedule.responsible_user[0] : schedule.responsible_user;
+  return { schedule, responsible };
 };
 export const normalizeCustomerPhone = (value: string) => value.replace(/\D/g, "");
 export const toCustomer = (row: CustomerWithScheduleRow): Customer => {
-  const schedule = Array.isArray(row.fixed_schedule) ? row.fixed_schedule[0] : row.fixed_schedule;
+  const resolved = readSchedule(row);
+  const schedule = resolved?.schedule;
+  const responsible = resolved?.responsible;
+  const monthlyPrice = schedule ? Number(schedule.monthly_price) : 0;
   return ({
   id: row.id, firstName: row.first_name, lastName: row.last_name, phone: row.phone,
   email: row.email, visits: row.visits, createdAt: row.created_at,
-  fixedSchedule: schedule?.is_active ? { weekday: schedule.weekday as 1 | 2 | 3 | 4 | 5 | 6 | 7, time: schedule.local_time.slice(0, 5) } : null,
+  fixedSchedule: schedule?.is_active && responsible ? {
+    weekday: schedule.weekday as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+    time: schedule.local_time.slice(0, 5),
+    responsibleProfessional: { id: responsible.id, firstName: responsible.first_name, lastName: responsible.last_name },
+    monthlyPrice,
+  } : null,
   fixedScheduleVersion: schedule?.version ?? null,
-  });
+  lastVisitBusinessDate: null,
+} as unknown as Customer);
 };
 const databaseFailure = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
@@ -60,7 +84,7 @@ const mutationFailure = (operation: string, error: { code?: string; details?: st
     throw new AppError("CUSTOMER_PHONE_EXISTS", "Ya existe un cliente con ese teléfono.", 409);
   }
   if (description.includes("FIXED_SCHEDULE_INVALID")) {
-    throw new AppError("FIXED_SCHEDULE_INVALID", "El horario habitual no es vÃ¡lido.", 400);
+    throw new AppError("FIXED_SCHEDULE_INVALID", "El horario habitual no es válido.", 400);
   }
   if (description.includes("FIXED_SCHEDULE_CONFLICT")) {
     throw new AppError("FIXED_SCHEDULE_CONFLICT", "El horario habitual fue modificado por otro usuario.", 409);
@@ -73,10 +97,10 @@ const readById = async (id: string) => {
   return data ? toCustomer(data as unknown as CustomerWithScheduleRow) : null;
 };
 export const customerRepository: CustomerRepository = {
-  async list() {
-    const { data, error } = await getSupabaseAdmin().from("customers").select(CUSTOMER_SELECT).is("deleted_at", null).order("created_at", { ascending: true });
+  async list(actorId) {
+    const { data, error } = await getSupabaseAdmin().rpc("list_customers", { actor_user_id: actorId });
     if (error) databaseFailure("list customers", error);
-    return (data ?? []).map((item) => toCustomer(item as unknown as CustomerWithScheduleRow));
+    return authorizeCustomerCatalogData({ customers: data ?? [] }).customers;
   },
   async latest() {
     const { data, error } = await getSupabaseAdmin()
@@ -104,7 +128,12 @@ export const customerRepository: CustomerRepository = {
       new_last_name: input.lastName,
       new_phone: input.phone,
       new_email: input.email,
-      fixed_schedule: input.fixedSchedule,
+      fixed_schedule: input.fixedSchedule ? {
+        weekday: input.fixedSchedule.weekday,
+        time: input.fixedSchedule.time,
+        responsible_user_id: input.fixedSchedule.responsibleUserId ?? null,
+        monthly_price: input.fixedSchedule.monthlyPrice,
+      } : null,
     });
     if (error) mutationFailure("create customer", error);
     if (typeof data !== "string") return databaseFailure("create customer", new Error("Missing customer"));
@@ -125,7 +154,12 @@ export const customerRepository: CustomerRepository = {
       set_email: changes.email !== undefined,
       new_email: changes.email ?? null,
       set_fixed_schedule: changes.fixedSchedule !== undefined,
-      new_fixed_schedule: changes.fixedSchedule ?? null,
+      new_fixed_schedule: changes.fixedSchedule ? {
+        weekday: changes.fixedSchedule.weekday,
+        time: changes.fixedSchedule.time,
+        responsible_user_id: changes.fixedSchedule.responsibleUserId ?? null,
+        monthly_price: changes.fixedSchedule.monthlyPrice,
+      } : null,
       expected_schedule_version: changes.expectedScheduleVersion ?? null,
     });
     if (error) mutationFailure("update customer", error);

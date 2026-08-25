@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { SafeUser } from "@/lib/auth/types";
 import {
+  formatCommissionRate,
   formatLastLogin,
   getUserInitials,
   ROLE_LABELS,
@@ -73,13 +74,8 @@ export const UserList = ({
         const fullName = user.firstName + " " + user.lastName;
         const isSelf = user.id === currentUserId;
         const selfRestrictionId = "self-action-restriction-" + user.id;
-        const commissionApplies = user.role.name !== "owner";
-        const serviceCommission = commissionApplies
-          ? `${user.serviceCommissionRate}%`
-          : "no aplica";
-        const productCommission = commissionApplies
-          ? `${user.productCommissionRate}%`
-          : "no aplica";
+        const serviceCommission = formatCommissionRate(user.serviceCommissionRate);
+        const productCommission = formatCommissionRate(user.productCommissionRate);
 
         return (
           <div
@@ -123,12 +119,12 @@ export const UserList = ({
                   <span
                     aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
                   >
-                    Servicios {commissionApplies ? serviceCommission : "No aplica"}
+                    Servicios {serviceCommission}
                   </span>
                   <span
                     aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
                   >
-                    Productos {commissionApplies ? productCommission : "No aplica"}
+                    Productos {productCommission}
                   </span>
                 </div>
               </div>
@@ -162,7 +158,7 @@ export const UserList = ({
               aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
               className="hidden text-sm font-semibold text-zinc-700 md:block"
             >
-              {commissionApplies ? serviceCommission : "No aplica"}
+              {serviceCommission}
             </div>
 
             <div
@@ -170,7 +166,7 @@ export const UserList = ({
               aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
               className="hidden text-sm font-semibold text-zinc-700 md:block"
             >
-              {commissionApplies ? productCommission : "No aplica"}
+              {productCommission}
             </div>
 
             <div role="cell" className="hidden text-xs text-zinc-500 md:block">

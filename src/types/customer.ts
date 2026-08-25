@@ -1,5 +1,5 @@
 import type { CustomerVisitProjection } from "@/lib/supabase/database.types";
-import type { FixedSchedule } from "@/types/fixed-customer";
+import type { FixedSchedule, FixedScheduleInput } from "@/types/fixed-customer";
 
 export type Customer = {
   id: string;
@@ -11,6 +11,7 @@ export type Customer = {
   createdAt: string;
   fixedSchedule: FixedSchedule | null;
   fixedScheduleVersion: number | null;
+  lastVisitBusinessDate?: string | null;
 };
 
 export type CustomerCatalogData = { customers: Customer[] };
@@ -19,9 +20,9 @@ export type CustomerSort = "original" | "visits-desc" | "visits-asc" | "newest" 
 export type CustomerScheduleFilter = "all" | "fixed" | "not-fixed";
 
 export type CustomerEditorInput = Pick<Customer, "firstName" | "lastName" | "email" | "phone">;
-export type CreateCustomerInput = CustomerEditorInput & { fixedSchedule: FixedSchedule | null };
+export type CreateCustomerInput = CustomerEditorInput & { fixedSchedule: FixedScheduleInput | null };
 export type UpdateCustomerInput = Partial<CustomerEditorInput & {
-  fixedSchedule: FixedSchedule | null;
+  fixedSchedule: FixedScheduleInput | null;
   expectedScheduleVersion: number;
 }>;
 

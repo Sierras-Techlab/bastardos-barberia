@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  CalendarClock,
   LayoutDashboard,
   LogOut,
   Package,
@@ -41,10 +42,18 @@ const operationNavigation = [
   { label: "Productos", icon: Package, href: "/products" },
 ];
 
+const employeeOperationNavigation = [
+  operationNavigation[0],
+  operationNavigation[1],
+  { label: "Presentismo", icon: CalendarClock, href: "/work-sessions" },
+  ...operationNavigation.slice(2),
+];
+
 const administrationNavigation = [
   { label: "Usuarios", icon: UserCog, href: "/users" },
+  { label: "Presentismo", icon: CalendarClock, href: "/work-sessions" },
   { label: "Caja", icon: WalletCards, href: "/cash" },
-  { label: "Gastos", icon: ReceiptText },
+  { label: "Gastos", icon: ReceiptText, href: "/expenses" },
   { label: "Reportes", icon: BarChart3 },
   { label: "Negocio", icon: Store },
 ];
@@ -64,6 +73,9 @@ export const AppSidebar = ({
   const name = `${user.firstName} ${user.lastName}`;
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
   const canManage = user.role.name === "owner" || user.role.name === "admin";
+  const visibleOperationNavigation = canManage
+    ? operationNavigation
+    : employeeOperationNavigation;
   const roleLabels = { owner: "Due\u00f1o", admin: "Administrador", employee: "Empleado" } as const;
   const isItemActive = (label: string, href?: string) => {
     if (activeItem) return activeItem === label;
@@ -109,7 +121,7 @@ export const AppSidebar = ({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {operationNavigation.map((item) => (
+              {visibleOperationNavigation.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   {item.href ? (
                     <SidebarMenuButton

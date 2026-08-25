@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymentMethods } = vi.hoisted(() => ({
+const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymentMethods, isCashClosedForDate } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -18,6 +18,7 @@ const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymen
   listIncomes: vi.fn().mockResolvedValue({ items: [], metrics: { grossTotal: 0, commissionTotal: 0, barbershopNet: 0, count: 0, average: 0, paymentTotals: [] }, pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
   listIncomeResponsibleEmployees: vi.fn().mockResolvedValue([]),
   listPaymentMethods: vi.fn().mockResolvedValue([{ id: "60000000-0000-4000-8000-000000000002", name: "Transferencia histórica", isActive: false }]),
+  isCashClosedForDate: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -25,6 +26,7 @@ vi.mock("@/lib/auth/authorization", () => ({
 }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes, listIncomeResponsibleEmployees }));
 vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: listPaymentMethods } }));
+vi.mock("@/lib/cash/repository", () => ({ isCashClosedForDate }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes",
@@ -81,6 +83,14 @@ it("loads historical responsible users for the manager filter", async () => {
 it("loads active and inactive payment methods for history and administration", async () => {
   await IncomesPage();
   expect(listPaymentMethods).toHaveBeenCalledWith(true);
+});
+
+it("hides the create-income action when today's cash is closed", async () => {
+  isCashClosedForDate.mockResolvedValueOnce(true);
+
+  render(await DashboardLayout({ children: await IncomesPage() }));
+
+  expect(screen.queryByRole("link", { name: /cargar ingreso/i })).not.toBeInTheDocument();
 });
 
 it("does not render income history after session revocation", async () => {

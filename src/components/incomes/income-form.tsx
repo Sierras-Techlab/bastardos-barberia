@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarDays } from "lucide-react";
 import { useRef, useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,20 +14,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  incomeFormSchema,
+  employeeIncomeFormSchema,
+  managerIncomeFormSchema,
+  type EmployeeIncomeFormValues,
   type IncomeFormValues,
+  type ManagerIncomeFormValues,
 } from "@/lib/incomes/income-schema";
 import {
   calculateIncomeTotal,
   formatArs,
 } from "@/lib/incomes/income-calculations";
 import { incomeClient as defaultIncomeClient, type IncomeClient } from "@/lib/incomes/client";
-import type { CreateIncomeInput, Income, IncomeFormData } from "@/types/income";
-import { calculatePaymentBalance } from "@/lib/incomes/income-commissions";
+import type {
+  CreateIncomeInput,
+  EmployeeCatalogProduct,
+  EmployeeCatalogService,
+  EmployeeIncomeListItem,
+  IncomeFormData,
+  IncomeFormEmployee,
+  IncomeListItem,
+} from "@/types/income";
 import { IncomeConfirmationDialog } from "./income-confirmation-dialog";
 import { CustomerSelector } from "./customer-selector";
 import { IncomeSummary } from "./income-summary";
 import { IncomeSuccessState } from "./income-success-state";
+import { LinePriceEditor, type LinePriceOverride } from "./line-price-editor";
 import { PaymentMethodSelector } from "./payment-method-selector";
 import { ProductSelector } from "./product-selector";
 import { ServiceSelector } from "./service-selector";
@@ -47,39 +58,127 @@ const currentDateFormatter = new Intl.DateTimeFormat("es-AR", {
   minute: "2-digit",
 });
 
+const buildTotalInputs = (data: IncomeFormData) => {
+  if (data.viewer === "manager") {
+    return {
+      services: data.services,
+      products: data.products,
+    };
+  }
+  const services: EmployeeCatalogService[] = data.services;
+  const products: EmployeeCatalogProduct[] = data.products;
+  return {
+    services: services.map((service) => ({ id: service.id, name: service.name, price: service.earning })),
+    products: products.map((product) => ({ id: product.id, name: product.name, price: product.earning, stock: product.stock })),
+  };
+};
+
+const employeeFallback: IncomeFormEmployee = {
+  id: "",
+  firstName: "",
+  lastName: "",
+  role: "employee",
+  isActive: true,
+  serviceCommissionRate: 0,
+  productCommissionRate: 0,
+};
+
+const firstValidationMessage = (errors: FieldErrors): string | null => {
+  for (const error of Object.values(errors)) {
+    if (!error || typeof error !== "object") continue;
+    if ("message" in error && typeof error.message === "string") return error.message;
+    const nested = firstValidationMessage(error as FieldErrors);
+    if (nested) return nested;
+  }
+  return null;
+};
+
 export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeFormProps) => {
   const [reviewValues, setReviewValues] = useState<IncomeFormValues | null>(
     null,
   );
-  const [createdIncome, setCreatedIncome] = useState<Income | null>(null);
+  const [createdIncome, setCreatedIncome] = useState<IncomeListItem | EmployeeIncomeListItem | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState(data.customers);
   const submittingRef = useRef(false);
   const requestIdRef = useRef(crypto.randomUUID());
-  const form = useForm<IncomeFormValues>({
-    resolver: zodResolver(incomeFormSchema),
-    defaultValues: {
-      customerId: null,
-      employeeId: data.currentUser.id,
-      serviceId: null,
-      products: [],
-      payments: [],
-      grantFullServiceCommission: false,
-    },
-  });
-  const values = useWatch({ control: form.control }) as IncomeFormValues;
-  const liveData = { ...data, customers };
 
-  const handleReview = (validValues: IncomeFormValues) => {
+  const isManager = data.viewer === "manager";
+  const schema = isManager ? managerIncomeFormSchema : employeeIncomeFormSchema;
+  const activePaymentMethods = data.paymentMethods.filter((method) => method.isActive);
+  const form = useForm<ManagerIncomeFormValues | EmployeeIncomeFormValues>({
+    resolver: zodResolver(schema) as never,
+    defaultValues: isManager
+      ? ({
+          customerId: null,
+          employeeId: data.currentUser.id,
+          serviceId: null,
+          products: [],
+          payments: [],
+          grantFullServiceCommission: false,
+          servicePriceOverride: null,
+          productPriceOverrides: [],
+        } satisfies ManagerIncomeFormValues)
+      : ({
+          customerId: null,
+          employeeId: data.currentUser.id,
+          serviceId: null,
+          products: [],
+          payments: activePaymentMethods.length > 0
+            ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
+            : [],
+          grantFullServiceCommission: false,
+          servicePriceOverride: null,
+          productPriceOverrides: [],
+        } satisfies EmployeeIncomeFormValues),
+  });
+
+  const values = useWatch({ control: form.control }) as ManagerIncomeFormValues | EmployeeIncomeFormValues;
+  const liveData = { ...data, customers };
+  const totalInputs = buildTotalInputs(data);
+  const availableProfessionals = data.viewer === "manager"
+    ? data.employees ?? [employeeFallback]
+    : [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }];
+
+  const handleReview = (validValues: ManagerIncomeFormValues | EmployeeIncomeFormValues) => {
     setSubmitError(null);
-    const total = calculateIncomeTotal(validValues, data.services, data.products);
-    const balance = calculatePaymentBalance(total, validValues.payments);
-    if (balance.remaining > 0 || balance.excess > 0 || validValues.payments.some((payment) => payment.amount <= 0)) {
-      form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
-      return;
+    const total = calculateIncomeTotal(validValues, totalInputs.services, totalInputs.products);
+    if (isManager) {
+      const managerValues = validValues as ManagerIncomeFormValues;
+      if (total === 0 && managerValues.payments.length === 0) {
+        setReviewValues(managerValues);
+        return;
+      }
+      const totalAmount = managerValues.payments.reduce(
+        (sum, payment) => sum + payment.amount,
+        0,
+      );
+      if (totalAmount !== total) {
+        form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
+        setSubmitError("Distribuí el importe total entre medios de pago válidos.");
+        return;
+      }
+    } else {
+      const employeeValues = validValues as EmployeeIncomeFormValues;
+      const employeeBasisSum = employeeValues.payments.reduce(
+        (sum, payment) => sum + payment.basisPoints,
+        0,
+      );
+      if (employeeBasisSum !== 10000) {
+        form.setError("payments", { message: "Los porcentajes deben sumar 100%." });
+        setSubmitError("Los porcentajes deben sumar 100%.");
+        return;
+      }
     }
-    setReviewValues(validValues);
+    setReviewValues(validValues as IncomeFormValues);
+  };
+
+  const handleInvalidReview = (errors: FieldErrors<ManagerIncomeFormValues | EmployeeIncomeFormValues>) => {
+    setSubmitError(
+      firstValidationMessage(errors)
+        ?? "Revisá los datos marcados antes de continuar.",
+    );
   };
 
   const handleConfirm = async () => {
@@ -90,21 +189,38 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       return;
     }
 
+    const payments: CreateIncomeInput["payments"] = isManager
+      ? (reviewValues as ManagerIncomeFormValues).payments
+          .filter((payment) => payment.amount > 0)
+          .map((payment) => ({ paymentMethodId: payment.paymentMethodId, amount: payment.amount }))
+      : (reviewValues as EmployeeIncomeFormValues).payments
+          .filter((payment) => payment.basisPoints > 0)
+          .map((payment) => ({ paymentMethodId: payment.paymentMethodId, basisPoints: payment.basisPoints }));
+
+    const managerReview = isManager ? (reviewValues as ManagerIncomeFormValues) : null;
+    const servicePriceOverride = managerReview?.servicePriceOverride ?? null;
+    const productPriceOverridesEntries = (managerReview?.productPriceOverrides ?? [])
+      .filter((entry) => entry.override !== null) as Array<{ productId: string; override: { chargedUnitPrice: number; reason: string } }>;
+    const productPriceOverrides = productPriceOverridesEntries.length > 0
+      ? Object.fromEntries(productPriceOverridesEntries.map((entry) => [entry.productId, entry.override]))
+      : undefined;
+
     const input: CreateIncomeInput = {
       requestId: requestIdRef.current,
       employeeId: reviewValues.employeeId,
       customerId: reviewValues.customerId,
       serviceId: reviewValues.serviceId,
       products: reviewValues.products,
-      payments: reviewValues.payments.filter((payment) => payment.amount > 0),
+      payments,
       grantFullServiceCommission: reviewValues.grantFullServiceCommission,
+      ...(isManager ? { servicePriceOverride, productPriceOverrides } : {}),
     };
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      const income = await incomeClient.create(input);
+      const income = await incomeClient.create(data.currentUser.role, input);
       setCreatedIncome(income);
       setReviewValues(null);
       requestIdRef.current = crypto.randomUUID();
@@ -122,26 +238,43 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   };
 
   const handleReset = () => {
-    form.reset({
-      customerId: null,
-      employeeId: data.currentUser.id,
-      serviceId: null,
-      products: [],
-      payments: [],
-      grantFullServiceCommission: false,
-    });
+    form.reset(
+      isManager
+        ? ({
+            customerId: null,
+            employeeId: data.currentUser.id,
+            serviceId: null,
+            products: [],
+            payments: [],
+            grantFullServiceCommission: false,
+            servicePriceOverride: null,
+            productPriceOverrides: [],
+          } satisfies ManagerIncomeFormValues)
+        : ({
+            customerId: null,
+            employeeId: data.currentUser.id,
+            serviceId: null,
+            products: [],
+            payments: activePaymentMethods.length > 0
+              ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
+              : [],
+            grantFullServiceCommission: false,
+            servicePriceOverride: null,
+            productPriceOverrides: [],
+          } satisfies EmployeeIncomeFormValues),
+    );
     setCreatedIncome(null);
     setSubmitError(null);
     setReviewValues(null);
   };
 
   if (createdIncome) {
-    return <IncomeSuccessState income={createdIncome} onReset={handleReset} />;
+    return <IncomeSuccessState income={createdIncome} viewerRole={data.currentUser.role} onReset={handleReset} />;
   }
 
   return (
     <form
-      onSubmit={form.handleSubmit(handleReview)}
+      onSubmit={form.handleSubmit(handleReview as never, handleInvalidReview)}
       className="grid items-start gap-5 pb-24 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.38fr)] xl:pb-0"
       noValidate
     >
@@ -155,15 +288,15 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            {isManager && data.viewer === "manager" && <div className="space-y-2">
               <label
                 htmlFor="employeeId"
                 className="text-sm font-medium text-foreground"
               >
                 Empleado responsable
               </label>
-              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [{ ...data.currentUser, isActive: true, serviceCommissionRate: 0, productCommissionRate: 0 }]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
-            </div>
+              <Controller control={form.control} name="employeeId" render={({ field, fieldState }) => <EmployeeSelector currentUser={data.currentUser} employees={data.employees ?? [employeeFallback]} value={field.value} onChange={(id) => { field.onChange(id); form.setValue("grantFullServiceCommission", false); form.setValue("products", values.products.map((product) => ({ ...product, grantFullCommission: false }))); }} error={fieldState.error?.message} />} />
+            </div>}
 
             <div className="space-y-2">
               <label
@@ -180,6 +313,8 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                     id="customerId"
                     customers={customers}
                     value={field.value}
+                    currentUserRole={data.currentUser.role}
+                    availableProfessionals={availableProfessionals}
                     onChange={field.onChange}
                     onCustomerCreated={(customer) => {
                       setCustomers((current) => [...current, customer]);
@@ -215,11 +350,26 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   onChange={(serviceId) => {
                     field.onChange(serviceId);
                     form.setValue("grantFullServiceCommission", false);
+                    form.setValue("servicePriceOverride", null);
                   }}
                   error={fieldState.error?.message}
                 />
               )}
             />
+            {isManager && values.serviceId && (() => {
+              const catalogService = data.services.find((s) => "price" in s && s.id === values.serviceId);
+              if (!catalogService) return null;
+              return <Controller control={form.control} name="servicePriceOverride" render={({ field }) => (
+                <div className="mt-3">
+                  <LinePriceEditor
+                    catalogUnitPrice={"price" in catalogService ? catalogService.price : 0}
+                    label={catalogService.name}
+                    value={field.value as LinePriceOverride | null}
+                    onChange={(next) => field.onChange(next)}
+                  />
+                </div>
+              )} />;
+            })()}
           </CardContent>
         </Card>
 
@@ -239,10 +389,36 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   products={data.products}
                   value={field.value}
                   onChange={field.onChange}
-                  canGrantFullCommission={(data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
+                  canGrantFullCommission={isManager && data.viewer === "manager" && (data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
                 />
               )}
             />
+            {isManager && values.products.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <Controller control={form.control} name="productPriceOverrides" render={({ field }) => (
+                  <>
+                    {values.products.map((productLine) => {
+                      const catalogProduct = data.products.find((p) => p.id === productLine.productId);
+                      if (!catalogProduct) return null;
+                      const currentOverrides = field.value as Array<{ productId: string; override: LinePriceOverride | null }>;
+                      const existing = currentOverrides.find((o) => o.productId === productLine.productId);
+                      return (
+                        <LinePriceEditor
+                          key={productLine.productId}
+                          catalogUnitPrice={"price" in catalogProduct ? catalogProduct.price : 0}
+                          label={`${catalogProduct.name} × ${productLine.quantity}`}
+                          value={existing?.override ?? null}
+                          onChange={(next) => {
+                            const others = currentOverrides.filter((o) => o.productId !== productLine.productId);
+                            field.onChange([...others, { productId: productLine.productId, override: next }]);
+                          }}
+                        />
+                      );
+                    })}
+                  </>
+                )} />
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -259,9 +435,10 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
               name="payments"
               render={({ field, fieldState }) => (
                 <PaymentMethodSelector
+                  mode={isManager ? "manager" : "employee"}
                   methods={data.paymentMethods}
                   payments={field.value}
-                  total={calculateIncomeTotal(values, data.services, data.products)}
+                  total={isManager ? calculateIncomeTotal(values, totalInputs.services, totalInputs.products) : undefined}
                   onChange={field.onChange}
                   error={fieldState.error?.message}
                 />
@@ -287,16 +464,18 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           aria-label="Acción de ingreso"
           className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 rounded-2xl bg-white/95 p-2 shadow-xl ring-1 ring-black/5 backdrop-blur xl:static xl:block xl:bg-transparent xl:p-0 xl:shadow-none xl:ring-0"
         >
-          <div className="min-w-0 flex-1 px-2 xl:hidden">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Total actual
-            </span>
-            <span className="block truncate text-lg font-semibold tracking-tight">
-              {formatArs(
-                calculateIncomeTotal(values, data.services, data.products),
-              )}
-            </span>
-          </div>
+          {isManager && (
+            <div className="min-w-0 flex-1 px-2 xl:hidden">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Total actual
+              </span>
+              <span className="block truncate text-lg font-semibold tracking-tight">
+                {formatArs(
+                  calculateIncomeTotal(values, totalInputs.services, totalInputs.products),
+                )}
+              </span>
+            </div>
+          )}
           <Button
             type="submit"
             size="lg"

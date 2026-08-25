@@ -49,12 +49,9 @@ export const UserEditorDialog = ({
   const [roleId, setRoleId] = useState<1 | 2 | 3>(user?.role.id ?? 3);
   const [password, setPassword] = useState("");
   const commissionUser = user ? normalizeCommissionUser(user) : null;
-  const [serviceCommissionRate, setServiceCommissionRate] = useState(user?.role.id === 1 ? 0 : commissionUser?.serviceCommissionRate ?? 0);
-  const [productCommissionRate, setProductCommissionRate] = useState(user?.role.id === 1 ? 0 : commissionUser?.productCommissionRate ?? 0);
+  const [serviceCommissionRate, setServiceCommissionRate] = useState(String(commissionUser?.serviceCommissionRate ?? 0));
+  const [productCommissionRate, setProductCommissionRate] = useState(String(commissionUser?.productCommissionRate ?? 0));
   const [validationError, setValidationError] = useState<string | null>(null);
-  const isOwner = roleId === 1;
-  const effectiveServiceCommissionRate = isOwner ? 0 : serviceCommissionRate;
-  const effectiveProductCommissionRate = isOwner ? 0 : productCommissionRate;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -64,7 +61,14 @@ export const UserEditorDialog = ({
       setValidationError("Completá nombre y apellido.");
       return;
     }
-    if (![effectiveServiceCommissionRate, effectiveProductCommissionRate].every((rate) => Number.isInteger(rate) && rate >= 0 && rate <= 100)) {
+    const parsedServiceCommissionRate = Number(serviceCommissionRate);
+    const parsedProductCommissionRate = Number(productCommissionRate);
+    if (
+      ![serviceCommissionRate, productCommissionRate].every((rate) => rate.trim() !== "")
+      || ![parsedServiceCommissionRate, parsedProductCommissionRate].every(
+        (rate) => Number.isInteger(rate) && rate >= 0 && rate <= 100,
+      )
+    ) {
       setValidationError("Las comisiones deben ser porcentajes enteros entre 0 y 100.");
       return;
     }
@@ -80,8 +84,8 @@ export const UserEditorDialog = ({
         lastName: cleanLastName,
         roleId,
         password,
-        serviceCommissionRate: effectiveServiceCommissionRate,
-        productCommissionRate: effectiveProductCommissionRate,
+        serviceCommissionRate: parsedServiceCommissionRate,
+        productCommissionRate: parsedProductCommissionRate,
       });
       if (created) setPassword("");
       return;
@@ -92,8 +96,8 @@ export const UserEditorDialog = ({
     if (cleanFirstName !== user.firstName) changes.firstName = cleanFirstName;
     if (cleanLastName !== user.lastName) changes.lastName = cleanLastName;
     if (roleId !== user.role.id) changes.roleId = roleId;
-    if (effectiveServiceCommissionRate !== commissionUser?.serviceCommissionRate) changes.serviceCommissionRate = effectiveServiceCommissionRate;
-    if (effectiveProductCommissionRate !== commissionUser?.productCommissionRate) changes.productCommissionRate = effectiveProductCommissionRate;
+    if (parsedServiceCommissionRate !== commissionUser?.serviceCommissionRate) changes.serviceCommissionRate = parsedServiceCommissionRate;
+    if (parsedProductCommissionRate !== commissionUser?.productCommissionRate) changes.productCommissionRate = parsedProductCommissionRate;
     if (Object.keys(changes).length === 0) {
       onClose();
       return;
@@ -183,14 +187,7 @@ export const UserEditorDialog = ({
                 <select
                   disabled={roles.length === 0}
                   value={String(roleId)}
-                  onChange={(event) => {
-                    const nextRoleId = Number(event.target.value) as 1 | 2 | 3;
-                    setRoleId(nextRoleId);
-                    if (nextRoleId === 1) {
-                      setServiceCommissionRate(0);
-                      setProductCommissionRate(0);
-                    }
-                  }}
+                  onChange={(event) => setRoleId(Number(event.target.value) as 1 | 2 | 3)}
                   className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
                 >
                   {roles.map((role) => (
@@ -204,11 +201,11 @@ export const UserEditorDialog = ({
               <div className="grid gap-4 rounded-2xl bg-[#f7f6f3] p-4 sm:col-span-2 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por servicios (%)
-                  <Input type="number" min="0" max="100" step="1" value={effectiveServiceCommissionRate} onChange={(event) => setServiceCommissionRate(Number(event.target.value))} disabled={isOwner} className={fieldClassName} />
+                  <Input type="number" min="0" max="100" step="1" value={serviceCommissionRate} onChange={(event) => setServiceCommissionRate(event.target.value)} className={fieldClassName} />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por productos (%)
-                  <Input type="number" min="0" max="100" step="1" value={effectiveProductCommissionRate} onChange={(event) => setProductCommissionRate(Number(event.target.value))} disabled={isOwner} className={fieldClassName} />
+                  <Input type="number" min="0" max="100" step="1" value={productCommissionRate} onChange={(event) => setProductCommissionRate(event.target.value)} className={fieldClassName} />
                 </label>
                 <p className="text-xs text-zinc-500 sm:col-span-2">Los cambios se aplicarán a ventas futuras y no modificarán el historial.</p>
               </div>

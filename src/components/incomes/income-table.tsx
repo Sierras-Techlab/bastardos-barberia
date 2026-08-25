@@ -15,19 +15,20 @@ import {
   formatIncomeConcept,
   formatIncomeDateTime,
 } from "@/lib/incomes/income-list";
-import type { IncomeListItem } from "@/types/income";
-import { getIncomeCommissionAmount, getIncomePaymentLabel } from "@/lib/incomes/income-presentation";
+import type { IncomeListRow } from "@/types/income";
+import { getIncomeCommissionAmount, getIncomePaymentLabel, getIncomeTotalAmount } from "@/lib/incomes/income-presentation";
 
 type IncomeTableProps = {
-  incomes: IncomeListItem[];
-  onSelect: (income: IncomeListItem) => void;
+  incomes: IncomeListRow[];
+  onSelect: (income: IncomeListRow) => void;
+  showEmployeeColumn?: boolean;
 };
 
 const features = tableFeatures({});
 
-const columnHelper = createColumnHelper<typeof features, IncomeListItem>();
+const columnHelper = createColumnHelper<typeof features, IncomeListRow>();
 
-export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
+export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: IncomeTableProps) => {
   const columns = useMemo(
     () =>
       columnHelper.columns([
@@ -59,12 +60,14 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
           </div>
         ),
         }),
-        columnHelper.display({
+        ...(showEmployeeColumn ? [columnHelper.display({
         id: "employee",
         header: "Empleado",
         cell: ({ row }) =>
-          `${row.original.employee.firstName} ${row.original.employee.lastName}`,
-        }),
+          "employee" in row.original && row.original.employee
+            ? `${row.original.employee.firstName} ${row.original.employee.lastName}`
+            : "—",
+        })] : []),
         columnHelper.display({
         id: "customer",
         header: "Cliente",
@@ -86,17 +89,23 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
         columnHelper.display({
         id: "total",
         header: () => <span className="block text-right">Total</span>,
-        cell: ({ row }) => (
-          <span
-            className={`block whitespace-nowrap text-right font-semibold ${
-              row.original.status === "voided"
-                ? "text-muted-foreground line-through"
-                : ""
-            }`}
-          >
-            {formatArs(row.original.total)}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const total = getIncomeTotalAmount(row.original);
+          if (total === 0) {
+            return <span className="block whitespace-nowrap text-right font-semibold text-muted-foreground">—</span>;
+          }
+          return (
+            <span
+              className={`block whitespace-nowrap text-right font-semibold ${
+                row.original.status === "voided"
+                  ? "text-muted-foreground line-through"
+                  : ""
+              }`}
+            >
+              {formatArs(total)}
+            </span>
+          );
+        },
         }),
         columnHelper.display({
         id: "actions",
@@ -117,7 +126,7 @@ export const IncomeTable = ({ incomes, onSelect }: IncomeTableProps) => {
         ),
         }),
       ]),
-    [onSelect],
+    [onSelect, showEmployeeColumn],
   );
 
   const table = useTable({

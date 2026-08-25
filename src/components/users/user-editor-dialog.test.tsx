@@ -41,7 +41,7 @@ describe("UserEditorDialog", () => {
     expect(screen.getByLabelText(/Contrase.a inicial/)).toHaveValue("");
   });
 
-  it("forces owner commission inputs to zero and prevents editing them", async () => {
+  it("allows editing owner commission rates and preserves them", async () => {
     const browser = userEvent.setup();
     const onCreate = vi.fn(async () => true);
 
@@ -62,13 +62,17 @@ describe("UserEditorDialog", () => {
     const serviceRate = screen.getByLabelText("Comisión por servicios (%)");
     const productRate = screen.getByLabelText("Comisión por productos (%)");
     await browser.clear(serviceRate);
-    await browser.type(serviceRate, "45");
+    expect(serviceRate).toHaveValue(null);
+    await browser.type(serviceRate, "35");
+    await browser.clear(productRate);
+    expect(productRate).toHaveValue(null);
+    await browser.type(productRate, "12");
     await browser.selectOptions(screen.getByLabelText("Rol del usuario"), "1");
 
-    expect(serviceRate).toBeDisabled();
-    expect(productRate).toBeDisabled();
-    expect(serviceRate).toHaveValue(0);
-    expect(productRate).toHaveValue(0);
+    expect(serviceRate).not.toBeDisabled();
+    expect(productRate).not.toBeDisabled();
+    expect(serviceRate).toHaveValue(35);
+    expect(productRate).toHaveValue(12);
 
     await browser.type(screen.getByLabelText("Nombre"), "Lucía");
     await browser.type(screen.getByLabelText("Apellido"), "Ferreyra");
@@ -77,8 +81,8 @@ describe("UserEditorDialog", () => {
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
       roleId: 1,
-      serviceCommissionRate: 0,
-      productCommissionRate: 0,
+      serviceCommissionRate: 35,
+      productCommissionRate: 12,
     })));
   });
 });

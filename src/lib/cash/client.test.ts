@@ -31,7 +31,7 @@ describe("cashClient", () => {
       "/api/cash/history?dateFrom=2026-08-01&dateTo=2026-08-15&page=2&pageSize=10",
       { cache: "no-store" },
     );
-    expect(Object.keys(cashClient).sort()).toEqual(["getDay", "list"]);
+    expect(Object.keys(cashClient).sort()).toEqual(["close", "confirm", "getDay", "list", "open"]);
   });
 
   it("preserves the public API error contract", async () => {

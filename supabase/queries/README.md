@@ -22,6 +22,26 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 16. `016_payment_methods.sql`
 17. `017_product_category_deletion.sql`
 18. `018_automatic_daily_cash.sql`
+19. `019_employee_work_sessions.sql`
+20. `020_income_pricing_owner_commissions_and_employee_privacy.sql`
+21. `021_fixed_customer_monthly_payments.sql`
+22. `022_manual_cash_lifecycle.sql`
+23. `023_customer_last_visit.sql`
+24. `024_income_list_contract_repair.sql`
+25. `025_fixed_customer_schedule_mutation_repair.sql`
+26. `026_operating_expenses.sql`
+27. `027_expense_void_contract_repair.sql`
+28. `028_open_cash_projection_repair.sql`
+29. `029_user_commission_profile_rpc.sql`
+30. `030_create_income_override_record_repair.sql`
+31. `031_income_item_charged_subtotal_repair.sql`
+32. `032_create_income_product_payment_total_repair.sql`
+33. `033_create_income_product_price_type_repair.sql`
+34. `034_create_income_complete_flow_repair.sql`
+35. `035_cash_charged_price_snapshot_repair.sql`
+36. `036_live_cash_charged_projection_repair.sql`
+37. `037_remove_legacy_income_overloads.sql`
+38. `038_cash_close_charged_snapshot_repair.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -30,6 +50,215 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `017_product_category_deletion.sql` is an incremental migration for existing projects. Run it after the latest `016`; do not rerun the structural migration `014`. It replaces the unconditional category-delete trigger with a manager-only RPC that physically removes only categories without any product references.
 
 `018_automatic_daily_cash.sql` installs the manager-only automatic cash module. It creates immutable daily closures only for dates with sales or post-close adjustments, preserves sale and payment-method snapshots for audit, records later voids as negative adjustments, and schedules the idempotent closer hourly with `pg_cron`. Run it after `017`; there is no manual open or close operation.
+
+`019_employee_work_sessions.sql` installs employee clock-in/out, append-only manager corrections and server-derived income linkage. Employee-created sales require the actor's own open session. Manager-created sales for an employee link that employee's open session when present and otherwise retain an explicit outside-session audit flag. Run it after `018`; the canonical `create_income` RPC remains unchanged.
+
+`020_income_pricing_owner_commissions_and_employee_privacy.sql` removes the owner-zero rule introduced by `012`, lets managers override charged prices with reason and computes commission on the charged subtotal. It accepts manager exact amounts and employee integer basis points (summing to 10000), allows zero-total sales without payments and exposes a sanitized `income_as_employee_json` projection that omits catalog/charged prices, payments, totals and barbershop net. Run it after `019`; the canonical `create_income`, `list_incomes`, `get_income_detail` and `income_as_json` names remain unchanged.
+
+`021_fixed_customer_monthly_payments.sql` adds `responsible_user_id` and `monthly_price` to fixed schedules, requires them on every active row, extends `incomes` with `source_type = 'fixed_subscription'` plus a unique active subscription per `(customer, period)` index, installs the append-only `fixed_customer_monthly_payment_attempts` table and exposes `list_fixed_customer_months`, `pay_fixed_customer_month` and `get_fixed_customer_month`. The two nullable mapping columns are installed before the transactional preflight. If the script stops with `LEGACY_FIXED_SCHEDULE_MAPPING_REQUIRED`, inspect the active rows, assign each real professional and positive monthly price explicitly, and rerun the complete `021` file; never infer the professional from `created_by`. The canonical `create_income` RPC remains unchanged: subscription rows are inserted directly with the appropriate `source_type` by `pay_fixed_customer_month`. `void_income` now also marks the linked payment attempt as voided, reopening the month without deleting history. Run it after `020`.
+
+`022_manual_cash_lifecycle.sql` evolves the automatic Caja into a manager-controlled lifecycle: `opening_balance`, `opening_source`, `close_mode`, `expected_cash`, `counted_cash`, `difference_cash` and `reconciliation_state` are added to `daily_cash_registers`. Legacy `018` registers are backfilled as zero opening, `first_income`, `automatic`, `pending_confirmation`; their financial snapshots stay immutable. The migration preflight aborts with `CASH_PAYMENT_METHOD_REQUIRED` unless exactly one normalized payment method named `Efectivo` exists. The payment-method RPCs reject rename/deactivate/delete of the protected record via `CASH_PAYMENT_METHOD_PROTECTED`. New RPCs `open_daily_cash`, `close_daily_cash`, `confirm_daily_cash` and the protected `ensure_daily_cash_open` (called by both `create_income` and `pay_fixed_customer_month`) use the same advisory lock as the daily register and persist a unified lifecycle block via the promoted `cash_day_as_json`. Run it after `021`.
+
+`023_customer_last_visit.sql` adds a partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status='active'` and `source_type='sale'` and promotes `list_customers(actor_user_id)` plus `get_customer_visits` to derive each customer's last active sale business date in `America/Argentina/Buenos_Aires`. Voids and `fixed_subscription` incomes are excluded; a void immediately reveals the previous qualifying sale. No mutable customer column is added and the projection never exposes payment, commission, employee or price data. Run it after `022`.
+
+`024_income_list_contract_repair.sql` is an incremental repair for projects that already installed `020` through `023`. It restores manager `paymentTotals`, the employee-only commission metrics, role-derived row scoping and valid service concept IDs in `list_incomes`/`income_as_employee_json`. Run it once after `023`; do not rerun `020` on an upgraded database.
+
+`025_fixed_customer_schedule_mutation_repair.sql` updates the schedule mutation helper to the contract introduced by `021`: weekday, local time, responsible professional and positive monthly price. It also enforces that employees can only assign habitual customers to themselves. Run it once after `024`; without it, creating or editing a habitual customer is rejected as `FIXED_SCHEDULE_INVALID` even when the selected time is valid.
+
+`026_operating_expenses.sql` installs manager-only operating expense categories, idempotent expenses, optimistic append-only revisions, void history, filtered metrics and monthly operating summaries. Expense payment-method references retain immutable names and block physical deletion with `PAYMENT_METHOD_IN_USE`; the promoted deletion RPC keeps all Caja protections and income-reference behavior unchanged. Expenses never open, close, adjust or reconcile Caja. Run it once after `025`.
+
+`027_expense_void_contract_repair.sql` replaces the initial unversioned expense-void RPC with the optimistic four-argument contract expected by the application and removes the PostgreSQL `42702` parameter/column ambiguity from the void reason. It is safe to rerun after `026`; do not rerun the one-shot structural migration to repair an already installed database.
+
+`028_open_cash_projection_repair.sql` restores the persisted register UUID in the live Caja projection. Without it, opening succeeds in PostgreSQL but the response retains the old `id: null` sentinel from the read-only Caja model, so the interface continues to offer `Abrir caja`. Run it once after `027`; it is safe to rerun.
+
+Validate migration `026` authorization, lifecycle, concurrency, projections and Caja isolation without retaining temporary records. An exact void replay with the original pre-void `updatedAt` must return `EXPENSE_CONFLICT`; a request using the current voided version must return `EXPENSE_NOT_ACTIVE`. Neither retry may append a revision.
+
+```sql
+begin;
+
+do $$
+declare
+  manager_id uuid;
+  employee_id uuid;
+  category_id uuid;
+  unused_category_id uuid;
+  payment_method_id uuid;
+  request_id uuid := extensions.gen_random_uuid();
+  test_expense_id uuid;
+  created jsonb;
+  retried jsonb;
+  edited jsonb;
+  voided jsonb;
+  listed jsonb;
+  summary jsonb;
+  original_updated_at timestamptz;
+  edited_updated_at timestamptz;
+  revision_count integer;
+  expenses_before bigint;
+  cash_before jsonb;
+  cash_after jsonb;
+  today date := (pg_catalog.clock_timestamp() at time zone 'America/Argentina/Buenos_Aires')::date;
+begin
+  select jsonb_build_object(
+    'registers', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_registers t),'[]'::jsonb),
+    'sales', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_sales t),'[]'::jsonb),
+    'payments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_payment_totals t),'[]'::jsonb),
+    'adjustments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustments t),'[]'::jsonb),
+    'adjustmentPayments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustment_payments t),'[]'::jsonb)
+  ) into cash_before;
+
+  insert into public.users(first_name,last_name,username,password_hash,role_id)
+  values('Expense','Manager','expense.manager.'||substring(replace(extensions.gen_random_uuid()::text,'-','') from 1 for 10),'$argon2id$verification',1)
+  returning id into manager_id;
+  insert into public.users(first_name,last_name,username,password_hash,role_id,created_by)
+  values('Expense','Employee','expense.employee.'||substring(replace(extensions.gen_random_uuid()::text,'-','') from 1 for 10),'$argon2id$verification',3,manager_id)
+  returning id into employee_id;
+
+  begin
+    perform public.list_expense_categories(employee_id);
+    raise exception '026 acceptance: employee authorization unexpectedly succeeded';
+  exception when insufficient_privilege then
+    if sqlerrm not like '%MANAGER_REQUIRED%' then raise; end if;
+  end;
+
+  category_id := (public.create_expense_category(manager_id,'Alquiler acceptance','fixed')->>'id')::uuid;
+  unused_category_id := (public.create_expense_category(manager_id,'Temporal acceptance','variable')->>'id')::uuid;
+  perform public.update_expense_category(manager_id,unused_category_id,'Temporal editada','supplies',false);
+  perform public.delete_expense_category(manager_id,unused_category_id);
+  begin
+    perform public.create_expense_category(manager_id,'Alquiler acceptance','variable');
+    raise exception '026 acceptance: duplicate category unexpectedly succeeded';
+  exception when unique_violation then
+    if sqlerrm not like '%EXPENSE_CATEGORY_DUPLICATE%' then raise; end if;
+  end;
+
+  insert into public.payment_methods(name,normalized_name,is_active,created_by,updated_by)
+  values('Expense method acceptance','expense method acceptance',true,manager_id,manager_id)
+  returning id into payment_method_id;
+
+  select coalesce(sum(amount),0) into expenses_before
+  from public.expenses
+  where status='active' and accounting_date>=date_trunc('month',today)::date
+    and accounting_date<(date_trunc('month',today)+interval '1 month')::date;
+
+  created := public.create_expense(manager_id,request_id,today,category_id,12000,'Alquiler mensual','  ',payment_method_id);
+  test_expense_id := (created->>'id')::uuid;
+  original_updated_at := (created->>'updatedAt')::timestamptz;
+  update public.expense_categories set is_active=false where id=category_id;
+  update public.payment_methods set is_active=false where id=payment_method_id;
+  retried := public.create_expense(manager_id,request_id,today,category_id,12000,'Alquiler mensual',null,payment_method_id);
+  if retried <> created then raise exception '026 acceptance: exact retry changed its snapshot'; end if;
+  begin
+    perform public.create_expense(manager_id,request_id,today,category_id,12001,'Alquiler mensual',null,payment_method_id);
+    raise exception '026 acceptance: semantic conflict unexpectedly succeeded';
+  exception when unique_violation then
+    if sqlerrm not like '%EXPENSE_REQUEST_CONFLICT%' then raise; end if;
+  end;
+  update public.expense_categories set is_active=true where id=category_id;
+  update public.payment_methods set is_active=true where id=payment_method_id;
+
+  edited := public.update_expense(
+    actor_user_id => manager_id, target_expense_id => test_expense_id,
+    expected_updated_at => original_updated_at, change_reason => 'Ajuste del concepto',
+    expense_concept => 'Alquiler mensual corregido'
+  );
+  edited_updated_at := (edited->>'updatedAt')::timestamptz;
+  begin
+    perform public.update_expense(
+      actor_user_id => manager_id, target_expense_id => test_expense_id,
+      expected_updated_at => original_updated_at, change_reason => 'Edicion obsoleta',
+      expense_amount => 13000
+    );
+    raise exception '026 acceptance: stale edit unexpectedly succeeded';
+  exception when serialization_failure then
+    if sqlerrm not like '%EXPENSE_CONFLICT%' then raise; end if;
+  end;
+  select count(*) into revision_count from public.expense_revisions where expense_id=test_expense_id;
+  if revision_count<>1 then raise exception '026 acceptance: edit revision missing'; end if;
+
+  begin
+    perform public.void_expense(manager_id,test_expense_id,original_updated_at,'Version obsoleta');
+    raise exception '026 acceptance: stale void unexpectedly succeeded';
+  exception when serialization_failure then
+    if sqlerrm not like '%EXPENSE_CONFLICT%' then raise; end if;
+  end;
+  begin
+    perform public.void_expense(manager_id,test_expense_id,edited_updated_at,'x');
+    raise exception '026 acceptance: short void reason unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+  voided := public.void_expense(manager_id,test_expense_id,edited_updated_at,'Registro duplicado');
+  if voided->>'status'<>'voided' then raise exception '026 acceptance: void status mismatch'; end if;
+  begin
+    perform public.void_expense(manager_id,test_expense_id,edited_updated_at,'Registro duplicado');
+    raise exception '026 acceptance: stale void retry unexpectedly succeeded';
+  exception when serialization_failure then null;
+  end;
+  begin
+    perform public.void_expense(manager_id,test_expense_id,(voided->>'updatedAt')::timestamptz,'Registro duplicado');
+    raise exception '026 acceptance: current voided retry unexpectedly succeeded';
+  exception when invalid_parameter_value then
+    if sqlerrm not like '%EXPENSE_NOT_ACTIVE%' then raise; end if;
+  end;
+  select count(*) into revision_count from public.expense_revisions where expense_id=test_expense_id;
+  if revision_count<>2 then raise exception '026 acceptance: void retries changed revisions'; end if;
+
+  listed := public.list_expenses(manager_id,to_char(today,'YYYY-MM'),null,null,category_id,'fixed',payment_method_id,'voided','corregido',1,20);
+  summary := public.get_expense_month_summary(manager_id,to_char(today,'YYYY-MM'));
+  if (listed->>'total')::integer<>1 then raise exception '026 acceptance: filters omitted voided expense'; end if;
+  if (summary->>'expenses')::bigint<>expenses_before then raise exception '026 acceptance: voided expense affected accounting summary'; end if;
+
+  begin
+    perform public.delete_payment_method(manager_id,payment_method_id);
+    raise exception '026 acceptance: referenced payment method unexpectedly deleted';
+  exception when foreign_key_violation then
+    if sqlerrm not like '%PAYMENT_METHOD_IN_USE%' then raise; end if;
+  end;
+
+  select jsonb_build_object(
+    'registers', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_registers t),'[]'::jsonb),
+    'sales', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_sales t),'[]'::jsonb),
+    'payments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_payment_totals t),'[]'::jsonb),
+    'adjustments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustments t),'[]'::jsonb),
+    'adjustmentPayments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustment_payments t),'[]'::jsonb)
+  ) into cash_after;
+  if cash_after is distinct from cash_before then
+    raise exception '026 acceptance: expense operations modified Caja';
+  end if;
+end $$;
+
+rollback;
+```
+
+Two stabilization repair files also exist for databases that installed earlier development revisions. Their numeric prefixes overlap the expense branch's incremental chain, so select them from the database's actual installation history rather than treating them as additional steps in the clean `024` through `028` sequence above.
+
+`029_user_commission_profile_rpc.sql` repairs databases that installed the earlier development revision of `010`, where the commission-aware routine was accidentally named `update_user_profile_v2` while the server calls the canonical `update_user_profile` name. It removes the obsolete nine-argument routine and temporary `_v2` routine, installs the canonical thirteen-argument RPC, restores server-only grants and reloads the PostgREST schema cache. Run it after `028`; no tables or stored data are changed.
+
+`030_create_income_override_record_repair.sql` repairs databases that already installed the earlier development revision of `020`, whose canonical `create_income` function reused `override_record` as both a PL/pgSQL record variable and a SQL lateral alias. That collision aborts every sale with SQLSTATE `55000` (`record "override_record" is not assigned yet`). The repair renames only the internal accumulator variable in the existing canonical function, preserves its signature and permissions, creates no `_v2` objects and changes no stored data. Run it after `029`. Clean installations already contain the corrected `020`, so `030` safely becomes a no-op after verifying the canonical function.
+
+`031_income_item_charged_subtotal_repair.sql` removes the legacy generated expression from `income_items.subtotal` and reconciles the legacy subtotal constraints with the charged-price snapshots introduced by `020`. Without it, the canonical `create_income` aborts item insertion with SQLSTATE `428C9`. Run it after `030`; it changes column metadata and constraints without rewriting historical values.
+
+`032_create_income_product_payment_total_repair.sql` repairs the canonical `create_income` on databases that installed `020`: charged products were accumulated after payment validation, so a sale containing products compared its payment allocation against the service-only total and returned `PAYMENT_ALLOCATION_MISMATCH`. The repair calculates the authoritative charged product total before that comparison, preserves the canonical signature and permissions and changes no stored data. Run it after `031`.
+
+`033_create_income_product_price_type_repair.sql` repairs the product snapshot insert in canonical `create_income`: prices extracted with JSON `->>` are text and must be cast before insertion into the legacy and catalog integer price columns. Without it, product sales reach the insert and fail with SQLSTATE `42804`. Run it after `032`; it changes only the installed function body and preserves its signature and permissions.
+
+`034_create_income_complete_flow_repair.sql` closes the remaining canonical sale variants after `033`: normal products no longer receive false override actors, catalog commission bases reconcile to `gross_total`, authorized zero totals/prices satisfy legacy constraints, empty manager payments are deferred to authoritative total validation, every active payment method is locked and counted, and employee percentage splits cannot persist zero-value payment rows. It changes constraints and the installed canonical function without rewriting sale history or introducing versioned RPCs. Run it after `033`.
+
+`035_cash_charged_price_snapshot_repair.sql` makes Caja use charged service/product item snapshots for closure rows and post-close void adjustments. Catalog commission bases remain available for gross catalog reporting, but no longer break Caja economics when a manager discounts, surcharges or gives a line for free. Fixed subscriptions remain entirely in the service bucket and zero-total voids create no adjustment. Run it after `034`.
+
+`036_live_cash_charged_projection_repair.sql` repairs the live Caja projection left by `028`: service/product totals now use charged item snapshots, so manager price overrides reconcile with the charged gross total, and fixed subscriptions retain the `subscription` kind instead of appearing as services. It preserves the manual-open lifecycle wrapper and uses the canonical financial helper installed by `022`. Run it after `035`.
+
+Verify the `025` repair after execution; both columns must report `true`:
+
+```sql
+select
+  pg_get_functiondef(
+    'public.create_income(uuid,uuid,uuid,uuid,uuid,jsonb,jsonb,boolean,jsonb,jsonb)'::regprocedure
+  ) ~* '[[:space:]]charged_product_record[[:space:]]+record[[:space:]]*;' as repaired_variable,
+  pg_get_functiondef(
+    'public.create_income(uuid,uuid,uuid,uuid,uuid,jsonb,jsonb,boolean,jsonb,jsonb)'::regprocedure
+  ) !~* '[[:space:]]override_record[[:space:]]+record[[:space:]]*;' as legacy_collision_removed;
+```
 
 Verify the automatic cash objects and cron job:
 
@@ -214,6 +443,413 @@ rollback;
 ```
 
 The block must finish without an exception. It proves that an active split-payment sale is included, a same-day void remains visible only as excluded audit membership, repeating the closer is a no-op, and a later void creates one exact negative adjustment without changing the original closure. `rollback` removes every temporary user, catalog row, sale, closure and adjustment.
+
+Verify the work-session objects, RLS and canonical income trigger:
+
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+  and tablename in (
+    'employee_work_sessions',
+    'employee_work_session_corrections'
+  )
+order by tablename;
+
+select routine_name
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name in (
+    'start_work_session',
+    'end_work_session',
+    'correct_work_session',
+    'get_current_work_session',
+    'list_work_sessions'
+  )
+order by routine_name;
+
+select trigger_name, action_timing, event_manipulation
+from information_schema.triggers
+where event_object_schema = 'public'
+  and event_object_table = 'incomes'
+  and trigger_name = 'attach_income_work_session';
+
+with work_session_tables(table_name) as (
+  values
+    ('public.employee_work_sessions'::regclass),
+    ('public.employee_work_session_corrections'::regclass)
+), roles(role_name) as (
+  values ('service_role'), ('anon'), ('authenticated')
+), privileges(privilege_name) as (
+  values
+    ('SELECT'),
+    ('INSERT'),
+    ('UPDATE'),
+    ('DELETE'),
+    ('TRUNCATE'),
+    ('REFERENCES'),
+    ('TRIGGER')
+)
+select
+  table_name::text as table_name,
+  role_name,
+  privilege_name,
+  case
+    when role_name = 'service_role' and privilege_name = 'SELECT' then true
+    else false
+  end as expected,
+  has_table_privilege(role_name, table_name, privilege_name) as actual
+from work_session_tables
+cross join roles
+cross join privileges
+order by table_name, role_name, privilege_name;
+
+with work_session_functions(function_signature) as (
+  values
+    ('public.start_work_session(uuid)'::regprocedure),
+    ('public.end_work_session(uuid)'::regprocedure),
+    ('public.get_current_work_session(uuid)'::regprocedure),
+    ('public.correct_work_session(uuid,uuid,timestamptz,timestamptz,timestamptz,text)'::regprocedure),
+    ('public.list_work_sessions(uuid,uuid,date,date,integer,integer)'::regprocedure)
+), roles(role_name) as (
+  values ('service_role'), ('anon'), ('authenticated')
+)
+select
+  function_signature::text as function_signature,
+  role_name,
+  case when role_name = 'service_role' then true else false end as expected,
+  has_function_privilege(role_name, function_signature, 'EXECUTE') as actual
+from work_session_functions
+cross join roles
+order by function_signature, role_name;
+```
+
+Both tables must report `rowsecurity = true`, all five canonical RPCs must be
+present exactly once, and the income trigger must report `BEFORE` / `INSERT`.
+For every table-privilege row, `actual` must equal `expected`: only
+`service_role` / `SELECT` is true; all other privileges (`INSERT`, `UPDATE`,
+`DELETE`, `TRUNCATE`, `REFERENCES` and `TRIGGER`) and every `anon` /
+`authenticated` table privilege are false. For every exact `regprocedure`
+signature, `actual` must equal `expected`: `service_role` executes the five
+canonical RPCs, while `anon` and `authenticated` do not. These effective-
+privilege checks also catch grants inherited through `PUBLIC`; they
+intentionally make no assertion about owner or `postgres` privileges.
+
+Validate work-session lifecycle, income attachment, correction audit and active-only
+production metrics without retaining temporary records:
+
+```sql
+begin;
+
+do $$
+declare
+  suffix text := substring(
+    replace(extensions.gen_random_uuid()::text, '-', '') from 1 for 12
+  );
+  manager_id uuid;
+  employee_id uuid;
+  service_id uuid;
+  payment_method_id uuid;
+  first_session_id uuid;
+  second_session_id uuid;
+  linked_income_id uuid;
+  manager_linked_income_id uuid;
+  outside_income_id uuid;
+  voided_income_id uuid;
+  first_open_started_at timestamptz;
+  first_open_updated_at timestamptz;
+  prior_started_at timestamptz;
+  prior_ended_at timestamptz;
+  valid_correction_updated_at timestamptz;
+  corrected_started_at timestamptz;
+  manager_history jsonb;
+  first_session_json jsonb;
+  second_session_json jsonb;
+begin
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate
+  ) values (
+    'Manager', 'Jornadas', 'manager.jornadas.' || suffix,
+    '$argon2id$verification', 2, 0, 0
+  ) returning id into manager_id;
+
+  insert into public.users (
+    first_name, last_name, username, password_hash, role_id,
+    service_commission_rate, product_commission_rate, created_by
+  ) values (
+    'Empleado', 'Jornadas', 'empleado.jornadas.' || suffix,
+    '$argon2id$verification', 3, 50, 0, manager_id
+  ) returning id into employee_id;
+
+  insert into public.services (
+    name, normalized_name, price, created_by, updated_by
+  ) values (
+    'Servicio jornada ' || suffix, '', 10000, manager_id, manager_id
+  ) returning id into service_id;
+
+  insert into public.payment_methods (
+    name, normalized_name, created_by, updated_by
+  ) values (
+    'Pago jornada ' || suffix, 'pago-jornada-' || suffix,
+    manager_id, manager_id
+  ) returning id into payment_method_id;
+
+  begin
+    perform public.create_income(
+      employee_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+      '[]'::jsonb,
+      jsonb_build_array(jsonb_build_object(
+        'paymentMethodId', payment_method_id,
+        'amount', 10000
+      )),
+      false
+    );
+    raise exception 'WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_WITHOUT_SESSION_FAILED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'EMPLOYEE_WORK_SESSION_REQUIRED' then
+        raise;
+      end if;
+  end;
+
+  first_session_id := (public.start_work_session(employee_id)->>'id')::uuid;
+
+  select started_at, updated_at
+  into first_open_started_at, first_open_updated_at
+  from public.employee_work_sessions
+  where id = first_session_id;
+
+  begin
+    perform public.start_work_session(employee_id);
+    raise exception 'WORK_SESSION_ACCEPTANCE_DUPLICATE_START_FAILED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'WORK_SESSION_ALREADY_OPEN' then
+        raise;
+      end if;
+  end;
+
+  linked_income_id := public.create_income(
+    employee_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+
+  if not exists (
+    select 1 from public.incomes
+    where id = linked_income_id
+      and work_session_id = first_session_id
+      and not outside_work_session
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_EMPLOYEE_SALE_LINK_FAILED';
+  end if;
+
+  -- A manager does not need a session. When attributing a sale to an employee
+  -- who does have one open, the trigger must attach it rather than mark it
+  -- outside the employee's work session.
+  manager_linked_income_id := public.create_income(
+    manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+
+  if not exists (
+    select 1 from public.incomes
+    where id = manager_linked_income_id
+      and work_session_id = first_session_id
+      and not outside_work_session
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_MANAGER_OPEN_SESSION_LINK_FAILED';
+  end if;
+
+  perform public.end_work_session(employee_id);
+
+  -- The snapshot displayed before clock-out is stale. It must not be able to
+  -- reopen the session after end_work_session has advanced updated_at.
+  begin
+    perform public.correct_work_session(
+      manager_id,
+      first_session_id,
+      first_open_updated_at,
+      first_open_started_at,
+      null,
+      'Reapertura obsoleta'
+    );
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_AFTER_END_FAILED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'WORK_SESSION_CONFLICT' then
+        raise;
+      end if;
+  end;
+
+  if exists (
+    select 1
+    from public.employee_work_sessions session
+    where session.id = first_session_id
+      and session.ended_at is null
+  ) or exists (
+    select 1
+    from public.employee_work_session_corrections correction
+    where correction.work_session_id = first_session_id
+      and correction.reason = 'Reapertura obsoleta'
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_AFTER_END_FAILED';
+  end if;
+
+  outside_income_id := public.create_income(
+    manager_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+
+  if not exists (
+    select 1 from public.incomes
+    where id = outside_income_id
+      and work_session_id is null
+      and outside_work_session
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_MANAGER_OUTSIDE_SALE_FAILED';
+  end if;
+
+  select started_at, ended_at, updated_at
+  into prior_started_at, prior_ended_at, valid_correction_updated_at
+  from public.employee_work_sessions
+  where id = first_session_id;
+
+  corrected_started_at := prior_started_at + interval '1 microsecond';
+  perform public.correct_work_session(
+    manager_id,
+    first_session_id,
+    valid_correction_updated_at,
+    corrected_started_at,
+    prior_ended_at,
+    'Ajuste de aceptación'
+  );
+
+  -- A second dialog holding the same pre-correction token must not overwrite
+  -- the valid correction that has just advanced updated_at.
+  begin
+    perform public.correct_work_session(
+      manager_id,
+      first_session_id,
+      valid_correction_updated_at,
+      corrected_started_at + interval '1 microsecond',
+      prior_ended_at,
+      'Ajuste obsoleto'
+    );
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_CORRECTION_ACCEPTED';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'WORK_SESSION_CONFLICT' then
+        raise;
+      end if;
+  end;
+
+  if not exists (
+    select 1
+    from public.employee_work_sessions session
+    where session.id = first_session_id
+      and session.started_at = corrected_started_at
+      and session.ended_at = prior_ended_at
+  ) or exists (
+    select 1
+    from public.employee_work_session_corrections correction
+    where correction.work_session_id = first_session_id
+      and correction.reason = 'Ajuste obsoleto'
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_STALE_CORRECTION_OVERWROTE_VALID_CHANGE';
+  end if;
+
+  if not exists (
+    select 1
+    from public.employee_work_session_corrections correction
+    join public.employee_work_sessions session
+      on session.id = correction.work_session_id
+    where correction.work_session_id = first_session_id
+      and correction.corrected_by = manager_id
+      and correction.reason = 'Ajuste de aceptación'
+      and correction.prior_started_at = prior_started_at
+      and correction.prior_ended_at = prior_ended_at
+      and correction.corrected_started_at = corrected_started_at
+      and correction.corrected_ended_at = prior_ended_at
+      and session.started_at = corrected_started_at
+      and session.ended_at = prior_ended_at
+  ) then
+    raise exception 'WORK_SESSION_ACCEPTANCE_CORRECTION_AUDIT_FAILED';
+  end if;
+
+  second_session_id := (public.start_work_session(employee_id)->>'id')::uuid;
+  voided_income_id := public.create_income(
+    employee_id, employee_id, extensions.gen_random_uuid(), null, service_id,
+    '[]'::jsonb,
+    jsonb_build_array(jsonb_build_object(
+      'paymentMethodId', payment_method_id,
+      'amount', 10000
+    )),
+    false
+  );
+  perform public.void_income(voided_income_id, manager_id);
+  perform public.end_work_session(employee_id);
+
+  if second_session_id = first_session_id
+    or (select count(*) from public.employee_work_sessions session
+        where session.employee_id = employee_id
+          and session.business_date = (
+            pg_catalog.clock_timestamp()
+              at time zone 'America/Argentina/Buenos_Aires'
+          )::date) <> 2
+  then
+    raise exception 'WORK_SESSION_ACCEPTANCE_SECOND_SESSION_FAILED';
+  end if;
+
+  manager_history := public.list_work_sessions(
+    manager_id, employee_id, null, null, 1, 20
+  );
+  select item into first_session_json
+  from jsonb_array_elements(manager_history->'items') item
+  where item->>'id' = first_session_id::text;
+  select item into second_session_json
+  from jsonb_array_elements(manager_history->'items') item
+  where item->>'id' = second_session_id::text;
+
+  if (first_session_json->'metrics'->>'saleCount')::integer <> 2
+    or (first_session_json->'metrics'->>'employeeCommission')::bigint <> 10000
+    or (first_session_json->'metrics'->>'grossTotal')::bigint <> 20000
+    or (first_session_json->'metrics'->>'barbershopNet')::bigint <> 10000
+    or (second_session_json->'metrics'->>'saleCount')::integer <> 0
+    or (second_session_json->'metrics'->>'employeeCommission')::bigint <> 0
+    or (second_session_json->'metrics'->>'grossTotal')::bigint <> 0
+    or (second_session_json->'metrics'->>'barbershopNet')::bigint <> 0
+  then
+    raise exception 'WORK_SESSION_ACCEPTANCE_VOID_METRICS_FAILED';
+  end if;
+end;
+$$;
+
+rollback;
+```
+
+The block must finish without an exception. It covers employee clock-in/out,
+duplicate clock-in, rejection before clock-in, exact employee linkage, manager
+linkage to an employee's open session, explicit manager outside-session audit,
+prior/new correction snapshots, stale correction rejection after clock-out,
+same-token correction rejection without overwriting the valid audit, a second
+same-day session and active-only production metrics. `rollback` removes every
+temporary identity, catalog row, session, correction, income and void effect.
 
 ## Verify
 

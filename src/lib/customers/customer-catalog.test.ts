@@ -18,6 +18,18 @@ describe("customer catalog", () => {
     expect(() => authorizeCustomerCatalogData({ ...data, extra: true })).toThrow();
   });
 
+  it("accepts PostgreSQL timestamptz offsets for createdAt", () => {
+    const postgresCustomer = {
+      ...data.customers[0],
+      createdAt: "2026-08-24T21:15:30.123+00:00",
+    };
+
+    expect(
+      authorizeCustomerCatalogData({ customers: [postgresCustomer] }).customers[0]
+        .createdAt,
+    ).toBe(postgresCustomer.createdAt);
+  });
+
   it("searches identity and normalized contact fields", () => {
     expect(filterCustomers(data.customers, "lucas").map(({ firstName }) => firstName)).toEqual(["Lucas"]);
     expect(filterCustomers(data.customers, "3515550101")).toHaveLength(1);
@@ -26,7 +38,7 @@ describe("customer catalog", () => {
 
   it("filters customers by fixed schedule without losing text search", () => {
     const customers = [
-      { ...data.customers[0], fixedSchedule: { weekday: 4 as const, time: "10:00" } },
+      { ...data.customers[0], fixedSchedule: { weekday: 4 as const, time: "10:00", responsibleProfessional: { id: "00000000-0000-4000-8000-000000000099", firstName: "Pro", lastName: "One" }, monthlyPrice: 15000 } },
       { ...data.customers[1], fixedSchedule: null },
     ];
 

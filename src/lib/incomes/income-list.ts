@@ -1,8 +1,11 @@
 import type {
+  EmployeeIncomeListItem,
+  EmployeeIncomeListMetrics,
   IncomeKind,
   IncomeListFilters,
   IncomeListItem,
   IncomeListMetrics,
+  IncomeListRow,
 } from "@/types/income";
 
 const normalize = (value: string) =>
@@ -12,10 +15,17 @@ const normalize = (value: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
-const productQuantity = (item: IncomeListItem) =>
+const managerProductQuantity = (item: IncomeListItem) =>
   item.products.reduce((total, product) => total + product.quantity, 0);
 
 const incomePayments = (item: IncomeListItem) => item.payments;
+
+const isEmployeeRow = (item: IncomeListRow): item is EmployeeIncomeListItem =>
+  Array.isArray((item as EmployeeIncomeListItem).concepts);
+
+const isManagerRow = (item: IncomeListRow): item is IncomeListItem =>
+  Array.isArray((item as IncomeListItem).payments) &&
+  "total" in item;
 
 export const getIncomeKind = (item: IncomeListItem): IncomeKind => {
   if (item.service && item.products.length > 0) {
@@ -29,8 +39,25 @@ export const getIncomeKind = (item: IncomeListItem): IncomeKind => {
   return "products";
 };
 
-export const formatIncomeConcept = (item: IncomeListItem) => {
-  const quantity = productQuantity(item);
+export const formatIncomeConcept = (item: IncomeListRow): string => {
+  if (isEmployeeRow(item)) {
+    const quantity = item.concepts.reduce((total, concept) => total + concept.quantity, 0);
+    if (quantity === 0) return "Ingreso";
+    const productCount = item.concepts.filter((concept) => concept.type === "product").reduce((total, concept) => total + concept.quantity, 0);
+    const serviceCount = item.concepts.filter((concept) => concept.type === "service").length;
+    const serviceNames = item.concepts.filter((concept) => concept.type === "service").map((concept) => concept.name);
+    if (serviceCount > 0 && productCount > 0) {
+      return `${serviceNames.join(" + ")} + ${productCount} ${productCount === 1 ? "producto" : "productos"}`;
+    }
+    if (serviceCount > 0) {
+      return serviceNames.join(" + ");
+    }
+    return `${quantity} ${quantity === 1 ? "producto" : "productos"}`;
+  }
+  if (item.sourceType === "fixed_subscription" && item.subscription) {
+    return `Mensualidad ${item.subscription.label}`;
+  }
+  const quantity = managerProductQuantity(item);
   const productLabel = `${quantity} ${quantity === 1 ? "producto" : "productos"}`;
 
   if (item.service && quantity > 0) {
@@ -53,11 +80,20 @@ export const formatIncomeDateTime = (createdAt: string) =>
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(createdAt));
 
-const matchesQuery = (item: IncomeListItem, rawQuery: string) => {
+const matchesQuery = (item: IncomeListRow, rawQuery: string) => {
   const query = normalize(rawQuery);
 
   if (!query) {
     return true;
+  }
+
+  if (isEmployeeRow(item)) {
+    const searchableValues = [
+      item.customer?.firstName ?? "",
+      item.customer?.lastName ?? "",
+      ...item.concepts.map((concept) => concept.name),
+    ];
+    return normalize(searchableValues.join(" ")).includes(query);
   }
 
   const searchableValues = [
@@ -82,10 +118,10 @@ const dateBoundary = (value: string, endOfDay: boolean) => {
   ).getTime();
 };
 
-export const filterIncomeItems = (
-  items: IncomeListItem[],
+export const filterIncomeItems = <T extends IncomeListRow>(
+  items: T[],
   filters: IncomeListFilters,
-) => {
+): T[] => {
   const from = dateBoundary(filters.dateFrom, false);
   const to = dateBoundary(filters.dateTo, true);
 
@@ -96,37 +132,53 @@ export const filterIncomeItems = (
       matchesQuery(item, filters.query) &&
       createdAt >= from &&
       createdAt <= to &&
-      (!filters.employeeId || item.employee.id === filters.employeeId) &&
+      (filters.employeeId === "" ||
+        (isManagerRow(item) && item.employee.id === filters.employeeId) ||
+        !isManagerRow(item)) &&
       (filters.paymentMethodId === "all" ||
-        incomePayments(item).some(
+        (isManagerRow(item) && incomePayments(item).some(
           (payment) => payment.paymentMethodId === filters.paymentMethodId,
-        )) &&
-      (filters.kind === "all" || getIncomeKind(item) === filters.kind)
+        )) ||
+        !isManagerRow(item)) &&
+      (filters.kind === "all" || (isManagerRow(item) && getIncomeKind(item) === filters.kind))
     );
   });
 };
 
-export const sortIncomeItems = (items: IncomeListItem[]) =>
+export const sortIncomeItems = <T extends IncomeListRow>(items: T[]): T[] =>
   [...items].sort(
     (first, second) =>
       Date.parse(second.createdAt) - Date.parse(first.createdAt),
   );
 
 export const calculateIncomeMetrics = (
-  items: IncomeListItem[],
-): IncomeListMetrics => {
+  items: IncomeListRow[],
+): IncomeListMetrics | EmployeeIncomeListMetrics => {
   const activeItems = items.filter((item) => item.status === "active");
-  const total = activeItems.reduce((sum, item) => sum + item.total, 0);
-  const commissionTotal = activeItems.reduce(
+  const isEmployeeView = activeItems.length > 0 && isEmployeeRow(activeItems[0]);
+  if (isEmployeeView) {
+    const employeeItems = activeItems.filter(isEmployeeRow);
+    const employeeCommissionTotal = employeeItems.reduce(
+      (sum, item) => sum + item.employeeCommission,
+      0,
+    );
+    return {
+      count: employeeItems.length,
+      employeeCommissionTotal,
+    } satisfies EmployeeIncomeListMetrics;
+  }
+  const managerItems = activeItems.filter(isManagerRow);
+  const total = managerItems.reduce((sum, item) => sum + item.total, 0);
+  const commissionTotal = managerItems.reduce(
     (sum, item) => sum + item.commission.total,
     0,
   );
-  const barbershopNet = activeItems.reduce(
+  const barbershopNet = managerItems.reduce(
     (sum, item) => sum + item.commission.barbershopNet,
     0,
   );
   const paymentTotalsById = new Map<string, { paymentMethodId: string; name: string; amount: number }>();
-  for (const payment of activeItems.flatMap(incomePayments)) {
+  for (const payment of managerItems.flatMap((item) => incomePayments(item))) {
     const current = paymentTotalsById.get(payment.paymentMethodId);
     paymentTotalsById.set(payment.paymentMethodId, {
       paymentMethodId: payment.paymentMethodId,
@@ -139,8 +191,8 @@ export const calculateIncomeMetrics = (
     grossTotal: total,
     commissionTotal,
     barbershopNet,
-    count: activeItems.length,
-    average: activeItems.length > 0 ? total / activeItems.length : 0,
+    count: managerItems.length,
+    average: managerItems.length > 0 ? total / managerItems.length : 0,
     paymentTotals: [...paymentTotalsById.values()],
-  };
+  } satisfies IncomeListMetrics;
 };

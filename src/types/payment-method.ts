@@ -17,7 +17,6 @@ export type IncomePayment = {
   amount: number;
 };
 
-export type IncomePaymentInput = {
-  paymentMethodId: string;
-  amount: number;
-};
+export type IncomePaymentInput =
+  | { paymentMethodId: string; amount: number }
+  | { paymentMethodId: string; basisPoints: number };

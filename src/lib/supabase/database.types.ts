@@ -115,6 +115,8 @@ export type CustomerFixedScheduleRow = {
   is_active: boolean;
   version: number;
   effective_from: string;
+  responsible_user_id: string;
+  monthly_price: number;
   created_by: string;
   updated_by: string;
   created_at: string;
@@ -134,8 +136,48 @@ export type FixedCustomerOccurrenceRow = {
   created_at: string;
 };
 
-export type IncomePaymentMethod = "cash" | "transfer";
+export type FixedCustomerMonthlyPaymentStatus = "pending" | "paid" | "voided";
+export type FixedCustomerMonthlyPaymentAttemptRow = {
+  id: string;
+  customer_id: string;
+  period: string;
+  request_id: string;
+  registered_by: string;
+  income_id: string | null;
+  status: FixedCustomerMonthlyPaymentStatus;
+  voided_at: string | null;
+  voided_by: string | null;
+  paid_at: string | null;
+  created_at: string;
+};
+
+export type IncomeSourceType = "sale" | "fixed_subscription";
+export type IncomePaymentMethod = "cash" | "transfer" | "mixed";
 export type IncomeStatus = "active" | "voided";
+
+export type EmployeeWorkSessionRow = {
+  id: string;
+  employee_id: string;
+  business_date: string;
+  started_at: string;
+  ended_at: string | null;
+  started_by: string;
+  ended_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EmployeeWorkSessionCorrectionRow = {
+  id: string;
+  work_session_id: string;
+  corrected_by: string;
+  reason: string;
+  prior_started_at: string;
+  prior_ended_at: string | null;
+  corrected_started_at: string;
+  corrected_ended_at: string | null;
+  corrected_at: string;
+};
 
 export type IncomeRow = {
   id: string;
@@ -147,6 +189,7 @@ export type IncomeRow = {
   customer_id: string | null;
   payment_method: IncomePaymentMethod | null;
   total: number;
+  gross_total: number;
   service_commission_base: number;
   product_commission_base: number;
   service_commission_rate: number;
@@ -157,6 +200,12 @@ export type IncomeRow = {
   barbershop_net: number;
   full_service_commission: boolean;
   full_service_commission_authorized_by: string | null;
+  work_session_id: string | null;
+  outside_work_session: boolean;
+  source_type: IncomeSourceType;
+  fixed_customer_id: string | null;
+  fixed_period: string | null;
+  subscription_concept: unknown;
   status: IncomeStatus;
   created_at: string;
   business_date: string;
@@ -167,8 +216,11 @@ export type IncomeRow = {
 export type IncomePaymentRow = {
   id: string;
   income_id: string;
-  method: IncomePaymentMethod;
+  method: IncomePaymentMethod | null;
+  payment_method_id: string | null;
+  method_name_snapshot: string | null;
   amount: number;
+  basis_points: number | null;
   created_at: string;
 };
 
@@ -182,13 +234,20 @@ export type IncomeItemRow = {
   product_id: string | null;
   name_snapshot: string;
   unit_price: number;
+  catalog_unit_price: number;
+  charged_unit_price: number;
   quantity: number;
   subtotal: number;
+  catalog_subtotal: number;
+  charged_subtotal: number;
+  adjustment_amount: number;
   line_subtotal: number;
   commission_rate: number;
   commission_amount: number;
   full_commission: boolean;
   full_commission_authorized_by: string | null;
+  price_override_by: string | null;
+  price_override_reason: string | null;
   created_at: string;
 };
 

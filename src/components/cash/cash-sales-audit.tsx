@@ -17,11 +17,12 @@ const formatTime = (value: string) =>
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(value));
 
-const kindLabels = {
+const kindLabels: Record<"service" | "products" | "combined" | "subscription", string> = {
   service: "Servicio",
   products: "Productos",
   combined: "Combinada",
-} as const;
+  subscription: "Mensualidad",
+};
 
 export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
   <section aria-labelledby="cash-sales-title">

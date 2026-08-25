@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/cash",
+}));
+
 const { requireManagerPage, getCashDay, listCashHistory, getBuenosAiresToday } =
   vi.hoisted(() => ({
     requireManagerPage: vi.fn(),
@@ -27,6 +32,17 @@ const emptyDay = {
   businessDate: "2026-08-15",
   state: "live",
   closedAt: null,
+  lifecycle: {
+    openingBalance: 0,
+    openingSource: null,
+    openedAt: null,
+    openedBy: null,
+    expectedCash: 0,
+    countedCash: null,
+    difference: null,
+    closeMode: null,
+    reconciliationState: "not_applicable",
+  },
   summary: {
     salesGrossTotal: 0,
     salesCommissionTotal: 0,

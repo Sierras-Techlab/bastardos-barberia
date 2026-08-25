@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FixedScheduleInput } from "@/types/fixed-customer";
 
 const optionalEmailSchema = z.preprocess(
   (value) => typeof value === "string" && value.trim() === "" ? null : value,
@@ -19,7 +20,24 @@ export const customerIdSchema = z.uuid("El cliente no es válido.");
 export const fixedScheduleSchema = z.object({
   weekday: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
   time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Ingresá una hora válida."),
+  responsibleProfessional: z.object({
+    id: z.uuid(),
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+  }).strict(),
+  monthlyPrice: z.number().int().positive(),
 }).strict();
+export const fixedScheduleInputSchema = z.object({
+  weekday: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
+  time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Ingresá una hora válida."),
+  responsibleUserId: z.uuid().optional(),
+  monthlyPrice: z.number().int().positive("Ingresá un precio mensual válido."),
+}).strict().transform((value): FixedScheduleInput => ({
+  weekday: value.weekday,
+  time: value.time,
+  responsibleUserId: value.responsibleUserId,
+  monthlyPrice: value.monthlyPrice,
+}));
 
 const customerFieldsSchema = z.object({
   firstName: z.string().trim().min(1, "Ingresá el nombre.").max(80),
@@ -28,14 +46,14 @@ const customerFieldsSchema = z.object({
   email: optionalEmailSchema,
 });
 export const createCustomerSchema = customerFieldsSchema.extend({
-  fixedSchedule: fixedScheduleSchema.nullable().default(null),
+  fixedSchedule: fixedScheduleInputSchema.nullable().default(null),
 }).strict();
 export const updateCustomerSchema = z.object({
   firstName: z.string().trim().min(1, "Ingresá el nombre.").max(80).optional(),
   lastName: z.string().trim().min(1, "Ingresá el apellido.").max(80).optional(),
   phone: phoneSchema.optional(),
   email: optionalEmailSchema.optional(),
-  fixedSchedule: fixedScheduleSchema.nullable().optional(),
+  fixedSchedule: fixedScheduleInputSchema.nullable().optional(),
   expectedScheduleVersion: z.number().int().nonnegative().optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, {
   message: "Indicá al menos un cambio para el cliente.",

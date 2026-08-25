@@ -1,6 +1,10 @@
 import { errorResponse, successResponse } from "@/lib/api/response";
 import { requireUser } from "@/lib/auth/authorization";
-import { createIncomeSchema, incomeListQuerySchema } from "@/lib/incomes/income-schema";
+import {
+  employeeCreateIncomeSchema,
+  incomeListQuerySchema,
+  managerCreateIncomeSchema,
+} from "@/lib/incomes/income-schema";
 import { createIncome, listIncomes } from "@/lib/incomes/service";
 
 const listInput = (request: Request) => {
@@ -13,5 +17,31 @@ const listInput = (request: Request) => {
     pageSize: params.has("pageSize") ? Number(params.get("pageSize")) : 10,
   });
 };
-export async function GET(request: Request) { try { const { user } = await requireUser(); return successResponse(await listIncomes(user, listInput(request))); } catch (error) { return errorResponse(error); } }
-export async function POST(request: Request) { try { const { user } = await requireUser(); const input = createIncomeSchema.parse(await request.json()); return successResponse(await createIncome(user, input), 201); } catch (error) { return errorResponse(error); } }
+
+const parseCreateForRole = async (
+  request: Request,
+  roleName: "owner" | "admin" | "employee",
+) => {
+  const body = await request.json();
+  if (roleName === "employee") return employeeCreateIncomeSchema.parse(body);
+  return managerCreateIncomeSchema.parse(body);
+};
+
+export async function GET(request: Request) {
+  try {
+    const { user } = await requireUser();
+    return successResponse(await listIncomes(user, listInput(request)));
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { user } = await requireUser();
+    const input = await parseCreateForRole(request, user.role.name);
+    return successResponse(await createIncome(user, input), 201);
+  } catch (error) {
+    return errorResponse(error);
+  }
+}

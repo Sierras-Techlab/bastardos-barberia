@@ -9,12 +9,15 @@ import { validateUniqueCustomerContact } from "@/lib/customers/customer-catalog"
 import { formatFixedSchedule } from "@/lib/customers/fixed-customers";
 import { fixedScheduleSchema, frontendCustomerEditorSchema, type FrontendCustomerEditorInput } from "@/lib/customers/frontend-customer-contracts";
 import type { Customer } from "@/types/customer";
-import type { IsoWeekday } from "@/types/fixed-customer";
+import type { FixedScheduleInput, IsoWeekday } from "@/types/fixed-customer";
 
+export type CustomerEditorProfessional = { id: string; firstName: string; lastName: string; isActive: boolean };
 export type CustomerEditorDialogProps = {
   mode: "create" | "edit";
   customer: Customer | null;
   customers: Customer[];
+  currentUserRole: "owner" | "admin" | "employee";
+  availableProfessionals?: CustomerEditorProfessional[];
   onClose(): void;
   onSave(input: FrontendCustomerEditorInput): Promise<Customer>;
 };
@@ -29,7 +32,11 @@ const weekdayOptions: { value: IsoWeekday; label: string }[] = [
   { value: 7, label: "Domingo" },
 ];
 
-export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSave }: CustomerEditorDialogProps) => {
+export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRole, availableProfessionals = [], onClose, onSave }: CustomerEditorDialogProps) => {
+  const isManager = currentUserRole === "owner" || currentUserRole === "admin";
+  const activeProfessionals = availableProfessionals.filter((professional) => professional.isActive);
+  const initialProfessionalId = customer?.fixedSchedule?.responsibleProfessional.id
+    ?? (isManager ? "" : "self");
   const [firstName, setFirstName] = useState(customer?.firstName ?? "");
   const [lastName, setLastName] = useState(customer?.lastName ?? "");
   const [email, setEmail] = useState(customer?.email ?? "");
@@ -37,22 +44,35 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
   const [hasFixedSchedule, setHasFixedSchedule] = useState(Boolean(customer?.fixedSchedule));
   const [weekday, setWeekday] = useState<IsoWeekday>(customer?.fixedSchedule?.weekday ?? 1);
   const [time, setTime] = useState(customer?.fixedSchedule?.time ?? "");
+  const [monthlyPrice, setMonthlyPrice] = useState<string>(customer?.fixedSchedule ? String(customer.fixedSchedule.monthlyPrice) : "");
+  const [professionalId, setProfessionalId] = useState<string>(initialProfessionalId);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     if (savingRef.current) return;
+    const parsedSchedule: FixedScheduleInput | null = hasFixedSchedule ? {
+      weekday,
+      time,
+      responsibleUserId: isManager && professionalId ? professionalId : undefined,
+      monthlyPrice: Math.max(0, Math.round(Number(monthlyPrice || "0"))),
+    } : null;
     const parsed = frontendCustomerEditorSchema.safeParse({
       firstName,
       lastName,
       email,
       phone,
-      fixedSchedule: hasFixedSchedule ? { weekday, time } : null,
+      fixedSchedule: parsedSchedule,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Revisá los datos ingresados.");
+      return;
+    }
+    if (hasFixedSchedule && isManager && !professionalId) {
+      setError("Seleccioná un profesional responsable.");
       return;
     }
     const duplicate = validateUniqueCustomerContact(parsed.data, customers, customer?.id);
@@ -73,7 +93,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
     }
   };
 
-  const schedulePreview = fixedScheduleSchema.safeParse({ weekday, time });
+  const schedulePreview = fixedScheduleSchema.partial({ responsibleProfessional: true, monthlyPrice: true }).safeParse({ weekday, time });
   return <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
     <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
       <form noValidate onSubmit={submit}>
@@ -91,12 +111,14 @@ export const CustomerEditorDialog = ({ mode, customer, customers, onClose, onSav
         <section className="mt-4 rounded-2xl border border-black/8 bg-[#f7f6f3] p-4">
           <label className="flex cursor-pointer items-start gap-3">
             <input type="checkbox" checked={hasFixedSchedule} onChange={(event) => setHasFixedSchedule(event.target.checked)} className="mt-0.5 size-4 accent-red-600" />
-            <span><span className="block text-sm font-semibold">¿Es cliente habitual?</span><span className="mt-0.5 block text-xs text-muted-foreground">Podés asignarle un día y horario que se repita cada semana.</span></span>
+            <span><span className="block text-sm font-semibold">¿Es cliente habitual?</span><span className="mt-0.5 block text-xs text-muted-foreground">Podés asignarle un día, horario, profesional responsable y un precio mensual.</span></span>
           </label>
           {hasFixedSchedule && <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5 text-sm font-medium">Día fijo<select aria-label="Día fijo" value={weekday} onChange={(event) => setWeekday(Number(event.target.value) as IsoWeekday)} className={`${fieldClassName} w-full px-3 text-sm`}>{weekdayOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
             <label className="space-y-1.5 text-sm font-medium">Hora fija<Input aria-label="Hora fija" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={fieldClassName} /></label>
-            {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data)}</p>}
+            {isManager ? <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Profesional responsable<select aria-label="Profesional responsable" value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} className={`${fieldClassName} w-full px-3 text-sm`}><option value="" disabled>Seleccionar profesional</option>{activeProfessionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.firstName} {professional.lastName}</option>)}</select></label> : <p className="text-xs text-muted-foreground sm:col-span-2">El profesional responsable se asigna a vos automáticamente.</p>}
+            <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Precio mensual (ARS)<Input aria-label="Precio mensual" type="number" inputMode="numeric" min="0" step="1" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} className={fieldClassName} /></label>
+            {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data as { weekday: IsoWeekday; time: string })}</p>}
           </div>}
         </section>
         {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

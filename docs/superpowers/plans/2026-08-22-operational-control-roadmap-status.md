@@ -1,0 +1,93 @@
+# Operational Control Roadmap Status and Execution Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to execute one block at a time. Read the approved spec and the selected block plan completely before changing code.
+
+**Goal:** Preserve one resumable source of truth for the operational-control roadmap, including the delivered baseline, completed block `019`, remaining blocks `020` through `023`, deployment prerequisites and verification gates.
+
+**Architecture:** The roadmap evolves the existing canonical income, fixed-customer and Caja models through ordered migrations. Each block must remain independently reviewable and deployable, must preserve strict role-specific JSON contracts and must update the shared product/context documentation after verification.
+
+**Tech Stack:** PostgreSQL/Supabase SQL, Next.js 16 App Router and Route Handlers, React 19, strict TypeScript, Zod, Vitest and Testing Library.
+
+**Spec:** `docs/superpowers/specs/2026-08-21-operational-control-and-employee-privacy-design.md`
+
+**Status captured:** 2026-08-23 on `feat/changes-fullstack` (corrective repair Tasks 1–5 closed locally; Task 6 real PostgreSQL acceptance pending operator execution).
+
+## Stabilization handoff
+
+The corrective repair plan `2026-08-23-operational-control-corrective-repair.md` has all six tasks closed on `feat/changes-fullstack`:
+
+- Task 1 (`fix(incomes): complete role-safe entry contracts`) closes the role-safe income entry RED and rebalances the form contracts.
+- Task 2 (`fix(incomes): render role-specific history and metrics`) wires `ManagerPaginatedIncomes` / `EmployeePaginatedIncomes`, the role-aware client parsers and the dashboard discriminated-union summary.
+- Task 3 (`fix(subscriptions): rebuild migration 021 monthly payment contract`) installs `attempts.status` + check + partial unique active index, removes the `ensure_daily_cash_open` call, preserves the canonical `void_income` via an `AFTER UPDATE OF status` trigger and synthesizes pending months for the first payment dialog.
+- Task 4 (`fix(subscriptions): reconcile 021 client and UI contracts`) adds `FixedCustomerPaymentApiError`, strict Zod parsing for every envelope and strips the legacy `*100` / `/100` ARS conversions.
+- Task 5 (`test(customers): add 023 behavioral regression cases`) documents the qualifying-last-visit contract; the migration SQL is unchanged.
+- Task 6 (real PostgreSQL acceptance) cannot be executed from this chat. The operator must run the rollback-wrapped acceptance scenarios per block against a disposable Supabase project, capture the sanitized JSON outputs and attach them to the deploy record before the cumulative 019 → 023 chain is rolled out.
+
+Final local verification: `npx next typegen` clean, `npx tsc --noEmit` clean, `npm test` 184 files / 823 tests pass, `npm run lint` zero warnings, `npm run build` (Next.js 16.3 Webpack) succeeds and `git diff --check` clean. The committed repository HEAD is structurally verified; the installed remote Supabase is untouched by this worktree.
+
+## Source-of-truth order
+
+1. `AGENTS.md` contains durable architecture, authorization and data-safety invariants.
+2. The approved operational-control spec defines product decisions for blocks `019` through `023`.
+3. This document records execution order and current status.
+4. Each linked block plan contains the TDD tasks, interfaces, files and verification commands.
+5. `context_snapshot.md` records the active branch, external blockers and single recommended next action.
+6. `product.md` records the user-visible module state and current product objective.
+
+## Delivered foundation before this roadmap
+
+The local application already contains authentication and user administration, product/service/customer persistence, fixed weekly schedules and attendance, historical customer visit prices, product categories, item-level commissions, dynamic split payment methods, role-scoped income history/detail, and automatic read-only Caja through ordered migrations `001`–`018`.
+
+The exact installed revision of the shared Supabase project must still be checked before applying any later migration. Local implementation status does not imply remote installation. `product.md` contains the detailed module-by-module inventory.
+
+## Roadmap status
+
+| Order | Block | Status | Outcome / next gate |
+| --- | --- | --- | --- |
+| 1 | [`019` Employee work sessions](./2026-08-21-019-employee-work-sessions.md) | Implemented and reviewed locally | Apply after `018`, run object/RLS/grant/trigger checks and rollback acceptance, then authenticated desktop/mobile QA. |
+| 2 | [`020` Pricing, owner commissions and employee privacy](./2026-08-21-020-income-pricing-owner-commissions-and-employee-privacy.md) | Implemented and stabilized | Apply after `019`, run rollback acceptance, then owner/admin/employee QA. |
+| 3 | [`021` Fixed-customer monthly payments](./2026-08-21-021-fixed-customer-monthly-payments.md) | Implemented and stabilized | Apply after `020` (legacy fixed-schedule preflight must pass) and run rollback acceptance, then owner/employee/manager QA. |
+| 4 | [`022` Manual cash lifecycle](./2026-08-21-022-manual-cash-lifecycle.md) | Implemented and stabilized | Apply after `021` (Efectivo payment method must exist) and run rollback acceptance, then manual + automatic open/close/confirm QA. |
+| 5 | [`023` Customer last visit](./2026-08-21-023-customer-last-visit.md) | Implemented and stabilized | Apply after `022` and run rollback acceptance, then directory desktop/mobile QA. |
+
+## Block 019 delivered locally
+
+- Migration `019_employee_work_sessions.sql` creates canonical work sessions, immutable correction audit, income linkage and role-scoped RPCs without `_v2` objects.
+- Employees alone mark their own entry/exit. Server and database time are authoritative, one session may be open at once, and multiple completed sessions may exist on the same local date.
+- Employee-created sales require and derive the employee's open session. Manager-created employee sales link the open session when present or snapshot `outsideWorkSession: true`; managers never require a session for their own sales.
+- Manager corrections require a reason and the visible `updatedAt` version. The RPC compares it after the row lock and before any write, so stale correction-versus-exit and correction-versus-correction attempts return `WORK_SESSION_CONFLICT`.
+- Metrics are calculated from active incomes linked to the exact session. Employee responses contain only worked minutes, sale count and employee commission; manager responses additionally contain gross and barbershop net.
+- Authenticated no-store APIs, strict browser Zod parsing, persistent employee clock UI, role-specific Presentismo history, manager filters and audited correction UI are implemented.
+- Employee income entry is guarded before catalog/editor loading when no session is open. A database race still returns the stable `EMPLOYEE_WORK_SESSION_REQUIRED` conflict as HTTP 409.
+- Final local verification passed: 164 test files / 634 tests, ESLint, Next.js route type generation, standalone TypeScript, Webpack production build and `git diff --check`.
+
+## Block 019 pending external actions
+
+- [ ] Confirm migration `018` is installed in the target Supabase project.
+- [ ] Execute `supabase/queries/019_employee_work_sessions.sql` manually.
+- [ ] Run the README object, RLS, seven-privilege table matrix, function-grant and trigger checks.
+- [ ] Run the rollback-wrapped acceptance block, including employee/manager sale linkage, void-excluded metrics and stale correction conflicts.
+- [ ] Perform authenticated desktop and 390×844 QA for entry/exit, history, correction and employee sale guard.
+- [ ] Merge or otherwise integrate `codex/019-employee-work-sessions` into the selected shared feature branch; no push or merge has occurred yet.
+
+## Remaining execution order
+
+The five roadmap blocks `019`–`023` are all implemented and stabilized locally on `feat/changes-fullstack`. The canonical migration files (`019`–`023`) are ready for manual Supabase application in order, with their respective preflight checks and rollback acceptance blocks documented in the SQL files. The stabilization plan `2026-08-23-operational-control-stabilization.md` records the corrections that closed the application/SQL contract gaps detected in the integrated verification (TDD RED safety net for legacy identifiers in `021`/`022`, role-aware form contracts in `020`, canonical schema in `021`, `018`-snapshot integration in `022`, and stripped parallel `get_customer_visits` in `023`).
+
+## Completion gate for every remaining block
+
+- Use TDD with observed RED and focused GREEN for every task.
+- Run an independent task review and a final cross-layer review.
+- Keep SQL canonical, ordered and copy/paste friendly; never create `_v2` tables or RPCs.
+- Update database row/RPC types, README installation order and rollback acceptance whenever SQL changes.
+- Run `npm test`, `npm run lint`, `npx next typegen`, `npx tsc --noEmit`, `npm run build -- --webpack` and `git diff --check` on the final HEAD.
+- Do not claim remote migration or authenticated visual QA unless it was actually executed.
+- Update `AGENTS.md` only for durable invariants, `product.md` for delivered product state and `context_snapshot.md` for current work and the next action.
+
+## Known non-blocking boundary
+
+The current Presentismo employee filter is built from current non-deleted users whose current role is `employee`. Historical sessions remain visible in unfiltered results, but an employee later promoted or logically deleted is not offered as a direct filter option. Expanding that historical identity catalog is outside block `019` and should be designed explicitly if requested.
+
+## Resume point
+
+First integrate the reviewed `019` branch into the intended shared feature branch. Then either apply and validate migration `019` when remote SQL is authorized or begin local implementation of block `020` while keeping remote installation status explicit.

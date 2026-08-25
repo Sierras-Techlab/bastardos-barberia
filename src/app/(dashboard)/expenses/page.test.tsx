@@ -1,0 +1,12 @@
+import { render, screen } from "@testing-library/react";
+import { expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ requireManagerPage: vi.fn(), listExpenses: vi.fn(), summary: vi.fn(), categories: vi.fn(), methods: vi.fn() }));
+vi.mock("@/lib/auth/authorization", () => ({ requireManagerPage: mocks.requireManagerPage }));
+vi.mock("@/lib/expenses/service", () => ({ listExpenses: mocks.listExpenses, getExpenseMonthSummary: mocks.summary, listExpenseCategories: mocks.categories }));
+vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: mocks.methods } }));
+vi.mock("@/lib/expenses/date", () => ({ getBuenosAiresMonth: () => "2026-08", getBuenosAiresToday: () => "2026-08-23" }));
+vi.mock("@/components/expenses/expenses-workspace", () => ({ ExpensesWorkspace: (props: { initialMonth: string }) => <div>Workspace {props.initialMonth}</div> }));
+vi.mock("@/components/ui/sidebar", () => ({ SidebarTrigger: () => <button>Menu</button> }));
+import ExpensesPage from "./page";
+it("authorizes explicitly and loads authoritative initial expense data", async () => { const user = { id: "actor" }; mocks.requireManagerPage.mockResolvedValue({ user }); mocks.listExpenses.mockResolvedValue({}); mocks.summary.mockResolvedValue({}); mocks.categories.mockResolvedValue([]); mocks.methods.mockResolvedValue([]); render(await ExpensesPage()); expect(mocks.requireManagerPage).toHaveBeenCalledOnce(); expect(mocks.listExpenses).toHaveBeenCalledWith(user, { month: "2026-08", page: 1, pageSize: 10 }); expect(mocks.summary).toHaveBeenCalledWith(user, "2026-08"); expect(mocks.methods).toHaveBeenCalledWith(true); expect(screen.getByText("Workspace 2026-08")).toBeVisible(); });
+it("does not load data when manager authorization fails", async () => { mocks.listExpenses.mockClear(); mocks.requireManagerPage.mockRejectedValueOnce(new Error("forbidden")); await expect(ExpensesPage()).rejects.toThrow("forbidden"); expect(mocks.listExpenses).not.toHaveBeenCalled(); });

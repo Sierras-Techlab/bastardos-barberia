@@ -23,7 +23,7 @@ describe("cash service", () => {
 
     await expect(
       getCashDay(user("employee"), "2026-08-15", {
-        cash: { getDay, list: vi.fn() },
+        cash: { getDay, list: vi.fn(), open: vi.fn(), close: vi.fn(), confirm: vi.fn() },
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
     expect(getDay).not.toHaveBeenCalled();
@@ -33,7 +33,7 @@ describe("cash service", () => {
     const manager = user("owner");
     const getDay = vi.fn().mockResolvedValue({ id: null });
     const list = vi.fn().mockResolvedValue({ items: [] });
-    const dependencies = { cash: { getDay, list } };
+    const dependencies = { cash: { getDay, list, open: vi.fn(), close: vi.fn(), confirm: vi.fn() } };
 
     await getCashDay(manager, "2026-08-15", dependencies);
     await listCashHistory(

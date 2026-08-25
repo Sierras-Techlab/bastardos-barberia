@@ -1,6 +1,9 @@
 import type {
   CashDay,
   CashHistoryQuery,
+  CloseCashInput,
+  ConfirmCashInput,
+  OpenCashInput,
   PaginatedCashHistory,
 } from "@/types/cash";
 
@@ -24,8 +27,10 @@ export class CashApiError extends Error {
   }
 }
 
-const request = async <T>(url: string): Promise<T> => {
-  const response = await fetch(url, { cache: "no-store" });
+const noStoreInit = (init?: RequestInit): RequestInit => ({ ...init, cache: "no-store" });
+
+const request = async <T>(url: string, init?: RequestInit): Promise<T> => {
+  const response = await fetch(url, noStoreInit(init));
   const body = (await response.json()) as ErrorBody & { data?: T };
 
   if (!response.ok) {
@@ -51,9 +56,27 @@ const historyQueryString = (query: CashHistoryQuery) => {
 export type CashClient = {
   getDay(date: string): Promise<CashDay>;
   list(query: CashHistoryQuery): Promise<PaginatedCashHistory>;
+  open(input: OpenCashInput): Promise<CashDay>;
+  close(input: CloseCashInput): Promise<CashDay>;
+  confirm(registerId: string, input: ConfirmCashInput): Promise<CashDay>;
 };
 
 export const cashClient: CashClient = {
   getDay: (date) => request(`/api/cash?date=${encodeURIComponent(date)}`),
   list: (query) => request(`/api/cash/history?${historyQueryString(query)}`),
+  open: (input) => request("/api/cash/open", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  }),
+  close: (input) => request("/api/cash/close", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  }),
+  confirm: (registerId, input) => request(`/api/cash/${registerId}/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  }),
 };
