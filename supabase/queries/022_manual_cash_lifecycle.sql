@@ -266,12 +266,21 @@ begin
     select coalesce(sum(i.total) filter (where i.status = 'active'), 0)::bigint as gross,
       coalesce(sum(i.commission_total) filter (where i.status = 'active'), 0)::bigint as commission,
       coalesce(sum(i.barbershop_net) filter (where i.status = 'active'), 0)::bigint as net,
-      coalesce(sum(i.service_commission_base) filter (where i.status = 'active'), 0)::bigint as service,
-      coalesce(sum(i.product_commission_base) filter (where i.status = 'active'), 0)::bigint as product,
+      coalesce(sum(case when i.source_type = 'fixed_subscription' then i.total else item_totals.service end)
+        filter (where i.status = 'active'), 0)::bigint as service,
+      coalesce(sum(case when i.source_type = 'fixed_subscription' then 0 else item_totals.product end)
+        filter (where i.status = 'active'), 0)::bigint as product,
       count(*)::integer as sale_count,
       (count(*) filter (where i.status = 'active'))::integer as active_count,
       (count(*) filter (where i.status = 'voided'))::integer as voided_count
-    from public.incomes i where i.business_date = target_business_date
+    from public.incomes i
+    left join lateral (
+      select
+        coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'service'), 0)::bigint as service,
+        coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'product'), 0)::bigint as product
+      from public.income_items ii where ii.income_id = i.id
+    ) item_totals on true
+    where i.business_date = target_business_date
   ), adjustment_totals as (
     select coalesce(sum(a.gross_delta), 0)::bigint as gross,
       coalesce(sum(a.commission_delta), 0)::bigint as commission,
@@ -300,13 +309,23 @@ begin
   select target_register_id, i.id, employee.id, employee.first_name, employee.last_name,
     case when customer.id is null then null else trim(customer.first_name || ' ' || customer.last_name) end,
     case when i.source_type = 'fixed_subscription' then 'subscription'
-      when i.service_commission_base > 0 and i.product_commission_base > 0 then 'combined'
-      when i.service_commission_base > 0 then 'service' else 'products' end,
+      when item_totals.has_service and item_totals.has_product then 'combined'
+      when item_totals.has_service then 'service' else 'products' end,
     i.status, i.total, i.commission_total, i.barbershop_net,
-    i.service_commission_base, i.product_commission_base, i.created_at
+    case when i.source_type = 'fixed_subscription' then i.total else item_totals.service end,
+    case when i.source_type = 'fixed_subscription' then 0 else item_totals.product end,
+    i.created_at
   from public.incomes i
   join public.users employee on employee.id = i.employee_id
   left join public.customers customer on customer.id = i.customer_id
+  left join lateral (
+    select
+      coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'service'), 0)::bigint as service,
+      coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'product'), 0)::bigint as product,
+      bool_or(ii.item_type = 'service') as has_service,
+      bool_or(ii.item_type = 'product') as has_product
+    from public.income_items ii where ii.income_id = i.id
+  ) item_totals on true
   where i.business_date = target_business_date;
 
   with method_movements as (
@@ -535,6 +554,7 @@ create or replace function public.capture_post_close_cash_void()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   original_cash_id uuid; adjustment_id uuid; actor_record record;
+  charged_service_total bigint; charged_product_total bigint;
   adjustment_date date := (new.voided_at at time zone 'America/Argentina/Buenos_Aires')::date;
 begin
   if not (old.status = 'active' and new.status = 'voided') then return new; end if;
@@ -544,6 +564,13 @@ begin
   where business_date = old.business_date and closed_at is not null;
   if original_cash_id is null then return new; end if;
   select first_name, last_name into actor_record from public.users where id = new.voided_by;
+  select
+    case when new.source_type = 'fixed_subscription' then new.total
+      else coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'service'), 0) end,
+    case when new.source_type = 'fixed_subscription' then 0
+      else coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'product'), 0) end
+  into charged_service_total, charged_product_total
+  from public.income_items ii where ii.income_id = new.id;
   insert into public.daily_cash_adjustments(
     business_date, source_income_id, original_daily_cash_id, created_by,
     created_by_first_name_snapshot, created_by_last_name_snapshot,
@@ -552,7 +579,7 @@ begin
   ) values (adjustment_date, new.id, original_cash_id, new.voided_by,
     actor_record.first_name, actor_record.last_name,
     -new.total::bigint, -new.commission_total::bigint, -new.barbershop_net::bigint,
-    -new.service_commission_base::bigint, -new.product_commission_base::bigint, new.voided_at)
+    -charged_service_total, -charged_product_total, new.voided_at)
   on conflict (source_income_id) do nothing returning id into adjustment_id;
   if adjustment_id is not null then
     insert into public.daily_cash_adjustment_payments(

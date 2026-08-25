@@ -6,7 +6,7 @@ const { getSupabaseAdmin } = vi.hoisted(() => ({
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdmin }));
 
-import { cashRepository } from "@/lib/cash/repository";
+import { cashRepository, isCashClosedForDate } from "@/lib/cash/repository";
 
 const actorId = "00000000-0000-4000-8000-000000000001";
 const cashId = "10000000-0000-4000-8000-000000000001";
@@ -75,6 +75,16 @@ const day = {
 
 describe("cashRepository", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("checks income-entry availability from the persisted register closure", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: { closed_at: "2026-08-15T03:00:00Z" }, error: null });
+    const eq = vi.fn().mockReturnValue({ maybeSingle });
+    const select = vi.fn().mockReturnValue({ eq });
+    getSupabaseAdmin.mockReturnValue({ from: vi.fn().mockReturnValue({ select }) });
+
+    await expect(isCashClosedForDate("2026-08-14")).resolves.toBe(true);
+    expect(eq).toHaveBeenCalledWith("business_date", "2026-08-14");
+  });
 
   it("maps manager identity and filters to the authoritative cash RPCs", async () => {
     const history = {

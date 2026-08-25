@@ -53,3 +53,18 @@ it("labels an entry without a customer", () => {
 
   expect(screen.getByText("Sin cliente asociado")).toBeInTheDocument();
 });
+
+it("shows charged line prices when a manager overrides catalog values", () => {
+  render(<IncomeSummary values={{
+    ...values,
+    servicePriceOverride: { chargedUnitPrice: 12000, reason: "Amigo" },
+    productPriceOverrides: [{
+      productId: "product-1",
+      override: { chargedUnitPrice: 8000, reason: "Amigo" },
+    }],
+  }} data={data} />);
+
+  expect(screen.getByText(/12\.000/)).toBeInTheDocument();
+  expect(screen.getByText(/16\.000/)).toBeInTheDocument();
+  expect(screen.getByText(/28\.000/)).toBeInTheDocument();
+});

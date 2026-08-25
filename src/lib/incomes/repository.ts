@@ -21,6 +21,13 @@ const databaseFailure = (operation: string, error: unknown): never => {
 
 const rpcFailure = (operation: string, error: { message?: string; code?: string }): never => {
   const message = error.message ?? "";
+  if (error.code === "428C9") {
+    throw new AppError(
+      "INCOME_SCHEMA_OUTDATED",
+      "La base de datos necesita la migración pendiente de ingresos.",
+      503,
+    );
+  }
   if (message.startsWith("INSUFFICIENT_STOCK:")) {
     throw new AppError("INSUFFICIENT_STOCK", `No hay stock suficiente de ${message.slice("INSUFFICIENT_STOCK:".length)}.`, 409);
   }
@@ -32,6 +39,7 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
     EMPLOYEE_NOT_ELIGIBLE: ["EMPLOYEE_NOT_ELIGIBLE", "El empleado seleccionado no está disponible.", 409],
     EMPLOYEE_WORK_SESSION_REQUIRED: ["EMPLOYEE_WORK_SESSION_REQUIRED", "Iniciá tu jornada antes de registrar una venta.", 409],
     PAYMENT_ALLOCATION_MISMATCH: ["PAYMENT_ALLOCATION_MISMATCH", "La distribución del pago no coincide con el total.", 409],
+    PAYMENT_METHOD_NOT_AVAILABLE: ["PAYMENT_METHOD_NOT_AVAILABLE", "Uno de los medios de pago ya no está disponible.", 409],
     INVALID_COMMISSION_OVERRIDE: ["INVALID_COMMISSION_OVERRIDE", "No se puede otorgar el servicio completo en esta venta.", 403],
     INVALID_PRODUCT_COMMISSION_OVERRIDE: ["INVALID_PRODUCT_COMMISSION_OVERRIDE", "No se puede otorgar el producto completo en esta venta.", 403],
     COMMISSION_RATE_OUT_OF_RANGE: ["COMMISSION_RATE_OUT_OF_RANGE", "La comisión configurada no es válida.", 409],

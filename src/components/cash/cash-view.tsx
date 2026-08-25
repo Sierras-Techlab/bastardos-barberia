@@ -219,9 +219,9 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
                 <ShieldCheck /> Confirmar conteo
               </Button>
             )}
-            <Link href="/incomes/new" className={buttonVariants({ className: "h-9 rounded-xl px-4" })}>
+            {isToday && day.state === "live" && <Link href="/incomes/new" className={buttonVariants({ className: "h-9 rounded-xl px-4" })}>
               <Plus /> Cargar ingreso
-            </Link>
+            </Link>}
           </div>
         </div>
 

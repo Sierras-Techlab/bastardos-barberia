@@ -65,7 +65,16 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
   it("validates an item and payment before review", async () => {
     const user = userEvent.setup(); render(<IncomeForm data={{ ...data, paymentMethods: [] }} incomeClient={client()} />);
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
-    expect(await screen.findByText("Seleccioná un servicio o agregá al menos un producto.")).toBeVisible();
+    expect((await screen.findAllByText("Seleccioná un servicio o agregá al menos un producto."))[0]).toBeVisible();
+  });
+  it("shows the validation reason instead of silently blocking review", async () => {
+    const user = userEvent.setup();
+    render(<IncomeForm data={managerData} incomeClient={client()} />);
+    await user.click(screen.getByRole("button", { name: /barba/i }));
+    await user.click(screen.getByRole("checkbox", { name: /modificar precio de barba/i }));
+    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Indicá el motivo del cambio de precio.");
+    expect(screen.queryByRole("dialog", { name: /confirmar ingreso/i })).not.toBeInTheDocument();
   });
   it("sends a generated request id and no actor, total or date", async () => {
     const user = userEvent.setup(); const create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input));

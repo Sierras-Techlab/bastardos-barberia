@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarDays } from "lucide-react";
 import { useRef, useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -81,6 +81,16 @@ const employeeFallback: IncomeFormEmployee = {
   isActive: true,
   serviceCommissionRate: 0,
   productCommissionRate: 0,
+};
+
+const firstValidationMessage = (errors: FieldErrors): string | null => {
+  for (const error of Object.values(errors)) {
+    if (!error || typeof error !== "object") continue;
+    if ("message" in error && typeof error.message === "string") return error.message;
+    const nested = firstValidationMessage(error as FieldErrors);
+    if (nested) return nested;
+  }
+  return null;
 };
 
 export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeFormProps) => {
@@ -162,6 +172,13 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       }
     }
     setReviewValues(validValues as IncomeFormValues);
+  };
+
+  const handleInvalidReview = (errors: FieldErrors<ManagerIncomeFormValues | EmployeeIncomeFormValues>) => {
+    setSubmitError(
+      firstValidationMessage(errors)
+        ?? "Revisá los datos marcados antes de continuar.",
+    );
   };
 
   const handleConfirm = async () => {
@@ -257,7 +274,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
 
   return (
     <form
-      onSubmit={form.handleSubmit(handleReview as never)}
+      onSubmit={form.handleSubmit(handleReview as never, handleInvalidReview)}
       className="grid items-start gap-5 pb-24 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.38fr)] xl:pb-0"
       noValidate
     >

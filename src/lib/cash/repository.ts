@@ -97,6 +97,16 @@ const parseCashDay = (operation: string, data: unknown) => {
   return parsed.data;
 };
 
+export const isCashClosedForDate = async (date: string): Promise<boolean> => {
+  const { data, error } = await getSupabaseAdmin()
+    .from("daily_cash_registers")
+    .select("closed_at")
+    .eq("business_date", date)
+    .maybeSingle();
+  if (error) return databaseFailure("check daily cash closure", error);
+  return data?.closed_at !== null && data?.closed_at !== undefined;
+};
+
 export const cashRepository: CashRepository = {
   async getDay(actorId, date) {
     const { data, error } = await getSupabaseAdmin().rpc("get_daily_cash", {

@@ -127,6 +127,22 @@ describe("income list domain", () => {
     );
   });
 
+  it("describes a monthly subscription instead of zero products", () => {
+    expect(formatIncomeConcept({
+      ...productsOnly,
+      sourceType: "fixed_subscription",
+      products: [],
+      subscription: {
+        sourceType: "fixed_subscription",
+        period: "2026-08",
+        monthlyPrice: 15000,
+        label: "agosto 2026",
+        employeeEarning: 4500,
+        barbershopNet: 10500,
+      },
+    })).toBe("Mensualidad agosto 2026");
+  });
+
   it("searches customers, services, products and employees", () => {
     const items = [serviceOnly, productsOnly, combined];
 

@@ -25,7 +25,7 @@ const managerProductPriceOverrideSchema = z.record(
 const managerCreatePaymentSchema = incomePaymentSchema;
 const employeeCreatePaymentSchema = z.object({
   paymentMethodId: z.uuid(),
-  basisPoints: z.number().int().min(0).max(10000),
+  basisPoints: z.number().int().min(1).max(10000),
 }).strict();
 
 const managerFormPaymentSchema = z.object({

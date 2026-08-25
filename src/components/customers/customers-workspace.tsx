@@ -15,6 +15,7 @@ export type CustomersWorkspaceProps = {
   professionals: CustomerEditorProfessional[];
   paymentMethods: PaymentMethod[];
   today: string;
+  initialFixedCustomerMonths: FixedCustomerMonth[];
 };
 
 export const CustomersWorkspace = ({
@@ -25,13 +26,16 @@ export const CustomersWorkspace = ({
   professionals,
   paymentMethods,
   today,
+  initialFixedCustomerMonths,
 }: CustomersWorkspaceProps) => {
   const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
-  const [paidMarker, setPaidMarker] = useState<{ customerId: string; period: string } | null>(null);
+  const [fixedCustomerMonths, setFixedCustomerMonths] = useState(initialFixedCustomerMonths);
 
-  const handlePaid = (_updated: FixedCustomerMonth) => {
-    if (!payingCustomer || !_updated.incomeId) return;
-    setPaidMarker({ customerId: payingCustomer.id, period: _updated.period });
+  const handlePaid = (updated: FixedCustomerMonth) => {
+    setFixedCustomerMonths((current) => [
+      ...current.filter((month) => month.customer.id !== updated.customer.id),
+      updated,
+    ]);
   };
 
   return <>
@@ -42,6 +46,7 @@ export const CustomersWorkspace = ({
       currentUserRole={currentUserRole}
       availableProfessionals={professionals}
       onOpenFixedPayment={setPayingCustomer}
+      fixedCustomerMonths={fixedCustomerMonths}
       today={today}
     />
     {payingCustomer && (
@@ -50,7 +55,7 @@ export const CustomersWorkspace = ({
         currentUserId={currentUserId}
         currentUserRole={currentUserRole}
         paymentMethods={paymentMethods}
-        period={paidMarker?.customerId === payingCustomer.id ? paidMarker.period : undefined}
+        period={fixedCustomerMonths.find((month) => month.customer.id === payingCustomer.id)?.period}
         onClose={() => setPayingCustomer(null)}
         onPaid={handlePaid}
       />

@@ -9,7 +9,11 @@
     "lint": "eslint",
     "bootstrap:owner": "tsx --env-file=.env scripts/bootstrap-owner.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audit:db": "tsx --env-file=.env scripts/system-db-audit.ts",
+    "acceptance:db": "tsx --env-file=.env scripts/system-db-acceptance.ts",
+    "acceptance:http": "tsx --env-file=.env scripts/system-http-acceptance.ts",
+    "acceptance:concurrency": "tsx --env-file=.env scripts/system-concurrency-acceptance.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -38,12 +42,14 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
     "@types/node": "^20",
+    "@types/pg": "^8.15.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "jsdom": "^30.0.1",
+    "pg": "^8.16.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.11",
     "typescript": "^5",

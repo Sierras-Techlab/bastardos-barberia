@@ -54,6 +54,9 @@ export const formatIncomeConcept = (item: IncomeListRow): string => {
     }
     return `${quantity} ${quantity === 1 ? "producto" : "productos"}`;
   }
+  if (item.sourceType === "fixed_subscription" && item.subscription) {
+    return `Mensualidad ${item.subscription.label}`;
+  }
   const quantity = managerProductQuantity(item);
   const productLabel = `${quantity} ${quantity === 1 ? "producto" : "productos"}`;
 

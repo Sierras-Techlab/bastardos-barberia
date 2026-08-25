@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 ## Vision
 
@@ -38,11 +38,13 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-The active branch is `feat/expenses`. The test database has migrations `019` through `023` installed and the corrective stabilization work is complete locally. Pending incremental SQL is ordered uniquely from `024_income_list_contract_repair.sql` through `030_create_income_override_record_repair.sql`. Apply `024` through `030` in order after completing verification. Production remains gated on recorded disposable-project PostgreSQL acceptance.
+The active branch is `feat/expenses`. The test database is installed through `038_cash_close_charged_snapshot_repair.sql`. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance now verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses and critical stock/session/idempotency races. The runners remove or roll back every acceptance-owned fixture. Production remains gated on a separate clean-install environment and production deployment approval.
 
 The operational-control roadmap comprises `019` employee work sessions, `020` manager price overrides/configurable owner commission/employee-safe projections, `021` professional-owned fixed customers with atomic monthly payments, `022` manual Caja lifecycle and `023` derived customer last visit. These blocks are installed in the test database. Customer visit totals continue to count only active normal sales; subscription incomes affect Caja and dashboards without inflating visit history.
 
 Caja supports manual open/close/confirm with automatic first-income opening and automatic pending-confirmation closing; reconciliation never recomputes closed snapshots. Incremental `028` repairs the live opened-register UUID projection for databases that already installed `022`.
+
+When the current Buenos Aires Caja is closed, the income history, dashboard quick actions and Caja workspace no longer offer income creation, and direct navigation to `/incomes/new` redirects back to the ledger. The database still rejects any stale form submission that races with closure.
 
 The payment-method catalog validates trimmed names, manager-only lifecycle operations and last-active protection. Authenticated Route Handlers expose active and inactive historical methods and safely return a 404 for unknown IDs. `PATCH` handles rename, deactivation and reactivation; `DELETE` permanently removes only unused methods. Referenced methods return a stable conflict and remain available for logical deactivation, preserving immutable sale history. The manager UI shows active methods by default and keeps inactive methods in a separate recoverable view. Sales submit one or more distinct UUID allocations, manager filters include historical methods and dashboard totals are dynamic. The latest migration `016` is required to enforce this contract.
 

@@ -22,6 +22,11 @@ drop function if exists public.enforce_owner_income_commission();
 -- 2. Charged-price snapshots on income_items
 -- ---------------------------------------------------------------------------
 
+-- The original catalog-only model generated subtotal from unit_price. Charged
+-- price overrides need both legacy fields to snapshot the amount actually paid.
+alter table public.income_items
+  alter column subtotal drop expression if exists;
+
 alter table public.income_items
   add column if not exists catalog_unit_price integer,
   add column if not exists charged_unit_price integer,
@@ -49,6 +54,19 @@ alter table public.income_items
   alter column adjustment_amount set not null;
 
 alter table public.income_items
+  drop constraint if exists income_items_subtotal_check,
+  drop constraint if exists income_items_line_subtotal_check;
+
+alter table public.income_items
+  alter column subtotal set not null,
+  add constraint income_items_subtotal_check check (
+    subtotal >= 0 and subtotal = charged_subtotal
+  ),
+  add constraint income_items_line_subtotal_check check (
+    line_subtotal >= 0
+    and line_subtotal = charged_subtotal
+    and subtotal = charged_subtotal
+  ),
   add constraint income_items_catalog_charged_price_check check (
     catalog_unit_price >= 0
     and charged_unit_price >= 0
@@ -80,6 +98,24 @@ alter table public.incomes
   alter column gross_total set not null,
   add constraint incomes_gross_total_check check (gross_total >= 0);
 
+alter table public.incomes
+  drop constraint if exists incomes_total_check,
+  drop constraint if exists incomes_commission_bases_check;
+
+alter table public.incomes
+  add constraint incomes_total_check check (total >= 0),
+  add constraint incomes_commission_bases_check check (
+    service_commission_base >= 0
+    and product_commission_base >= 0
+    and service_commission_base + product_commission_base = gross_total
+  );
+
+alter table public.income_items
+  drop constraint if exists income_items_price_check;
+
+alter table public.income_items
+  add constraint income_items_price_check check (unit_price >= 0);
+
 alter table public.income_payments
   add column if not exists payment_method_id uuid,
   add column if not exists method_name_snapshot text,
@@ -93,6 +129,10 @@ alter table public.income_payments
 -- ---------------------------------------------------------------------------
 -- 4. Canonical create_income with charged prices and basis-point payments
 -- ---------------------------------------------------------------------------
+
+drop function if exists public.create_income(
+  uuid, uuid, uuid, uuid, uuid, jsonb, jsonb, boolean
+);
 
 create or replace function public.create_income(
   actor_user_id uuid,
@@ -144,6 +184,7 @@ declare
   requested_product_count integer;
   found_product_count integer := 0;
   requested_payment_count integer;
+  found_payment_count integer := 0;
   payment_total bigint := 0;
   payment_basis_sum integer := 0;
   zero_total_sale boolean := false;
@@ -328,9 +369,6 @@ begin
       normalized_payments := payment_methods;
       requested_payment_count := jsonb_array_length(payment_items);
     else
-      if jsonb_array_length(payment_items) = 0 then
-        raise exception using errcode = 'P0001', message = 'PAYMENT_ALLOCATION_MISMATCH';
-      end if;
       if jsonb_array_length(payment_methods) <> jsonb_array_length(payment_items)
         or distinct_method_count <> jsonb_array_length(payment_items)
       then
@@ -406,6 +444,32 @@ begin
       raise exception using errcode = 'P0001', message = 'INCOME_REQUEST_CONFLICT';
     end if;
     return existing_income.id;
+  end if;
+
+  -- Lock every selected active method through commit and reject partial
+  -- catalogs before any income/payment rows can be persisted. Idempotent
+  -- retries return above without depending on mutable method lifecycle state.
+  perform 1
+  from public.payment_methods pm
+  join (
+    select distinct (item->>'paymentMethodId')::uuid as payment_method_id
+    from jsonb_array_elements(payment_items) item
+  ) requested on requested.payment_method_id = pm.id
+  where pm.is_active
+  order by pm.id
+  for share of pm;
+
+  select count(*)::integer
+  into found_payment_count
+  from public.payment_methods pm
+  join (
+    select distinct (item->>'paymentMethodId')::uuid as payment_method_id
+    from jsonb_array_elements(payment_items) item
+  ) requested on requested.payment_method_id = pm.id
+  where pm.is_active;
+
+  if found_payment_count <> requested_payment_count then
+    raise exception using errcode = 'P0001', message = 'PAYMENT_METHOD_NOT_AVAILABLE';
   end if;
 
   perform 1
@@ -517,6 +581,23 @@ begin
     raise exception using errcode = 'P0001', message = 'PRODUCT_NOT_FOUND';
   end if;
 
+  -- Payment validation needs the authoritative charged product total before
+  -- the per-line commission snapshots are built below.
+  select coalesce(sum(
+    coalesce((override_entry.value->>'chargedUnitPrice')::integer, p.price)
+      * requested.quantity
+  ), 0)::integer
+  into product_charged
+  from public.products p
+  join (
+    select
+      (item->>'productId')::uuid as product_id,
+      (item->>'quantity')::integer as quantity
+    from jsonb_array_elements(normalized_products) item
+  ) requested on requested.product_id = p.id
+  left join jsonb_each(product_price_overrides) as override_entry
+    on (override_entry.key)::uuid = p.id;
+
   gross_sale_total := service_base + product_base;
   sale_total := service_charged + product_charged;
 
@@ -527,15 +608,23 @@ begin
       declare
         allocated bigint := 0;
         iteration_payment jsonb;
+        iteration_amount bigint;
       begin
         for iteration_index in 0 .. (jsonb_array_length(payment_items) - 2) loop
           iteration_payment := payment_items->iteration_index;
-          payment_total := payment_total
-            + ((sale_total::bigint * (iteration_payment->>'basisPoints')::integer) / 10000);
-          allocated := allocated
-            + ((sale_total::bigint * (iteration_payment->>'basisPoints')::integer) / 10000);
+          iteration_amount :=
+            (sale_total::bigint * (iteration_payment->>'basisPoints')::integer) / 10000;
+          if iteration_amount <= 0 then
+            raise exception using errcode = 'P0001', message = 'PAYMENT_ALLOCATION_MISMATCH';
+          end if;
+          payment_total := payment_total + iteration_amount;
+          allocated := allocated + iteration_amount;
         end loop;
-        payment_total := payment_total + (sale_total::bigint - allocated);
+        iteration_amount := sale_total::bigint - allocated;
+        if iteration_amount <= 0 then
+          raise exception using errcode = 'P0001', message = 'PAYMENT_ALLOCATION_MISMATCH';
+        end if;
+        payment_total := payment_total + iteration_amount;
       end;
     end if;
     if payment_total <> sale_total then
@@ -759,7 +848,10 @@ begin
             'grantFullCommission', requested.full_commission,
             'chargedUnitPrice', coalesce((override_entry.value->>'chargedUnitPrice')::integer, p.price),
             'overrideReason', override_entry.value->>'reason',
-            'overrideBy', actor_user_id
+            'overrideBy', case
+              when override_entry.value is null then null
+              else actor_user_id
+            end
           ) order by p.id
         ), '[]'::jsonb)
         from public.products p
@@ -803,7 +895,7 @@ begin
         created_at
       ) values (
         created_income_id, 'product', line_product_id, row->>'name',
-        row->>'price', row->>'price', line_charged,
+        (row->>'price')::integer, (row->>'price')::integer, line_charged,
         line_quantity, line_charged_subtotal, line_catalog, line_charged_subtotal,
         line_charged_subtotal - line_catalog,
         line_charged_subtotal, line_rate, line_amount, line_grant,
@@ -1140,6 +1232,10 @@ grant execute on function public.get_income_detail(uuid, boolean, uuid)
 -- Managers continue to receive the full income_as_json payload; employees
 -- receive the sanitized income_as_employee_json projection without any
 -- catalog, charged, payment or commission detail.
+drop function if exists public.list_incomes(
+  uuid, boolean, uuid, date, date, text, text, text, text, integer, integer
+);
+
 create or replace function public.list_incomes(
   requesting_user_id uuid,
   can_view_all boolean,

@@ -62,8 +62,10 @@ describe("UserEditorDialog", () => {
     const serviceRate = screen.getByLabelText("Comisión por servicios (%)");
     const productRate = screen.getByLabelText("Comisión por productos (%)");
     await browser.clear(serviceRate);
+    expect(serviceRate).toHaveValue(null);
     await browser.type(serviceRate, "35");
     await browser.clear(productRate);
+    expect(productRate).toHaveValue(null);
     await browser.type(productRate, "12");
     await browser.selectOptions(screen.getByLabelText("Rol del usuario"), "1");
 

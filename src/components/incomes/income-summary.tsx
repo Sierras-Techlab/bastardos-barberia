@@ -5,7 +5,7 @@ import {
   calculateIncomeTotal,
   formatArs,
 } from "@/lib/incomes/income-calculations";
-import type { IncomeFormValues } from "@/lib/incomes/income-schema";
+import type { IncomeFormValues, ManagerIncomeFormValues } from "@/lib/incomes/income-schema";
 import type { IncomeFormData } from "@/types/income";
 
 type IncomeSummaryProps = {
@@ -43,6 +43,12 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
     ? `Combinado (${values.payments.length} medios)`
     : data.paymentMethods.find((method) => method.id === values.payments[0]?.paymentMethodId)?.name ?? "Sin seleccionar";
   const showTotals = data.viewer === "manager";
+  const managerValues = data.viewer === "manager"
+    ? values as ManagerIncomeFormValues
+    : null;
+  const servicePrice = service && "price" in service
+    ? (managerValues?.servicePriceOverride?.chargedUnitPrice ?? getServicePrice(service))
+    : service ? getServicePrice(service) : 0;
 
   return (
     <Card
@@ -88,7 +94,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
             <div className="flex items-start justify-between gap-4">
               <span className="text-white/70">{service.name}</span>
               <span className="shrink-0 font-medium">
-                {formatArs(getServicePrice(service))}
+                {formatArs(servicePrice)}
               </span>
             </div>
           )}
@@ -101,6 +107,10 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
             if (!product) {
               return null;
             }
+            const productOverride = managerValues?.productPriceOverrides.find(
+              (candidate) => candidate.productId === item.productId,
+            )?.override;
+            const unitPrice = productOverride?.chargedUnitPrice ?? getProductPrice(product);
 
             return (
               <div
@@ -111,7 +121,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
                   {product.name} × {item.quantity}
                 </span>
                 <span className="shrink-0 font-medium">
-                  {formatArs(getProductPrice(product) * item.quantity)}
+                  {formatArs(unitPrice * item.quantity)}
                 </span>
               </div>
             );

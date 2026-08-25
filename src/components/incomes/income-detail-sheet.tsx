@@ -94,6 +94,12 @@ export const IncomeDetailSheet = ({
                   value={formatArs(employee.service.price)}
                 />
               )}
+              {employee?.sourceType === "fixed_subscription" && employee.subscription && (
+                <DetailRow
+                  label={`Mensualidad ${employee.subscription.label}`}
+                  value={formatArs(employee.subscription.monthlyPrice)}
+                />
+              )}
               {employee?.products.map((product) => (
                 <DetailRow
                   key={product.id}

@@ -34,6 +34,14 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 28. `028_open_cash_projection_repair.sql`
 29. `029_user_commission_profile_rpc.sql`
 30. `030_create_income_override_record_repair.sql`
+31. `031_income_item_charged_subtotal_repair.sql`
+32. `032_create_income_product_payment_total_repair.sql`
+33. `033_create_income_product_price_type_repair.sql`
+34. `034_create_income_complete_flow_repair.sql`
+35. `035_cash_charged_price_snapshot_repair.sql`
+36. `036_live_cash_charged_projection_repair.sql`
+37. `037_remove_legacy_income_overloads.sql`
+38. `038_cash_close_charged_snapshot_repair.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -227,6 +235,18 @@ Two stabilization repair files also exist for databases that installed earlier d
 `029_user_commission_profile_rpc.sql` repairs databases that installed the earlier development revision of `010`, where the commission-aware routine was accidentally named `update_user_profile_v2` while the server calls the canonical `update_user_profile` name. It removes the obsolete nine-argument routine and temporary `_v2` routine, installs the canonical thirteen-argument RPC, restores server-only grants and reloads the PostgREST schema cache. Run it after `028`; no tables or stored data are changed.
 
 `030_create_income_override_record_repair.sql` repairs databases that already installed the earlier development revision of `020`, whose canonical `create_income` function reused `override_record` as both a PL/pgSQL record variable and a SQL lateral alias. That collision aborts every sale with SQLSTATE `55000` (`record "override_record" is not assigned yet`). The repair renames only the internal accumulator variable in the existing canonical function, preserves its signature and permissions, creates no `_v2` objects and changes no stored data. Run it after `029`. Clean installations already contain the corrected `020`, so `030` safely becomes a no-op after verifying the canonical function.
+
+`031_income_item_charged_subtotal_repair.sql` removes the legacy generated expression from `income_items.subtotal` and reconciles the legacy subtotal constraints with the charged-price snapshots introduced by `020`. Without it, the canonical `create_income` aborts item insertion with SQLSTATE `428C9`. Run it after `030`; it changes column metadata and constraints without rewriting historical values.
+
+`032_create_income_product_payment_total_repair.sql` repairs the canonical `create_income` on databases that installed `020`: charged products were accumulated after payment validation, so a sale containing products compared its payment allocation against the service-only total and returned `PAYMENT_ALLOCATION_MISMATCH`. The repair calculates the authoritative charged product total before that comparison, preserves the canonical signature and permissions and changes no stored data. Run it after `031`.
+
+`033_create_income_product_price_type_repair.sql` repairs the product snapshot insert in canonical `create_income`: prices extracted with JSON `->>` are text and must be cast before insertion into the legacy and catalog integer price columns. Without it, product sales reach the insert and fail with SQLSTATE `42804`. Run it after `032`; it changes only the installed function body and preserves its signature and permissions.
+
+`034_create_income_complete_flow_repair.sql` closes the remaining canonical sale variants after `033`: normal products no longer receive false override actors, catalog commission bases reconcile to `gross_total`, authorized zero totals/prices satisfy legacy constraints, empty manager payments are deferred to authoritative total validation, every active payment method is locked and counted, and employee percentage splits cannot persist zero-value payment rows. It changes constraints and the installed canonical function without rewriting sale history or introducing versioned RPCs. Run it after `033`.
+
+`035_cash_charged_price_snapshot_repair.sql` makes Caja use charged service/product item snapshots for closure rows and post-close void adjustments. Catalog commission bases remain available for gross catalog reporting, but no longer break Caja economics when a manager discounts, surcharges or gives a line for free. Fixed subscriptions remain entirely in the service bucket and zero-total voids create no adjustment. Run it after `034`.
+
+`036_live_cash_charged_projection_repair.sql` repairs the live Caja projection left by `028`: service/product totals now use charged item snapshots, so manager price overrides reconcile with the charged gross total, and fixed subscriptions retain the `subscription` kind instead of appearing as services. It preserves the manual-open lifecycle wrapper and uses the canonical financial helper installed by `022`. Run it after `035`.
 
 Verify the `025` repair after execution; both columns must report `true`:
 

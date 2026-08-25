@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
-const { requirePageUser, listServices, listProducts, listCustomers, listUsers, listPaymentMethods, getCurrentWorkSession } = vi.hoisted(() => ({
+const { requirePageUser, listServices, listProducts, listCustomers, listUsers, listPaymentMethods, getCurrentWorkSession, isCashClosedForDate, redirect } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -31,6 +31,8 @@ const { requirePageUser, listServices, listProducts, listCustomers, listUsers, l
     state: "open",
     metrics: { workedMinutes: 20, saleCount: 0, employeeCommission: 0 },
   }),
+  isCashClosedForDate: vi.fn().mockResolvedValue(false),
+  redirect: vi.fn(() => { throw new Error("NEXT_REDIRECT"); }),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -42,10 +44,12 @@ vi.mock("@/lib/customers/repository", () => ({ customerRepository: { list: listC
 vi.mock("@/lib/users/repository", () => ({ userRepository: { list: listUsers } }));
 vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: listPaymentMethods } }));
 vi.mock("@/lib/work-sessions/service", () => ({ getCurrentWorkSession }));
+vi.mock("@/lib/cash/repository", () => ({ isCashClosedForDate }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes/new",
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
+  redirect,
 }));
 
 import NewIncomePage, { metadata } from "./page";
@@ -54,6 +58,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isCashClosedForDate.mockResolvedValue(false);
 });
 
 it("composes the Bastardos income form route", async () => {
@@ -77,6 +82,18 @@ it("revalidates the session at the income form boundary", async () => {
   await NewIncomePage();
 
   expect(requirePageUser).toHaveBeenCalledOnce();
+});
+
+it("redirects before loading sale catalogs when today's cash is closed", async () => {
+  isCashClosedForDate.mockResolvedValueOnce(true);
+
+  await expect(NewIncomePage()).rejects.toThrow("NEXT_REDIRECT");
+
+  expect(redirect).toHaveBeenCalledWith("/incomes");
+  expect(listServices).not.toHaveBeenCalled();
+  expect(listProducts).not.toHaveBeenCalled();
+  expect(listCustomers).not.toHaveBeenCalled();
+  expect(listPaymentMethods).not.toHaveBeenCalled();
 });
 
 it("loads only active payment methods for sale creation", async () => {

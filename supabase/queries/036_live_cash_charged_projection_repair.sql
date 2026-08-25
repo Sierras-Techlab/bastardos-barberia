@@ -1,7 +1,9 @@
+-- Bastardos Barberia: reconcile live Caja with charged item snapshots and
+-- retain subscription kinds after the manual-open projection repair.
+-- Run after 035_cash_charged_price_snapshot_repair.sql.
+
 begin;
 
--- The 018 live projection used null as a sentinel because Caja was read-only.
--- Manual opening needs the persisted register ID to distinguish an open day.
 create or replace function public.cash_day_as_json(target_business_date date,target_cash_id uuid,is_live boolean)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare base jsonb; register_record record; expected_value bigint; opened_by_json jsonb;
@@ -70,5 +72,7 @@ $$;
 
 revoke execute on function public.cash_day_as_json(date,uuid,boolean) from public,anon,authenticated,service_role;
 grant execute on function public.cash_day_as_json(date,uuid,boolean) to service_role;
+
+notify pgrst, 'reload schema';
 
 commit;

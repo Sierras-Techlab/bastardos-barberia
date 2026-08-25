@@ -22,6 +22,12 @@ it("renders six actions with four exact destinations and no dead links", () => {
   expect(container.querySelector('a[href="#"]')).toBeNull();
 });
 
+it("omits income creation when the cash register is closed", () => {
+  render(<QuickActionsCard canCreateIncome={false} />);
+  expect(screen.queryByRole("link", { name: "Cargar ingreso" })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver ingresos" })).toBeVisible();
+});
+
 it("explains that future actions are not available yet", async () => {
   const user = userEvent.setup();
   render(<><QuickActionsCard /><DashboardToaster /></>);

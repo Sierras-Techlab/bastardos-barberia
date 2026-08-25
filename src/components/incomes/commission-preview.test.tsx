@@ -38,3 +38,21 @@ it("applies the owner configured rates and never the 100 percent exception", () 
   expect(preview).not.toHaveTextContent("Corte · 100%");
   expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument();
 });
+it("calculates commissions from manager charged-price overrides", () => {
+  render(<CommissionPreview values={{
+    ...baseValues,
+    grantFullServiceCommission: false,
+    products: [{ productId: "product", quantity: 1, grantFullCommission: false }],
+    servicePriceOverride: { chargedUnitPrice: 12000, reason: "Amigo" },
+    productPriceOverrides: [{
+      productId: "product",
+      override: { chargedUnitPrice: 8000, reason: "Amigo" },
+    }],
+  }} data={data} />);
+
+  const preview = screen.getByLabelText("Comisión estimada");
+  expect(preview).toHaveTextContent("Corte · 45% · $ 5.400");
+  expect(preview).toHaveTextContent("Cera · 10% · $ 800");
+  expect(preview).toHaveTextContent("$ 6.200");
+  expect(preview).toHaveTextContent("$ 13.800");
+});

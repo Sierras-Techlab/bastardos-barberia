@@ -4,17 +4,19 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 
-const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser } = vi.hoisted(() => ({
+const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser, isCashClosedForDate } = vi.hoisted(() => ({
   getBuenosAiresRemainingWorkweekRange: vi.fn(),
   listFixedOccurrences: vi.fn(),
   listIncomes: vi.fn(),
   requirePageUser: vi.fn(),
+  isCashClosedForDate: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
 vi.mock("@/lib/dashboard/workweek-range", () => ({ getBuenosAiresRemainingWorkweekRange }));
 vi.mock("@/lib/fixed-customers/service", () => ({ listFixedOccurrences }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
+vi.mock("@/lib/cash/repository", () => ({ isCashClosedForDate }));
 
 import Home from "./page";
 
@@ -56,6 +58,13 @@ beforeEach(() => {
   getBuenosAiresRemainingWorkweekRange.mockReturnValue({ dateFrom: "2026-08-13", dateTo: "2026-08-15" });
   listIncomes.mockResolvedValue(incomePage);
   listFixedOccurrences.mockResolvedValue([]);
+  isCashClosedForDate.mockResolvedValue(false);
+});
+
+it("hides the quick create action when today's cash is closed", async () => {
+  isCashClosedForDate.mockResolvedValueOnce(true);
+  await renderHome();
+  expect(screen.queryByRole("link", { name: "Cargar ingreso" })).not.toBeInTheDocument();
 });
 
 it("revalidates the session and requests only the role-scoped seven-day income window", async () => {

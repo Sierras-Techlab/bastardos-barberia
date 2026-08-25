@@ -30,6 +30,12 @@ const visitedCustomer: Customer = {
   visits: 4,
   lastVisitBusinessDate: "2026-08-13",
 };
+const professional = { id: "00000000-0000-4000-8000-000000000099", firstName: "Lauti", lastName: "Bastardos" };
+const fixedCustomer: Customer = {
+  ...baseCustomer,
+  fixedSchedule: { weekday: 2, time: "10:00", responsibleProfessional: professional, monthlyPrice: 15000 },
+  fixedScheduleVersion: 1,
+};
 
 describe("CustomersView last visit column", () => {
   it("renders Sin visitas when the customer has never visited", () => {
@@ -56,5 +62,30 @@ describe("CustomersView last visit column", () => {
       />,
     );
     expect(screen.getByText("hace 2 días")).toBeVisible();
+  });
+
+  it("shows the persisted current month as paid instead of offering another charge", () => {
+    render(<CustomersView
+      data={{ customers: [fixedCustomer] }}
+      canDelete
+      currentUserId={professional.id}
+      currentUserRole="owner"
+      today="2026-08-15"
+      onOpenFixedPayment={vi.fn()}
+      fixedCustomerMonths={[{
+        viewer: "manager",
+        customer: { id: fixedCustomer.id, firstName: fixedCustomer.firstName, lastName: fixedCustomer.lastName },
+        responsibleProfessional: professional,
+        period: "2026-08",
+        status: "paid",
+        paidAt: "2026-08-15T12:00:00.000Z",
+        incomeId: "00000000-0000-4000-8000-000000000010",
+        employeeEarning: 7500,
+        monthlyPrice: 15000,
+      }]}
+    />);
+
+    expect(screen.getAllByRole("button", { name: /mensualidad cobrada de juan cruz/i })[0]).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /cobrar mensualidad de juan cruz/i })).not.toBeInTheDocument();
   });
 });

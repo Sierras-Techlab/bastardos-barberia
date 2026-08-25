@@ -1,11 +1,14 @@
 import { ArrowLeft, Clock3 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { IncomeForm } from "@/components/incomes/income-form";
 import { buttonVariants } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { requirePageUser } from "@/lib/auth/authorization";
+import { getBuenosAiresToday } from "@/lib/cash/date";
+import { isCashClosedForDate } from "@/lib/cash/repository";
 import { customerRepository } from "@/lib/customers/repository";
 import { paymentMethodRepository } from "@/lib/payment-methods/repository";
 import { productRepository } from "@/lib/products/repository";
@@ -40,6 +43,7 @@ const IncomePageHeader = () => (
 
 const NewIncomePage = async () => {
   const { user } = await requirePageUser();
+  if (await isCashClosedForDate(getBuenosAiresToday())) redirect("/incomes");
   const currentWorkSession =
     user.role.name === "employee"
       ? await getCurrentWorkSession(user)

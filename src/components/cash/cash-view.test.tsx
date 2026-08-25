@@ -235,4 +235,14 @@ describe("CashView", () => {
     expect(cashClient.getDay).toHaveBeenLastCalledWith("2026-08-15");
     expect(cashClient.getDay).toHaveBeenCalledTimes(2);
   });
+
+  it("hides income creation when today's cash is closed", () => {
+    render(<CashView
+      initialDay={{ ...liveDay, id, state: "closed", closedAt: "2026-08-15T03:00:00.000Z", lifecycle: { ...liveDay.lifecycle, closeMode: "manual", countedCash: 0, difference: 0, reconciliationState: "confirmed" } }}
+      initialHistory={history}
+      viewerRole="owner"
+    />);
+
+    expect(screen.queryByRole("link", { name: "Cargar ingreso" })).not.toBeInTheDocument();
+  });
 });

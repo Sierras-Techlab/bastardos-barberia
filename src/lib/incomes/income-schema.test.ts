@@ -186,7 +186,7 @@ describe("employeeCreateIncomeSchema", () => {
     ).toBe(false);
   });
 
-  it("rejects basis points outside 0..10000", () => {
+  it("rejects non-positive basis points and values above 10000", () => {
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
@@ -197,6 +197,15 @@ describe("employeeCreateIncomeSchema", () => {
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
         payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10001 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      employeeCreateIncomeSchema.safeParse({
+        ...validEmployee,
+        payments: [
+          { paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10000 },
+          { paymentMethodId: "60000000-0000-4000-8000-000000000002", basisPoints: 0 },
+        ],
       }).success,
     ).toBe(false);
   });

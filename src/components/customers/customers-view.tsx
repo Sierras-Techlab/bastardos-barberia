@@ -20,6 +20,7 @@ import type {
   CustomerScheduleFilter,
   CustomerSort,
 } from "@/types/customer";
+import type { FixedCustomerMonth } from "@/types/fixed-customer-payment";
 
 export type CustomerEditorProfessional = { id: string; firstName: string; lastName: string; isActive: boolean };
 export type CustomersViewProps = {
@@ -29,6 +30,7 @@ export type CustomersViewProps = {
   currentUserRole: "owner" | "admin" | "employee";
   availableProfessionals?: CustomerEditorProfessional[];
   onOpenFixedPayment?: (customer: Customer) => void;
+  fixedCustomerMonths?: FixedCustomerMonth[];
   customerClient?: CustomerClient;
   today: string;
 };
@@ -41,6 +43,7 @@ export const CustomersView = ({
   currentUserRole,
   availableProfessionals = [],
   onOpenFixedPayment,
+  fixedCustomerMonths = [],
   customerClient = defaultCustomerClient,
   today,
 }: CustomersViewProps) => {
@@ -91,7 +94,9 @@ export const CustomersView = ({
     return customer.fixedSchedule.responsibleProfessional.id === currentUserId;
   };
   const payMonthButton = (customer: Customer) => canPayMonth(customer) && onOpenFixedPayment
-    ? <Button variant="outline" size="sm" aria-label={`Cobrar mensualidad de ${customer.firstName} ${customer.lastName}`} onClick={() => onOpenFixedPayment(customer)} className="rounded-xl">Cobrar mensualidad</Button>
+    ? fixedCustomerMonths.find((month) => month.customer.id === customer.id)?.status === "paid"
+      ? <Button variant="outline" size="sm" disabled aria-label={`Mensualidad cobrada de ${customer.firstName} ${customer.lastName}`} className="rounded-xl">Mensualidad cobrada</Button>
+      : <Button variant="outline" size="sm" aria-label={`Cobrar mensualidad de ${customer.firstName} ${customer.lastName}`} onClick={() => onOpenFixedPayment(customer)} className="rounded-xl">Cobrar mensualidad</Button>
     : null;
 
   return <div className="space-y-5">
