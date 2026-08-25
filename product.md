@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 ## Vision
 
@@ -33,6 +33,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
 | Customers | Implemented locally | Persistent directory, optional weekly schedule with responsible professional and monthly price, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, audited attended/missed occurrences and a query-derived "Última visita" column derived from the latest active normal sale through migration `023`. Migration `025` repairs schedule creation/editing on databases upgraded through `021`. |
 | Fixed-customer monthly payments | Implemented locally | Manager-controlled monthly price and professional assignment, role-aware collection (manager amount / employee basis points), atomic subscription income with append-only attempts, employee-safe financial projections, void-reopens-month behaviour and dashboard/cash integration; migration 021 remains pending manual installation. |
+| Expenses | Implemented locally | Manager-only monthly operating view with authoritative income/net/result summary, filtered expense ledger, audited create/edit/void flows, optional administrative payment method and recoverable category lifecycle. Expenses do not alter Caja in MVP; incremental migration `027` repairs the versioned void RPC on databases that installed the first `026` revision. |
 | Reports | Planned | Derive revenue and operating reports from real transactional data. |
 
 ## Current product objective

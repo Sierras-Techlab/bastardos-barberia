@@ -29,6 +29,9 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 23. `023_customer_last_visit.sql`
 24. `024_income_list_contract_repair.sql`
 25. `025_fixed_customer_schedule_mutation_repair.sql`
+26. `026_operating_expenses.sql`
+27. `027_expense_void_contract_repair.sql`
+28. `028_open_cash_projection_repair.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -51,6 +54,171 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `024_income_list_contract_repair.sql` is an incremental repair for projects that already installed `020` through `023`. It restores manager `paymentTotals`, the employee-only commission metrics, role-derived row scoping and valid service concept IDs in `list_incomes`/`income_as_employee_json`. Run it once after `023`; do not rerun `020` on an upgraded database.
 
 `025_fixed_customer_schedule_mutation_repair.sql` updates the schedule mutation helper to the contract introduced by `021`: weekday, local time, responsible professional and positive monthly price. It also enforces that employees can only assign habitual customers to themselves. Run it once after `024`; without it, creating or editing a habitual customer is rejected as `FIXED_SCHEDULE_INVALID` even when the selected time is valid.
+
+`026_operating_expenses.sql` installs manager-only operating expense categories, idempotent expenses, optimistic append-only revisions, void history, filtered metrics and monthly operating summaries. Expense payment-method references retain immutable names and block physical deletion with `PAYMENT_METHOD_IN_USE`; the promoted deletion RPC keeps all Caja protections and income-reference behavior unchanged. Expenses never open, close, adjust or reconcile Caja. Run it once after `025`.
+
+`027_expense_void_contract_repair.sql` replaces the initial unversioned expense-void RPC with the optimistic four-argument contract expected by the application and removes the PostgreSQL `42702` parameter/column ambiguity from the void reason. It is safe to rerun after `026`; do not rerun the one-shot structural migration to repair an already installed database.
+
+`028_open_cash_projection_repair.sql` restores the persisted register UUID in the live Caja projection. Without it, opening succeeds in PostgreSQL but the response retains the old `id: null` sentinel from the read-only Caja model, so the interface continues to offer `Abrir caja`. Run it once after `027`; it is safe to rerun.
+
+Validate migration `026` authorization, lifecycle, concurrency, projections and Caja isolation without retaining temporary records. An exact void replay with the original pre-void `updatedAt` must return `EXPENSE_CONFLICT`; a request using the current voided version must return `EXPENSE_NOT_ACTIVE`. Neither retry may append a revision.
+
+```sql
+begin;
+
+do $$
+declare
+  manager_id uuid;
+  employee_id uuid;
+  category_id uuid;
+  unused_category_id uuid;
+  payment_method_id uuid;
+  request_id uuid := extensions.gen_random_uuid();
+  test_expense_id uuid;
+  created jsonb;
+  retried jsonb;
+  edited jsonb;
+  voided jsonb;
+  listed jsonb;
+  summary jsonb;
+  original_updated_at timestamptz;
+  edited_updated_at timestamptz;
+  revision_count integer;
+  expenses_before bigint;
+  cash_before jsonb;
+  cash_after jsonb;
+  today date := (pg_catalog.clock_timestamp() at time zone 'America/Argentina/Buenos_Aires')::date;
+begin
+  select jsonb_build_object(
+    'registers', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_registers t),'[]'::jsonb),
+    'sales', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_sales t),'[]'::jsonb),
+    'payments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_payment_totals t),'[]'::jsonb),
+    'adjustments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustments t),'[]'::jsonb),
+    'adjustmentPayments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustment_payments t),'[]'::jsonb)
+  ) into cash_before;
+
+  insert into public.users(first_name,last_name,username,password_hash,role_id)
+  values('Expense','Manager','expense.manager.'||substring(replace(extensions.gen_random_uuid()::text,'-','') from 1 for 10),'$argon2id$verification',1)
+  returning id into manager_id;
+  insert into public.users(first_name,last_name,username,password_hash,role_id,created_by)
+  values('Expense','Employee','expense.employee.'||substring(replace(extensions.gen_random_uuid()::text,'-','') from 1 for 10),'$argon2id$verification',3,manager_id)
+  returning id into employee_id;
+
+  begin
+    perform public.list_expense_categories(employee_id);
+    raise exception '026 acceptance: employee authorization unexpectedly succeeded';
+  exception when insufficient_privilege then
+    if sqlerrm not like '%MANAGER_REQUIRED%' then raise; end if;
+  end;
+
+  category_id := (public.create_expense_category(manager_id,'Alquiler acceptance','fixed')->>'id')::uuid;
+  unused_category_id := (public.create_expense_category(manager_id,'Temporal acceptance','variable')->>'id')::uuid;
+  perform public.update_expense_category(manager_id,unused_category_id,'Temporal editada','supplies',false);
+  perform public.delete_expense_category(manager_id,unused_category_id);
+  begin
+    perform public.create_expense_category(manager_id,'Alquiler acceptance','variable');
+    raise exception '026 acceptance: duplicate category unexpectedly succeeded';
+  exception when unique_violation then
+    if sqlerrm not like '%EXPENSE_CATEGORY_DUPLICATE%' then raise; end if;
+  end;
+
+  insert into public.payment_methods(name,normalized_name,is_active,created_by,updated_by)
+  values('Expense method acceptance','expense method acceptance',true,manager_id,manager_id)
+  returning id into payment_method_id;
+
+  select coalesce(sum(amount),0) into expenses_before
+  from public.expenses
+  where status='active' and accounting_date>=date_trunc('month',today)::date
+    and accounting_date<(date_trunc('month',today)+interval '1 month')::date;
+
+  created := public.create_expense(manager_id,request_id,today,category_id,12000,'Alquiler mensual','  ',payment_method_id);
+  test_expense_id := (created->>'id')::uuid;
+  original_updated_at := (created->>'updatedAt')::timestamptz;
+  update public.expense_categories set is_active=false where id=category_id;
+  update public.payment_methods set is_active=false where id=payment_method_id;
+  retried := public.create_expense(manager_id,request_id,today,category_id,12000,'Alquiler mensual',null,payment_method_id);
+  if retried <> created then raise exception '026 acceptance: exact retry changed its snapshot'; end if;
+  begin
+    perform public.create_expense(manager_id,request_id,today,category_id,12001,'Alquiler mensual',null,payment_method_id);
+    raise exception '026 acceptance: semantic conflict unexpectedly succeeded';
+  exception when unique_violation then
+    if sqlerrm not like '%EXPENSE_REQUEST_CONFLICT%' then raise; end if;
+  end;
+  update public.expense_categories set is_active=true where id=category_id;
+  update public.payment_methods set is_active=true where id=payment_method_id;
+
+  edited := public.update_expense(
+    actor_user_id => manager_id, target_expense_id => test_expense_id,
+    expected_updated_at => original_updated_at, change_reason => 'Ajuste del concepto',
+    expense_concept => 'Alquiler mensual corregido'
+  );
+  edited_updated_at := (edited->>'updatedAt')::timestamptz;
+  begin
+    perform public.update_expense(
+      actor_user_id => manager_id, target_expense_id => test_expense_id,
+      expected_updated_at => original_updated_at, change_reason => 'Edicion obsoleta',
+      expense_amount => 13000
+    );
+    raise exception '026 acceptance: stale edit unexpectedly succeeded';
+  exception when serialization_failure then
+    if sqlerrm not like '%EXPENSE_CONFLICT%' then raise; end if;
+  end;
+  select count(*) into revision_count from public.expense_revisions where expense_id=test_expense_id;
+  if revision_count<>1 then raise exception '026 acceptance: edit revision missing'; end if;
+
+  begin
+    perform public.void_expense(manager_id,test_expense_id,original_updated_at,'Version obsoleta');
+    raise exception '026 acceptance: stale void unexpectedly succeeded';
+  exception when serialization_failure then
+    if sqlerrm not like '%EXPENSE_CONFLICT%' then raise; end if;
+  end;
+  begin
+    perform public.void_expense(manager_id,test_expense_id,edited_updated_at,'x');
+    raise exception '026 acceptance: short void reason unexpectedly succeeded';
+  exception when invalid_parameter_value then null;
+  end;
+  voided := public.void_expense(manager_id,test_expense_id,edited_updated_at,'Registro duplicado');
+  if voided->>'status'<>'voided' then raise exception '026 acceptance: void status mismatch'; end if;
+  begin
+    perform public.void_expense(manager_id,test_expense_id,edited_updated_at,'Registro duplicado');
+    raise exception '026 acceptance: stale void retry unexpectedly succeeded';
+  exception when serialization_failure then null;
+  end;
+  begin
+    perform public.void_expense(manager_id,test_expense_id,(voided->>'updatedAt')::timestamptz,'Registro duplicado');
+    raise exception '026 acceptance: current voided retry unexpectedly succeeded';
+  exception when invalid_parameter_value then
+    if sqlerrm not like '%EXPENSE_NOT_ACTIVE%' then raise; end if;
+  end;
+  select count(*) into revision_count from public.expense_revisions where expense_id=test_expense_id;
+  if revision_count<>2 then raise exception '026 acceptance: void retries changed revisions'; end if;
+
+  listed := public.list_expenses(manager_id,to_char(today,'YYYY-MM'),null,null,category_id,'fixed',payment_method_id,'voided','corregido',1,20);
+  summary := public.get_expense_month_summary(manager_id,to_char(today,'YYYY-MM'));
+  if (listed->>'total')::integer<>1 then raise exception '026 acceptance: filters omitted voided expense'; end if;
+  if (summary->>'expenses')::bigint<>expenses_before then raise exception '026 acceptance: voided expense affected accounting summary'; end if;
+
+  begin
+    perform public.delete_payment_method(manager_id,payment_method_id);
+    raise exception '026 acceptance: referenced payment method unexpectedly deleted';
+  exception when foreign_key_violation then
+    if sqlerrm not like '%PAYMENT_METHOD_IN_USE%' then raise; end if;
+  end;
+
+  select jsonb_build_object(
+    'registers', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_registers t),'[]'::jsonb),
+    'sales', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_sales t),'[]'::jsonb),
+    'payments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_payment_totals t),'[]'::jsonb),
+    'adjustments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustments t),'[]'::jsonb),
+    'adjustmentPayments', coalesce((select jsonb_agg(to_jsonb(t) order by t.id) from public.daily_cash_adjustment_payments t),'[]'::jsonb)
+  ) into cash_after;
+  if cash_after is distinct from cash_before then
+    raise exception '026 acceptance: expense operations modified Caja';
+  end if;
+end $$;
+
+rollback;
+```
 
 Verify the automatic cash objects and cron job:
 

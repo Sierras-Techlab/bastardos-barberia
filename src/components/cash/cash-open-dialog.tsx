@@ -15,20 +15,20 @@ export type CashOpenDialogProps = {
 };
 
 export const CashOpenDialog = ({ openingBalance, onClose, onConfirm }: CashOpenDialogProps) => {
-  const [value, setValue] = useState<string>(String(openingBalance / 100));
+  const [value, setValue] = useState<string>(String(openingBalance));
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submitting) return;
-    const cents = Math.round(Number(value || "0") * 100);
-    if (Number.isNaN(cents) || cents < 0) {
+    const amount = Number(value || "0");
+    if (!Number.isInteger(amount) || amount < 0) {
       toast.error("Ingresá un saldo inicial válido.");
       return;
     }
     setSubmitting(true);
     try {
-      await onConfirm({ openingBalance: cents });
+      await onConfirm({ openingBalance: amount });
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "No se pudo abrir la caja.");
     } finally {
@@ -45,14 +45,14 @@ export const CashOpenDialog = ({ openingBalance, onClose, onConfirm }: CashOpenD
           <DialogDescription>El saldo inicial representa efectivo físico previo, nunca ingresos del día.</DialogDescription>
         </DialogHeader>
         <label className="block text-sm font-medium">Saldo inicial (ARS)
-          <Input aria-label="Saldo inicial" type="number" inputMode="decimal" min="0" step="0.01" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
+          <Input aria-label="Saldo inicial" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
         </label>
         <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs text-amber-900">Después de abrir vas a poder cargar el primer ingreso del día.</div>
         <DialogFooter className="-mx-5 -mb-5 flex flex-row items-center justify-end gap-2 p-5">
           <Button type="button" variant="outline" onClick={onClose} disabled={submitting} className="rounded-xl">Cancelar</Button>
           <Button type="submit" disabled={submitting} className="rounded-xl">
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Wallet className="size-4" />}
-            Abrir caja ({formatArs(Math.round(Number(value || "0") * 100))})
+            Abrir caja ({formatArs(Number(value || "0"))})
           </Button>
         </DialogFooter>
       </form>

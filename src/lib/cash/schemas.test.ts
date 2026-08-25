@@ -6,6 +6,7 @@ import {
   closeCashInputSchema,
   confirmCashInputSchema,
   openCashInputSchema,
+  paginatedCashHistorySchema,
 } from "@/lib/cash/schemas";
 
 const id = "00000000-0000-4000-8000-000000000001";
@@ -85,6 +86,24 @@ const cashDay = {
 describe("cashDaySchema", () => {
   it("accepts an internally reconciled closed cash snapshot", () => {
     expect(cashDaySchema.parse(cashDay)).toEqual(cashDay);
+  });
+
+  it("accepts a live manually opened register with its persisted ID", () => {
+    const opened = {
+      ...cashDay,
+      state: "live",
+      closedAt: null,
+      lifecycle: {
+        ...baseLifecycle,
+        openingSource: "manual",
+        countedCash: null,
+        difference: null,
+        closeMode: null,
+        reconciliationState: "not_applicable",
+      },
+    };
+
+    expect(cashDaySchema.safeParse(opened).success).toBe(true);
   });
 
   it("rejects unknown database keys", () => {
@@ -182,5 +201,16 @@ describe("cashHistoryQuerySchema", () => {
         actorId: id,
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("paginatedCashHistorySchema", () => {
+  it("accepts the complete closed-day projection returned by list_daily_cash", () => {
+    expect(
+      paginatedCashHistorySchema.parse({
+        items: [cashDay],
+        pagination: { page: 1, pageSize: 12, total: 1, totalPages: 1 },
+      }).items[0],
+    ).toMatchObject({ id, state: "closed", payments: cashDay.payments });
   });
 });

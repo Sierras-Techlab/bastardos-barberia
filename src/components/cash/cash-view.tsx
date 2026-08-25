@@ -128,7 +128,11 @@ export const CashView = ({
     try {
       const updated = await cashClient.close(input);
       setDay(updated);
-      toast.success("Caja cerrada. Quedó pendiente de confirmación.");
+      toast.success(
+        updated.lifecycle.reconciliationState === "confirmed"
+          ? "Caja cerrada y conteo confirmado."
+          : "Caja cerrada. Quedó pendiente de confirmación.",
+      );
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "No se pudo cerrar la caja.");
     } finally {
@@ -156,7 +160,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
   const lifecycle = resolveLifecycle(day);
   const isToday = day.businessDate === initialDay.businessDate;
   const canOpen = isManager && isToday && day.state === "live" && day.id === null;
-  const canClose = isManager && isToday && day.state === "live" && day.id !== null && lifecycle.closeMode !== null;
+  const canClose = isManager && isToday && day.state === "live" && day.id !== null;
   const canConfirm = isManager && isToday && day.state === "closed" && lifecycle.reconciliationState === "pending_confirmation";
 
   return (
@@ -207,7 +211,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
             )}
             {canClose && (
               <Button type="button" variant="outline" className="rounded-xl" onClick={() => setClosing(true)}>
-                <ShieldCheck /> {lifecycle.closeMode === "manual" ? "Cerrar caja" : "Cargar conteo"}
+                <ShieldCheck /> Cerrar caja
               </Button>
             )}
             {canConfirm && (
@@ -273,7 +277,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
       {closing && lifecycle && (
         <CashCloseDialog
           expectedCash={lifecycle.expectedCash}
-          mode={lifecycle.closeMode ?? "automatic"}
+          mode="manual"
           onClose={() => setClosing(false)}
           onConfirm={onCloseCash}
         />

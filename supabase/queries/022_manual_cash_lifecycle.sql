@@ -373,6 +373,9 @@ returns jsonb language plpgsql stable security definer set search_path = '' as $
 declare base jsonb; register_record record; expected_value bigint; opened_by_json jsonb;
 begin
   base:=public.cash_day_base_as_json(target_business_date,target_cash_id,is_live);
+  if is_live and target_cash_id is not null then
+    base:=jsonb_set(base,'{id}',to_jsonb(target_cash_id),true);
+  end if;
   select * into register_record from public.daily_cash_registers
   where id=target_cash_id or (target_cash_id is null and business_date=target_business_date) limit 1;
   if register_record.id is null then

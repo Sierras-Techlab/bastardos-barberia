@@ -158,7 +158,7 @@ export const cashDaySchema = z
   .strict()
   .superRefine((cash, context) => {
     const validLifecycle =
-      (cash.state === "live" && cash.id === null && cash.closedAt === null) ||
+      (cash.state === "live" && cash.closedAt === null) ||
       (cash.state === "closed" && cash.id !== null && cash.closedAt !== null);
     const paymentSales = cash.payments.reduce(
       (total, payment) => total + payment.salesAmount,
@@ -191,6 +191,9 @@ export const cashHistoryItemSchema = z
     closedAt: z.iso.datetime({ offset: true }),
     lifecycle: cashLifecycleSchema,
     summary: cashSummarySchema,
+    payments: z.array(cashPaymentTotalSchema).optional(),
+    sales: z.array(cashSaleAuditItemSchema).optional(),
+    adjustments: z.array(cashAdjustmentSchema).optional(),
   })
   .strict();
 

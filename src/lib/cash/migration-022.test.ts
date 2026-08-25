@@ -74,6 +74,7 @@ describe("migration 022 manual cash lifecycle", () => {
     expect(sql).toMatch(/'openingBalance'/i);
     expect(sql).toMatch(/'expectedCash'/i);
     expect(sql).toMatch(/'reconciliationState'/i);
+    expect(sql).toMatch(/jsonb_set\(base,'\{id\}',to_jsonb\(target_cash_id\),true\)/i);
   });
 
   it("reads the canonical immutable cash snapshot columns", () => {

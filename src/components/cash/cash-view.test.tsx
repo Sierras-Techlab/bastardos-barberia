@@ -127,6 +127,37 @@ describe("CashView", () => {
     expect(paymentCard?.parentElement).toHaveClass("cash-payment-column");
   });
 
+  it("stops offering another opening after the server returns the open register", async () => {
+    const browser = userEvent.setup();
+    const openedDay: CashDay = {
+      ...liveDay,
+      id,
+      lifecycle: {
+        ...liveDay.lifecycle,
+        openingBalance: 100,
+        openingSource: "manual",
+        openedAt: "2026-08-15T12:00:00.000Z",
+        openedBy: { id, firstName: "Uriel", lastName: "Alessandro" },
+        expectedCash: 100,
+      },
+    };
+    const cashClient = {
+      getDay: vi.fn(),
+      list: vi.fn(),
+      open: vi.fn().mockResolvedValue(openedDay),
+      close: vi.fn(),
+      confirm: vi.fn(),
+    };
+
+    render(<CashView initialDay={liveDay} initialHistory={history} viewerRole="owner" cashClient={cashClient} />);
+    await browser.click(screen.getByRole("button", { name: "Abrir caja" }));
+    await browser.click(screen.getByRole("button", { name: /^Abrir caja \(/ }));
+
+    expect(await screen.findByText("En curso")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Abrir caja" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar caja" })).toBeVisible();
+  });
+
   it("loads a selected historical closure without mutating it", async () => {
     const browser = userEvent.setup();
     const closedDay = {

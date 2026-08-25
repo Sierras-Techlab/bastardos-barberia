@@ -53,7 +53,7 @@ const administrationNavigation = [
   { label: "Usuarios", icon: UserCog, href: "/users" },
   { label: "Presentismo", icon: CalendarClock, href: "/work-sessions" },
   { label: "Caja", icon: WalletCards, href: "/cash" },
-  { label: "Gastos", icon: ReceiptText },
+  { label: "Gastos", icon: ReceiptText, href: "/expenses" },
   { label: "Reportes", icon: BarChart3 },
   { label: "Negocio", icon: Store },
 ];

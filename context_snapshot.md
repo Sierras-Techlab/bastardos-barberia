@@ -1,10 +1,15 @@
 # Context snapshot
 
-Captured: 2026-08-23
+Captured: 2026-08-24
 
 ## Repository state
 
-- Active branch: `codex/fix-operational-migrations`, based on `feat/changes-fullstack`.
+- Active branch: `feat/expenses`.
+- Closed Caja history now accepts the complete canonical `list_daily_cash` day projection (`payments`, `sales` and `adjustments`) in addition to its summary fields. The prior strict history schema rejected those keys after a successful close, causing `/cash` to fail on reload even though the register was persisted correctly. Manual zero-difference closure now reports that reconciliation was confirmed immediately.
+- A configured database with the first `026` revision returned HTTP 500 when the current application called `void_expense`: after promoting the four-argument signature, PostgreSQL exposed `42702` because `void_reason` was both a column and parameter. Migration `027_expense_void_contract_repair.sql` now uses positional `$4`, is safe to rerun after installed `026`, preserves optimistic conflict detection and appends the void revision atomically.
+- Caja opening and physical-count dialogs now keep their inputs in the repository's canonical integer-ARS units. Entering `100` previews and submits ARS 100 instead of multiplying it by 100; both controls require whole pesos.
+- The complete manager-only Expenses frontend is implemented at `/expenses`: server-authoritative initial monthly summary/list/categories/payment methods, responsive table/cards, whole-month versus filtered metrics, bounded date and catalog filters, one shared paginator, audited create/edit/void/detail flows and expense-category administration. Optional payment methods are explicitly administrative and do not alter Caja in MVP.
+- Migration `026_operating_expenses.sql` is implemented locally after `025`: secured dynamic categories, idempotent expense creation serialized by actor/request, optimistic audited edits, versioned reason-required voiding, strict filtered/monthly projections and protected payment-method references. Its rollback-wrapped acceptance block verifies manager authorization, lifecycle, retries/conflicts, revisions, summary exclusion, payment-method protection and byte-for-byte Caja isolation.
 - The user confirmed migrations `019` through `023` are installed in the test Supabase project. A read-only RPC probe then confirmed the installed `list_incomes` manager payload omitted `metrics.paymentTotals`, causing server validation to fail on the dashboard.
 - Migration `021` was repaired to use the canonical schedule, role, work-session, income, payment and void-audit contracts. Migration `022` was repaired to use physical payment-method deletion, canonical role IDs and immutable Caja snapshot columns, and to connect first-income opening plus manual/automatic closure to the existing `018` projections.
 - Migration `020` now joins the product-line commission authorizer inside `income_as_json` and preserves the parameter-name positions installed by `016` for `list_incomes`; the previous defects aborted installation with PostgreSQL errors `42P01` and `42P13`.
@@ -37,6 +42,11 @@ Captured: 2026-08-23
 
 ## Delivered behavior
 
+- `/expenses` explicitly calls `requireManagerPage`, while the manager sidebar links Gastos to the route and employees cannot see it. The route includes dedicated loading/error states.
+- Expense creation keeps one UUID request key stable for the dialog lifetime and retries; edits submit the visible `updatedAt` plus a required reason; voids require a reason and preserve the audited record. Detail includes current audit fields and immutable revisions.
+- Expense categories support create/edit/type changes, deactivate/reactivate and named-confirmation deletion. In-use conflicts retain the category and guide managers to deactivate it.
+- Expenses frontend review fixes now send differential edit PATCH bodies, preserve inactive unchanged category/payment references, use strict create/edit component contracts, and include `expectedUpdatedAt` when voiding. All list, month-summary and post-mutation refreshes share one sequenced loader backed by latest-state refs, so stale responses cannot overwrite newer selections. Desktop rows expose a keyboard-accessible labeled detail button instead of click-only row behavior.
+- Expense creation now routes managers to category administration with guidance when no active category exists. Creating or reactivating a category updates workspace state immediately, and subsequent expense creation exposes the refreshed selectable catalog.
 - User administration persists integer service/product commission rates from 0 through 100. Owner rates are configurable; existing owners remain at zero until edited.
 - The responsive user directory exposes every user's service and product commission percentages and supports editing them without retaining a leading zero while still rejecting empty or invalid values on submit.
 - Block `020` adds catalog/charged-price snapshots plus a per-line override actor and reason. A line may be discounted, surcharged or set to zero, and the charged subtotal drives commission and barbershop net.
@@ -175,3 +185,17 @@ Update this file after every completed task with the active branch, delivered be
 - After the PostgREST relationship repair, 26 focused customer tests, ESLint and the Webpack production build passed. The complete suite again passed 792 of 793 tests; the only failure moved to the unrelated product-category UI timeout, whose file passed all 4 tests immediately in isolation.
 - The PostgreSQL datetime-offset regression passed its red/green cycle: 3 focused customer files / 18 tests, focused ESLint and `git diff --check` all passed.
 - The database still requires manual execution of `024_income_list_contract_repair.sql` followed by `025_fixed_customer_schedule_mutation_repair.sql` before the repaired income-list and habitual-customer contracts are active remotely.
+
+## Fresh final verification — Expenses MVP
+
+- The complete suite passed 192 test files / 825 tests after the concurrency, differential-edit, stale-request and accessibility fixes.
+- ESLint, standalone TypeScript, `git diff --check` and the Next.js 16.3 Turbopack production build passed; the build emits `/expenses`, `/api/expenses`, detail/void/summary routes and expense-category routes.
+- The configured database appears to have received an initial `026` revision because expense creation is operational, but its void RPC is outdated. Apply `027` manually to repair that contract; fresh installations still run `024`, `025`, `026` and `027` in order.
+- The next product step after database rollout is authenticated manager validation of create/edit/conflict/void/category/month-filter flows on desktop and mobile. Expenses remain intentionally excluded from physical Caja reconciliation.
+
+## Caja live-opening projection repair
+
+- Opening Caja persisted the register correctly, but the inherited `018` live projection always returned `id: null`. The UI therefore continued to show `Abrir caja`, and a second attempt correctly failed with `CASH_ALREADY_OPEN`.
+- Fresh installations now repair the live ID inside migration `022`. Incremental migration `028_open_cash_projection_repair.sql` replaces only `cash_day_as_json` for databases that already installed `022`, preserving lifecycle calculations and server-only execution grants.
+- The application schema now accepts both unopened live days (`id: null`) and opened live registers (UUID), while closed days still require their UUID and closure timestamp. An opened live register exposes `Cerrar caja` and uses the manual close dialog instead of inheriting the former automatic-mode condition.
+- Focused verification passed 4 files / 32 tests, focused ESLint and `git diff --check`. Apply migration `028` after `027` to activate the SQL correction in Supabase; it is safe to rerun.

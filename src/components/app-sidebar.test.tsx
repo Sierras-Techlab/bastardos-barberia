@@ -108,6 +108,18 @@ it("links only managers to the active cash workspace", () => {
   expect(link).toHaveAttribute("data-active");
 });
 
+it("links only managers to expenses and keeps nested routes active", () => {
+  pathname.value = "/expenses/audit";
+  const { rerender } = render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={owner} /></SidebarProvider></TooltipProvider>,
+  );
+  const link = screen.getByRole("link", { name: "Gastos" });
+  expect(link).toHaveAttribute("href", "/expenses");
+  expect(link).toHaveAttribute("data-active");
+  rerender(<TooltipProvider><SidebarProvider><AppSidebar user={employee} /></SidebarProvider></TooltipProvider>);
+  expect(screen.queryByRole("link", { name: "Gastos" })).not.toBeInTheDocument();
+});
+
 it("keeps payment-method administration contextual to incomes", () => {
   render(
     <TooltipProvider>
