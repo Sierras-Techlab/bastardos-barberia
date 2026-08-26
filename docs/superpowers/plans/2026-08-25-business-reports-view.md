@@ -91,7 +91,7 @@ The Zod response must verify:
 
 ## Planned Files
 
-- `supabase/queries/039_operating_reports.sql` or the next available migration number.
+- `supabase/queries/039_operating_reports.sql`.
 - `src/types/report.ts`.
 - `src/lib/reports/{schemas,repository,service,client,date-range}.ts`.
 - `src/app/api/reports/business/route.ts`.

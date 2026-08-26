@@ -683,27 +683,34 @@ grant execute on function public.close_pending_daily_cash() to service_role;
 grant execute on function public.get_daily_cash(uuid, date) to service_role;
 grant execute on function public.list_daily_cash(uuid, date, date, integer, integer) to service_role;
 
-create extension if not exists pg_cron;
-
-do $$
+do $cron_setup$
 declare
   existing_job_id bigint;
 begin
-  select jobid into existing_job_id
-  from cron.job
-  where jobname = 'bastardos-close-daily-cash';
+  -- Supabase permits pg_cron only in its managed `postgres` database. Skip the
+  -- scheduler in disposable databases while still installing every cash RPC.
+  if current_database() <> 'postgres' then
+    raise notice 'Skipping pg_cron setup outside the postgres database';
+    return;
+  end if;
+
+  execute 'create extension if not exists pg_cron';
+
+  execute 'select jobid from cron.job where jobname = $1'
+    into existing_job_id
+    using 'bastardos-close-daily-cash';
 
   if existing_job_id is not null then
-    perform cron.unschedule(existing_job_id);
+    execute 'select cron.unschedule($1)' using existing_job_id;
   end if;
-end;
-$$;
 
-select cron.schedule(
-  'bastardos-close-daily-cash',
-  '0 * * * *',
-  'select public.close_pending_daily_cash();'
-);
+  execute 'select cron.schedule($1, $2, $3)'
+    using
+      'bastardos-close-daily-cash',
+      '0 * * * *',
+      'select public.close_pending_daily_cash();';
+end;
+$cron_setup$;
 
 notify pgrst, 'reload schema';
 

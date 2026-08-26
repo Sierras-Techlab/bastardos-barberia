@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Client, type DatabaseError } from "pg";
 import { cashDaySchema } from "../src/lib/cash/schemas";
 
@@ -15,6 +17,12 @@ const client = new Client({
 });
 
 const results: Array<{ test: string; status: "PASS" }> = [];
+const migration040 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "040_production_hardening.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -38,6 +46,8 @@ const main = async () => {
   await client.query("begin");
   await client.query("set local statement_timeout = '20s'");
   await client.query("set local lock_timeout = '5s'");
+  await client.query(migration040);
+  pass("apply migration 040 inside the rollback-only acceptance transaction");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
@@ -60,6 +70,14 @@ const main = async () => {
     returning id
   `, [`audit.employee${suffix}`, passwordHash, managerId]);
   const employeeId = employeeResult.rows[0].id;
+  const otherEmployeeResult = await client.query<{ id: string }>(`
+    insert into public.users (
+      first_name, last_name, username, password_hash, role_id, created_by,
+      service_commission_rate, product_commission_rate
+    ) values ('Audit', 'Other Employee', $1, $2, 3, $3, 15, 5)
+    returning id
+  `, [`audit.other.employee${suffix}`, passwordHash, managerId]);
+  const otherEmployeeId = otherEmployeeResult.rows[0].id;
   const ownerResult = await client.query<{ id: string }>(`
     insert into public.users (
       first_name, last_name, username, password_hash, role_id, created_by,
@@ -197,8 +215,37 @@ const main = async () => {
       from public.customer_fixed_schedules
      where customer_id = $1 and is_active
   `, [customerId]);
-  assert.deepEqual(schedule.rows[0], { responsible_user_id: employeeId, monthly_price: 30000 });
+  assert.deepEqual(
+    { ...schedule.rows[0], monthly_price: Number(schedule.rows[0].monthly_price) },
+    { responsible_user_id: employeeId, monthly_price: 30000 },
+  );
   pass("create customer with responsible fixed schedule");
+
+  const occurrenceRange = await client.query<{ date_from: string; date_to: string }>(`
+    select local_date::text as date_from, (local_date + 7)::text as date_to
+    from (
+      select pg_catalog.timezone('America/Argentina/Buenos_Aires', now())::date as local_date
+    ) dates
+  `);
+  const listOccurrences = async (actorId: string) => {
+    const result = await client.query<{ occurrences: Array<{ id: string; customer: { id: string } }> }>(`
+      select public.list_fixed_customer_occurrences($1, $2::date, $3::date, null) as occurrences
+    `, [actorId, occurrenceRange.rows[0].date_from, occurrenceRange.rows[0].date_to]);
+    return result.rows[0].occurrences;
+  };
+  const managerOccurrences = await listOccurrences(managerId);
+  const employeeOccurrences = await listOccurrences(employeeId);
+  const otherEmployeeOccurrences = await listOccurrences(otherEmployeeId);
+  const employeeOccurrence = employeeOccurrences.find((occurrence) => occurrence.customer.id === customerId);
+  assert.ok(managerOccurrences.some((occurrence) => occurrence.customer.id === customerId));
+  assert.ok(employeeOccurrence);
+  assert.equal(otherEmployeeOccurrences.some((occurrence) => occurrence.customer.id === customerId), false);
+  await expectDatabaseError("reject attendance mutation for another professional", "FIXED_OCCURRENCE_NOT_FOUND", () =>
+    client.query("select public.resolve_fixed_customer_occurrence($1, $2, 'attended', 'pending')", [
+      otherEmployeeId,
+      employeeOccurrence.id,
+    ]));
+  pass("scope fixed-customer agenda to the responsible employee");
 
   await expectDatabaseError("reject employee sale without an open work session", "EMPLOYEE_WORK_SESSION_REQUIRED", () =>
     client.query(`
@@ -411,6 +458,25 @@ const main = async () => {
   assert.equal(monthlyIncome.rows[0].customer_visits, 0);
   pass("pay fixed month without adding a customer visit");
 
+  const visitHistory = await client.query<{ visits: { pagination: { total: number }; items: unknown[] } }>(`
+    select public.list_customer_visits($1, $2, 1, 20) as visits
+  `, [managerId, customerId]);
+  assert.equal(visitHistory.rows[0].visits.pagination.total, 0);
+  assert.deepEqual(visitHistory.rows[0].visits.items, []);
+  pass("exclude fixed subscriptions from customer visit history");
+
+  await client.query("savepoint fixed_subscription_void_acceptance");
+  await client.query("select public.void_income($1, $2)", [monthlyIncomeId, managerId]);
+  const voidedSubscription = await client.query<{ visits: number; attempt_status: string }>(`
+    select c.visits, a.status as attempt_status
+    from public.customers c
+    join public.fixed_customer_monthly_payment_attempts a on a.customer_id = c.id
+    where c.id = $1 and a.income_id = $2
+  `, [customerId, monthlyIncomeId]);
+  assert.deepEqual(voidedSubscription.rows[0], { visits: 0, attempt_status: "voided" });
+  await client.query("rollback to savepoint fixed_subscription_void_acceptance");
+  pass("void fixed subscription without decrementing customer visits");
+
   await expectDatabaseError("reject a second active monthly payment", "FIXED_MONTH_ALREADY_PAID", () =>
     client.query("select public.pay_fixed_customer_month($1, $2, $3, $4, $5::jsonb)", [
       managerId,
@@ -435,6 +501,32 @@ const main = async () => {
   pass("validate live Caja projection and subscription classification");
 
   assert.equal(parsedCash.data?.state, "live");
+  const liveCashId = parsedCash.data?.id;
+  assert.ok(liveCashId);
+  await client.query("savepoint live_cash_adjustment_acceptance");
+  const adjustmentResult = await client.query<{ id: string }>(`
+    insert into public.daily_cash_adjustments (
+      business_date, source_income_id, original_daily_cash_id, created_by,
+      created_by_first_name_snapshot, created_by_last_name_snapshot,
+      gross_delta, commission_delta, barbershop_net_delta, service_delta, product_delta
+    ) values ($1::date, $2, $3, $4, 'Audit', 'Manager', -100, 0, -100, -100, 0)
+    returning id
+  `, [businessDate.rows[0].business_date, employeeIncomeId, liveCashId, managerId]);
+  await client.query(`
+    insert into public.daily_cash_adjustment_payments (
+      adjustment_id, payment_method_id, method_name_snapshot, amount
+    ) values ($1, $2, 'Efectivo', -100)
+  `, [adjustmentResult.rows[0].id, cashMethod.rows[0].id]);
+  const adjustedExpectedCash = await client.query<{ expected_cash: string }>(`
+    select public.current_cash_expected($1::date, $2::bigint)::text as expected_cash
+  `, [businessDate.rows[0].business_date, parsedCash.data.lifecycle.openingBalance]);
+  assert.equal(
+    Number(adjustedExpectedCash.rows[0].expected_cash),
+    parsedCash.data.lifecycle.expectedCash - 100,
+  );
+  await client.query("rollback to savepoint live_cash_adjustment_acceptance");
+  pass("include cash adjustments in live Caja expected cash");
+
   await client.query("savepoint cash_close_acceptance");
   const closedCashResult = await client.query<{ close_daily_cash: unknown }>(`
     select public.close_daily_cash($1, $2::date, $3::bigint)

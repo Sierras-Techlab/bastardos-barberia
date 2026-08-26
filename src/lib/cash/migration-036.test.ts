@@ -31,4 +31,11 @@ describe("migration 036 live Caja projection repair", () => {
     expect(repair036).toContain("i.source_type='fixed_subscription'");
     expect(repair036).toContain("to_jsonb('subscription'::text)");
   });
+
+  it("uses the adjustment-aware expected cash helper", () => {
+    for (const sql of [repair028, repair036]) {
+      expect(sql).toContain("expected_value := public.current_cash_expected");
+      expect(sql).not.toContain("register_record.opening_balance + coalesce(sum(ip.amount),0)");
+    }
+  });
 });

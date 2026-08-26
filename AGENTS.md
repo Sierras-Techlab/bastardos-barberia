@@ -48,6 +48,7 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - User deletion is logical: `deleted_at` and `deleted_by` preserve audit history, normal reads exclude deleted accounts, and deletion plus session revocation is one database transaction.
 - A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
 - Every active fixed schedule has one responsible professional and a positive integer monthly price. Employee schedules are forced to use the actor as the responsible professional; only manager mutations may reassign another professional.
+- Employee fixed-customer agendas and attendance mutations are scoped in PostgreSQL to active schedules currently assigned to that employee; managers retain the complete agenda.
 - Monthly subscription payments are recorded as immutable `fixed_subscription` incomes with their own per-period row in `fixed_customer_monthly_payment_attempts`. A new attempt reuses the same `(customer, period)` key only after a manager voids the previous active attempt, reopening the month without losing history. The same physical month cannot be paid twice while the previous attempt is active.
 - Customer visit history, dashboard totals and Caja snapshots continue to come from active normal sales; `fixed_subscription` rows contribute to the daily cash close but are excluded from "visits" counters and customer-visit financial projections. Each customer's last qualifying visit date is derived from the latest active normal sale through a canonical partial index and never stored as a mutable customer column.
 - The canonical payment method named `Efectivo` is the only one that affects physical cash reconciliation. Renaming, deactivating or deleting that record is rejected by the payment-method RPCs and the database enforces a unique `system_code = 'cash'` index.
@@ -88,7 +89,8 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `038` and their execution guide.
+- `scripts/system-db-audit.ts`, `scripts/system-db-acceptance.ts`, `scripts/system-clean-install-acceptance.ts`: read-only schema audit, rollback-only behavioral acceptance and isolated empty-database migration acceptance using `SUPABASE_DB_URL`.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `040` and their execution guide; `039` belongs to Reports and `040` to production hardening.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.
@@ -113,6 +115,9 @@ npm test
 npm run lint
 npm run build
 npm run bootstrap:owner
+npm run audit:db
+npm run acceptance:db
+npx tsx --env-file=.env scripts/system-clean-install-acceptance.ts --confirm-disposable
 ```
 
 The repository expects Node 24.18.x and npm 11.16.x. The bootstrap command reads `.env`; remove its three temporary `BOOTSTRAP_OWNER_*` values after a successful run.
