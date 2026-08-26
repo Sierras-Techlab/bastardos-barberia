@@ -42,6 +42,7 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 36. `036_live_cash_charged_projection_repair.sql`
 37. `037_remove_legacy_income_overloads.sql`
 38. `038_cash_close_charged_snapshot_repair.sql`
+39. `039_business_reports.sql`
 
 Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
 
@@ -70,6 +71,15 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `027_expense_void_contract_repair.sql` replaces the initial unversioned expense-void RPC with the optimistic four-argument contract expected by the application and removes the PostgreSQL `42702` parameter/column ambiguity from the void reason. It is safe to rerun after `026`; do not rerun the one-shot structural migration to repair an already installed database.
 
 `028_open_cash_projection_repair.sql` restores the persisted register UUID in the live Caja projection. Without it, opening succeeds in PostgreSQL but the response retains the old `id: null` sentinel from the read-only Caja model, so the interface continues to offer `Abrir caja`. Run it once after `027`; it is safe to rerun.
+
+`039_business_reports.sql` installs the manager-only `get_business_report` snapshot used by `/reports`. It compares the selected Buenos Aires calendar month with the equivalent preceding period and derives gross income, immutable commission/net snapshots, active accounting expenses, operating result, projection, daily series, compositions and rankings. It reads no Caja reconciliation tables, grants execution only to `service_role` and is required before opening Reportes.
+
+After installing `039` in the disposable/test project, run:
+
+```bash
+npm run audit:db
+npm run acceptance:db
+```
 
 Validate migration `026` authorization, lifecycle, concurrency, projections and Caja isolation without retaining temporary records. An exact void replay with the original pre-void `updatedAt` must return `EXPENSE_CONFLICT`; a request using the current voided version must return `EXPENSE_NOT_ACTIVE`. Neither retry may append a revision.
 

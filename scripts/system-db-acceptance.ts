@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { Client, type DatabaseError } from "pg";
 import { cashDaySchema } from "../src/lib/cash/schemas";
+import { businessReportSchema } from "../src/lib/reports/schemas";
 
 const connectionString = process.env.SUPABASE_DB_URL;
 
@@ -498,6 +499,24 @@ const main = async () => {
   `, [managerId, businessDate.rows[0].business_date]);
   assert.deepEqual(cashAfterExpenseResult.rows[0].get_daily_cash, cashBeforeExpenseResult.rows[0].get_daily_cash);
   pass("keep Caja byte-equivalent across the expense lifecycle");
+
+  const reportResult = await client.query<{ get_business_report: unknown }>(`
+    select public.get_business_report($1, $2)
+  `, [managerId, period.rows[0].period]);
+  const parsedReport = businessReportSchema.safeParse(reportResult.rows[0].get_business_report);
+  assert.equal(parsedReport.success, true, parsedReport.success ? undefined : parsedReport.error.message);
+  if (!parsedReport.success) assert.fail("business report schema rejected the database projection");
+  assert.equal(parsedReport.data.summary.barbershopNet - parsedReport.data.summary.expenses,
+    parsedReport.data.summary.operatingResult);
+  assert.equal(parsedReport.data.incomeComposition.reduce((sum, item) => sum + item.amount, 0),
+    parsedReport.data.summary.grossIncome);
+  assert.equal(parsedReport.data.paymentComposition.reduce((sum, item) => sum + item.amount, 0),
+    parsedReport.data.summary.grossIncome);
+  assert.equal(parsedReport.data.daily.length, parsedReport.data.period.elapsedDays);
+  pass("project the manager business report with exact financial identities");
+
+  await expectDatabaseError("reject employee business reports", "MANAGER_REQUIRED", () =>
+    client.query("select public.get_business_report($1, $2)", [employeeId, period.rows[0].period]));
 
   const ended = await client.query<{ end_work_session: unknown }>(`
     select public.end_work_session($1)

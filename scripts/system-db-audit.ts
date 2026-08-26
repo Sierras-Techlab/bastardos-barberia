@@ -18,6 +18,7 @@ const requiredFunctions = [
   "create_income",
   "get_daily_cash",
   "get_income_detail",
+  "get_business_report",
   "list_incomes",
   "open_daily_cash",
   "pay_fixed_customer_month",
