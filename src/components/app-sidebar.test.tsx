@@ -120,6 +120,18 @@ it("links only managers to expenses and keeps nested routes active", () => {
   expect(screen.queryByRole("link", { name: "Gastos" })).not.toBeInTheDocument();
 });
 
+it("links only managers to reports and keeps nested routes active", () => {
+  pathname.value = "/reports/detail";
+  const { rerender } = render(
+    <TooltipProvider><SidebarProvider><AppSidebar user={owner} /></SidebarProvider></TooltipProvider>,
+  );
+  const link = screen.getByRole("link", { name: "Reportes" });
+  expect(link).toHaveAttribute("href", "/reports");
+  expect(link).toHaveAttribute("data-active");
+  rerender(<TooltipProvider><SidebarProvider><AppSidebar user={employee} /></SidebarProvider></TooltipProvider>);
+  expect(screen.queryByRole("link", { name: "Reportes" })).not.toBeInTheDocument();
+});
+
 it("keeps payment-method administration contextual to incomes", () => {
   render(
     <TooltipProvider>

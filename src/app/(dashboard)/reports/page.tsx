@@ -1,0 +1,8 @@
+import type { Metadata } from "next";
+import { ReportsWorkspace } from "@/components/reports/reports-workspace";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { requireManagerPage } from "@/lib/auth/authorization";
+import { getBuenosAiresReportMonth } from "@/lib/reports/date";
+import { getBusinessReport } from "@/lib/reports/service";
+export const metadata: Metadata = { title: "Reportes", description: "Entendé el rendimiento mensual de Bastardos Barbería." };
+export default async function ReportsPage() { const { user } = await requireManagerPage(); const month = getBuenosAiresReportMonth(); const report = await getBusinessReport(user, month); return <><header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]"><div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-5 md:px-7 xl:px-8"><SidebarTrigger className="-ml-1" /><div><p className="text-xs text-muted-foreground">Visión del negocio</p><h1 className="font-semibold">Reportes</h1></div></div></header><main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-5 pb-10 md:px-7 xl:px-8 xl:py-7"><div className="mb-6 max-w-3xl"><p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Rendimiento mensual</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Entendé cómo viene el negocio</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Ingresos, gastos y resultado explicados de forma simple.</p></div><ReportsWorkspace initialReport={report} currentMonth={month} /></main></>; }
