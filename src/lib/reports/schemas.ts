@@ -48,6 +48,26 @@ const dayHighlightSchema = z.object({
   amount: signedMoney,
 }).strict();
 
+const teamMetricsSchema = z.object({
+  saleCount: z.number().int().safe().nonnegative(),
+  grossIncome: nonnegativeMoney,
+  commission: nonnegativeMoney,
+  barbershopNet: signedMoney,
+  averageTicket: nonnegativeMoney.nullable(),
+  workedMinutes: z.number().int().safe().nonnegative().nullable(),
+  grossPerHour: nonnegativeMoney.nullable(),
+  netPerHour: signedMoney.nullable(),
+  outsideSessionSaleCount: z.number().int().safe().nonnegative(),
+}).strict();
+
+const teamMemberSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1),
+  role: z.enum(["owner", "admin", "employee"]),
+  current: teamMetricsSchema,
+  previous: teamMetricsSchema,
+}).strict();
+
 export const businessReportSchema = z.object({
   month,
   availableMonths: z.array(month).min(1).superRefine((months, context) => {
@@ -81,6 +101,7 @@ export const businessReportSchema = z.object({
   expenseComposition: z.array(expenseBreakdownSchema),
   serviceRanking: z.array(rankedItemSchema),
   productRanking: z.array(rankedItemSchema),
+  teamPerformance: z.array(teamMemberSchema),
   highlights: z.object({
     bestDay: dayHighlightSchema.nullable(),
     worstDay: dayHighlightSchema.nullable(),

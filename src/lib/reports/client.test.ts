@@ -13,7 +13,7 @@ const emptyReport = {
   incomeComposition: [{ key: "services", amount: 0 }, { key: "products", amount: 0 }, { key: "subscriptions", amount: 0 }],
   paymentComposition: [],
   expenseComposition: [{ key: "fixed", amount: 0 }, { key: "variable", amount: 0 }, { key: "supplies", amount: 0 }],
-  serviceRanking: [], productRanking: [], highlights: { bestDay: null, worstDay: null },
+  serviceRanking: [], productRanking: [], teamPerformance: [], highlights: { bestDay: null, worstDay: null },
 };
 const fetchMock = vi.fn<typeof fetch>();
 

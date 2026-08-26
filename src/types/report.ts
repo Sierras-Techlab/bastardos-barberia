@@ -29,6 +29,24 @@ export type ReportNamedBreakdown = {
 
 export type ReportRankedItem = ReportNamedBreakdown & { quantity: number };
 export type ReportDayHighlight = { date: string; amount: number };
+export type ReportTeamMetrics = {
+  saleCount: number;
+  grossIncome: number;
+  commission: number;
+  barbershopNet: number;
+  averageTicket: number | null;
+  workedMinutes: number | null;
+  grossPerHour: number | null;
+  netPerHour: number | null;
+  outsideSessionSaleCount: number;
+};
+export type ReportTeamMember = {
+  id: string;
+  name: string;
+  role: "owner" | "admin" | "employee";
+  current: ReportTeamMetrics;
+  previous: ReportTeamMetrics;
+};
 
 export type BusinessReport = {
   month: string;
@@ -59,6 +77,7 @@ export type BusinessReport = {
   expenseComposition: Array<ReportBreakdown & { key: ExpenseBreakdownKey }>;
   serviceRanking: ReportRankedItem[];
   productRanking: ReportRankedItem[];
+  teamPerformance: ReportTeamMember[];
   highlights: {
     bestDay: ReportDayHighlight | null;
     worstDay: ReportDayHighlight | null;

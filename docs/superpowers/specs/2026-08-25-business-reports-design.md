@@ -1,7 +1,7 @@
 # Business Reports Design
 
 **Date:** 2026-08-25  
-**Status:** Approved design  
+**Status:** Approved design with team-performance extension  
 **Scope:** Manager-only first version of `/reports`
 
 ## Objective
@@ -11,8 +11,8 @@ Give owners and administrators a simple, visual explanation of how the barbersho
 ## Product boundaries
 
 - Only `owner` and `admin` may access report pages or data.
-- The first version reports business performance, not individual employee performance.
-- It excludes attendance, inventory valuation, customer identity and employee identity.
+- The financial overview reports the whole business. The approved team-performance extension exposes responsible-professional identity and attendance-derived productivity only to managers.
+- It excludes inventory valuation and customer identity.
 - Caja remains the authoritative physical-cash reconciliation workspace. Reports use active income economics and accounting expenses; they do not reinterpret Caja snapshots.
 - The first version supports a month selector, not arbitrary date ranges.
 - Export, printing and scheduled delivery are outside this increment.
@@ -217,6 +217,18 @@ The server application adds a focused `src/lib/reports` domain with schemas, con
 `/reports` is a protected Server Component and loads the initial current-month snapshot directly through the service. `GET /api/reports/business?month=YYYY-MM` reauthorizes the session, validates the query and returns uncached JSON for interactive month changes. This follows Next.js 16's current uncached Route Handler behavior and keeps Supabase access out of browser code.
 
 ## Component boundaries
+
+## Approved extension: team performance
+
+The monthly report adds a manager-only `Rendimiento del equipo` section after the financial composition and before catalog rankings. It uses the same selected and comparable periods as the rest of the report and requires no extra filter or request.
+
+Every responsible professional with an active income in either period appears. Every employee with a work session in either period also appears even when they recorded no income. Owner/admin rows may appear when responsible for income, but attendance metrics are `null` because those roles do not clock work sessions.
+
+For each professional PostgreSQL returns current and comparable values for sale count, gross income, commission, barbershop net, average ticket, worked minutes, gross per worked hour, net per worked hour and outside-session sale count. Only active incomes contribute. Hours are the overlap of each employee session with the selected Buenos Aires date window; an open session is capped at report generation time. Productivity-per-hour is `null` when worked minutes are zero or attendance does not apply. Average ticket is `null` when sale count is zero.
+
+`outsideSessionSaleCount` counts active employee-responsible incomes whose immutable `outside_work_session` flag is true. Owner/admin rows always return zero for this field. Ordering is deterministic: current gross descending, then display name and user ID. Historical/deleted professionals remain identifiable through the retained `users` audit row and are labeled with their current retained name; no customer, payment or session timestamps are exposed.
+
+The UI uses a compact desktop comparison grid and stacked mobile cards. The first five rows are shown initially, with an in-place detail expansion for larger teams. It highlights current gross, net, commission and ticket, then shows worked time/productivity when applicable and a warning only when outside-session sales are nonzero. Percentage comparison follows the existing no-base rule. Employees and anonymous callers remain blocked at page, API and PostgreSQL boundaries.
 
 - `ReportsWorkspace`: owns selected month, latest successful report, loading/error state and request sequencing.
 - `ReportHero`: displays result, cutoff, comparison and optional projection.

@@ -87,6 +87,62 @@ export const reportFixture = {
       quantity: 3,
     },
   ],
+  teamPerformance: [
+    {
+      id: "20000000-0000-4000-8000-000000000001",
+      name: "Ana Barbera",
+      role: "employee" as const,
+      current: {
+        saleCount: 4,
+        grossIncome: 80_000,
+        commission: 24_000,
+        barbershopNet: 56_000,
+        averageTicket: 20_000,
+        workedMinutes: 480,
+        grossPerHour: 10_000,
+        netPerHour: 7_000,
+        outsideSessionSaleCount: 1,
+      },
+      previous: {
+        saleCount: 2,
+        grossIncome: 40_000,
+        commission: 12_000,
+        barbershopNet: 28_000,
+        averageTicket: 20_000,
+        workedMinutes: 360,
+        grossPerHour: 6_667,
+        netPerHour: 4_667,
+        outsideSessionSaleCount: 0,
+      },
+    },
+    {
+      id: "20000000-0000-4000-8000-000000000002",
+      name: "Olivia Owner",
+      role: "owner" as const,
+      current: {
+        saleCount: 1,
+        grossIncome: 30_000,
+        commission: 0,
+        barbershopNet: 30_000,
+        averageTicket: 30_000,
+        workedMinutes: null,
+        grossPerHour: null,
+        netPerHour: null,
+        outsideSessionSaleCount: 0,
+      },
+      previous: {
+        saleCount: 0,
+        grossIncome: 0,
+        commission: 0,
+        barbershopNet: 0,
+        averageTicket: null,
+        workedMinutes: null,
+        grossPerHour: null,
+        netPerHour: null,
+        outsideSessionSaleCount: 0,
+      },
+    },
+  ],
   highlights: {
     bestDay: { date: "2026-08-01", amount: 10_000 },
     worstDay: { date: "2026-08-25", amount: -40_000 },
@@ -101,6 +157,20 @@ describe("businessReportSchema", () => {
   it("rejects malformed or duplicate available months", () => {
     expect(() => businessReportSchema.parse({ ...reportFixture, availableMonths: ["2026-8"] })).toThrow();
     expect(() => businessReportSchema.parse({ ...reportFixture, availableMonths: ["2026-08", "2026-08"] })).toThrow();
+  });
+
+  it("rejects unsafe team metrics and private session details", () => {
+    expect(() => businessReportSchema.parse({
+      ...reportFixture,
+      teamPerformance: [{
+        ...reportFixture.teamPerformance[0],
+        current: { ...reportFixture.teamPerformance[0].current, saleCount: -1 },
+      }],
+    })).toThrow();
+    expect(() => businessReportSchema.parse({
+      ...reportFixture,
+      teamPerformance: [{ ...reportFixture.teamPerformance[0], startedAt: "2026-08-01T10:00:00Z" }],
+    })).toThrow();
   });
 
   it("rejects leaked fields and non-integer money", () => {
