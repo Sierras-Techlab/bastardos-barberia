@@ -4,6 +4,12 @@ Captured: 2026-08-24
 
 ## Business reports planning — 2026-08-25
 
+- Implementation is complete locally on isolated branch `codex/business-reports` from merged `origin/dev`. Migration `039_business_reports.sql`, strict schemas/repository/service/API/client, `/reports`, manager navigation, accessible Recharts trend, semantic composition bars, rankings, empty/loading/error states and acceptance/audit integration are present.
+- Focused local verification passes 15 files / 52 tests. Final local verification passes 223 files / 1004 tests with two workers, route type generation, standalone TypeScript, ESLint with zero warnings, `git diff --check` and the Next.js 16.3 Turbopack production build; the build emits `/reports` and `/api/reports/business`.
+- External gate: migration `039` has not been applied to the configured test Supabase project in this task. `npm run audit:db`, `npm run acceptance:db` and authenticated desktop/mobile validation remain pending until that schema mutation is explicitly authorized.
+- The install added Recharts 3. npm reported one pre-existing/current dependency high-severity audit finding; no unrelated automatic dependency upgrade was performed.
+- Best next task: authorize test-project installation of `039`, run database audit/acceptance, then validate `/reports` authenticated at desktop and 390×844 before integration.
+
 - The user confirmed that the stabilized feature branch has already been merged into `dev`; this planning checkout remains on `feat/expenses`, so implementation must begin from an updated `dev` base rather than continuing this branch.
 - The manager-only `/reports` V1 design is approved. It is a visual narrative of business performance rather than a table-first ledger: current/equivalent-prior month comparison, labeled linear projection, financial cards, daily trend, income/payment/expense composition, service/product rankings and best/worst operating days.
 - Approved financial boundaries: active income snapshots and active accounting expenses are authoritative; operating result is barbershop net minus expenses; Caja remains separate; employee performance, arbitrary ranges, exports and advanced forecasting are deferred.
