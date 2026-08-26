@@ -5,7 +5,7 @@ const sql = readFileSync("supabase/queries/039_business_reports.sql", "utf8");
 
 describe("migration 039 business reports", () => {
   it("installs one canonical manager-only report RPC", () => {
-    expect(sql).toMatch(/create or replace function public\.get_business_report\(\s*actor_user_id uuid,\s*target_month text\s*\)/si);
+    expect(sql).toMatch(/create or replace function public\.get_business_report\([\s\S]*actor_user_id uuid,[\s\S]*target_month text[\s\S]*\)/i);
     expect(sql).toContain("perform public.assert_expense_manager(actor_user_id)");
     expect(sql).toContain("REPORT_MONTH_INVALID");
     expect(sql).toContain("REPORT_MONTH_FUTURE");
@@ -39,7 +39,7 @@ describe("migration 039 business reports", () => {
     for (const key of ["generatedAt", "previousSummary", "operatingMarginBps", "incomeComposition", "paymentComposition", "expenseComposition", "serviceRanking", "productRanking", "bestDay", "worstDay"]) {
       expect(sql).toContain(`'${key}'`);
     }
-    expect(sql).toMatch(/revoke all on function public\.get_business_report\(uuid, text\) from public, anon, authenticated/si);
-    expect(sql).toMatch(/grant execute on function public\.get_business_report\(uuid, text\) to service_role/si);
+    expect(sql).toMatch(/revoke all on function public\.get_business_report\(uuid, text\) from public, anon, authenticated/i);
+    expect(sql).toMatch(/grant execute on function public\.get_business_report\(uuid, text\) to service_role/i);
   });
 });

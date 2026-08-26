@@ -23,8 +23,13 @@ const dailyMetricsSchema = z.object({
   operatingResult: signedMoney,
 }).strict();
 
-const breakdown = (keys: readonly [string, ...string[]]) => z.object({
-  key: z.enum(keys),
+const incomeBreakdownSchema = z.object({
+  key: z.enum(["services", "products", "subscriptions"]),
+  amount: nonnegativeMoney,
+}).strict();
+
+const expenseBreakdownSchema = z.object({
+  key: z.enum(["fixed", "variable", "supplies"]),
   amount: nonnegativeMoney,
 }).strict();
 
@@ -66,9 +71,9 @@ export const businessReportSchema = z.object({
     selected: dailyMetricsSchema,
     previous: dailyMetricsSchema.nullable(),
   }).strict()),
-  incomeComposition: z.array(breakdown(["services", "products", "subscriptions"])),
+  incomeComposition: z.array(incomeBreakdownSchema),
   paymentComposition: z.array(namedBreakdownSchema),
-  expenseComposition: z.array(breakdown(["fixed", "variable", "supplies"])),
+  expenseComposition: z.array(expenseBreakdownSchema),
   serviceRanking: z.array(rankedItemSchema),
   productRanking: z.array(rankedItemSchema),
   highlights: z.object({
