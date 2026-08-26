@@ -32,6 +32,7 @@ export type ReportDayHighlight = { date: string; amount: number };
 
 export type BusinessReport = {
   month: string;
+  availableMonths: string[];
   generatedAt: string;
   period: {
     from: string;

@@ -36,7 +36,7 @@ describe("migration 039 business reports", () => {
   });
 
   it("returns the strict camelCase projection and safe grants", () => {
-    for (const key of ["generatedAt", "previousSummary", "operatingMarginBps", "incomeComposition", "paymentComposition", "expenseComposition", "serviceRanking", "productRanking", "bestDay", "worstDay"]) {
+    for (const key of ["availableMonths", "generatedAt", "previousSummary", "operatingMarginBps", "incomeComposition", "paymentComposition", "expenseComposition", "serviceRanking", "productRanking", "bestDay", "worstDay"]) {
       expect(sql).toContain(`'${key}'`);
     }
     expect(sql).toMatch(/revoke all on function public\.get_business_report\(uuid, text\) from public, anon, authenticated/i);

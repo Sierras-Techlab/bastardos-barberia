@@ -7,6 +7,7 @@ import { reportRepository } from "./repository";
 
 const report = {
   month: "2026-08",
+  availableMonths: ["2026-08"],
   generatedAt: "2026-08-25T15:00:00Z",
   period: { from: "2026-08-01", to: "2026-08-25", elapsedDays: 25, daysInMonth: 31, isCurrentMonth: true },
   comparison: { month: "2026-07", from: "2026-07-01", to: "2026-07-25" },

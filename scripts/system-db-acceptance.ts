@@ -506,6 +506,8 @@ const main = async () => {
   const parsedReport = businessReportSchema.safeParse(reportResult.rows[0].get_business_report);
   assert.equal(parsedReport.success, true, parsedReport.success ? undefined : parsedReport.error.message);
   if (!parsedReport.success) assert.fail("business report schema rejected the database projection");
+  assert.equal(parsedReport.data.availableMonths[0], period.rows[0].period);
+  assert.ok(parsedReport.data.availableMonths.includes(parsedReport.data.month));
   assert.equal(parsedReport.data.summary.barbershopNet - parsedReport.data.summary.expenses,
     parsedReport.data.summary.operatingResult);
   assert.equal(parsedReport.data.incomeComposition.reduce((sum, item) => sum + item.amount, 0),

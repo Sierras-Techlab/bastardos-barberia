@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ReportApiError, reportClient } from "./client";
 
 const emptyReport = {
-  month: "2026-08", generatedAt: "2026-08-25T15:00:00Z",
+  month: "2026-08", availableMonths: ["2026-08"], generatedAt: "2026-08-25T15:00:00Z",
   period: { from: "2026-08-01", to: "2026-08-25", elapsedDays: 25, daysInMonth: 31, isCurrentMonth: true },
   comparison: { month: "2026-07", from: "2026-07-01", to: "2026-07-25" },
   summary: { grossIncome: 0, commission: 0, barbershopNet: 0, expenses: 0, operatingResult: 0, operatingMarginBps: null },

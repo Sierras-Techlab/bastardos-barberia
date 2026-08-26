@@ -57,6 +57,17 @@ begin
   );
 
   with
+  available_months as (
+    select current_month as month_start
+    union
+    select pg_catalog.date_trunc('month', i.business_date)::date
+    from public.incomes i
+    where i.status = 'active' and i.business_date < current_month
+    union
+    select pg_catalog.date_trunc('month', e.accounting_date)::date
+    from public.expenses e
+    where e.status = 'active' and e.accounting_date < current_month
+  ),
   selected_incomes as (
     select i.*
     from public.incomes i
@@ -200,6 +211,7 @@ begin
   )
   select pg_catalog.jsonb_build_object(
     'month', target_month,
+    'availableMonths', (select pg_catalog.jsonb_agg(pg_catalog.to_char(m.month_start, 'YYYY-MM') order by m.month_start desc) from available_months m),
     'generatedAt', pg_catalog.clock_timestamp(),
     'period', pg_catalog.jsonb_build_object(
       'from', selected_start, 'to', selected_end, 'elapsedDays', selected_elapsed_days,

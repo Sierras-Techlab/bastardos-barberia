@@ -4,6 +4,7 @@ import { businessReportSchema, reportMonthQuerySchema } from "./schemas";
 
 export const reportFixture = {
   month: "2026-08",
+  availableMonths: ["2026-08", "2026-06"],
   generatedAt: "2026-08-25T15:00:00.000Z",
   period: {
     from: "2026-08-01",
@@ -95,6 +96,11 @@ export const reportFixture = {
 describe("businessReportSchema", () => {
   it("accepts the complete strict business report contract", () => {
     expect(businessReportSchema.parse(reportFixture)).toEqual(reportFixture);
+  });
+
+  it("rejects malformed or duplicate available months", () => {
+    expect(() => businessReportSchema.parse({ ...reportFixture, availableMonths: ["2026-8"] })).toThrow();
+    expect(() => businessReportSchema.parse({ ...reportFixture, availableMonths: ["2026-08", "2026-08"] })).toThrow();
   });
 
   it("rejects leaked fields and non-integer money", () => {

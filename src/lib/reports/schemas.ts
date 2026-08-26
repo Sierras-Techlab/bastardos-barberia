@@ -50,6 +50,11 @@ const dayHighlightSchema = z.object({
 
 export const businessReportSchema = z.object({
   month,
+  availableMonths: z.array(month).min(1).superRefine((months, context) => {
+    if (new Set(months).size !== months.length) {
+      context.addIssue({ code: "custom", message: "Los meses disponibles no pueden repetirse." });
+    }
+  }),
   generatedAt: timestamp,
   period: z.object({
     from: date,
