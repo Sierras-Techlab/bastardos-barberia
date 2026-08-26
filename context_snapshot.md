@@ -2,6 +2,14 @@
 
 Captured: 2026-08-24
 
+## Business reports planning — 2026-08-25
+
+- The user confirmed that the stabilized feature branch has already been merged into `dev`; this planning checkout remains on `feat/expenses`, so implementation must begin from an updated `dev` base rather than continuing this branch.
+- The manager-only `/reports` V1 design is approved. It is a visual narrative of business performance rather than a table-first ledger: current/equivalent-prior month comparison, labeled linear projection, financial cards, daily trend, income/payment/expense composition, service/product rankings and best/worst operating days.
+- Approved financial boundaries: active income snapshots and active accounting expenses are authoritative; operating result is barbershop net minus expenses; Caja remains separate; employee performance, arbitrary ranges, exports and advanced forecasting are deferred.
+- Specification: `docs/superpowers/specs/2026-08-25-business-reports-design.md`. Implementation plan: `docs/superpowers/plans/2026-08-25-business-reports.md`. The plan adds ordered migration `039_business_reports.sql`, a strict manager-only report domain/API, accessible Recharts visualization, PostgreSQL acceptance and full responsive verification.
+- Best next task: create an isolated `codex/business-reports` worktree from current `dev` and execute the nine plan tasks with TDD, applying `039` only to an explicitly authorized disposable/test database.
+
 ## Local corrective closeout — 2026-08-25
 
 - Current-day income entry is now closure-aware at every navigation surface. A server-only persisted-register check redirects direct `/incomes/new` requests before loading catalogs when Caja is closed; Libro de ventas, Dashboard quick actions and Caja hide their create-income links. The existing `CASH_ALREADY_CLOSED` database guard remains the final authority for forms loaded before a concurrent close. Six focused files / 38 tests and TypeScript pass for the behavior.

@@ -210,7 +210,7 @@ type ReportRankedItem = ReportNamedBreakdown & { quantity: number };
 type ReportDayHighlight = { date: string; amount: number };
 ```
 
-All monetary values are safe integers in ARS. Objects are strict and arrays use deterministic ordering. Daily rows cover every ordinal day in the selected period, including zero-activity days, so the browser does not synthesize dates.
+All monetary values are safe integers in ARS. Objects are strict and arrays use deterministic ordering. A named breakdown/ranking `id` is a stable row key derived from the immutable catalog UUID plus its historical name snapshot; this keeps separately snapshotted names distinct after a catalog rename. Daily rows cover every ordinal day in the selected period, including zero-activity days, so the browser does not synthesize dates.
 
 The server application adds a focused `src/lib/reports` domain with schemas, contracts, repository, service and date/presentation helpers. The repository is server-only and parses the complete RPC response with Zod before returning it.
 
