@@ -63,10 +63,27 @@ describe("migration 021 fixed customer monthly payments", () => {
     expect(sql).toMatch(/customer_fixed_schedules_monthly_price_check/i);
   });
 
+  it("scopes the weekly agenda and attendance mutations to the responsible employee", () => {
+    const listBody = sql.match(/create or replace function public\.list_fixed_customer_occurrences[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+    const resolveBody = sql.match(/create or replace function public\.resolve_fixed_customer_occurrence[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+
+    expect(listBody).toMatch(/select u\.role_id into actor_role_id[\s\S]+u\.id = actor_user_id/i);
+    expect(listBody).toMatch(/actor_role_id in \(1, 2\)[\s\S]+s\.responsible_user_id = actor_user_id/i);
+    expect(resolveBody).toMatch(/actor_role_id in \(1, 2\)[\s\S]+s\.is_active[\s\S]+s\.responsible_user_id = actor_user_id/i);
+    expect(resolveBody).toMatch(/FIXED_OCCURRENCE_NOT_FOUND/i);
+  });
+
   it("adds source_type with sale and fixed_subscription and a one-active-subscription unique index", () => {
     expect(sql).toMatch(/add column if not exists source_type text/i);
     expect(sql).toMatch(/incomes_source_type_check check \(source_type in \('sale', 'fixed_subscription'\)\)/i);
     expect(sql).toMatch(/incomes_one_subscription_per_period_key/i);
+  });
+
+  it("does not write an invalid legacy payment discriminator for subscriptions", () => {
+    const payBody = sql.match(/create or replace function public\.pay_fixed_customer_month[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+
+    expect(payBody).toMatch(/target_customer_id,\s*null,\s*monthly_price,\s*monthly_price/i);
+    expect(payBody).not.toMatch(/target_customer_id,\s*'mixed'/i);
   });
 
   it("defines attempts.status with a CHECK constraint and a partial unique active index", () => {
@@ -121,6 +138,13 @@ describe("migration 021 fixed customer monthly payments", () => {
   it("blocks zero-basis_points distributions inside compute_fixed_subscription_payments", () => {
     expect(sql).toMatch(/basis_points is null or raw_item\.basis_points <= 0 or raw_item\.basis_points > 10000/i);
     expect(sql).toMatch(/if computed_amount <= 0 then[\s\S]+raise exception using errcode = '22023', message = 'FIXED_MONTH_INVALID_PAYMENT'/i);
+  });
+
+  it("does not shadow the PL/pgSQL raw_item record in the amount return query", () => {
+    const computeBody = sql.match(/create or replace function public\.compute_fixed_subscription_payments[\s\S]+?end;\s*\$\$/i)?.[0] ?? "";
+
+    expect(computeBody).toMatch(/select parsed_item\.payment_method_id, parsed_item\.amount::bigint/i);
+    expect(computeBody).not.toMatch(/\)\s+raw_item;/i);
   });
 
   it("calls synthesize_pending_fixed_customer_month when no attempt exists", () => {

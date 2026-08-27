@@ -47,4 +47,18 @@ describe("migration 023 customer last visit", () => {
     expect(sql).toMatch(/business_date at time zone 'America\/Argentina\/Buenos_Aires'/i);
     expect(sql).toMatch(/YYYY-MM-DD/i);
   });
+
+  it("keeps fixed subscriptions out of paginated visit history", () => {
+    const visitsBody = sql.match(/create or replace function public\.list_customer_visits[\s\S]+?return result;\s+end;/i)?.[0] ?? "";
+
+    expect(visitsBody).toMatch(/i\.status\s*=\s*'active'/i);
+    expect(visitsBody).toMatch(/i\.source_type\s*=\s*'sale'/i);
+  });
+
+  it("decrements the visit counter only when voiding a normal sale", () => {
+    const voidBody = sql.match(/create or replace function public\.void_income[\s\S]+?return income_record\.id;\s+end;/i)?.[0] ?? "";
+
+    expect(voidBody).toMatch(/select id, customer_id, status, source_type into income_record/i);
+    expect(voidBody).toMatch(/income_record\.source_type = 'sale'[\s\S]+set visits = greatest\(visits - 1, 0\)/i);
+  });
 });
