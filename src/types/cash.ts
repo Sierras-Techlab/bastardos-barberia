@@ -6,6 +6,22 @@ export type CashPerson = {
   lastName: string;
 };
 
+export type CashOpeningSource = "manual" | "first_income";
+export type CashCloseMode = "manual" | "automatic";
+export type CashReconciliationState = "not_applicable" | "pending_confirmation" | "confirmed";
+
+export type CashLifecycle = {
+  openingBalance: number;
+  openingSource: CashOpeningSource | null;
+  openedAt: string | null;
+  openedBy: CashPerson | null;
+  expectedCash: number;
+  countedCash: number | null;
+  difference: number | null;
+  closeMode: CashCloseMode | null;
+  reconciliationState: CashReconciliationState;
+};
+
 export type CashSummary = {
   salesGrossTotal: number;
   salesCommissionTotal: number;
@@ -37,7 +53,7 @@ export type CashSaleAuditItem = {
   createdAt: string;
   employee: CashPerson;
   customerName: string | null;
-  kind: "service" | "products" | "combined";
+  kind: "service" | "products" | "combined" | "subscription";
   statusAtClose: "active" | "voided";
   currentStatus: "active" | "voided";
   grossTotal: number;
@@ -61,6 +77,7 @@ export type CashDay = {
   businessDate: string;
   state: CashState;
   closedAt: string | null;
+  lifecycle: CashLifecycle;
   summary: CashSummary;
   payments: CashPaymentTotal[];
   sales: CashSaleAuditItem[];
@@ -69,7 +86,7 @@ export type CashDay = {
 
 export type CashHistoryItem = Pick<
   CashDay,
-  "id" | "businessDate" | "state" | "closedAt" | "summary"
+  "id" | "businessDate" | "state" | "closedAt" | "lifecycle" | "summary"
 > & {
   id: string;
   state: "closed";
@@ -94,3 +111,7 @@ export type PaginatedCashHistory = {
   items: CashHistoryItem[];
   pagination: CashPagination;
 };
+
+export type OpenCashInput = { openingBalance: number };
+export type CloseCashInput = { countedCash: number };
+export type ConfirmCashInput = { countedCash: number };

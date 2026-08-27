@@ -1,10 +1,15 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Plus, RefreshCcw, TriangleAlert } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus, RefreshCcw, ShieldCheck, TriangleAlert, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
+import { CashCloseDialog } from "@/components/cash/cash-close-dialog";
+import { CashConfirmDialog } from "@/components/cash/cash-confirm-dialog";
 import { CashHistoryTable } from "@/components/cash/cash-history-table";
+import { CashOpenDialog } from "@/components/cash/cash-open-dialog";
 import { CashPaymentBreakdown } from "@/components/cash/cash-payment-breakdown";
 import { CashSalesAudit } from "@/components/cash/cash-sales-audit";
 import { CashSummaryCards } from "@/components/cash/cash-summary-cards";
@@ -15,6 +20,7 @@ import {
   cashClient as defaultCashClient,
   type CashClient,
 } from "@/lib/cash/client";
+import { differenceLabel } from "@/lib/cash/reconciliation";
 import {
   incomeClient as defaultIncomeClient,
   type IncomeClient,
@@ -27,7 +33,7 @@ type CashViewProps = {
   initialDay: CashDay;
   initialHistory: PaginatedCashHistory;
   viewerRole: UserRole;
-  cashClient?: Pick<CashClient, "getDay" | "list">;
+  cashClient?: CashClient;
   incomeClient?: Pick<IncomeClient, "get">;
 };
 
@@ -40,6 +46,12 @@ const formatLongDate = (date: string) =>
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(`${date}T12:00:00-03:00`));
 
+const reconciliationBadge: Record<"not_applicable" | "pending_confirmation" | "confirmed", { label: string; className: string } | null> = {
+  not_applicable: null,
+  pending_confirmation: { label: "Pendiente de confirmación", className: "bg-amber-100 text-amber-800 hover:bg-amber-100" },
+  confirmed: { label: "Confirmada", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
+};
+
 export const CashView = ({
   initialDay,
   initialHistory,
@@ -47,6 +59,7 @@ export const CashView = ({
   cashClient = defaultCashClient,
   incomeClient = defaultIncomeClient,
 }: CashViewProps) => {
+  const router = useRouter();
   const [day, setDay] = useState(initialDay);
   const [history, setHistory] = useState(initialHistory);
   const [loadingDay, setLoadingDay] = useState(false);
@@ -54,6 +67,10 @@ export const CashView = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<IncomeListItem | null>(null);
   const [loadingIncome, setLoadingIncome] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busyMutation, setBusyMutation] = useState(false);
 
   const loadDay = async (date: string) => {
     setLoadingDay(true);
@@ -91,8 +108,63 @@ export const CashView = ({
     }
   };
 
+  const onOpenCash = async (input: { openingBalance: number }) => {
+    setBusyMutation(true);
+    try {
+      const updated = await cashClient.open(input);
+      setDay(updated);
+      toast.success("Caja abierta. Ahora podés cargar ingresos.");
+      router.push("/incomes/new");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "No se pudo abrir la caja.");
+    } finally {
+      setBusyMutation(false);
+      setOpening(false);
+    }
+  };
+
+  const onCloseCash = async (input: { countedCash: number }) => {
+    setBusyMutation(true);
+    try {
+      const updated = await cashClient.close(input);
+      setDay(updated);
+      toast.success(
+        updated.lifecycle.reconciliationState === "confirmed"
+          ? "Caja cerrada y conteo confirmado."
+          : "Caja cerrada. Quedó pendiente de confirmación.",
+      );
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "No se pudo cerrar la caja.");
+    } finally {
+      setBusyMutation(false);
+      setClosing(false);
+    }
+  };
+
+  const onConfirmCash = async (input: { countedCash: number }) => {
+    if (!day.id) return;
+    setBusyMutation(true);
+    try {
+      const updated = await cashClient.confirm(day.id, input);
+      setDay(updated);
+      toast.success("Conteo confirmado.");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "No se pudo confirmar el conteo.");
+    } finally {
+      setBusyMutation(false);
+      setConfirming(false);
+    }
+  };
+
+const isManager = viewerRole === "owner" || viewerRole === "admin";
+  const lifecycle = resolveLifecycle(day);
+  const isToday = day.businessDate === initialDay.businessDate;
+  const canOpen = isManager && isToday && day.state === "live" && day.id === null;
+  const canClose = isManager && isToday && day.state === "live" && day.id !== null;
+  const canConfirm = isManager && day.state === "closed" && lifecycle.reconciliationState === "pending_confirmation";
+
   return (
-    <div className="space-y-7" aria-busy={loadingDay || loadingHistory || loadingIncome}>
+    <div className="space-y-7" aria-busy={loadingDay || loadingHistory || loadingIncome || busyMutation}>
       <section className="rounded-[1.8rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -101,10 +173,18 @@ export const CashView = ({
                 {day.state === "live" ? "Caja de hoy" : "Caja cerrada"}
               </h2>
               {day.state === "live" ? (
-                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">En curso</Badge>
+                day.id === null ? (
+                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Sin abrir</Badge>
+                ) : (
+                  <Badge className="bg-primary/10 text-primary hover:bg-primary/10">En curso</Badge>
+                )
               ) : (
                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Cierre guardado</Badge>
               )}
+              {lifecycle && (() => {
+                const meta = reconciliationBadge[lifecycle.reconciliationState];
+                return meta ? <Badge className={meta.className}>{meta.label}</Badge> : null;
+              })()}
             </div>
             <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground first-letter:uppercase">
               <CalendarDays className="size-4" />
@@ -112,19 +192,36 @@ export const CashView = ({
             </p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               {day.state === "live"
-                ? "Se actualiza automáticamente con los ingresos y anulaciones del día."
+                ? day.id === null
+                  ? "Aún no abriste la caja de hoy. Definí el saldo inicial físico antes de cargar ingresos."
+                  : "Se actualiza automáticamente con los ingresos y anulaciones del día."
                 : "Este cierre es inmutable; las anulaciones posteriores se registran como ajustes auditados."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {day.businessDate !== initialDay.businessDate && (
+            {!isToday && (
               <Button type="button" variant="outline" className="rounded-xl" disabled={loadingDay} onClick={() => void loadDay(initialDay.businessDate)}>
                 <ArrowLeft /> Volver a hoy
               </Button>
             )}
-            <Link href="/incomes/new" className={buttonVariants({ className: "h-9 rounded-xl px-4" })}>
+            {canOpen && (
+              <Button type="button" className="rounded-xl" onClick={() => setOpening(true)}>
+                <Wallet /> Abrir caja
+              </Button>
+            )}
+            {canClose && (
+              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setClosing(true)}>
+                <ShieldCheck /> Cerrar caja
+              </Button>
+            )}
+            {canConfirm && (
+              <Button type="button" className="rounded-xl" onClick={() => setConfirming(true)}>
+                <ShieldCheck /> Confirmar conteo
+              </Button>
+            )}
+            {isToday && day.state === "live" && <Link href="/incomes/new" className={buttonVariants({ className: "h-9 rounded-xl px-4" })}>
               <Plus /> Cargar ingreso
-            </Link>
+            </Link>}
           </div>
         </div>
 
@@ -138,12 +235,11 @@ export const CashView = ({
           <CashSummaryCards summary={day.summary} />
         </div>
 
-        {(day.summary.serviceTotal !== 0 || day.summary.productTotal !== 0) && (
-          <div className="mt-4 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-            <div className="flex items-center justify-between rounded-xl bg-[#f6f5f2] px-4 py-3"><span>Servicios</span><strong className="text-foreground">{formatArs(day.summary.serviceTotal)}</strong></div>
-            <div className="flex items-center justify-between rounded-xl bg-[#f6f5f2] px-4 py-3"><span>Productos</span><strong className="text-foreground">{formatArs(day.summary.productTotal)}</strong></div>
-          </div>
-        )}
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <LifecycleField label="Saldo inicial" value={lifecycle ? formatArs(lifecycle.openingBalance) : "—"} hint={lifecycle?.openingSource === "manual" ? "Apertura manual" : lifecycle?.openingSource === "first_income" ? "Apertura automática" : null} />
+          <LifecycleField label="Efectivo esperado" value={lifecycle ? formatArs(lifecycle.expectedCash) : "—"} />
+          <LifecycleField label="Conteo físico" value={lifecycle.countedCash !== null ? formatArs(lifecycle.countedCash) : "—"} hint={lifecycle.countedCash !== null ? differenceLabel(lifecycle.difference) : null} accent={lifecycle.countedCash !== null && lifecycle.difference !== 0} />
+        </div>
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -170,6 +266,31 @@ export const CashView = ({
         </div>
       )}
 
+      {opening && (
+        <CashOpenDialog
+          openingBalance={0}
+          onClose={() => setOpening(false)}
+          onConfirm={onOpenCash}
+        />
+      )}
+
+      {closing && lifecycle && (
+        <CashCloseDialog
+          expectedCash={lifecycle.expectedCash}
+          mode="manual"
+          onClose={() => setClosing(false)}
+          onConfirm={onCloseCash}
+        />
+      )}
+
+      {confirming && lifecycle && (
+        <CashConfirmDialog
+          expectedCash={lifecycle.expectedCash}
+          onClose={() => setConfirming(false)}
+          onConfirm={onConfirmCash}
+        />
+      )}
+
       {loadingIncome && (
         <p role="status" className="fixed right-5 bottom-5 flex items-center gap-2 rounded-full bg-[#202023] px-4 py-2 text-xs text-white shadow-lg"><RefreshCcw className="size-3.5 animate-spin" /> Abriendo ingreso</p>
       )}
@@ -177,3 +298,24 @@ export const CashView = ({
     </div>
   );
 };
+
+const resolveLifecycle = (day: CashDay) => day.lifecycle ?? {
+  openingBalance: 0,
+  openingSource: null,
+  openedAt: null,
+  openedBy: null,
+  expectedCash: 0,
+  countedCash: null,
+  difference: null,
+  closeMode: null,
+  reconciliationState: "not_applicable" as const,
+};
+
+type LifecycleFieldProps = { label: string; value: string; hint?: string | null; accent?: boolean };
+const LifecycleField = ({ label, value, hint, accent }: LifecycleFieldProps) => (
+  <div className="rounded-2xl border border-black/8 bg-[#f6f5f2] p-4">
+    <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+    <p className={`mt-1 text-xl font-semibold ${accent ? "text-red-700" : ""}`}>{value}</p>
+    {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+  </div>
+);

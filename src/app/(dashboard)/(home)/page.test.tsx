@@ -4,17 +4,19 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 
-const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser } = vi.hoisted(() => ({
+const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser, isCashClosedForDate } = vi.hoisted(() => ({
   getBuenosAiresRemainingWorkweekRange: vi.fn(),
   listFixedOccurrences: vi.fn(),
   listIncomes: vi.fn(),
   requirePageUser: vi.fn(),
+  isCashClosedForDate: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
 vi.mock("@/lib/dashboard/workweek-range", () => ({ getBuenosAiresRemainingWorkweekRange }));
 vi.mock("@/lib/fixed-customers/service", () => ({ listFixedOccurrences }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
+vi.mock("@/lib/cash/repository", () => ({ isCashClosedForDate }));
 
 import Home from "./page";
 
@@ -56,6 +58,13 @@ beforeEach(() => {
   getBuenosAiresRemainingWorkweekRange.mockReturnValue({ dateFrom: "2026-08-13", dateTo: "2026-08-15" });
   listIncomes.mockResolvedValue(incomePage);
   listFixedOccurrences.mockResolvedValue([]);
+  isCashClosedForDate.mockResolvedValue(false);
+});
+
+it("hides the quick create action when today's cash is closed", async () => {
+  isCashClosedForDate.mockResolvedValueOnce(true);
+  await renderHome();
+  expect(screen.queryByRole("link", { name: "Cargar ingreso" })).not.toBeInTheDocument();
 });
 
 it("revalidates the session and requests only the role-scoped seven-day income window", async () => {
@@ -91,7 +100,7 @@ it("renders only the three approved dashboard blocks", async () => {
   expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("md:grid-cols-2", "xl:grid-cols-1");
   expect(screen.queryByText("Servicios destacados")).not.toBeInTheDocument();
   expect(screen.queryByText("Actividad reciente")).not.toBeInTheDocument();
-  expect(screen.queryByText(/demostraciÃ³n/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/demostración/i)).not.toBeInTheDocument();
 });
 
 it("uses a spaced twelve-column desktop layout with constrained children", async () => {
@@ -102,12 +111,44 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
   expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "gap-5", "xl:col-span-4");
 });
 
-it("keeps employee dashboard data scoped by the server service", async () => {
-  requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
-  await renderHome();
-  expect(screen.getByRole("heading", { name: "Tus ingresos de hoy" })).toBeVisible();
-  expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
-});
+  it("keeps employee dashboard data scoped by the server service", async () => {
+    const employeeIncomePage = {
+      items: [{
+        id: "20000000-0000-4000-8000-000000000001",
+        createdAt: new Date().toISOString(),
+        businessDate: currentRange.dateTo,
+        customer: null,
+        concepts: [{ id: "10000000-0000-4000-8000-000000000001", type: "service", name: "Corte real", quantity: 1, earning: 16000 }],
+        employeeCommission: 16000,
+        status: "active",
+      }],
+      metrics: { count: 1, employeeCommissionTotal: 16000 },
+      pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+    };
+    listIncomes.mockResolvedValueOnce(employeeIncomePage);
+    requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
+    await renderHome();
+    expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
+    expect(screen.getByText("Lo generado para vos")).toBeVisible();
+    expect(screen.getByText("$ 16.000")).toBeVisible();
+    expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
+    expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
+  });
+
+  it("renders the employee summary for an employee with no sales today", async () => {
+    const emptyEmployeePage = {
+      items: [],
+      metrics: { count: 0, employeeCommissionTotal: 0 },
+      pagination: { page: 1, pageSize: 100, total: 0, totalPages: 1 },
+    };
+    listIncomes.mockResolvedValueOnce(emptyEmployeePage);
+    requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
+    await renderHome();
+    expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
+    expect(screen.getByText("Lo generado para vos")).toBeVisible();
+    expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
+    expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
+  });
 
 it("loads every result page before deriving the seven-day summary", async () => {
   listIncomes

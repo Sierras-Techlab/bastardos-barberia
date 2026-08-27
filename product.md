@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-15
+Last updated: 2026-08-26
 
 ## Vision
 
@@ -9,7 +9,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 ## Users and permissions
 
 - Owner: full access. At least one active owner must always exist.
-- Owner sales belong entirely to the barbershop and never generate owner commission; future owner compensation must be modeled as a cash/expense movement.
+- Owner commission rates are manager-configurable; future owner-attributed sales snapshot the configured rate and separate the owner's earning from barbershop net.
 - Admin: full access for the current phase.
 - Employee: authenticated operational access; granular restrictions will be defined with future modules.
 - Accounts are created only by owner/admin. There is no self-registration or password recovery flow today.
@@ -19,25 +19,32 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Module | State | Current result / objective |
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
-| User administration API | Implemented locally | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete; owner rates are authoritatively normalized to 0 by migration 012, pending manual installation. |
-| Dashboard UI | Implemented locally | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences with attendance limited to the remaining current Monday-through-Saturday week. |
-| Comisiones y pagos combinados | Implemented locally | Role-aware responsible employee, exact split payments, independently rounded item snapshots, owner-safe previews and audited 100% service/product-line exceptions; migrations 010 through 015 remain pending manual installation. |
-| Historial de ingresos por rol | Implemented locally | Responsible-employee scoping/filtering across all historical users, V2 metrics, payments, commissions, registrant audit and full detail. |
+| User administration API | Installed in test | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete, including configurable owner commissions and the canonical profile RPC. |
+| Dashboard UI | Installed in test | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences for the remaining current Monday-through-Saturday week. Employees receive and may resolve only occurrences currently assigned to them; managers retain the complete agenda. |
+| Comisiones y pagos combinados | Installed in test | Role-aware responsible employee, exact split payments, independently rounded item snapshots, owner-safe previews, audited 100% service/product-line exceptions, manager-controlled charged-price overrides with reason, employee percentage payment entry and employee-sanitized projections. |
+| Historial de ingresos por rol | Installed in test | Responsible-employee scoping/filtering across all historical users, metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
-| Sales and cash | Implemented locally | Persistent sales feed a manager-only live daily cash view. Migration `018` automatically and idempotently closes active prior dates into immutable sale/payment snapshots; post-close voids become audited negative adjustments. Expenses remain separate. |
-| Products | Implemented locally | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic category administration with permanent deletion restricted to categories that were never assigned to a product. Migrations `014` and incremental `017` remain pending manual installation; inactive items show `No disponible` regardless of retained stock. |
-| Payment methods | Implemented locally | Audited dynamic catalog and allocations, manager create/rename/deactivate/reactivate UI, historical filters/dashboard totals and permanent deletion restricted to unused methods. Migration `016` must be rerun manually before using deletion against Supabase. |
+| Sales and cash | Installed in test | Persistent sales feed a manager-only Caja workspace with manual open/close/confirm, automatic first-income opening and automatic pending-confirmation closing. Historical snapshots remain immutable, `Efectivo` is protected by `system_code='cash'`, and expenses remain separate. |
+| Presentismo | Installed in test | Employee-only persistent clock, responsive role-scoped history and optimistic manager correction UI are backed by migration `019`, authenticated API and a no-store browser client with strict role-specific response parsing. Employee sales require an open session; manager-to-employee sales link an open session or record an outside-session audit flag. |
+| Products | Installed in test | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic category administration with permanent deletion restricted to categories that were never assigned to a product. Inactive items show `No disponible` regardless of retained stock. |
+| Payment methods | Installed in test | Audited dynamic catalog and allocations, manager create/rename/deactivate/reactivate UI, historical filters/dashboard totals and permanent deletion restricted to unused methods. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
-| Customers | Implemented locally | Persistent directory, optional weekly schedule, financial visit detail with immutable sale totals/prices/subtotals from active-sale snapshots, and audited attended/missed occurrences; migration 013 remains pending manual installation. |
-| Reports | Planned | Derive revenue and operating reports from real transactional data. |
+| Customers | Installed in test | Persistent directory, optional weekly schedule with responsible professional and monthly price, sale-only financial visit detail, audited employee-scoped attendance and query-derived last visit. Migration `040` converges clean and upgraded authorization/visit semantics. |
+| Fixed-customer monthly payments | Installed in test | Manager-controlled monthly price and professional assignment, role-aware collection, atomic subscription income with append-only attempts, employee-safe projections, void-reopens-month behaviour and dashboard/Caja integration without affecting customer visits. |
+| Expenses | Installed in test | Manager-only monthly operating view with authoritative income/net/result summary, filtered expense ledger, audited create/edit/void flows, optional administrative payment method and recoverable category lifecycle. Expenses do not alter Caja in MVP. |
+| Reports | Installed in test | Manager-only visual monthly reporting with financial comparison, projection, daily evolution, compositions, service/product highlights and team production. Team rows combine responsible-user sales, commissions, net, ticket, attendance productivity and outside-session sales. Migration `039` preserves the authoritative income, expense and Caja contracts. |
 
 ## Current product objective
 
-Install and validate migration `018`, confirm its `pg_cron` job and exercise `/cash` against live and historical activity. Caja is intentionally read-only: it derives from incomes, exposes dynamic payment totals and sale-level audit, skips empty dates and never asks a manager to open or close the day. The next independent financial increment is Expenses; reports can later combine immutable cash closures with expense data.
+The active branch is `feat/business-reports`, integrating Reports `039` with production hardening `040`. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses, reports and critical stock/session/idempotency races. The complete `001`-`040` clean-install gate must pass before production. Production remains gated on target backup, read-only preflight and deployment approval.
 
-The product catalog now loads through authenticated server persistence. Manager mutations are authorized at the API/service boundary, stock entries and exits are atomic and auditable, and employees receive active products only. Managers may permanently delete a category only while no product—active or inactive—references it; referenced categories remain recoverable through logical deactivation. The category dialog separates active and inactive records and requires destructive confirmation. Product physical deletion and purchase cost remain outside scope.
+The operational-control roadmap comprises `019` employee work sessions, `020` manager price overrides/configurable owner commission/employee-safe projections, `021` professional-owned fixed customers with atomic monthly payments, `022` manual Caja lifecycle and `023` derived customer last visit. These blocks are installed in the test database. Customer visit totals continue to count only active normal sales; subscription incomes affect Caja and dashboards without inflating visit history.
+
+Caja supports manual open/close/confirm with automatic first-income opening and automatic pending-confirmation closing; reconciliation never recomputes closed snapshots. Incremental `028` repairs the live opened-register UUID projection for databases that already installed `022`.
+
+When the current Buenos Aires Caja is closed, the income history, dashboard quick actions and Caja workspace no longer offer income creation, and direct navigation to `/incomes/new` redirects back to the ledger. The database still rejects any stale form submission that races with closure.
 
 The payment-method catalog validates trimmed names, manager-only lifecycle operations and last-active protection. Authenticated Route Handlers expose active and inactive historical methods and safely return a 404 for unknown IDs. `PATCH` handles rename, deactivation and reactivation; `DELETE` permanently removes only unused methods. Referenced methods return a stable conflict and remain available for logical deactivation, preserving immutable sale history. The manager UI shows active methods by default and keeps inactive methods in a separate recoverable view. Sales submit one or more distinct UUID allocations, manager filters include historical methods and dashboard totals are dynamic. The latest migration `016` is required to enforce this contract.
 
@@ -49,7 +56,7 @@ The approved backend design makes customer phone the unique operational identity
 
 Each sale records both the authenticated registrant and responsible employee. Employees are forced to themselves; owner/admin may select an active user. Exact payment allocations and immutable per-item commission/net snapshots are calculated atomically with items, inventory and visits. Valid manager-to-other-non-owner exceptions may cover a service and multiple complete product quantities in the same sale. History and metrics scope employees to their responsible sales.
 
-An owner may remain the responsible person for a sale, but that sale records zero service/product commission and its full amount as barbershop net. The 100% commission exception is valid only for a non-owner responsible user.
+An owner may remain responsible for a sale. Future owner-attributed sales use the configured commission rates; a zero-rate sale keeps the full amount as barbershop net. The 100% commission exception remains valid only for a non-owner responsible user.
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 

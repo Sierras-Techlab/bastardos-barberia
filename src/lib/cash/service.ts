@@ -3,7 +3,12 @@ import { AppError } from "@/lib/auth/errors";
 import type { SafeUser } from "@/lib/auth/types";
 import type { CashDependencies } from "@/lib/cash/contracts";
 import { cashRepository } from "@/lib/cash/repository";
-import type { CashHistoryQuery } from "@/types/cash";
+import type {
+  CashHistoryQuery,
+  CloseCashInput,
+  ConfirmCashInput,
+  OpenCashInput,
+} from "@/types/cash";
 
 const defaults: CashDependencies = { cash: cashRepository };
 
@@ -13,6 +18,12 @@ const cashNotFound = () =>
     "No hay una caja registrada para esa fecha.",
     404,
   );
+
+const currentBuenosAiresDate = (): string => {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" });
+  return formatter.format(now);
+};
 
 export const getCashDay = async (
   actor: SafeUser,
@@ -32,4 +43,32 @@ export const listCashHistory = (
 ) => {
   assertManager(actor);
   return dependencies.cash.list(actor.id, query);
+};
+
+export const openCash = async (
+  actor: SafeUser,
+  input: OpenCashInput,
+  dependencies: CashDependencies = defaults,
+) => {
+  assertManager(actor);
+  return dependencies.cash.open(actor.id, { ...input, businessDate: currentBuenosAiresDate() });
+};
+
+export const closeCash = async (
+  actor: SafeUser,
+  input: CloseCashInput,
+  dependencies: CashDependencies = defaults,
+) => {
+  assertManager(actor);
+  return dependencies.cash.close(actor.id, { ...input, businessDate: currentBuenosAiresDate() });
+};
+
+export const confirmCash = async (
+  actor: SafeUser,
+  registerId: string,
+  input: ConfirmCashInput,
+  dependencies: CashDependencies = defaults,
+) => {
+  assertManager(actor);
+  return dependencies.cash.confirm(actor.id, registerId, input);
 };

@@ -14,7 +14,7 @@ it("searches, selects, and clears an optional customer", async () => {
   const onChange = vi.fn();
   const user = userEvent.setup();
   const { rerender } = render(
-    <CustomerSelector customers={customers} value={null} onChange={onChange} />,
+    <CustomerSelector customers={customers} value={null} onChange={onChange} currentUserRole="owner" availableProfessionals={[]} />,
   );
 
   await user.type(
@@ -35,6 +35,8 @@ it("searches, selects, and clears an optional customer", async () => {
       customers={customers}
       value="customer-1"
       onChange={onChange}
+      currentUserRole="owner"
+      availableProfessionals={[]}
     />,
   );
   expect(screen.getByText("Tomás Pereyra")).toBeVisible();
@@ -48,7 +50,7 @@ it("creates and immediately selects a missing customer", async () => {
   const created = { id: "10000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: null, visits: 0, createdAt: "2026-08-11T12:00:00.000Z" };
   const customerClient: Pick<CustomerClient, "create"> = { create: vi.fn().mockResolvedValue(created) };
   const onCreated = vi.fn();
-  render(<CustomerSelector customers={customers} value={null} onChange={vi.fn()} onCustomerCreated={onCreated} customerClient={customerClient} />);
+  render(<CustomerSelector customers={customers} value={null} onChange={vi.fn()} currentUserRole="owner" availableProfessionals={[]} onCustomerCreated={onCreated} customerClient={customerClient} />);
   await user.type(screen.getByRole("combobox", { name: /cliente opcional/i }), "Ana");
   await user.click(screen.getByRole("button", { name: /crear cliente/i }));
   await user.type(screen.getByLabelText("Nombre"), "Ana");
@@ -56,4 +58,25 @@ it("creates and immediately selects a missing customer", async () => {
   await user.type(screen.getByLabelText("Teléfono"), "3515550101");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
   expect(onCreated).toHaveBeenCalledWith(created);
+});
+
+it("offers active professionals when a manager creates a habitual customer inline", async () => {
+  const user = userEvent.setup();
+  render(
+    <CustomerSelector
+      customers={customers}
+      value={null}
+      onChange={vi.fn()}
+      currentUserRole="owner"
+      availableProfessionals={[
+        { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez", isActive: true },
+      ]}
+    />,
+  );
+
+  await user.type(screen.getByRole("combobox", { name: /cliente opcional/i }), "Nuevo");
+  await user.click(screen.getByRole("button", { name: /crear cliente/i }));
+  await user.click(screen.getByRole("checkbox", { name: /cliente habitual/i }));
+
+  expect(screen.getByRole("option", { name: "Fer Pérez" })).toBeVisible();
 });

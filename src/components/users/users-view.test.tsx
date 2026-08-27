@@ -127,10 +127,10 @@ describe("UsersView", () => {
       screen.getAllByLabelText("Comisión productos de Lucía Ferreyra: 10%"),
     ).toHaveLength(2);
     expect(
-      screen.getAllByLabelText("Comisión servicios de Ana García: no aplica"),
+      screen.getAllByLabelText("Comisión servicios de Ana García: 0%"),
     ).toHaveLength(2);
     expect(
-      screen.getAllByLabelText("Comisión productos de Ana García: no aplica"),
+      screen.getAllByLabelText("Comisión productos de Ana García: 0%"),
     ).toHaveLength(2);
 
     await browser.selectOptions(screen.getByLabelText("Estado"), "inactive");

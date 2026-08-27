@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { SafeUser } from "@/lib/auth/types";
 import {
+  formatCommissionRate,
   formatLastLogin,
   getUserInitials,
   ROLE_LABELS,
   summarizeUserPage,
 } from "./presentation";
 
-const user = (isActive: boolean): SafeUser => ({
+const user = (isActive: boolean, overrides: Partial<SafeUser> = {}): SafeUser => ({
   id: isActive ? "active" : "inactive",
   firstName: "Lucía",
   lastName: "Ferreyra",
@@ -20,6 +21,7 @@ const user = (isActive: boolean): SafeUser => ({
   lastLoginAt: null,
   createdAt: "2026-08-08T12:00:00.000Z",
   updatedAt: "2026-08-08T12:00:00.000Z",
+  ...overrides,
 });
 
 describe("user presentation", () => {
@@ -47,5 +49,11 @@ describe("user presentation", () => {
 
   it("builds stable initials from both names", () => {
     expect(getUserInitials(user(true))).toBe("LF");
+  });
+
+  it("formats commission rates as percentages without role-specific labels", () => {
+    expect(formatCommissionRate(0)).toBe("0%");
+    expect(formatCommissionRate(35)).toBe("35%");
+    expect(formatCommissionRate(100)).toBe("100%");
   });
 });

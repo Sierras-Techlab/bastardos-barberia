@@ -3,7 +3,7 @@ import type { CreateCustomerInput, Customer, CustomerVisitQuery, PaginatedCustom
 export type CustomerCreateRecord = CreateCustomerInput & { createdBy: string };
 export type CustomerUpdateRecord = UpdateCustomerInput & { updatedBy: string };
 export type CustomerRepository = {
-  list(): Promise<Customer[]>;
+  list(actorId: string): Promise<Customer[]>;
   latest(): Promise<Customer | null>;
   findById(id: string): Promise<Customer | null>;
   findByNormalizedPhone(phone: string): Promise<Customer | null>;

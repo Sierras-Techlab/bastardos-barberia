@@ -70,6 +70,30 @@ it("hides manager-only net and registrator from employees", () => {
   expect(screen.getByText("Comisión devengada")).toBeVisible();
 });
 
+it("shows the monthly subscription concept instead of an empty product list", () => {
+  const income = {
+    ...data.incomes[0],
+    sourceType: "fixed_subscription" as const,
+    service: null,
+    products: [],
+    subscription: {
+      sourceType: "fixed_subscription" as const,
+      period: "2026-08",
+      monthlyPrice: 15000,
+      label: "agosto 2026",
+      employeeEarning: 4500,
+      barbershopNet: 10500,
+    },
+    total: 15000,
+    commission: { total: 4500, barbershopNet: 10500 },
+  };
+  render(<IncomeDetailSheet income={income} open viewerRole="owner" onOpenChange={vi.fn()} />);
+
+  expect(screen.getByText("Mensualidad agosto 2026")).toBeVisible();
+  expect(screen.getAllByText(/15\.000/).length).toBeGreaterThan(0);
+  expect(screen.queryByText("0 productos")).not.toBeInTheDocument();
+});
+
 it("shows itemized commission amounts and the manager who authorized a full service", () => {
   const income = {
     ...data.incomes[0],

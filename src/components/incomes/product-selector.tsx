@@ -14,12 +14,25 @@ export type ProductSelection = Array<{
   grantFullCommission: boolean;
 }>;
 
+type ProductOption = Product | {
+  id: string;
+  name: string;
+  earning: number;
+  stock: number;
+  price?: never;
+};
+
 type ProductSelectorProps = {
-  products: Product[];
+  products: ReadonlyArray<ProductOption>;
   value: ProductSelection;
   onChange: (products: ProductSelection) => void;
   canGrantFullCommission?: boolean;
 };
+
+const getProductPrice = (product: ProductOption): number =>
+  "price" in product && typeof product.price === "number"
+    ? product.price
+    : product.earning;
 
 export const ProductSelector = ({
   products,
@@ -96,28 +109,31 @@ export const ProductSelector = ({
       </div>
 
       <div className="grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-        {filteredProducts.map((product) => (
-          <button
-            key={product.id}
-            type="button"
-            onClick={() => addProduct(product.id)}
-            aria-label={`Agregar ${product.name}`}
-            className="flex min-h-20 items-center gap-3 rounded-xl bg-[#f6f5f2] p-3 text-left ring-1 ring-black/5 transition-all hover:bg-white hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary">
-              <ShoppingBag className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">
-                {product.name}
+        {filteredProducts.map((product) => {
+          const unitPrice = getProductPrice(product);
+          return (
+            <button
+              key={product.id}
+              type="button"
+              onClick={() => addProduct(product.id)}
+              aria-label={`Agregar ${product.name}`}
+              className="flex min-h-20 items-center gap-3 rounded-xl bg-[#f6f5f2] p-3 text-left ring-1 ring-black/5 transition-all hover:bg-white hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary">
+                <ShoppingBag className="size-4" />
               </span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                {formatArs(product.price)} · Stock {product.stock}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {product.name}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {formatArs(unitPrice)} · Stock {product.stock}
+                </span>
               </span>
-            </span>
-            <Plus className="size-4 shrink-0 text-primary" />
-          </button>
-        ))}
+              <Plus className="size-4 shrink-0 text-primary" />
+            </button>
+          );
+        })}
       </div>
 
       {value.length > 0 && (
@@ -131,6 +147,7 @@ export const ProductSelector = ({
               return null;
             }
 
+            const unitPrice = getProductPrice(product);
             const fullCommissionLabel = item.quantity === 1
               ? `Regalar el 100% del valor de 1 unidad de ${product.name}`
               : `Regalar el 100% del valor de las ${item.quantity} unidades de ${product.name}`;
@@ -143,7 +160,7 @@ export const ProductSelector = ({
                 <div className="min-w-32 flex-1">
                   <p className="text-sm font-medium">{product.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatArs(product.price)} c/u
+                    {formatArs(unitPrice)} c/u
                   </p>
                 </div>
                 <div className="flex items-center gap-1 rounded-xl bg-[#f6f5f2] p-1">
@@ -170,7 +187,7 @@ export const ProductSelector = ({
                   </Button>
                 </div>
                 <p className="w-24 text-right text-sm font-semibold">
-                  {formatArs(product.price * item.quantity)}
+                  {formatArs(unitPrice * item.quantity)}
                 </p>
                 {canGrantFullCommission && (
                   <label className="flex basis-full items-center gap-2 text-xs text-muted-foreground">

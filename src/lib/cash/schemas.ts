@@ -12,6 +12,40 @@ const cashPersonSchema = z
   })
   .strict();
 
+const cashLifecycleSchema = z
+  .object({
+    openingBalance: nonnegativeAmount,
+    openingSource: z.enum(["manual", "first_income"]).nullable(),
+    openedAt: z.iso.datetime({ offset: true }).nullable(),
+    openedBy: cashPersonSchema.nullable(),
+    expectedCash: integer,
+    countedCash: integer.nonnegative().nullable(),
+    difference: integer.nullable(),
+    closeMode: z.enum(["manual", "automatic"]).nullable(),
+    reconciliationState: z.enum(["not_applicable", "pending_confirmation", "confirmed"]),
+  })
+  .strict()
+  .superRefine((lifecycle, context) => {
+    if (lifecycle.countedCash !== null && lifecycle.difference === null) {
+      context.addIssue({ code: "custom", message: "El conteo requiere una diferencia calculada." });
+    }
+    if (lifecycle.difference !== null && lifecycle.countedCash === null) {
+      context.addIssue({ code: "custom", message: "La diferencia requiere un conteo declarado." });
+    }
+    if (lifecycle.countedCash !== null && lifecycle.difference !== null) {
+      const derived = lifecycle.countedCash - lifecycle.expectedCash;
+      if (derived !== lifecycle.difference) {
+        context.addIssue({ code: "custom", message: "La diferencia no coincide con el conteo esperado." });
+      }
+    }
+    if (lifecycle.reconciliationState === "confirmed" && lifecycle.countedCash === null) {
+      context.addIssue({ code: "custom", message: "Una caja confirmada necesita un conteo." });
+    }
+    if (lifecycle.reconciliationState === "not_applicable" && lifecycle.closeMode !== null) {
+      context.addIssue({ code: "custom", message: "El modo de cierre requiere estado no aplicable." });
+    }
+  });
+
 export const cashSummarySchema = z
   .object({
     salesGrossTotal: nonnegativeAmount,
@@ -77,10 +111,10 @@ const cashSaleAuditItemSchema = z
     createdAt: z.iso.datetime({ offset: true }),
     employee: cashPersonSchema,
     customerName: z.string().min(1).nullable(),
-    kind: z.enum(["service", "products", "combined"]),
+    kind: z.enum(["service", "products", "combined", "subscription"]),
     statusAtClose: z.enum(["active", "voided"]),
     currentStatus: z.enum(["active", "voided"]),
-    grossTotal: integer.positive(),
+    grossTotal: nonnegativeAmount,
     commissionTotal: nonnegativeAmount,
     barbershopNet: nonnegativeAmount,
   })
@@ -115,6 +149,7 @@ export const cashDaySchema = z
     businessDate: z.iso.date(),
     state: z.enum(["live", "closed"]),
     closedAt: z.iso.datetime({ offset: true }).nullable(),
+    lifecycle: cashLifecycleSchema,
     summary: cashSummarySchema,
     payments: z.array(cashPaymentTotalSchema),
     sales: z.array(cashSaleAuditItemSchema),
@@ -123,7 +158,7 @@ export const cashDaySchema = z
   .strict()
   .superRefine((cash, context) => {
     const validLifecycle =
-      (cash.state === "live" && cash.id === null && cash.closedAt === null) ||
+      (cash.state === "live" && cash.closedAt === null) ||
       (cash.state === "closed" && cash.id !== null && cash.closedAt !== null);
     const paymentSales = cash.payments.reduce(
       (total, payment) => total + payment.salesAmount,
@@ -154,7 +189,11 @@ export const cashHistoryItemSchema = z
     businessDate: z.iso.date(),
     state: z.literal("closed"),
     closedAt: z.iso.datetime({ offset: true }),
+    lifecycle: cashLifecycleSchema,
     summary: cashSummarySchema,
+    payments: z.array(cashPaymentTotalSchema).optional(),
+    sales: z.array(cashSaleAuditItemSchema).optional(),
+    adjustments: z.array(cashAdjustmentSchema).optional(),
   })
   .strict();
 
@@ -184,3 +223,12 @@ export const paginatedCashHistorySchema = z
       .strict(),
   })
   .strict();
+
+export const openCashInputSchema = z
+  .object({ openingBalance: z.number().int().nonnegative() })
+  .strict();
+export const countedCashInputSchema = z
+  .object({ countedCash: z.number().int().nonnegative() })
+  .strict();
+export const closeCashInputSchema = countedCashInputSchema;
+export const confirmCashInputSchema = countedCashInputSchema;

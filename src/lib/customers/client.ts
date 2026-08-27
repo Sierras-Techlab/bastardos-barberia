@@ -11,7 +11,7 @@ export class CustomerApiError extends Error {
 const request = async <T>(url: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(url, init);
   const body = (await response.json()) as ErrorBody & { data?: T };
-  if (!response.ok) throw new CustomerApiError(response.status, body.error?.code ?? "INTERNAL_ERROR", body.error?.message ?? "No se pudo completar la operaciÃ³n.", body.error?.fields);
+  if (!response.ok) throw new CustomerApiError(response.status, body.error?.code ?? "INTERNAL_ERROR", body.error?.message ?? "No se pudo completar la operación.", body.error?.fields);
   return body.data as T;
 };
 const json = (method: "POST" | "PATCH", body: unknown) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

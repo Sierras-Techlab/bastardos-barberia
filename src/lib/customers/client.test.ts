@@ -17,9 +17,9 @@ it("creates, edits and removes customers through JSON APIs", async () => {
 
 it("sends a configured schedule and preserves the server error", async () => {
   fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "VALIDATION_ERROR", message: "Revisá los datos ingresados." } }, { status: 400 }));
-  const promise = customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00" } });
+  const promise = customerClient.create({ firstName: "Ana", lastName: "Pérez", phone: customer.phone, email: null, fixedSchedule: { weekday: 4, time: "10:00", monthlyPrice: 15000 } });
   await expect(promise).rejects.toThrow("Revisá los datos ingresados.");
-  expect(fetchMock).toHaveBeenCalledWith("/api/customers", expect.objectContaining({ body: expect.stringContaining('"fixedSchedule":{"weekday":4,"time":"10:00"}') }));
+  expect(fetchMock).toHaveBeenCalledWith("/api/customers", expect.objectContaining({ body: expect.stringContaining('"fixedSchedule":{"weekday":4,"time":"10:00"') }));
 });
 
 it("preserves the explicit null used to disable a schedule", async () => {

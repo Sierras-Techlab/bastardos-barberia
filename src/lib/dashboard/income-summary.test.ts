@@ -12,6 +12,8 @@ const income = (overrides: Partial<IncomeListItem>): IncomeListItem => {
     id: crypto.randomUUID(),
     createdAt: "2026-08-12T15:00:00.000Z",
     businessDate: "2026-08-12",
+    sourceType: "sale" as const,
+    subscription: null,
     employee: { id: "employee-1", firstName: "Uriel", lastName: "Alessandro" },
     customer: null,
     service: null,

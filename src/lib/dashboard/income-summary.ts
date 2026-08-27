@@ -1,8 +1,13 @@
-import type { IncomeListItem } from "@/types/income";
+import type { EmployeeIncomeListItem, IncomeListItem, IncomeListRow, UserRole } from "@/types/income";
 
 export type DashboardIncomeDay = { date: string; label: string; total: number; count: number };
 export type DashboardIncomeSummary = {
   today: { total: number; count: number; average: number; paymentTotals: Array<{ paymentMethodId: string; name: string; amount: number }> };
+  series: DashboardIncomeDay[];
+};
+export type EmployeeDashboardIncomeSummary = {
+  viewer: "employee";
+  today: { employeeCommission: number; count: number };
   series: DashboardIncomeDay[];
 };
 
@@ -36,7 +41,13 @@ export const getBuenosAiresSevenDayRange = (now = new Date()) => {
   return { dateFrom: dates[0], dateTo, dates };
 };
 
-export const buildDashboardIncomeSummary = (incomes: IncomeListItem[], dateTo: string): DashboardIncomeSummary => {
+const isEmployeeRow = (row: IncomeListRow): row is EmployeeIncomeListItem =>
+  Array.isArray((row as EmployeeIncomeListItem).concepts);
+
+export const buildDashboardIncomeSummary = (
+  incomes: IncomeListItem[],
+  dateTo: string,
+): DashboardIncomeSummary => {
   const activeIncomes = incomes.filter(({ status }) => status === "active");
   const todayIncomes = activeIncomes.filter(({ businessDate }) => businessDate === dateTo);
   const todayTotal = todayIncomes.reduce((total, income) => total + income.total, 0);
@@ -68,4 +79,65 @@ export const buildDashboardIncomeSummary = (incomes: IncomeListItem[], dateTo: s
       };
     }),
   };
+};
+
+export const buildEmployeeDashboardIncomeSummary = (
+  incomes: IncomeListRow[],
+  dateTo: string,
+): EmployeeDashboardIncomeSummary => {
+  const activeIncomes = incomes.filter(({ status }) => status === "active");
+  const dates = datesEndingAt(dateTo);
+
+  const today = activeIncomes.filter(({ businessDate }) => businessDate === dateTo);
+  const todayCommission = today.reduce(
+    (total, income) => total + (isEmployeeRow(income) ? income.employeeCommission : 0),
+    0,
+  );
+
+  return {
+    viewer: "employee",
+    today: {
+      employeeCommission: todayCommission,
+      count: today.length,
+    },
+    series: dates.map((date) => {
+      const dayIncomes = activeIncomes.filter(({ businessDate }) => businessDate === date);
+      const commission = dayIncomes.reduce(
+        (total, income) => total + (isEmployeeRow(income) ? income.employeeCommission : 0),
+        0,
+      );
+      return {
+        date,
+        label: weekdayLabel(date),
+        total: commission,
+        count: dayIncomes.length,
+      };
+    }),
+  };
+};
+
+export const buildIncomeSummaryForViewer = (
+  viewer: UserRole,
+  incomes: IncomeListRow[],
+  dateTo: string,
+): DashboardIncomeSummary | EmployeeDashboardIncomeSummary => {
+  if (incomes.length === 0) {
+    const emptyDates = datesEndingAt(dateTo);
+    if (viewer === "employee") {
+      return {
+        viewer: "employee",
+        today: { employeeCommission: 0, count: 0 },
+        series: emptyDates.map((date) => ({ date, label: weekdayLabel(date), total: 0, count: 0 })),
+      } satisfies EmployeeDashboardIncomeSummary;
+    }
+    return {
+      today: { total: 0, count: 0, average: 0, paymentTotals: [] },
+      series: emptyDates.map((date) => ({ date, label: weekdayLabel(date), total: 0, count: 0 })),
+    } satisfies DashboardIncomeSummary;
+  }
+  const firstIsEmployee = isEmployeeRow(incomes[0]);
+  if (viewer === "employee" || firstIsEmployee) {
+    return buildEmployeeDashboardIncomeSummary(incomes, dateTo);
+  }
+  return buildDashboardIncomeSummary(incomes as IncomeListItem[], dateTo);
 };

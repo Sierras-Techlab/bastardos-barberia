@@ -50,4 +50,16 @@ describe("migration 018 automatic daily cash", () => {
     );
     expect(sql).toMatch(/grant execute[\s\S]*to service_role/i);
   });
+
+  it("installs pg_cron only in the managed postgres database", () => {
+    const sql = migration();
+    const databaseGuard = sql.indexOf("current_database() <> 'postgres'");
+    const extensionSetup = sql.indexOf("create extension if not exists pg_cron");
+    const scheduleSetup = sql.indexOf("select cron.schedule($1, $2, $3)");
+
+    expect(databaseGuard).toBeGreaterThan(-1);
+    expect(extensionSetup).toBeGreaterThan(databaseGuard);
+    expect(scheduleSetup).toBeGreaterThan(extensionSetup);
+    expect(sql).toContain("Skipping pg_cron setup outside the postgres database");
+  });
 });

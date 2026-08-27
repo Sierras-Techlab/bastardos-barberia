@@ -55,7 +55,7 @@ describe("user lifecycle", () => {
     }));
   });
 
-  it("persists zero commission rates when creating an owner", async () => {
+  it("persists the submitted commission rates when creating an owner", async () => {
     const deps = dependencies();
 
     await createUser(owner, {
@@ -63,36 +63,36 @@ describe("user lifecycle", () => {
       lastName: "Ferreyra",
       password: "password-2026",
       roleId: 1,
-      serviceCommissionRate: 45,
+      serviceCommissionRate: 35,
       productCommissionRate: 12,
     }, deps);
 
     expect(deps.users.create).toHaveBeenCalledWith(expect.objectContaining({
       roleId: 1,
-      serviceCommissionRate: 0,
-      productCommissionRate: 0,
+      serviceCommissionRate: 35,
+      productCommissionRate: 12,
     }));
   });
 
-  it("persists zero commission rates when promoting a user to owner", async () => {
+  it("preserves submitted commission rates when promoting a user to owner", async () => {
     const deps = dependencies();
     const employee = { ...owner, id: "00000000-0000-4000-8000-000000000002", role: { id: 3 as const, name: "employee" as const } };
     vi.mocked(deps.users.findById).mockResolvedValue(employee);
 
     await updateUser(owner, employee.id, {
       roleId: 1,
-      serviceCommissionRate: 45,
+      serviceCommissionRate: 35,
       productCommissionRate: 12,
     }, deps);
 
     expect(deps.users.update).toHaveBeenCalledWith(employee.id, expect.objectContaining({
       roleId: 1,
-      serviceCommissionRate: 0,
-      productCommissionRate: 0,
+      serviceCommissionRate: 35,
+      productCommissionRate: 12,
     }));
   });
 
-  it("does not persist non-zero commission updates for an owner", async () => {
+  it("persists updated commission rates for an owner", async () => {
     const deps = dependencies();
 
     await updateUser(owner, owner.id, {
@@ -101,8 +101,8 @@ describe("user lifecycle", () => {
     }, deps);
 
     expect(deps.users.update).toHaveBeenCalledWith(owner.id, expect.objectContaining({
-      serviceCommissionRate: 0,
-      productCommissionRate: 0,
+      serviceCommissionRate: 45,
+      productCommissionRate: 12,
     }));
   });
 

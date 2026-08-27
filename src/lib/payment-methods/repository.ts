@@ -9,13 +9,14 @@ import type {
 } from "@/types/payment-method";
 
 const PAYMENT_METHOD_SELECT =
-  "id,name,normalized_name,is_active,created_by,updated_by,created_at,updated_at";
+  "id,name,normalized_name,is_active,system_code,created_by,updated_by,created_at,updated_at";
 
 type PaymentMethodRow = {
   id: string;
   name: string;
   normalized_name: string;
   is_active: boolean;
+  system_code?: string | null;
   created_by: string;
   updated_by: string;
   created_at: string;
@@ -52,6 +53,13 @@ const mutationFailure = (
     throw new AppError(
       "LAST_ACTIVE_PAYMENT_METHOD",
       "Debe quedar al menos un medio de pago activo.",
+      409,
+    );
+  }
+  if (error.message === "CASH_PAYMENT_METHOD_PROTECTED") {
+    throw new AppError(
+      "CASH_PAYMENT_METHOD_PROTECTED",
+      "El medio de pago Efectivo no puede renombrarse ni eliminarse.",
       409,
     );
   }

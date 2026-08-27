@@ -32,6 +32,8 @@ const serviceOnly: IncomeListItem = {
   id: "service-only",
   createdAt: "2026-08-07T14:00:00.000Z",
   businessDate: "2026-08-07",
+  sourceType: "sale",
+  subscription: null,
   employee: employeeLautaro,
   registeredBy: employeeLautaro,
   customer: { id: "customer-lucas", firstName: "Lucas", lastName: "Romero" },
@@ -52,6 +54,8 @@ const productsOnly: IncomeListItem = {
   id: "products-only",
   createdAt: "2026-08-06T18:00:00.000Z",
   businessDate: "2026-08-06",
+  sourceType: "sale",
+  subscription: null,
   employee: employeeFer,
   registeredBy: employeeFer,
   customer: null,
@@ -69,6 +73,8 @@ const combined: IncomeListItem = {
   id: "combined",
   createdAt: "2026-08-05T16:00:00.000Z",
   businessDate: "2026-08-05",
+  sourceType: "sale",
+  subscription: null,
   employee: employeeLautaro,
   registeredBy: employeeLautaro,
   customer: {
@@ -119,6 +125,22 @@ describe("income list domain", () => {
     expect(formatIncomeConcept(combined)).toBe(
       "Corte, perfilado y barba + 1 producto",
     );
+  });
+
+  it("describes a monthly subscription instead of zero products", () => {
+    expect(formatIncomeConcept({
+      ...productsOnly,
+      sourceType: "fixed_subscription",
+      products: [],
+      subscription: {
+        sourceType: "fixed_subscription",
+        period: "2026-08",
+        monthlyPrice: 15000,
+        label: "agosto 2026",
+        employeeEarning: 4500,
+        barbershopNet: 10500,
+      },
+    })).toBe("Mensualidad agosto 2026");
   });
 
   it("searches customers, services, products and employees", () => {
@@ -174,7 +196,8 @@ describe("income list domain", () => {
       ...emptyFilters,
       paymentMethodId: cardId,
     })).toEqual([split]);
-    expect(calculateIncomeMetrics([split]).paymentTotals).toEqual([
+    const metrics = calculateIncomeMetrics([split]);
+    expect("paymentTotals" in metrics ? metrics.paymentTotals : []).toEqual([
       { paymentMethodId: cashId, name: "Efectivo", amount: 20000 },
       { paymentMethodId: transferId, name: "Transferencia", amount: 19000 },
       { paymentMethodId: cardId, name: "Tarjeta", amount: 10000 },

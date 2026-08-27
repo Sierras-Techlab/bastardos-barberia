@@ -36,7 +36,10 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `proxy.ts` is only an optimistic cookie-presence check. Every private page and API operation must authorize again at the server/data boundary.
 - Roles are fixed database records: `owner` (1), `admin` (2), `employee` (3).
 - Owner and admin are managers. Both currently have full administrative access.
-- Owner commission rates are always zero. Revenue from owner-attributed sales belongs entirely to the barbershop; owner withdrawals or compensation belong to future cash/expense flows, not sales commissions.
+- Owner commission rates are configurable by managers. Existing owners remain at zero until edited; once changed, future owner-attributed sales use the configured rate. Owner-attributed sales with a zero rate keep the full total as barbershop net; non-zero rates produce normal commission snapshots. Owner withdrawals or compensation still belong to future cash/expense flows, not sales commissions.
+- Manager-controlled charged-price overrides snapshot catalog value, charged value, signed adjustment, override actor and required reason. Commission is calculated on the charged subtotal. A zero-total manager sale is allowed only with no payment rows. Employee submissions always use the authoritative catalog price.
+- Income payments are role-aware: managers enter integer ARS amounts that exactly match the charged total, while employees enter integer basis points (0-10000) summing to 10000. The server distributes the deterministic remainder to the last allocation.
+- Income projections are role-aware: managers receive the full charged-price snapshot (`catalogUnitPrice`, `chargedUnitPrice`, `catalogSubtotal`, `chargedSubtotal`, `adjustmentAmount`, payments, totals, barbershop net, registrant). Employees receive a sanitized projection with `concepts` (type/name/quantity/earning) and `employeeCommission` only — no catalog/charged prices, no payment amounts, no totals, no barbershop net, no registrant identity. The sanitized shape is built in PostgreSQL and validated by a separate Zod schema; the application never strips keys after parsing.
 - Accounts are created only by a manager. There is no public registration endpoint.
 - Usernames are database-generated from normalized `first_name.last_name`; collisions add `2`, `3`, and so on.
 - Login accepts username and password only. Inactive, locked, unknown and incorrect-password cases return the same public credential error.
@@ -44,6 +47,11 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Deactivating, deleting or resetting a user password revokes all of that user's sessions.
 - User deletion is logical: `deleted_at` and `deleted_by` preserve audit history, normal reads exclude deleted accounts, and deletion plus session revocation is one database transaction.
 - A manager cannot deactivate or delete their own account, and the last active owner cannot be deactivated, deleted or demoted.
+- Every active fixed schedule has one responsible professional and a positive integer monthly price. Employee schedules are forced to use the actor as the responsible professional; only manager mutations may reassign another professional.
+- Employee fixed-customer agendas and attendance mutations are scoped in PostgreSQL to active schedules currently assigned to that employee; managers retain the complete agenda.
+- Monthly subscription payments are recorded as immutable `fixed_subscription` incomes with their own per-period row in `fixed_customer_monthly_payment_attempts`. A new attempt reuses the same `(customer, period)` key only after a manager voids the previous active attempt, reopening the month without losing history. The same physical month cannot be paid twice while the previous attempt is active.
+- Customer visit history, dashboard totals and Caja snapshots continue to come from active normal sales; `fixed_subscription` rows contribute to the daily cash close but are excluded from "visits" counters and customer-visit financial projections. Each customer's last qualifying visit date is derived from the latest active normal sale through a canonical partial index and never stored as a mutable customer column.
+- The canonical payment method named `Efectivo` is the only one that affects physical cash reconciliation. Renaming, deactivating or deleting that record is rejected by the payment-method RPCs and the database enforces a unique `system_code = 'cash'` index.
 - Database tables have RLS enabled with no browser policies. Only the server secret role can access them.
 - SQL in `supabase/queries` is the source of truth and is designed for manual execution in the Supabase SQL Editor.
 - Products retain creator/updater audit users, are deactivated rather than deleted, and expose inactive records only to owner/admin.
@@ -57,7 +65,12 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - Income history is scoped by responsible employee: owner/admin can read/filter every historical responsible user, including inactive or logically deleted accounts with retained sales, and employees can read only their own. Browser payloads never choose the actor, prices, total, commission amounts, timestamp or business date.
 - Income creation and manager-only voiding are idempotent and atomic across line-item snapshots, split payments, product stock, inventory movements and customer visits. New-sale authorization/catalog rows remain locked through commit so concurrent role or lifecycle changes cannot invalidate the snapshot. The database stores `created_at` plus an indexed `business_date` in `America/Argentina/Buenos_Aires`.
 - Dashboard fixed-customer agenda dates use `America/Argentina/Buenos_Aires` and include only the current local date through Saturday; Sunday is empty and the range rotates on Monday.
-- Caja is manager-only and has no manual open/close or CRUD lifecycle. The current Buenos Aires business date is calculated live from incomes; prior active dates are closed automatically and idempotently into immutable sale/payment snapshots. A same-day void is excluded at close, while a void after closure creates one audited negative adjustment on the void date without rewriting the original closure. Dates without sales or adjustments are not persisted.
+- Caja is manager-only and has a manual open/close/confirm lifecycle. The current Buenos Aires business date is calculated live from incomes; the first committed income opens the register at zero. Manual opening sets a non-negative physical-cash opening balance, manual closing requires a counted cash input and confirms immediately on a zero difference, automatic closing keeps the register `pending_confirmation` until a manager confirms the count. Closed financial snapshots remain immutable; reconciliation confirmation never recomputes them. A same-day void is excluded at close, while a void after closure creates one audited negative adjustment on the void date without rewriting the original closure. Dates without sales or adjustments are not persisted.
+- A closed current-day Caja disables every income-entry navigation surface and server-redirects direct `/incomes/new` access; the database remains authoritative and rejects races that close Caja after a form was already loaded.
+- Expenses are manager-only operating records with dynamic fixed/variable/supplies categories, integer ARS amounts, Buenos Aires accounting dates, idempotent creation, optimistic audited edits and reasoned voiding. Active expenses affect operating-profit metrics but never mutate incomes, commissions or Caja in the MVP; optional payment methods are administrative snapshots only.
+- Reports are manager-only read projections over active immutable income economics and active accounting expenses. Monthly comparisons use equivalent Buenos Aires calendar periods; Caja reconciliation, current catalog values and current commission settings never reconstruct historical report values. The current-month close estimate is labeled and linear, while closed months have no projection.
+- Only current-role employees clock themselves in or out, with at most one open work session per employee and multiple completed sessions allowed per local business date. Clock actors and timestamps are server-authoritative. Employee-created sales require and derive their own open session at the database trigger; managers do not require a session, and manager-created employee sales link that employee's open session when present or retain an explicit outside-session audit flag. Manager corrections require a reason, compare the visible session `updatedAt` under the row lock and append prior/new timestamps before changing the session; a stale correction conflicts without reopening or overwriting newer state. Metrics are derived from active incomes linked to the exact session, so voids are excluded; employee work-session JSON never includes gross or barbershop-net metrics.
+- Manager-only business reports combine active responsible-user income snapshots with exact overlapping employee work-session minutes. Team rows include employees with attendance but no sales and responsible owner/admin users with sales; attendance/productivity is null for non-employees, outside-session counts remain explicit, and no team metrics are exposed to employee callers.
 
 ## Repository map
 
@@ -70,12 +83,17 @@ Bastardos Barberia is an internal administrative dashboard for a barbershop. The
 - `src/app/api/services`, `src/lib/services`: persistent role-aware service catalog and logical lifecycle.
 - `src/app/api/customers`, `src/lib/customers`: authenticated customer persistence with manager-only logical deletion.
 - `src/app/api/fixed-customer-occurrences`, `src/lib/fixed-customers`: weekly occurrence reads and audited attendance transitions.
+- `src/app/api/fixed-customer-months`, `src/lib/fixed-customer-payments`: role-scoped monthly-payment domain, atomic pay RPC and the manager/employee-safe projection RPCs.
 - `src/app/api/incomes`, `src/lib/incomes`: transactional sale creation, scoped history/detail, voiding and browser API client.
-- `src/app/api/cash`, `src/lib/cash`, `src/components/cash`: manager-only live cash, immutable closure history, audited post-close adjustments and the read-only `/cash` workspace.
+- `src/app/api/cash`, `src/lib/cash`, `src/components/cash`: manager-controlled manual cash lifecycle (open/close/confirm), automatic first-income opening, automatic pending-confirmation closing and the read-only `/cash` workspace; migration `022` owns the lifecycle schema and the protected `Efectivo` payment method.
+- `src/app/api/expenses`, `src/app/api/expense-categories`, `src/lib/expenses`, `src/components/expenses`, `src/app/(dashboard)/expenses`: manager-only operating expenses, monthly profitability summary, audited lifecycle and dynamic category administration; migration `026` owns the domain and deliberately leaves Caja unchanged.
+- `src/app/api/reports`, `src/lib/reports`, `src/components/reports`, `src/app/(dashboard)/reports`: manager-only visual business reporting, strict monthly RPC projection, equivalent-period comparison, labeled projection, compositions, rankings and team productivity; migration `039` owns the read contract.
+- `src/app/api/work-sessions`, `src/lib/work-sessions`, `src/components/work-sessions`, `src/app/(dashboard)/work-sessions`: role-scoped work-session API, persistence, persistent employee clock control and Presentismo workspace; migration `019` owns clock lifecycle, audited corrections and server-derived income linkage.
 - `src/lib/supabase`: server-only Supabase client and database row types.
 - `src/lib/bootstrap`: first-owner bootstrap policy.
 - `scripts/bootstrap-owner.ts`: one-time first-owner command.
-- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `018` and their execution guide.
+- `scripts/system-db-audit.ts`, `scripts/system-db-acceptance.ts`, `scripts/system-clean-install-acceptance.ts`: read-only schema audit, rollback-only behavioral acceptance and isolated empty-database migration acceptance using `SUPABASE_DB_URL`.
+- `supabase/queries`: ordered, copy/paste SQL scripts `001` through `040` and their execution guide; `039` belongs to Reports, `040` to production hardening and the next migration number is `041`.
 - `docs/superpowers/specs`: approved architecture decisions.
 - `docs/superpowers/plans`: implementation plans and task history.
 - `product.md`: full product vision, scope and module status.
@@ -100,6 +118,9 @@ npm test
 npm run lint
 npm run build
 npm run bootstrap:owner
+npm run audit:db
+npm run acceptance:db
+npx tsx --env-file=.env scripts/system-clean-install-acceptance.ts --confirm-disposable
 ```
 
 The repository expects Node 24.18.x and npm 11.16.x. The bootstrap command reads `.env`; remove its three temporary `BOOTSTRAP_OWNER_*` values after a successful run.

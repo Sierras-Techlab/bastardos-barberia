@@ -42,7 +42,7 @@ describe("payment method repository", () => {
 
     expect(getSupabaseAdmin().from).toHaveBeenCalledWith("payment_methods");
     expect(query.select).toHaveBeenCalledWith(
-      "id,name,normalized_name,is_active,created_by,updated_by,created_at,updated_at",
+      "id,name,normalized_name,is_active,system_code,created_by,updated_by,created_at,updated_at",
     );
   });
 

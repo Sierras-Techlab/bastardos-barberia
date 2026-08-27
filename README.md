@@ -22,6 +22,12 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 `SUPABASE_SECRET_KEY` is server-only. Never prefix it with `NEXT_PUBLIC_` and never expose it to frontend code. The publishable Supabase key is not required by the authentication implementation.
 
+Database audit and acceptance commands also require an operations-only direct PostgreSQL URL:
+
+```dotenv
+SUPABASE_DB_URL=
+```
+
 ## Create the database
 
 Open the Supabase SQL Editor and execute each file completely in this order:
@@ -33,7 +39,7 @@ Open the Supabase SQL Editor and execute each file completely in this order:
 5. `supabase/queries/005_security.sql`
 6. `supabase/queries/006_atomic_auth_guards.sql`
 
-For the complete application, continue through `supabase/queries/018_automatic_daily_cash.sql` in the exact order documented in `supabase/queries/README.md`. When payment-method lifecycle changes are pulled, run the latest `016` file in full; then run incremental `017` for safe category deletion and `018` for automatic daily cash closures.
+For the complete application, continue through `supabase/queries/040_production_hardening.sql` in the exact order documented in `supabase/queries/README.md`. Migration `039` belongs to Reports; databases already installed through that migration execute only `040`. Do not replay structural migrations over populated production data.
 
 See `supabase/queries/README.md` for verification queries and the responsibility of each script.
 
@@ -79,11 +85,11 @@ Successful responses use `{ "data": ... }`. Errors use `{ "error": { "code", "me
 | GET | `/api/cash?date=YYYY-MM-DD` | Owner/Admin | Return today's live cash or one immutable historical closure with sale/payment audit detail. |
 | GET | `/api/cash/history` | Owner/Admin | Return paginated active-day closures; supports `dateFrom`, `dateTo`, `page` and `pageSize`. |
 
-## Automatic daily cash
+## Cash lifecycle
 
-`/cash` is read-only and available only to owner/admin. Today's box is calculated live from the authoritative income totals, commissions, barbershop net and dynamic payment allocations. There is no manual opening or closing action.
+`/cash` is available only to owner/admin. It supports manual opening, closing and reconciliation confirmation, with automatic first-income opening and hourly recovery for prior unclosed activity dates.
 
-Migration `018` schedules an idempotent hourly `pg_cron` recovery job. It closes every missing Buenos Aires business date before today only when that date has sales or audited adjustments. Historical closures are immutable: a later income void creates a negative adjustment on the void date and preserves the original close for audit. Expenses remain a separate future module and are not subtracted from Caja.
+Migration `018` introduces the immutable cash snapshots and schedules an idempotent hourly `pg_cron` recovery job; `022` adds the manual lifecycle. Historical closures are immutable: a later income void creates a negative adjustment on the void date and preserves the original close for audit. Expenses are a separate manager-only operating module and do not mutate Caja.
 
 Create-user body example:
 
@@ -106,6 +112,9 @@ npm run lint
 npx next typegen
 npx tsc --noEmit
 npm run build
+npm run audit:db
+npm run acceptance:db
+npx tsx --env-file=.env scripts/system-clean-install-acceptance.ts --confirm-disposable
 ```
 
 Start with `AGENTS.md`, `context_snapshot.md` and `product.md` when continuing development.
