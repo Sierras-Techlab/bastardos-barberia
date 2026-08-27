@@ -35,8 +35,19 @@ describe("migration 039 business reports", () => {
     expect(sql).toMatch(/order by x\.amount desc, x\.name asc, x\.id asc/);
   });
 
+  it("combines responsible-user economics with attendance overlap", () => {
+    expect(sql).toContain("'teamPerformance'");
+    expect(sql).toContain("public.employee_work_sessions");
+    expect(sql).toContain("i.outside_work_session");
+    expect(sql).toContain("i.employee_id");
+    expect(sql).toContain("worked_minutes");
+    expect(sql).toContain("extract(epoch from");
+    expect(sql).not.toContain("pg_catalog.extract(epoch from");
+    expect(sql).toMatch(/order by[\s\S]*current_gross desc[\s\S]*display_name asc[\s\S]*user_id asc/i);
+  });
+
   it("returns the strict camelCase projection and safe grants", () => {
-    for (const key of ["availableMonths", "generatedAt", "previousSummary", "operatingMarginBps", "incomeComposition", "paymentComposition", "expenseComposition", "serviceRanking", "productRanking", "bestDay", "worstDay"]) {
+    for (const key of ["availableMonths", "generatedAt", "previousSummary", "operatingMarginBps", "incomeComposition", "paymentComposition", "expenseComposition", "serviceRanking", "productRanking", "teamPerformance", "bestDay", "worstDay"]) {
       expect(sql).toContain(`'${key}'`);
     }
     expect(sql).toMatch(/revoke all on function public\.get_business_report\(uuid, text\) from public, anon, authenticated/i);

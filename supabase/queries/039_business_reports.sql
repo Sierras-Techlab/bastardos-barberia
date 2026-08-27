@@ -206,6 +206,76 @@ begin
     where i.source_type = 'sale' and ii.item_type = 'product'
     group by ii.product_id, ii.name_snapshot
   ),
+  selected_team_incomes as (
+    select i.employee_id as user_id,
+      count(*)::bigint as sale_count,
+      sum(i.total)::bigint as gross,
+      sum(i.commission_total)::bigint as commission,
+      sum(i.barbershop_net)::bigint as net,
+      count(*) filter (where i.outside_work_session)::bigint as outside_count
+    from selected_incomes i
+    group by i.employee_id
+  ),
+  comparison_team_incomes as (
+    select i.employee_id as user_id,
+      count(*)::bigint as sale_count,
+      sum(i.total)::bigint as gross,
+      sum(i.commission_total)::bigint as commission,
+      sum(i.barbershop_net)::bigint as net,
+      count(*) filter (where i.outside_work_session)::bigint as outside_count
+    from comparison_incomes i
+    group by i.employee_id
+  ),
+  selected_team_sessions as (
+    select ws.employee_id as user_id,
+      pg_catalog.round(sum(extract(epoch from (
+        least(coalesce(ws.ended_at, pg_catalog.clock_timestamp()), (selected_end + 1)::timestamp at time zone 'America/Argentina/Buenos_Aires')
+        - greatest(ws.started_at, selected_start::timestamp at time zone 'America/Argentina/Buenos_Aires')
+      ))) / 60)::bigint as worked_minutes
+    from public.employee_work_sessions ws
+    where ws.started_at < (selected_end + 1)::timestamp at time zone 'America/Argentina/Buenos_Aires'
+      and coalesce(ws.ended_at, pg_catalog.clock_timestamp()) > selected_start::timestamp at time zone 'America/Argentina/Buenos_Aires'
+    group by ws.employee_id
+  ),
+  comparison_team_sessions as (
+    select ws.employee_id as user_id,
+      pg_catalog.round(sum(extract(epoch from (
+        least(coalesce(ws.ended_at, pg_catalog.clock_timestamp()), (comparison_end + 1)::timestamp at time zone 'America/Argentina/Buenos_Aires')
+        - greatest(ws.started_at, comparison_start::timestamp at time zone 'America/Argentina/Buenos_Aires')
+      ))) / 60)::bigint as worked_minutes
+    from public.employee_work_sessions ws
+    where ws.started_at < (comparison_end + 1)::timestamp at time zone 'America/Argentina/Buenos_Aires'
+      and coalesce(ws.ended_at, pg_catalog.clock_timestamp()) > comparison_start::timestamp at time zone 'America/Argentina/Buenos_Aires'
+    group by ws.employee_id
+  ),
+  team_member_ids as (
+    select user_id from selected_team_incomes union select user_id from comparison_team_incomes
+    union select user_id from selected_team_sessions union select user_id from comparison_team_sessions
+  ),
+  team_performance as (
+    select ids.user_id,
+      (u.first_name || ' ' || u.last_name) as display_name,
+      r.name as role_name,
+      coalesce(si.sale_count, 0)::bigint as current_sales,
+      coalesce(si.gross, 0)::bigint as current_gross,
+      coalesce(si.commission, 0)::bigint as current_commission,
+      coalesce(si.net, 0)::bigint as current_net,
+      coalesce(si.outside_count, 0)::bigint as current_outside,
+      case when r.name = 'employee' then coalesce(ss.worked_minutes, 0)::bigint else null end as current_minutes,
+      coalesce(ci.sale_count, 0)::bigint as previous_sales,
+      coalesce(ci.gross, 0)::bigint as previous_gross,
+      coalesce(ci.commission, 0)::bigint as previous_commission,
+      coalesce(ci.net, 0)::bigint as previous_net,
+      coalesce(ci.outside_count, 0)::bigint as previous_outside,
+      case when r.name = 'employee' then coalesce(cs.worked_minutes, 0)::bigint else null end as previous_minutes
+    from team_member_ids ids
+    join public.users u on u.id = ids.user_id
+    join public.roles r on r.id = u.role_id
+    left join selected_team_incomes si on si.user_id = ids.user_id
+    left join comparison_team_incomes ci on ci.user_id = ids.user_id
+    left join selected_team_sessions ss on ss.user_id = ids.user_id
+    left join comparison_team_sessions cs on cs.user_id = ids.user_id
+  ),
   activity as (
     select exists(select 1 from selected_incomes) or exists(select 1 from selected_expenses) as any_activity
   )
@@ -247,6 +317,25 @@ begin
     'expenseComposition', (select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('key', c.key, 'amount', c.amount) order by case c.key when 'fixed' then 1 when 'variable' then 2 else 3 end) from expense_composition c),
     'serviceRanking', (select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('id', x.id, 'name', x.name, 'amount', x.amount, 'quantity', x.quantity) order by x.amount desc, x.name asc, x.id asc), '[]'::jsonb) from service_ranking x),
     'productRanking', (select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('id', x.id, 'name', x.name, 'amount', x.amount, 'quantity', x.quantity) order by x.amount desc, x.name asc, x.id asc), '[]'::jsonb) from product_ranking x),
+    'teamPerformance', (select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+      'id', t.user_id, 'name', t.display_name, 'role', t.role_name,
+      'current', pg_catalog.jsonb_build_object(
+        'saleCount', t.current_sales, 'grossIncome', t.current_gross, 'commission', t.current_commission, 'barbershopNet', t.current_net,
+        'averageTicket', case when t.current_sales = 0 then null else pg_catalog.round(t.current_gross::numeric / t.current_sales)::bigint end,
+        'workedMinutes', t.current_minutes,
+        'grossPerHour', case when t.current_minutes is null or t.current_minutes = 0 then null else pg_catalog.round(t.current_gross::numeric * 60 / t.current_minutes)::bigint end,
+        'netPerHour', case when t.current_minutes is null or t.current_minutes = 0 then null else pg_catalog.round(t.current_net::numeric * 60 / t.current_minutes)::bigint end,
+        'outsideSessionSaleCount', t.current_outside
+      ),
+      'previous', pg_catalog.jsonb_build_object(
+        'saleCount', t.previous_sales, 'grossIncome', t.previous_gross, 'commission', t.previous_commission, 'barbershopNet', t.previous_net,
+        'averageTicket', case when t.previous_sales = 0 then null else pg_catalog.round(t.previous_gross::numeric / t.previous_sales)::bigint end,
+        'workedMinutes', t.previous_minutes,
+        'grossPerHour', case when t.previous_minutes is null or t.previous_minutes = 0 then null else pg_catalog.round(t.previous_gross::numeric * 60 / t.previous_minutes)::bigint end,
+        'netPerHour', case when t.previous_minutes is null or t.previous_minutes = 0 then null else pg_catalog.round(t.previous_net::numeric * 60 / t.previous_minutes)::bigint end,
+        'outsideSessionSaleCount', t.previous_outside
+      )
+    ) order by t.current_gross desc, t.display_name asc, t.user_id asc), '[]'::jsonb) from team_performance t),
     'highlights', pg_catalog.jsonb_build_object(
       'bestDay', case when a.any_activity then (select pg_catalog.jsonb_build_object('date', d.selected_date, 'amount', d.selected_result) from daily_values d order by d.selected_result desc, d.selected_date asc limit 1) else null end,
       'worstDay', case when a.any_activity then (select pg_catalog.jsonb_build_object('date', d.selected_date, 'amount', d.selected_result) from daily_values d order by d.selected_result asc, d.selected_date asc limit 1) else null end

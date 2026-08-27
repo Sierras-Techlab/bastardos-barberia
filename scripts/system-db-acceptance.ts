@@ -515,6 +515,16 @@ const main = async () => {
   assert.equal(parsedReport.data.paymentComposition.reduce((sum, item) => sum + item.amount, 0),
     parsedReport.data.summary.grossIncome);
   assert.equal(parsedReport.data.daily.length, parsedReport.data.period.elapsedDays);
+  const employeePerformance = parsedReport.data.teamPerformance.find((member) => member.id === employeeId);
+  const ownerPerformance = parsedReport.data.teamPerformance.find((member) => member.id === ownerId);
+  assert.ok(employeePerformance);
+  assert.ok(ownerPerformance);
+  assert.equal(employeePerformance.role, "employee");
+  assert.ok(employeePerformance.current.saleCount > 0);
+  assert.ok(employeePerformance.current.workedMinutes !== null);
+  assert.equal(ownerPerformance.role, "owner");
+  assert.equal(ownerPerformance.current.workedMinutes, null);
+  assert.equal(ownerPerformance.current.grossPerHour, null);
   pass("project the manager business report with exact financial identities");
 
   await expectDatabaseError("reject employee business reports", "MANAGER_REQUIRED", () =>
