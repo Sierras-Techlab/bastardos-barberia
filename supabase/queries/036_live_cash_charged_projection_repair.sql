@@ -55,10 +55,10 @@ begin
       'expectedCash',0,'countedCash',null,'difference',null,'closeMode',null,'reconciliationState','not_applicable'));
   end if;
   if is_live then
-    select register_record.opening_balance + coalesce(sum(ip.amount),0) into expected_value
-    from public.income_payments ip join public.incomes i on i.id=ip.income_id
-    join public.payment_methods pm on pm.id=ip.payment_method_id and pm.system_code='cash'
-    where i.business_date=target_business_date and i.status='active';
+    expected_value := public.current_cash_expected(
+      target_business_date,
+      register_record.opening_balance
+    );
   else expected_value:=register_record.expected_cash; end if;
   select case when u.id is null then null else jsonb_build_object('id',u.id,'firstName',u.first_name,'lastName',u.last_name) end
   into opened_by_json from (select 1) seed left join public.users u on u.id=register_record.opened_by;

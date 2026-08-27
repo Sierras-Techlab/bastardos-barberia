@@ -43,4 +43,9 @@ describe("migration 034 complete income flow repair", () => {
     expect(repair034).toContain("from public, anon, authenticated");
     expect(repair034).toContain("to service_role");
   });
+
+  it("accepts an already-repaired canonical function as a valid no-op", () => {
+    expect(repair034).not.toContain("repaired_definition = function_definition\n    or");
+    expect(repair034).toContain("if repaired_definition <> function_definition then");
+  });
 });

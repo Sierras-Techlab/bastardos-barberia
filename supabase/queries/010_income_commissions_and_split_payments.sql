@@ -150,6 +150,9 @@ alter table public.incomes
 alter table public.incomes
   alter column payment_method drop not null;
 
+alter table public.incomes
+  drop constraint if exists incomes_payment_method_check;
+
 create table if not exists public.income_payments (
   id uuid primary key default extensions.gen_random_uuid(),
   income_id uuid not null references public.incomes(id) on delete restrict,

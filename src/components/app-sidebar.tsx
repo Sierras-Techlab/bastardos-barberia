@@ -54,8 +54,7 @@ const administrationNavigation = [
   { label: "Presentismo", icon: CalendarClock, href: "/work-sessions" },
   { label: "Caja", icon: WalletCards, href: "/cash" },
   { label: "Gastos", icon: ReceiptText, href: "/expenses" },
-  { label: "Reportes", icon: BarChart3 },
-  { label: "Negocio", icon: Store },
+  { label: "Reportes", icon: BarChart3, href: "/reports" },
 ];
 
 type AppSidebarProps = {
@@ -63,20 +62,22 @@ type AppSidebarProps = {
   user: SafeUser;
 };
 
-export const AppSidebar = ({
-  activeItem,
-  user,
-}: AppSidebarProps) => {
+export const AppSidebar = ({ activeItem, user }: AppSidebarProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const name = `${user.firstName} ${user.lastName}`;
-  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
+  const initials =
+    `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
   const canManage = user.role.name === "owner" || user.role.name === "admin";
   const visibleOperationNavigation = canManage
     ? operationNavigation
     : employeeOperationNavigation;
-  const roleLabels = { owner: "Due\u00f1o", admin: "Administrador", employee: "Empleado" } as const;
+  const roleLabels = {
+    owner: "Due\u00f1o",
+    admin: "Administrador",
+    employee: "Empleado",
+  } as const;
   const isItemActive = (label: string, href?: string) => {
     if (activeItem) return activeItem === label;
     if (!href) return false;

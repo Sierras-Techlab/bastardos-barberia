@@ -42,8 +42,25 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 36. `036_live_cash_charged_projection_repair.sql`
 37. `037_remove_legacy_income_overloads.sql`
 38. `038_cash_close_charged_snapshot_repair.sql`
+39. `039_business_reports.sql`
+40. `040_production_hardening.sql`
 
-Run each entire file and stop if Supabase reports an error. These scripts target a new project; do not edit generated tables manually afterward.
+Run each entire file and stop if Supabase reports an error. Once the colleague-owned Reports migration is integrated, verify the complete `001` through `040` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
+
+## Production paths
+
+- Empty production database: execute `001` through `040` exactly once in numeric order, then bootstrap the first owner.
+- Existing database already installed through Reports migration `039`: back it up, execute only `040_production_hardening.sql`, then run the read-only audit and rollback-only database acceptance.
+- Existing database installed only through `038`: apply the colleague-owned Reports migration `039` before `040_production_hardening.sql`.
+- Do not rerun structural migrations on a populated database unless a file explicitly documents that upgrade path.
+- Files `024` through `038` are retained intentionally as historical upgrade/repair steps. Some are no-ops against the current canonical sources, but deleting them would make deployed database lineages unreproducible.
+- `039_business_reports.sql` belongs to Reports. `040` is the convergence point for current clean and upgraded databases; new migrations start at `041`.
+
+Clean-install verification (creates and always drops an isolated database):
+
+```bash
+npx tsx --env-file=.env scripts/system-clean-install-acceptance.ts --confirm-disposable
+```
 
 If `016_payment_methods.sql` was installed before the product-availability projection, responsible-role snapshot, legacy payment-column or safe-deletion fixes, run the current file again in full. The script is transactional: it repairs and backfills `incomes.responsible_role_snapshot`, releases the superseded `income_payments.method` requirement, restores the current integrity constraints and replaces the canonical income/payment-method functions. This refresh is required before recording another income or using permanent payment-method deletion.
 
@@ -59,7 +76,7 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 
 `022_manual_cash_lifecycle.sql` evolves the automatic Caja into a manager-controlled lifecycle: `opening_balance`, `opening_source`, `close_mode`, `expected_cash`, `counted_cash`, `difference_cash` and `reconciliation_state` are added to `daily_cash_registers`. Legacy `018` registers are backfilled as zero opening, `first_income`, `automatic`, `pending_confirmation`; their financial snapshots stay immutable. The migration preflight aborts with `CASH_PAYMENT_METHOD_REQUIRED` unless exactly one normalized payment method named `Efectivo` exists. The payment-method RPCs reject rename/deactivate/delete of the protected record via `CASH_PAYMENT_METHOD_PROTECTED`. New RPCs `open_daily_cash`, `close_daily_cash`, `confirm_daily_cash` and the protected `ensure_daily_cash_open` (called by both `create_income` and `pay_fixed_customer_month`) use the same advisory lock as the daily register and persist a unified lifecycle block via the promoted `cash_day_as_json`. Run it after `021`.
 
-`023_customer_last_visit.sql` adds a partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status='active'` and `source_type='sale'` and promotes `list_customers(actor_user_id)` plus `get_customer_visits` to derive each customer's last active sale business date in `America/Argentina/Buenos_Aires`. Voids and `fixed_subscription` incomes are excluded; a void immediately reveals the previous qualifying sale. No mutable customer column is added and the projection never exposes payment, commission, employee or price data. Run it after `022`.
+`023_customer_last_visit.sql` adds a partial index on `incomes(customer_id, business_date desc, created_at desc)` filtered by `status='active'` and `source_type='sale'`, promotes `list_customers(actor_user_id)`, scopes `list_customer_visits` to normal sales and makes `void_income` decrement visits only for normal sales. Voids and `fixed_subscription` incomes are excluded; a void immediately reveals the previous qualifying sale. No mutable last-visit column is added. Run it after `022`.
 
 `024_income_list_contract_repair.sql` is an incremental repair for projects that already installed `020` through `023`. It restores manager `paymentTotals`, the employee-only commission metrics, role-derived row scoping and valid service concept IDs in `list_incomes`/`income_as_employee_json`. Run it once after `023`; do not rerun `020` on an upgraded database.
 
@@ -230,7 +247,7 @@ end $$;
 rollback;
 ```
 
-Two stabilization repair files also exist for databases that installed earlier development revisions. Their numeric prefixes overlap the expense branch's incremental chain, so select them from the database's actual installation history rather than treating them as additional steps in the clean `024` through `028` sequence above.
+The following stabilization files repair databases that installed earlier development revisions. They remain in the ordered chain so both historical upgrades and clean installations converge on the same final schema.
 
 `029_user_commission_profile_rpc.sql` repairs databases that installed the earlier development revision of `010`, where the commission-aware routine was accidentally named `update_user_profile_v2` while the server calls the canonical `update_user_profile` name. It removes the obsolete nine-argument routine and temporary `_v2` routine, installs the canonical thirteen-argument RPC, restores server-only grants and reloads the PostgREST schema cache. Run it after `028`; no tables or stored data are changed.
 
@@ -242,13 +259,15 @@ Two stabilization repair files also exist for databases that installed earlier d
 
 `033_create_income_product_price_type_repair.sql` repairs the product snapshot insert in canonical `create_income`: prices extracted with JSON `->>` are text and must be cast before insertion into the legacy and catalog integer price columns. Without it, product sales reach the insert and fail with SQLSTATE `42804`. Run it after `032`; it changes only the installed function body and preserves its signature and permissions.
 
-`034_create_income_complete_flow_repair.sql` closes the remaining canonical sale variants after `033`: normal products no longer receive false override actors, catalog commission bases reconcile to `gross_total`, authorized zero totals/prices satisfy legacy constraints, empty manager payments are deferred to authoritative total validation, every active payment method is locked and counted, and employee percentage splits cannot persist zero-value payment rows. It changes constraints and the installed canonical function without rewriting sale history or introducing versioned RPCs. Run it after `033`.
+`034_create_income_complete_flow_repair.sql` closes the remaining canonical sale variants after `033`: normal products no longer receive false override actors, catalog commission bases reconcile to `gross_total`, authorized zero totals/prices satisfy legacy constraints, empty manager payments are deferred to authoritative total validation, every active payment method is locked and counted, and employee percentage splits cannot persist zero-value payment rows. It changes constraints and the installed canonical function without rewriting sale history or introducing versioned RPCs. It is an idempotent no-op when the current `020` already contains every repair. Run it after `033`.
 
 `035_cash_charged_price_snapshot_repair.sql` makes Caja use charged service/product item snapshots for closure rows and post-close void adjustments. Catalog commission bases remain available for gross catalog reporting, but no longer break Caja economics when a manager discounts, surcharges or gives a line for free. Fixed subscriptions remain entirely in the service bucket and zero-total voids create no adjustment. Run it after `034`.
 
 `036_live_cash_charged_projection_repair.sql` repairs the live Caja projection left by `028`: service/product totals now use charged item snapshots, so manager price overrides reconcile with the charged gross total, and fixed subscriptions retain the `subscription` kind instead of appearing as services. It preserves the manual-open lifecycle wrapper and uses the canonical financial helper installed by `022`. Run it after `035`.
 
-Verify the `025` repair after execution; both columns must report `true`:
+`040_production_hardening.sql` is the convergence migration after the colleague-owned Reports migration `039`. It scopes employee agendas and attendance to their currently assigned fixed customers, excludes subscriptions from visit history and visit-counter decrements, removes the obsolete legacy payment discriminator constraint, restores adjustment-aware live expected cash and closes residual trigger-function grants. Owner/admin retain complete agenda access. Run it once after `039`; the same final behavior is also folded into the current canonical migrations for clean installations.
+
+Verify the `030` repair after execution; both columns must report `true`:
 
 ```sql
 select

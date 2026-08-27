@@ -132,8 +132,7 @@ begin
     '''overrideBy'', case when override_entry.value is null then null else actor_user_id end'
   );
 
-  if repaired_definition = function_definition
-    or repaired_definition !~* 'found_payment_count[[:space:]]+integer'
+  if repaired_definition !~* 'found_payment_count[[:space:]]+integer'
     or repaired_definition !~* 'PAYMENT_METHOD_NOT_AVAILABLE'
     or repaired_definition !~* 'iteration_amount[[:space:]]+bigint'
     or repaired_definition !~* '''overrideBy''[[:space:]]*,[[:space:]]*case[[:space:]]+when override_entry.value is null'
@@ -141,7 +140,9 @@ begin
     raise exception using errcode = 'P0001', message = 'CREATE_INCOME_COMPLETE_REPAIR_FAILED';
   end if;
 
-  execute repaired_definition;
+  if repaired_definition <> function_definition then
+    execute repaired_definition;
+  end if;
 end;
 $repair$;
 

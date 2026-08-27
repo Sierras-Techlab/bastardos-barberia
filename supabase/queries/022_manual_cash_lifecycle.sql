@@ -355,6 +355,7 @@ create or replace function public.cash_day_as_json(
 )
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare result jsonb; register_record record; normalized_sales jsonb;
+  charged_service_total bigint; charged_product_total bigint;
 begin
   result := public.cash_financial_day_as_json(target_business_date, target_cash_id, is_live);
   if result is null then return null; end if;
@@ -363,6 +364,23 @@ begin
   left join public.users u on u.id = r.opened_by where r.id = target_cash_id;
   if is_live then
     result := jsonb_set(result, '{id}', coalesce(to_jsonb(target_cash_id), 'null'::jsonb));
+    select
+      coalesce(sum(case when i.source_type = 'fixed_subscription' then i.total else item_totals.service end)
+        filter (where i.status = 'active'), 0)::bigint,
+      coalesce(sum(case when i.source_type = 'fixed_subscription' then 0 else item_totals.product end)
+        filter (where i.status = 'active'), 0)::bigint
+    into charged_service_total, charged_product_total
+    from public.incomes i
+    left join lateral (
+      select
+        coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'service'), 0)::bigint as service,
+        coalesce(sum(ii.charged_subtotal) filter (where ii.item_type = 'product'), 0)::bigint as product
+      from public.income_items ii
+      where ii.income_id = i.id
+    ) item_totals on true
+    where i.business_date = target_business_date;
+    result := jsonb_set(result, '{summary,serviceTotal}', to_jsonb(charged_service_total), true);
+    result := jsonb_set(result, '{summary,productTotal}', to_jsonb(charged_product_total), true);
   end if;
   select coalesce(jsonb_agg(
     case when i.source_type = 'fixed_subscription'
@@ -689,6 +707,8 @@ $$;
 drop trigger if exists trg_income_open_daily_cash on public.incomes;
 create trigger trg_income_open_daily_cash after insert on public.incomes
 for each row execute function public.trg_income_open_daily_cash();
+
+revoke execute on function public.trg_income_open_daily_cash() from public, anon, authenticated;
 
 revoke execute on function public.current_cash_expected(date, bigint) from public, anon, authenticated;
 revoke execute on function public.snapshot_daily_cash(uuid, date) from public, anon, authenticated;

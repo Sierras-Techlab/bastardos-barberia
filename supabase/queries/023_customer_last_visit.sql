@@ -78,8 +78,166 @@ begin
 end;
 $$;
 
+-- Keep fixed subscriptions out of customer visit history. They are income and
+-- Caja activity, but they do not represent a barbering visit.
+create or replace function public.list_customer_visits(
+  actor_user_id uuid,
+  target_customer_id uuid,
+  page_number integer,
+  page_size integer
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  safe_page integer := greatest(coalesce(page_number, 1), 1);
+  safe_page_size integer := least(greatest(coalesce(page_size, 20), 1), 100);
+  result jsonb;
+begin
+  if not exists (
+    select 1 from public.users
+    where id = actor_user_id and is_active and deleted_at is null
+  ) then
+    raise exception using errcode = '22023', message = 'INVALID_ACTOR';
+  end if;
+  if not exists (
+    select 1 from public.customers
+    where id = target_customer_id and deleted_at is null
+  ) then
+    return null;
+  end if;
+
+  with visits as materialized (
+    select i.id, i.created_at, i.business_date, i.total
+    from public.incomes i
+    where i.customer_id = target_customer_id
+      and i.status = 'active'
+      and i.source_type = 'sale'
+  ), page_rows as (
+    select * from visits
+    order by created_at desc, id desc
+    offset ((safe_page - 1) * safe_page_size)
+    limit safe_page_size
+  ), totals as (
+    select count(*)::integer as total from visits
+  )
+  select jsonb_build_object(
+    'items', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id,
+        'occurredAt', p.created_at,
+        'businessDate', p.business_date,
+        'totalSpent', p.total,
+        'items', coalesce((
+          select jsonb_agg(jsonb_build_object(
+            'type', ii.item_type,
+            'name', ii.name_snapshot,
+            'quantity', ii.quantity,
+            'unitPrice', ii.unit_price,
+            'subtotal', ii.unit_price * ii.quantity
+          ) order by ii.created_at, ii.id)
+          from public.income_items ii where ii.income_id = p.id
+        ), '[]'::jsonb)
+      ) order by p.created_at desc, p.id desc)
+      from page_rows p
+    ), '[]'::jsonb),
+    'pagination', jsonb_build_object(
+      'page', safe_page,
+      'pageSize', safe_page_size,
+      'total', totals.total,
+      'totalPages', case when totals.total = 0 then 0
+        else ceiling(totals.total::numeric / safe_page_size)::integer end
+    )
+  ) into result
+  from totals;
+  return result;
+end;
+$$;
+
+-- The legacy void routine predates source_type. Only normal sales increment
+-- customers.visits, so only those rows may decrement it when voided.
+create or replace function public.void_income(
+  target_income_id uuid,
+  actor_user_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  income_record record;
+  product_record record;
+  void_time timestamptz := pg_catalog.clock_timestamp();
+begin
+  if not exists (
+    select 1 from public.users
+    where id = actor_user_id
+      and role_id in (1, 2)
+      and is_active
+      and deleted_at is null
+  ) then
+    raise exception using errcode = '42501', message = 'MANAGER_REQUIRED';
+  end if;
+
+  select id, customer_id, status, source_type into income_record
+  from public.incomes
+  where id = target_income_id
+  for update;
+
+  if not found then
+    return null;
+  end if;
+  if income_record.status = 'voided' then
+    return income_record.id;
+  end if;
+
+  for product_record in
+    select p.id, p.stock, ii.quantity
+    from public.products p
+    join public.income_items ii
+      on ii.product_id = p.id and ii.income_id = income_record.id
+    where ii.item_type = 'product'
+    order by p.id
+    for update of p
+  loop
+    update public.products
+    set stock = product_record.stock + product_record.quantity,
+        updated_by = actor_user_id
+    where id = product_record.id;
+
+    insert into public.inventory_movements (
+      product_id, movement_type, quantity_delta, stock_after, user_id, income_id, created_at
+    ) values (
+      product_record.id, 'sale_void', product_record.quantity,
+      product_record.stock + product_record.quantity, actor_user_id,
+      income_record.id, void_time
+    );
+  end loop;
+
+  if income_record.source_type = 'sale' and income_record.customer_id is not null then
+    update public.customers
+    set visits = greatest(visits - 1, 0), updated_by = actor_user_id
+    where id = income_record.customer_id;
+  end if;
+
+  update public.incomes
+  set status = 'voided', voided_at = void_time, voided_by = actor_user_id
+  where id = income_record.id;
+
+  return income_record.id;
+end;
+$$;
+
 revoke execute on function public.list_customers(uuid) from public, anon, authenticated;
+revoke execute on function public.list_customer_visits(uuid, uuid, integer, integer) from public, anon, authenticated;
+revoke execute on function public.void_income(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.list_customers(uuid) to service_role;
+grant execute on function public.list_customer_visits(uuid, uuid, integer, integer) to service_role;
+grant execute on function public.void_income(uuid, uuid) to service_role;
 
 notify pgrst, 'reload schema';
 

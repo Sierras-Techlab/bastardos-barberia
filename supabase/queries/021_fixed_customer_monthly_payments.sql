@@ -255,12 +255,12 @@ begin
       raise exception using errcode = 'P0001', message = 'FIXED_MONTH_INVALID_PAYMENT';
     end if;
     return query
-      select raw_item.payment_method_id, raw_item.amount::bigint, null::integer
+      select parsed_item.payment_method_id, parsed_item.amount::bigint, null::integer
       from (
         select (item->>'paymentMethodId')::uuid as payment_method_id,
           (item->>'amount')::bigint as amount
         from jsonb_array_elements(payment_items) item
-      ) raw_item;
+      ) parsed_item;
     return;
   end if;
 
@@ -466,7 +466,7 @@ begin
   ) values (
     income_request_id, actor_user_id, responsible_employee_id, responsible_employee_role,
     fingerprint,
-    target_customer_id, 'mixed', monthly_price, monthly_price,
+    target_customer_id, null, monthly_price, monthly_price,
     monthly_price, 0,
     employee_service_rate, employee_product_rate,
     total_commission, 0, total_commission, net_amount,
@@ -790,7 +790,144 @@ revoke execute on function public.synthesize_pending_fixed_customer_month(uuid, 
 grant execute on function public.synthesize_pending_fixed_customer_month(uuid, text, text) to service_role;
 
 -- ---------------------------------------------------------------------------
--- 7. void_income marks the linked attempt as voided via an AFTER UPDATE OF
+-- 7. Scope the weekly agenda and attendance mutations to the responsible
+--    professional for employee actors. Managers retain the complete agenda.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.list_fixed_customer_occurrences(
+  actor_user_id uuid,
+  date_from date,
+  date_to date,
+  filter_status text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  actor_role_id integer;
+  result jsonb;
+begin
+  select u.role_id into actor_role_id
+  from public.users u
+  where u.id = actor_user_id
+    and u.is_active
+    and u.deleted_at is null;
+
+  if actor_role_id is null then
+    raise exception using errcode = '22023', message = 'INVALID_ACTOR';
+  end if;
+  if filter_status is not null and filter_status not in ('pending', 'attended', 'missed') then
+    raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_STATUS';
+  end if;
+
+  perform public.ensure_fixed_customer_occurrences(date_from, date_to);
+  select coalesce(jsonb_agg(
+    public.fixed_customer_occurrence_as_json(o.id)
+    order by o.occurrence_date, o.scheduled_time, o.id
+  ), '[]'::jsonb) into result
+  from public.fixed_customer_occurrences o
+  join public.customers c on c.id = o.customer_id and c.deleted_at is null
+  where o.occurrence_date between date_from and date_to
+    and (filter_status is null or o.status = filter_status)
+    and (
+      actor_role_id in (1, 2)
+      or exists (
+        select 1
+        from public.customer_fixed_schedules s
+        where s.customer_id = o.schedule_customer_id
+          and s.is_active
+          and s.responsible_user_id = actor_user_id
+      )
+    );
+  return result;
+end;
+$$;
+
+create or replace function public.resolve_fixed_customer_occurrence(
+  actor_user_id uuid,
+  target_occurrence_id uuid,
+  new_status text,
+  expected_status text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  actor_role_id integer;
+  occurrence_customer_id uuid;
+begin
+  select u.role_id into actor_role_id
+  from public.users u
+  where u.id = actor_user_id
+    and u.is_active
+    and u.deleted_at is null;
+
+  if actor_role_id is null then
+    raise exception using errcode = '22023', message = 'INVALID_ACTOR';
+  end if;
+  if new_status not in ('attended', 'missed') or expected_status <> 'pending' then
+    raise exception using errcode = '22023', message = 'INVALID_OCCURRENCE_STATUS';
+  end if;
+
+  select o.schedule_customer_id into occurrence_customer_id
+  from public.fixed_customer_occurrences o
+  where o.id = target_occurrence_id;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_NOT_FOUND';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('fixed-customer-schedule:' || occurrence_customer_id::text, 0)
+  );
+
+  perform 1
+  from public.fixed_customer_occurrences o
+  join public.customers c on c.id = o.customer_id and c.deleted_at is null
+  join public.customer_fixed_schedules s on s.customer_id = o.schedule_customer_id
+  where o.id = target_occurrence_id
+    and (
+      actor_role_id in (1, 2)
+      or (
+        s.is_active
+        and s.responsible_user_id = actor_user_id
+      )
+    );
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_NOT_FOUND';
+  end if;
+
+  perform 1
+  from public.fixed_customer_occurrences o
+  where o.id = target_occurrence_id
+  for update;
+
+  update public.fixed_customer_occurrences as occurrence
+  set status = new_status,
+      status_changed_by = actor_user_id,
+      status_changed_at = now()
+  where occurrence.id = target_occurrence_id
+    and occurrence.status = expected_status;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'FIXED_OCCURRENCE_ALREADY_RESOLVED';
+  end if;
+  return public.fixed_customer_occurrence_as_json(target_occurrence_id);
+end;
+$$;
+
+revoke execute on function public.list_fixed_customer_occurrences(uuid, date, date, text) from public, anon, authenticated;
+revoke execute on function public.resolve_fixed_customer_occurrence(uuid, uuid, text, text) from public, anon, authenticated;
+grant execute on function public.list_fixed_customer_occurrences(uuid, date, date, text) to service_role;
+grant execute on function public.resolve_fixed_customer_occurrence(uuid, uuid, text, text) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 8. void_income marks the linked attempt as voided via an AFTER UPDATE OF
 --    status trigger so the canonical void_income RPC keeps its existing
 --    audit/stock/post-close Caja semantics.
 -- ---------------------------------------------------------------------------
@@ -818,6 +955,8 @@ drop trigger if exists trg_void_fixed_subscription_attempt on public.incomes;
 create trigger trg_void_fixed_subscription_attempt
   after update of status on public.incomes
   for each row execute function public.mark_fixed_subscription_attempt_voided();
+
+revoke execute on function public.mark_fixed_subscription_attempt_voided() from public, anon, authenticated;
 
 notify pgrst, 'reload schema';
 
