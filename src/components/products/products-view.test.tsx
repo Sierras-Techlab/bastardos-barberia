@@ -24,8 +24,15 @@ it("shows the catalog summary in desktop and mobile representations", () => {
     screen.getByRole("table", { name: /catálogo de productos/i }),
   ).toBeVisible();
   expect(
+    screen.getByRole("table", { name: /catálogo de productos/i }).parentElement
+      ?.parentElement?.parentElement,
+  ).toHaveClass("xl:block");
+  expect(
     screen.getByRole("list", { name: /catálogo móvil de productos/i }),
   ).toBeVisible();
+  expect(
+    screen.getByRole("list", { name: /catálogo móvil de productos/i }).parentElement,
+  ).toHaveClass("xl:hidden");
   expect(screen.getAllByText("Hunter Cream")).toHaveLength(2);
   expect(screen.getAllByText(/30\.000/)).toHaveLength(2);
   expect(screen.getAllByText("Disponible").length).toBeGreaterThan(0);

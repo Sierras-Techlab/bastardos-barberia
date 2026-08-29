@@ -259,7 +259,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
       <CashHistoryTable items={history.items} selectedDate={day.businessDate} loading={loadingDay} onSelect={(date) => void loadDay(date)} />
 
       {history.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button type="button" variant="outline" disabled={loadingHistory || history.pagination.page <= 1} onClick={() => void loadHistoryPage(history.pagination.page - 1)}>Anterior</Button>
           <span className="text-sm text-muted-foreground">Página {history.pagination.page} de {history.pagination.totalPages}</span>
           <Button type="button" variant="outline" disabled={loadingHistory || history.pagination.page >= history.pagination.totalPages} onClick={() => void loadHistoryPage(history.pagination.page + 1)}>Siguiente</Button>

@@ -42,8 +42,8 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
 
     {sales.length > 0 ? (
       <>
-        <div className="hidden overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 md:block">
-          <table aria-label="Ventas de la caja" className="w-full text-left text-sm">
+        <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 xl:block">
+          <table aria-label="Ventas de la caja" className="w-full min-w-[44rem] text-left text-sm">
             <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
               <tr>
                 <th className="px-5 py-3 font-medium">Hora</th>
@@ -71,7 +71,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
           </table>
         </div>
 
-        <ul aria-label="Ventas de la caja en móvil" className="space-y-3 md:hidden">
+        <ul aria-label="Ventas de la caja en móvil" className="space-y-3 xl:hidden">
           {sales.map((sale) => (
             <li key={sale.id} className="rounded-[1.4rem] bg-white p-4 shadow-sm ring-1 ring-black/5">
               <button type="button" className="w-full text-left" onClick={() => onSelect(sale)}>
