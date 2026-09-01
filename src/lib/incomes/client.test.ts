@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { incomeClient } from "@/lib/incomes/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -64,7 +64,33 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("incomeClient", () => {
+  it("stops an income-list request that exceeds the response deadline", async () => {
+    vi.useFakeTimers();
+    let requestSignal: AbortSignal | undefined;
+    fetchMock.mockImplementation((_url, init) => {
+      requestSignal = init?.signal ?? undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener("abort", () => {
+          reject(new DOMException("Aborted", "AbortError"));
+        });
+      });
+    });
+
+    const request = incomeClient.listAs("owner", { page: 1, pageSize: 10 });
+
+    expect(requestSignal).toBeDefined();
+    const rejection = expect(request).rejects.toThrow(
+      "La consulta de ingresos tardó demasiado. Intentá nuevamente.",
+    );
+    await vi.advanceTimersByTimeAsync(15_000);
+    await rejection;
+  });
+
   it("creates, lists, gets and voids incomes without caching", async () => {
     fetchMock.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
       const target = typeof url === "string" ? url : url.toString();

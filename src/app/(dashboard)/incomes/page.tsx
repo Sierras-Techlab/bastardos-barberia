@@ -11,6 +11,7 @@ import { isCashClosedForDate } from "@/lib/cash/repository";
 import { listIncomeResponsibleEmployees, listIncomes } from "@/lib/incomes/service";
 import { getBuenosAiresMonthRange } from "@/lib/incomes/date-range";
 import { employeePaginatedIncomesSchema, paginatedIncomesSchema } from "@/lib/incomes/contracts";
+import { withIncomeLoadDeadline } from "@/lib/incomes/load-deadline";
 import { paymentMethodRepository } from "@/lib/payment-methods/repository";
 import type { IncomeListQuery, PaginatedIncomes } from "@/types/income";
 
@@ -18,14 +19,14 @@ export const metadata: Metadata = { title: "Ingresos", description: "Consultá e
 const IncomesPage = async () => {
   const { user } = await requirePageUser(); const canViewAll = MANAGER_ROLES.has(user.role.name);
   const initialQuery: IncomeListQuery = { ...getBuenosAiresMonthRange(), page: 1, pageSize: 10 };
-  const [data, employees, paymentMethods, cashClosed] = await Promise.all([
+  const [data, employees, paymentMethods, cashClosed] = await withIncomeLoadDeadline(Promise.all([
     listIncomes(user, initialQuery),
     canViewAll
       ? listIncomeResponsibleEmployees(user)
       : Promise.resolve([{ id: user.id, firstName: user.firstName, lastName: user.lastName }]),
     paymentMethodRepository.list(true),
     isCashClosedForDate(getBuenosAiresToday()),
-  ]);
+  ]));
   const viewData: PaginatedIncomes = canViewAll
     ? (() => {
         const managerData = paginatedIncomesSchema.parse(data);

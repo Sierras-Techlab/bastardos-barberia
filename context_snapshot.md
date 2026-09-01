@@ -1,15 +1,18 @@
 # Context snapshot
 
-Captured: 2026-08-29
+Captured: 2026-09-01
 
 ## Current state
 
-- Active branch: `feat/business-reports`, integrating the completed Reports migration `039` with production hardening migration `040` from `origin/feat/changes-fullstack`.
+- Active branch: `dev`, updated from `origin/dev` at `5c9931d`.
 - Reports is implemented end to end: monthly financial narrative, active-period selector, service/product highlights and manager-only team performance combining responsible-user economics with employee attendance productivity.
 - The configured PostgreSQL test database has both `039_business_reports.sql` and the behavior owned by `040_production_hardening.sql` applied and audited on PostgreSQL 17.6.
 - Production remains gated on a target backup/restore point, approved deployment window and the runbook in `docs/production-deployment.md`.
 - TASK-01 responsive hardening has been reapplied after an external git reset; the shared shell, tablet card/list breakpoints, overflow containment and narrow dialog/sheet handling are restored.
 - TASK-01 verification after restoration: 225 test files / 1028 tests passed; typegen, typecheck and production build passed. Lint passed with the pre-existing unused `Store` warning in `src/components/app-sidebar.tsx`.
+- Income history now aborts superseded list requests, times out stalled initial and interactive loads after 15 seconds, restores the last successfully applied filters on failure and offers an exact-query retry. This prevents a failed narrow filter from displaying broader-period commission metrics under the new filter labels.
+- The employee work-session control can be minimized on mobile into a draggable left/right edge bubble; its minimized state and clamped vertical position persist locally without affecting the desktop control.
+- The read-only database audit now verifies sale-to-item total and commission rollups, per-item commission bounds and every active employee's projected commission total against the direct active-income sum.
 
 ## Delivered hardening
 
@@ -26,12 +29,13 @@ Captured: 2026-08-29
 
 - `npx next typegen`: passed.
 - `npx tsc --noEmit`: passed.
-- `npm test -- --maxWorkers=1`: 225 files / 1026 tests passed on the integrated branch.
-- `npm run lint`: passed with zero warnings.
+- Focused income/commission/loading/work-session regression runs: the initial 8 files / 68 tests passed, and the final income/work-session review pair passed 2 files / 20 tests after adding pending-metric and viewport-resize coverage.
+- `npm test`: 226 files / 1040 tests passed on the integrated branch. A preliminary single-worker run was interrupted after the runner stalled without producing progress; the standard project command completed successfully.
+- `npm run lint`: passed with zero errors and the pre-existing unused `Store` warning in `src/components/app-sidebar.tsx`.
 - `npm run build`: Next.js 16.3 Turbopack production build passed and emitted the complete application route surface.
 - `git diff --check`: passed.
 - `npm run acceptance:db`: migration `040` compiled inside the transaction and all 43 rollback-only PostgreSQL scenarios passed, including Reports authorization/financial identities, employee agenda isolation, subscription visit semantics and adjustment-aware live expected cash; all fixtures rolled back.
-- `npm run audit:db`: 25 RLS-enabled domain tables, no missing required functions, no unsafe table/routine grants, every hardening fingerprint true, zero stored-data invariant violations and no abandoned disposable databases.
+- `npm run audit:db`: 25 RLS-enabled domain tables, no missing required functions, no unsafe table/routine grants, every hardening fingerprint true, zero stored-data invariant violations (including the three commission projection/rollup checks) and no abandoned disposable databases.
 - The disposable clean-install gate applied all 40 migrations from `001_extensions_and_roles.sql` through `040_production_hardening.sql`, then passed the complete behavioral acceptance with 25 tables, no missing functions, no unsafe grants and every hardening fingerprint true. Its temporary database was dropped.
 
 ## Boundaries
@@ -43,4 +47,4 @@ Captured: 2026-08-29
 
 ## Recommended next task
 
-The integrated branch is ready for review and merge into `dev`. Production rollout remains a separate approved operation following `docs/production-deployment.md`.
+The revisions on `dev` are ready for review. Production rollout remains a separate approved operation following `docs/production-deployment.md`, including the paused older-database migration recovery described above.

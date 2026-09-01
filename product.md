@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-08-26
+Last updated: 2026-09-01
 
 ## Vision
 
@@ -24,10 +24,10 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | Comisiones y pagos combinados | Installed in test | Role-aware responsible employee, exact split payments, independently rounded item snapshots, owner-safe previews, audited 100% service/product-line exceptions, manager-controlled charged-price overrides with reason, employee percentage payment entry and employee-sanitized projections. |
 | Historial de ingresos por rol | Installed in test | Responsible-employee scoping/filtering across all historical users, metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, server-authoritative totals, idempotency and inline customer creation. |
-| Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. |
+| Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. Initial and interactive loads have bounded deadlines; failed filters restore the last consistent result and expose an exact-query retry. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
 | Sales and cash | Installed in test | Persistent sales feed a manager-only Caja workspace with manual open/close/confirm, automatic first-income opening and automatic pending-confirmation closing. Historical snapshots remain immutable, `Efectivo` is protected by `system_code='cash'`, and expenses remain separate. |
-| Presentismo | Installed in test | Employee-only persistent clock, responsive role-scoped history and optimistic manager correction UI are backed by migration `019`, authenticated API and a no-store browser client with strict role-specific response parsing. Employee sales require an open session; manager-to-employee sales link an open session or record an outside-session audit flag. |
+| Presentismo | Installed in test | Employee-only persistent clock, responsive role-scoped history and optimistic manager correction UI are backed by migration `019`, authenticated API and a no-store browser client with strict role-specific response parsing. On mobile, the clock control can be minimized into a persisted draggable edge bubble. Employee sales require an open session; manager-to-employee sales link an open session or record an outside-session audit flag. |
 | Products | Installed in test | Persistent role-aware catalog, manager CRUD/lifecycle operations, atomic audited inventory movements and dynamic category administration with permanent deletion restricted to categories that were never assigned to a product. Inactive items show `No disponible` regardless of retained stock. |
 | Payment methods | Installed in test | Audited dynamic catalog and allocations, manager create/rename/deactivate/reactivate UI, historical filters/dashboard totals and permanent deletion restricted to unused methods. |
 | Services | Implemented | Persistent role-aware catalog, manager mutations, active-only employee reads and logical deletion preserving sales history. |
@@ -38,7 +38,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-The active branch is `feat/business-reports`, integrating Reports `039` with production hardening `040`. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses, reports and critical stock/session/idempotency races. The complete `001`-`040` clean-install gate must pass before production. Production remains gated on target backup, read-only preflight and deployment approval.
+The active branch is `dev`, with Reports `039`, production hardening `040` and the responsive hardening integrated. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses, reports and critical stock/session/idempotency races. The income ledger now also prevents stale metrics from being presented under a failed filter and provides bounded loading with retry. The complete `001`-`040` clean-install gate must pass before production. Production remains gated on target backup, read-only preflight and deployment approval.
 
 The operational-control roadmap comprises `019` employee work sessions, `020` manager price overrides/configurable owner commission/employee-safe projections, `021` professional-owned fixed customers with atomic monthly payments, `022` manual Caja lifecycle and `023` derived customer last visit. These blocks are installed in the test database. Customer visit totals continue to count only active normal sales; subscription incomes affect Caja and dashboards without inflating visit history.
 

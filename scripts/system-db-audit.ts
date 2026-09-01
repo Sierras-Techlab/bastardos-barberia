@@ -141,6 +141,49 @@ const main = async () => {
           from public.incomes
          where total <> commission_total + barbershop_net
         union all
+        select 'income_item_rollups', count(*)::text
+          from (
+            select i.id
+              from public.incomes i
+              left join public.income_items ii on ii.income_id = i.id
+             where i.source_type = 'sale'
+             group by i.id, i.total, i.commission_total
+            having i.total <> coalesce(sum(ii.charged_subtotal), 0)
+                or i.commission_total <> coalesce(sum(ii.commission_amount), 0)
+          ) mismatched
+        union all
+        select 'income_item_commission_bounds', count(*)::text
+          from public.income_items
+         where commission_amount < 0
+            or commission_amount > charged_subtotal
+            or commission_rate not between 0 and 100
+        union all
+        select 'employee_income_projection_totals', count(*)::text
+          from public.users employee
+          cross join lateral public.list_incomes(
+            employee.id,
+            false,
+            null::uuid,
+            null::date,
+            null::date,
+            null::uuid,
+            null::text,
+            null::text,
+            null::text,
+            1,
+            1
+          ) projection
+         where employee.role_id = 3
+           and employee.is_active
+           and employee.deleted_at is null
+           and (projection->'metrics'->>'employeeCommissionTotal')::bigint
+             <> (
+               select coalesce(sum(i.commission_total), 0)::bigint
+                 from public.incomes i
+                where i.employee_id = employee.id
+                  and i.status = 'active'
+             )
+        union all
         select 'income_payment_totals', count(*)::text
           from public.incomes i
          where i.total <> coalesce((

@@ -1,8 +1,13 @@
 "use client";
 
-import { Clock3, LogIn, LogOut, TriangleAlert } from "lucide-react";
+import { Clock3, LogIn, LogOut, Minimize2, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +33,20 @@ const formatElapsed = (minutes: number) => {
 const elapsedSince = (startedAt: string, now: number) =>
   Math.max(0, Math.floor((now - Date.parse(startedAt)) / 60_000));
 
+const BUBBLE_SIZE = 56;
+const BUBBLE_MARGIN = 16;
+const MOBILE_ACTION_STRIP_HEIGHT = 80;
+const WORK_SESSION_BUBBLE_STORAGE_KEY = "bastardos.work-session-bubble.v1";
+const getBubbleMaxTop = () => Math.max(
+  BUBBLE_MARGIN,
+  window.innerHeight - MOBILE_ACTION_STRIP_HEIGHT - BUBBLE_SIZE - BUBBLE_MARGIN,
+);
+
+type BubblePosition = {
+  side: "left" | "right";
+  top: number | null;
+};
+
 const WorkSessionControlState = ({
   initialSession,
   workSessionClient,
@@ -37,12 +56,83 @@ const WorkSessionControlState = ({
   const [now, setNow] = useState(() => Date.now());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [minimized, setMinimized] = useState(false);
+  const [bubblePosition, setBubblePosition] = useState<BubblePosition>({
+    side: "right",
+    top: null,
+  });
+  const [storageLoaded, setStorageLoaded] = useState(false);
+  const drag = useRef<{
+    pointerId: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressBubbleClick = useRef(false);
 
   useEffect(() => {
     if (!session) return;
     const interval = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(interval);
   }, [session]);
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) return;
+    const restoreStorage = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(WORK_SESSION_BUBBLE_STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as Partial<BubblePosition> & {
+            minimized?: boolean;
+          };
+          const side = saved.side === "left" ? "left" : "right";
+          const maxTop = getBubbleMaxTop();
+          const top = typeof saved.top === "number" && Number.isFinite(saved.top)
+            ? Math.min(Math.max(saved.top, BUBBLE_MARGIN), maxTop)
+            : null;
+          setBubblePosition({ side, top });
+          setMinimized(saved.minimized === true);
+        }
+      } catch {
+        try {
+          window.localStorage.removeItem(WORK_SESSION_BUBBLE_STORAGE_KEY);
+        } catch {
+          // Storage may be unavailable in restricted browser contexts.
+        }
+      } finally {
+        setStorageLoaded(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(restoreStorage);
+  }, []);
+
+  useEffect(() => {
+    if (!storageLoaded) return;
+    try {
+      window.localStorage.setItem(
+        WORK_SESSION_BUBBLE_STORAGE_KEY,
+        JSON.stringify({ minimized, ...bubblePosition }),
+      );
+    } catch {
+      // Keep the control usable when persistence is unavailable.
+    }
+  }, [bubblePosition, minimized, storageLoaded]);
+
+  useEffect(() => {
+    if (!minimized) return;
+    const keepBubbleVisible = () => {
+      const maxTop = getBubbleMaxTop();
+      setBubblePosition((current) => {
+        if (current.top === null) return current;
+        const top = Math.min(Math.max(current.top, BUBBLE_MARGIN), maxTop);
+        return top === current.top ? current : { ...current, top };
+      });
+    };
+    window.addEventListener("resize", keepBubbleVisible);
+    return () => window.removeEventListener("resize", keepBubbleVisible);
+  }, [minimized]);
 
   const toggle = async () => {
     if (saving) return;
@@ -73,6 +163,73 @@ const WorkSessionControlState = ({
     }
   };
 
+  const moveBubble = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (drag.current?.pointerId !== event.pointerId) return;
+    const moved =
+      Math.hypot(
+        event.clientX - drag.current.startX,
+        event.clientY - drag.current.startY,
+      ) > 4;
+    drag.current.moved ||= moved;
+    const maxTop = getBubbleMaxTop();
+    setBubblePosition({
+      side: event.clientX >= window.innerWidth / 2 ? "right" : "left",
+      top: Math.min(
+        Math.max(event.clientY - drag.current.offsetY, BUBBLE_MARGIN),
+        maxTop,
+      ),
+    });
+  };
+
+  const finishBubbleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (drag.current?.pointerId !== event.pointerId) return;
+    suppressBubbleClick.current = drag.current.moved;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    drag.current = null;
+  };
+
+  if (minimized) {
+    return (
+      <aside
+        aria-label="Control de jornada"
+        data-side={bubblePosition.side}
+        className={`fixed z-40 md:hidden ${bubblePosition.top === null ? "bottom-20" : ""} ${bubblePosition.side === "right" ? "right-4" : "left-4"}`}
+        style={bubblePosition.top === null ? undefined : { top: bubblePosition.top }}
+      >
+        <button
+          type="button"
+          aria-label="Abrir control de jornada"
+          className="flex size-14 touch-none items-center justify-center rounded-full border border-white/10 bg-[#202023] text-red-300 shadow-2xl shadow-black/25 ring-1 ring-black/10 transition-transform active:scale-95"
+          onPointerDown={(event) => {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            drag.current = {
+              pointerId: event.pointerId,
+              offsetY: bounds.height > 0
+                ? event.clientY - bounds.top
+                : BUBBLE_SIZE / 2,
+              startX: event.clientX,
+              startY: event.clientY,
+              moved: false,
+            };
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+          }}
+          onPointerMove={moveBubble}
+          onPointerUp={finishBubbleDrag}
+          onPointerCancel={finishBubbleDrag}
+          onClick={() => {
+            if (suppressBubbleClick.current) {
+              suppressBubbleClick.current = false;
+              return;
+            }
+            setMinimized(false);
+          }}
+        >
+          <Clock3 className="size-5" />
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside
       aria-label="Control de jornada"
@@ -93,6 +250,14 @@ const WorkSessionControlState = ({
             </p>
           )}
         </div>
+        <button
+          type="button"
+          aria-label="Minimizar control de jornada"
+          className="flex size-9 shrink-0 items-center justify-center rounded-xl text-white/60 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+          onClick={() => setMinimized(true)}
+        >
+          <Minimize2 className="size-4" />
+        </button>
         <Button
           type="button"
           variant={session ? "outline" : "default"}

@@ -11,6 +11,43 @@ export class IncomeApiError extends Error { constructor(readonly status: number,
 const request = async <T>(url: string, init?: RequestInit): Promise<T> => { const response = await fetch(url, init); const body = (await response.json()) as ErrorBody & { data?: T }; if (!response.ok) throw new IncomeApiError(response.status, body.error?.code ?? "INTERNAL_ERROR", body.error?.message ?? "No se pudo completar la operación.", body.error?.fields); return body.data as T; };
 const json = (method: "POST", body: unknown) => ({ method, cache: "no-store" as const, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const queryString = (query: IncomeListQuery) => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value)); return params.toString(); };
+const INCOME_LIST_TIMEOUT_MS = 15_000;
+
+const listRequest = async (
+  role: UserRole,
+  query: IncomeListQuery,
+  externalSignal?: AbortSignal,
+): Promise<PaginatedIncomes> => {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) abortFromCaller();
+  else externalSignal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, INCOME_LIST_TIMEOUT_MS);
+
+  try {
+    const raw = await request<unknown>(`/api/incomes?${queryString(query)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    return parsePaginatedForRole(role, raw);
+  } catch (error) {
+    if (timedOut) {
+      throw new IncomeApiError(
+        408,
+        "INCOME_LIST_TIMEOUT",
+        "La consulta de ingresos tardó demasiado. Intentá nuevamente.",
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", abortFromCaller);
+  }
+};
 
 const parsePaginatedForRole = (
   role: UserRole,
@@ -30,7 +67,7 @@ const parseIncomeDetailForRole = (
 
 export type IncomeClient = {
   create(role: UserRole, input: CreateIncomeInput): Promise<IncomeListItem | EmployeeIncomeListItem>;
-  listAs(role: UserRole, query: IncomeListQuery): Promise<PaginatedIncomes>;
+  listAs(role: UserRole, query: IncomeListQuery, signal?: AbortSignal): Promise<PaginatedIncomes>;
   list(query: IncomeListQuery): Promise<ManagerPaginatedIncomes>;
   getAs(role: UserRole, id: string): Promise<IncomeListItem | EmployeeIncomeListItem>;
   get(id: string): Promise<IncomeListItem>;
@@ -42,10 +79,7 @@ export const incomeClient: IncomeClient = {
     const raw = await request<unknown>("/api/incomes", json("POST", input));
     return parseIncomeDetailForRole(role, raw);
   },
-  listAs: async (role, query) => {
-    const raw = await request<unknown>(`/api/incomes?${queryString(query)}`, { cache: "no-store" });
-    return parsePaginatedForRole(role, raw);
-  },
+  listAs: listRequest,
   list: async (query) => {
     const raw = await request<unknown>(`/api/incomes?${queryString(query)}`, { cache: "no-store" });
     return paginatedIncomesSchema.parse(raw) as ManagerPaginatedIncomes;
