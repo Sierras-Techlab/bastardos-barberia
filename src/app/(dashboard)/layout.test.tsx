@@ -52,6 +52,7 @@ it("keeps one authenticated application shell around private route content", asy
   expect(screen.getByAltText("Bastardos Barbería")).toBeVisible();
   expect(screen.getByText("Lautaro Bastardos")).toBeVisible();
   expect(screen.getByRole("main")).toHaveAttribute("data-slot", "sidebar-inset");
+  expect(screen.getByRole("main")).toHaveClass("min-w-0");
   expect(await screen.findByLabelText(/^Notificaciones/)).toBeInTheDocument();
 });
 

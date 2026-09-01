@@ -76,7 +76,7 @@ const WorkSessionControlState = ({
   return (
     <aside
       aria-label="Control de jornada"
-      className="fixed bottom-20 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-[1.4rem] border border-black/8 bg-[#202023] p-3 text-white shadow-2xl shadow-black/20 md:left-[calc(var(--sidebar-width)+1rem)] xl:bottom-6 xl:left-[calc(var(--sidebar-width)+1.5rem)]"
+      className="fixed bottom-20 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-[1.4rem] border border-black/8 bg-[#202023] p-3 text-white shadow-2xl shadow-black/20 xl:bottom-6 xl:left-[calc(var(--sidebar-width)+1.5rem)]"
     >
       <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-red-300">

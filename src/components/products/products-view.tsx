@@ -141,8 +141,8 @@ export const ProductsView = ({
       />
 
       <section aria-labelledby="products-list-title">
-        <div className="mb-3 flex items-end justify-between gap-4 px-1">
-          <div>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-4 px-1">
+          <div className="min-w-0">
             <h2 id="products-list-title" className="text-lg font-semibold">
               Catálogo actual
             </h2>
@@ -151,7 +151,7 @@ export const ProductsView = ({
             </p>
           </div>
           {canManage ? (
-            <div className="flex items-center gap-2">
+            <div className="flex max-w-full flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -177,7 +177,7 @@ export const ProductsView = ({
 
         {products.length > 0 ? (
           <>
-            <div className="hidden md:block">
+            <div className="hidden xl:block">
               <ProductTable
                 products={products}
                 sort={sort}
@@ -188,7 +188,7 @@ export const ProductsView = ({
                 onToggleStatus={setStatusProduct}
               />
             </div>
-            <div className="md:hidden">
+            <div className="xl:hidden">
               <ProductMobileList
                 products={products}
                 canManage={canManage}

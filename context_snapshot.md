@@ -1,6 +1,6 @@
 # Context snapshot
 
-Captured: 2026-08-26
+Captured: 2026-08-29
 
 ## Current state
 
@@ -8,6 +8,8 @@ Captured: 2026-08-26
 - Reports is implemented end to end: monthly financial narrative, active-period selector, service/product highlights and manager-only team performance combining responsible-user economics with employee attendance productivity.
 - The configured PostgreSQL test database has both `039_business_reports.sql` and the behavior owned by `040_production_hardening.sql` applied and audited on PostgreSQL 17.6.
 - Production remains gated on a target backup/restore point, approved deployment window and the runbook in `docs/production-deployment.md`.
+- TASK-01 responsive hardening has been reapplied after an external git reset; the shared shell, tablet card/list breakpoints, overflow containment and narrow dialog/sheet handling are restored.
+- TASK-01 verification after restoration: 225 test files / 1028 tests passed; typegen, typecheck and production build passed. Lint passed with the pre-existing unused `Store` warning in `src/components/app-sidebar.tsx`.
 
 ## Delivered hardening
 
