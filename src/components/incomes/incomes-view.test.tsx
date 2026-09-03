@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { IncomesView } from "@/components/incomes/incomes-view";
@@ -20,12 +20,146 @@ const client = (): Pick<IncomeClient, "listAs" | "list" | "void"> => ({
 });
 
 describe("IncomesView (manager)", () => {
+  it("does not present previously applied metrics while a new filter is loading", async () => {
+    const incomeClient = client();
+    vi.mocked(incomeClient.listAs).mockImplementationOnce(
+      () => new Promise<ManagerPaginatedIncomes>(() => undefined),
+    );
+
+    render(
+      <IncomesView
+        data={data}
+        initialQuery={initialQuery}
+        currentUser={currentUser}
+        employees={[currentUser]}
+        paymentMethods={paymentMethods}
+        canViewAll
+        canVoid
+        incomeClient={incomeClient}
+      />,
+    );
+
+    expect(screen.getByLabelText("Resumen de ingresos")).toBeVisible();
+    fireEvent.change(screen.getAllByLabelText("Fecha desde")[0], {
+      target: { value: "2026-08-15" },
+    });
+
+    expect(
+      await screen.findByRole("status", { name: "Actualizando resumen de ingresos" }),
+    ).toBeVisible();
+    expect(screen.queryByLabelText("Resumen de ingresos")).not.toBeInTheDocument();
+  });
+
+  it("cancels the previous refresh when filters change again", async () => {
+    let firstSignal: AbortSignal | undefined;
+    const listAs = vi
+      .fn()
+      .mockImplementationOnce(
+        (
+          _role: typeof currentUser.role,
+          _query: typeof initialQuery,
+          signal?: AbortSignal,
+        ) => {
+          firstSignal = signal;
+          return new Promise<ManagerPaginatedIncomes>(() => undefined);
+        },
+      )
+      .mockResolvedValueOnce(data);
+    const incomeClient = { ...client(), listAs };
+
+    render(
+      <IncomesView
+        data={data}
+        initialQuery={initialQuery}
+        currentUser={currentUser}
+        employees={[currentUser]}
+        paymentMethods={paymentMethods}
+        canViewAll
+        canVoid
+        incomeClient={incomeClient}
+      />,
+    );
+
+    fireEvent.change(screen.getAllByLabelText("Fecha desde")[0], {
+      target: { value: "2026-08-15" },
+    });
+    fireEvent.change(screen.getAllByLabelText("Fecha hasta")[0], {
+      target: { value: "2026-08-30" },
+    });
+
+    await waitFor(() => expect(listAs).toHaveBeenCalledTimes(2));
+    expect(firstSignal).toBeDefined();
+    expect(firstSignal?.aborted).toBe(true);
+  });
+
+  it("restores the last applied filters when a refresh fails so metrics never describe a different range", async () => {
+    const incomeClient = client();
+    vi.mocked(incomeClient.listAs).mockRejectedValueOnce(
+      new Error("No se pudo cargar el historial."),
+    );
+
+    render(
+      <IncomesView
+        data={data}
+        initialQuery={initialQuery}
+        currentUser={currentUser}
+        employees={[currentUser]}
+        paymentMethods={paymentMethods}
+        canViewAll
+        canVoid
+        incomeClient={incomeClient}
+      />,
+    );
+
+    fireEvent.change(screen.getAllByLabelText("Fecha desde")[0], {
+      target: { value: "2026-08-15" },
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se pudo cargar el historial.",
+    );
+    expect(screen.getAllByLabelText("Fecha desde")[0]).toHaveValue(
+      initialQuery.dateFrom,
+    );
+    expect(screen.getAllByText(/65\.000/)).toHaveLength(2);
+  });
+
+  it("retries the exact failed filter without leaving stale metrics mislabeled", async () => {
+    const browser = userEvent.setup();
+    const incomeClient = client();
+    vi.mocked(incomeClient.listAs)
+      .mockRejectedValueOnce(new Error("No se pudo cargar el historial."))
+      .mockResolvedValueOnce(data);
+    render(
+      <IncomesView
+        data={data}
+        initialQuery={initialQuery}
+        currentUser={currentUser}
+        employees={[currentUser]}
+        paymentMethods={paymentMethods}
+        canViewAll
+        canVoid
+        incomeClient={incomeClient}
+      />,
+    );
+
+    fireEvent.change(screen.getAllByLabelText("Fecha desde")[0], {
+      target: { value: "2026-08-15" },
+    });
+    await screen.findByRole("alert");
+    await browser.click(screen.getByRole("button", { name: "Reintentar consulta" }));
+
+    await waitFor(() => expect(incomeClient.listAs).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByLabelText("Fecha desde")[0]).toHaveValue("2026-08-15");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("uses server-filtered results and lets managers filter registering users", async () => {
     const user = userEvent.setup(); const incomeClient = client();
     render(<IncomesView data={data} initialQuery={initialQuery} currentUser={currentUser} employees={items.map(({ employee }) => employee)} paymentMethods={paymentMethods} canViewAll canVoid incomeClient={incomeClient} />);
     expect(screen.getByText("2 movimientos")).toBeVisible();
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado/i }), items[1].employee.id);
-    await waitFor(() => expect(incomeClient.listAs).toHaveBeenCalledWith("owner", expect.objectContaining({ userId: items[1].employee.id, page: 1 })));
+    await waitFor(() => expect(incomeClient.listAs).toHaveBeenCalledWith("owner", expect.objectContaining({ userId: items[1].employee.id, page: 1 }), expect.any(AbortSignal)));
   });
 
   it("voids once after confirmation and refetches metrics", async () => {
@@ -88,6 +222,7 @@ describe("IncomesView (manager)", () => {
       expect(incomeClient.listAs).toHaveBeenCalledWith(
         "owner",
         expect.objectContaining({ page: 2, pageSize: 10 }),
+        expect.any(AbortSignal),
       ),
     );
     expect(await screen.findByText("Página 2 de 2")).toBeVisible();

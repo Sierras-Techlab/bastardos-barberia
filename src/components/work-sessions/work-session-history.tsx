@@ -174,7 +174,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
 
       {isManager && (
         <section aria-label="Filtros de presentismo" className="rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-black/5">
-          <div className="grid gap-3 md:grid-cols-[minmax(12rem,1fr)_10rem_10rem_auto] md:items-end">
+          <div className="grid gap-3 xl:grid-cols-[minmax(12rem,1fr)_10rem_10rem_auto] xl:items-end">
             <label className="space-y-1.5 text-sm font-medium">
               Empleado
               <select
@@ -227,7 +227,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
 
         {data.items.length > 0 ? (
           <>
-            <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 md:block">
+            <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 xl:block">
               <table aria-label="Historial de jornadas" className={`w-full text-left text-sm ${isManager ? "min-w-[72rem]" : "min-w-[44rem]"}`}>
                 <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
                   <tr>
@@ -272,7 +272,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
               </table>
             </div>
 
-            <ul aria-label="Historial de jornadas en móvil" className="space-y-3 md:hidden">
+            <ul aria-label="Historial de jornadas en móvil" className="space-y-3 xl:hidden">
               {data.items.map((session) => (
                 <li key={session.id} className="rounded-[1.4rem] bg-white p-4 shadow-sm ring-1 ring-black/5">
                   <div className="flex items-start justify-between gap-3">
@@ -313,7 +313,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
       </section>
 
       {data.pagination.totalPages > 0 && (
-        <nav aria-label="Paginación de jornadas" className="flex items-center justify-between gap-4">
+        <nav aria-label="Paginación de jornadas" className="flex flex-wrap items-center justify-between gap-3">
           <Button type="button" variant="outline" className="rounded-xl" disabled={loading || data.pagination.page <= 1} onClick={() => void load({ employeeId, dateFrom, dateTo }, data.pagination.page - 1)}><ChevronLeft /> Anterior</Button>
           <span className="text-sm text-muted-foreground">Página {data.pagination.page} de {data.pagination.totalPages}</span>
           <Button type="button" variant="outline" className="rounded-xl" disabled={loading || data.pagination.page >= data.pagination.totalPages} onClick={() => void load({ employeeId, dateFrom, dateTo }, data.pagination.page + 1)}>Siguiente <ChevronRight /></Button>

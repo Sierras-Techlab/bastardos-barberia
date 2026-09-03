@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 
-const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymentMethods, isCashClosedForDate } = vi.hoisted(() => ({
+const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymentMethods, isCashClosedForDate, withIncomeLoadDeadline } = vi.hoisted(() => ({
   requirePageUser: vi.fn().mockResolvedValue({
     user: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -19,6 +19,7 @@ const { requirePageUser, listIncomes, listIncomeResponsibleEmployees, listPaymen
   listIncomeResponsibleEmployees: vi.fn().mockResolvedValue([]),
   listPaymentMethods: vi.fn().mockResolvedValue([{ id: "60000000-0000-4000-8000-000000000002", name: "Transferencia histórica", isActive: false }]),
   isCashClosedForDate: vi.fn().mockResolvedValue(false),
+  withIncomeLoadDeadline: vi.fn(<T,>(operation: Promise<T>) => operation),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({
@@ -27,6 +28,7 @@ vi.mock("@/lib/auth/authorization", () => ({
 vi.mock("@/lib/incomes/service", () => ({ listIncomes, listIncomeResponsibleEmployees }));
 vi.mock("@/lib/payment-methods/repository", () => ({ paymentMethodRepository: { list: listPaymentMethods } }));
 vi.mock("@/lib/cash/repository", () => ({ isCashClosedForDate }));
+vi.mock("@/lib/incomes/load-deadline", () => ({ withIncomeLoadDeadline }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/incomes",
@@ -65,6 +67,14 @@ it("revalidates the session at the income history boundary", async () => {
 
   expect(requirePageUser).toHaveBeenCalledOnce();
   expect(listIncomes).toHaveBeenCalledOnce();
+});
+
+it("applies a response deadline to the initial income-page dependencies", async () => {
+  withIncomeLoadDeadline.mockClear();
+
+  await IncomesPage();
+
+  expect(withIncomeLoadDeadline).toHaveBeenCalledOnce();
 });
 
 it("loads historical responsible users for the manager filter", async () => {

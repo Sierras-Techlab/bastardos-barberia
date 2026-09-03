@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -33,6 +33,95 @@ afterEach(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.localStorage.clear();
+});
+
+it("minimizes the mobile control into a compact clock bubble", async () => {
+  const browser = userEvent.setup();
+  render(<WorkSessionControl initialSession={null} />);
+
+  await browser.click(
+    screen.getByRole("button", { name: "Minimizar control de jornada" }),
+  );
+
+  expect(
+    screen.getByRole("button", { name: "Abrir control de jornada" }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: "Marcar entrada" }),
+  ).not.toBeInTheDocument();
+});
+
+it("drags the minimized bubble and snaps it to the nearest mobile side", async () => {
+  Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+  Object.defineProperty(window, "innerHeight", { value: 844, configurable: true });
+  const browser = userEvent.setup();
+  render(<WorkSessionControl initialSession={null} />);
+  await browser.click(
+    screen.getByRole("button", { name: "Minimizar control de jornada" }),
+  );
+
+  const bubble = screen.getByRole("button", { name: "Abrir control de jornada" });
+  fireEvent.pointerDown(bubble, { pointerId: 1, clientX: 30, clientY: 650 });
+  fireEvent.pointerMove(bubble, { pointerId: 1, clientX: 370, clientY: 220 });
+  fireEvent.pointerUp(bubble, { pointerId: 1, clientX: 370, clientY: 220 });
+
+  const control = screen.getByRole("complementary", { name: "Control de jornada" });
+  expect(control).toHaveAttribute("data-side", "right");
+  expect(control).toHaveStyle({ top: "192px" });
+});
+
+it("restores the minimized bubble position on the same mobile device", async () => {
+  Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+  Object.defineProperty(window, "innerHeight", { value: 844, configurable: true });
+  const browser = userEvent.setup();
+  const firstRender = render(<WorkSessionControl initialSession={null} />);
+  await browser.click(
+    screen.getByRole("button", { name: "Minimizar control de jornada" }),
+  );
+  const bubble = screen.getByRole("button", { name: "Abrir control de jornada" });
+  fireEvent.pointerDown(bubble, { pointerId: 2, clientX: 360, clientY: 400 });
+  fireEvent.pointerMove(bubble, { pointerId: 2, clientX: 20, clientY: 300 });
+  fireEvent.pointerUp(bubble, { pointerId: 2, clientX: 20, clientY: 300 });
+  firstRender.unmount();
+
+  render(<WorkSessionControl initialSession={null} />);
+
+  expect(
+    await screen.findByRole("button", { name: "Abrir control de jornada" }),
+  ).toBeVisible();
+  const restored = screen.getByRole("complementary", {
+    name: "Control de jornada",
+  });
+  expect(restored).toHaveAttribute("data-side", "left");
+  expect(restored).toHaveStyle({ top: "272px" });
+});
+
+it("keeps the minimized bubble visible when the mobile viewport height changes", async () => {
+  Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+  Object.defineProperty(window, "innerHeight", { value: 844, configurable: true });
+  const browser = userEvent.setup();
+  render(<WorkSessionControl initialSession={null} />);
+  await browser.click(
+    screen.getByRole("button", { name: "Minimizar control de jornada" }),
+  );
+
+  const bubble = screen.getByRole("button", { name: "Abrir control de jornada" });
+  fireEvent.pointerDown(bubble, { pointerId: 3, clientX: 360, clientY: 400 });
+  fireEvent.pointerMove(bubble, { pointerId: 3, clientX: 360, clientY: 700 });
+  fireEvent.pointerUp(bubble, { pointerId: 3, clientX: 360, clientY: 700 });
+  expect(
+    screen.getByRole("complementary", { name: "Control de jornada" }),
+  ).toHaveStyle({ top: "672px" });
+
+  Object.defineProperty(window, "innerHeight", { value: 390, configurable: true });
+  fireEvent(window, new Event("resize"));
+
+  await waitFor(() =>
+    expect(
+      screen.getByRole("complementary", { name: "Control de jornada" }),
+    ).toHaveStyle({ top: "238px" }),
+  );
 });
 
 it("reserves the mobile sale-action strip above the fixed clock", () => {

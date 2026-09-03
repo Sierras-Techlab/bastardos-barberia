@@ -58,7 +58,7 @@ export const UserList = ({
   >
     <div
       role="row"
-      className="hidden grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_9rem_3rem] gap-4 border-b border-black/5 px-5 py-3 text-[0.68rem] font-bold tracking-[0.14em] text-zinc-400 uppercase md:grid"
+      className="hidden grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_9rem_3rem] gap-4 border-b border-black/5 px-5 py-3 text-[0.68rem] font-bold tracking-[0.14em] text-zinc-400 uppercase xl:grid"
     >
       <span role="columnheader">Usuario</span>
       <span role="columnheader">Rol</span>
@@ -81,7 +81,7 @@ export const UserList = ({
           <div
             role="row"
             key={user.id}
-            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-[#faf9f7] md:grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_9rem_3rem] md:gap-4 md:px-5"
+            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-[#faf9f7] xl:grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_9rem_3rem] xl:gap-4 xl:px-5"
           >
             <div role="cell" className="flex min-w-0 items-center gap-3">
               <Avatar className="size-10 shrink-0 border border-black/5">
@@ -99,7 +99,7 @@ export const UserList = ({
                   )}
                 </div>
                 <p className="truncate text-xs text-zinc-500">@{user.username}</p>
-                <div className="mt-2 flex flex-wrap gap-2 md:hidden">
+                <div className="mt-2 flex flex-wrap gap-2 xl:hidden">
                   <Badge variant="outline" className={roleClasses[user.role.name]}>
                     {ROLE_LABELS[user.role.name]}
                   </Badge>
@@ -112,10 +112,10 @@ export const UserList = ({
                     {user.isActive ? "Activo" : "Inactivo"}
                   </Badge>
                 </div>
-                <p className="mt-2 text-[0.7rem] text-zinc-400 md:hidden">
+                <p className="mt-2 text-[0.7rem] text-zinc-400 xl:hidden">
                   Último acceso: {formatLastLogin(user.lastLoginAt)}
                 </p>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-zinc-500 md:hidden">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-zinc-500 xl:hidden">
                   <span
                     aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
                   >
@@ -130,13 +130,13 @@ export const UserList = ({
               </div>
             </div>
 
-            <div role="cell" className="hidden md:block">
+            <div role="cell" className="hidden xl:block">
               <Badge variant="outline" className={roleClasses[user.role.name]}>
                 {ROLE_LABELS[user.role.name]}
               </Badge>
             </div>
 
-            <div role="cell" className="hidden md:block">
+            <div role="cell" className="hidden xl:block">
               <Badge
                 variant="outline"
                 className={user.isActive
@@ -156,7 +156,7 @@ export const UserList = ({
             <div
               role="cell"
               aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
-              className="hidden text-sm font-semibold text-zinc-700 md:block"
+              className="hidden text-sm font-semibold text-zinc-700 xl:block"
             >
               {serviceCommission}
             </div>
@@ -164,12 +164,12 @@ export const UserList = ({
             <div
               role="cell"
               aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
-              className="hidden text-sm font-semibold text-zinc-700 md:block"
+              className="hidden text-sm font-semibold text-zinc-700 xl:block"
             >
               {productCommission}
             </div>
 
-            <div role="cell" className="hidden text-xs text-zinc-500 md:block">
+            <div role="cell" className="hidden text-xs text-zinc-500 xl:block">
               {formatLastLogin(user.lastLoginAt)}
             </div>
 

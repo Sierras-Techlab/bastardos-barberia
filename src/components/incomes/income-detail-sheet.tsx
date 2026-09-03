@@ -26,9 +26,9 @@ type IncomeDetailSheetProps = {
 };
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex items-start justify-between gap-4 py-2.5">
+  <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5">
     <dt className="text-muted-foreground">{label}</dt>
-    <dd className="text-right font-medium">{value}</dd>
+    <dd className="min-w-0 max-w-full break-words text-right font-medium">{value}</dd>
   </div>
 );
 

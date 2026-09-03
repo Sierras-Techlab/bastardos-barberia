@@ -89,10 +89,10 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
                 </p>
                 <ul className="mt-3 space-y-2 text-sm">
                   {visit.items.map((item, index) => (
-                    <li key={`${visit.id}-${index}`} className="flex items-center gap-2">
+                    <li key={`${visit.id}-${index}`} className="flex flex-wrap items-center gap-2">
                       {item.type === "service" ? <Scissors className="size-4 text-primary" /> : <Package className="size-4 text-primary" />}
-                      <span>{item.quantity} × {item.name}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">{formatArs(item.unitPrice)} c/u · {formatArs(item.subtotal)}</span>
+                      <span className="min-w-0 break-words">{item.quantity} × {item.name}</span>
+                      <span className="ml-auto max-w-full text-right text-xs text-muted-foreground">{formatArs(item.unitPrice)} c/u · {formatArs(item.subtotal)}</span>
                     </li>
                   ))}
                 </ul>
@@ -102,11 +102,11 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
           </ol>
         )}
 
-        <DialogFooter className="items-center sm:justify-between">
+          <DialogFooter className="items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             {data ? `Página ${data.pagination.page} de ${Math.max(data.pagination.totalPages, 1)}` : ""}
           </p>
-          <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" disabled={loading || page <= 1} onClick={() => changePage(page - 1)}>Anterior</Button>
             <Button type="button" variant="outline" disabled={loading || !data || page >= data.pagination.totalPages} onClick={() => changePage(page + 1)}>Siguiente</Button>
           </div>

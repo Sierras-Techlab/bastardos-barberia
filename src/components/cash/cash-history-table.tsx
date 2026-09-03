@@ -35,8 +35,8 @@ export const CashHistoryTable = ({
 
     {items.length > 0 ? (
       <>
-        <div className="hidden overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 md:block">
-          <table aria-label="Historial de cajas" className="w-full text-left text-sm">
+        <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 xl:block">
+          <table aria-label="Historial de cajas" className="w-full min-w-[44rem] text-left text-sm">
             <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
               <tr><th className="px-5 py-3 font-medium">Fecha</th><th className="px-5 py-3 font-medium">Estado</th><th className="px-5 py-3 text-right font-medium">Ventas</th><th className="px-5 py-3 text-right font-medium">Neto barbería</th><th className="w-14 px-3 py-3"><span className="sr-only">Abrir</span></th></tr>
             </thead>
@@ -54,7 +54,7 @@ export const CashHistoryTable = ({
           </table>
         </div>
 
-        <ul aria-label="Historial de cajas en móvil" className="space-y-3 md:hidden">
+        <ul aria-label="Historial de cajas en móvil" className="space-y-3 xl:hidden">
           {items.map((item) => (
             <li key={item.id}>
               <button type="button" disabled={loading} onClick={() => onSelect(item.businessDate)} className={`w-full rounded-[1.4rem] p-4 text-left shadow-sm ring-1 ring-black/5 transition ${selectedDate === item.businessDate ? "bg-primary/5 ring-primary/20" : "bg-white"}`}>
