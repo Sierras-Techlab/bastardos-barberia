@@ -37,6 +37,12 @@ alter table public.income_items
   add column if not exists price_override_reason text;
 
 -- Backfill historical rows with the same value as the existing unit_price/subtotal.
+-- Migration 015 makes income-item snapshots immutable. Temporarily suspend only
+-- that trigger inside this transaction so existing rows can receive the new
+-- equivalent snapshot columns; any failure rolls both the backfill and trigger
+-- state back atomically.
+alter table public.income_items disable trigger income_items_prevent_snapshot_mutation;
+
 update public.income_items
 set
   catalog_unit_price = unit_price,
@@ -45,6 +51,8 @@ set
   charged_subtotal = line_subtotal,
   adjustment_amount = 0
 where catalog_unit_price is null;
+
+alter table public.income_items enable trigger income_items_prevent_snapshot_mutation;
 
 alter table public.income_items
   alter column catalog_unit_price set not null,

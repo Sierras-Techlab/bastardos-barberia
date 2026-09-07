@@ -41,6 +41,23 @@ describe("migration 020 charged prices and owner privacy contract", () => {
     expect(sql).toMatch(/commit;\s*$/);
   });
 
+  it("temporarily suspends snapshot immutability only around the historical backfill", () => {
+    const sql = migration();
+    const disableTrigger = sql.indexOf(
+      "alter table public.income_items disable trigger income_items_prevent_snapshot_mutation;",
+    );
+    const backfill = sql.indexOf("update public.income_items");
+    const enableTrigger = sql.indexOf(
+      "alter table public.income_items enable trigger income_items_prevent_snapshot_mutation;",
+    );
+    const commit = sql.lastIndexOf("commit;");
+
+    expect(disableTrigger).toBeGreaterThan(-1);
+    expect(backfill).toBeGreaterThan(disableTrigger);
+    expect(enableTrigger).toBeGreaterThan(backfill);
+    expect(commit).toBeGreaterThan(enableTrigger);
+  });
+
   it("removes the owner zero-rate rules from users and incomes", () => {
     const sql = migration();
     expect(sql).toMatch(/drop trigger if exists enforce_owner_user_commission_rates on public\.users/i);
