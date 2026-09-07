@@ -143,6 +143,23 @@ describe("managerCreateIncomeSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("rejects a service price override without a selected service", () => {
+    expect(
+      managerCreateIncomeSchema.safeParse({
+        ...publicInput,
+        serviceId: null,
+        products: [
+          {
+            productId: "00000000-0000-4000-8000-000000000021",
+            quantity: 1,
+            grantFullCommission: false,
+          },
+        ],
+        servicePriceOverride: { chargedUnitPrice: 5000, reason: "Sin línea" },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("employeeCreateIncomeSchema", () => {
@@ -169,19 +186,39 @@ describe("employeeCreateIncomeSchema", () => {
     ).toBe(false);
   });
 
-  it("rejects priceOverride keys on the service or any product", () => {
+  it("accepts a reasoned service price override", () => {
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
         servicePriceOverride: { chargedUnitPrice: 5000, reason: "Promo" },
       }).success,
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("rejects every product price override", () => {
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
         productPriceOverrides: {
           "00000000-0000-4000-8000-000000000021": { chargedUnitPrice: 5000, reason: "Promo" },
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a service price override without a selected service", () => {
+    expect(
+      employeeCreateIncomeSchema.safeParse({
+        ...validEmployee,
+        serviceId: null,
+        products: [
+          {
+            productId: "00000000-0000-4000-8000-000000000021",
+            quantity: 1,
+            grantFullCommission: false,
+          },
+        ],
+        servicePriceOverride: { chargedUnitPrice: 5000, reason: "Sin línea" },
       }).success,
     ).toBe(false);
   });

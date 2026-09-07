@@ -3,10 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   cashDaySchema,
   cashHistoryQuerySchema,
-  closeCashInputSchema,
   confirmCashInputSchema,
-  openCashInputSchema,
   paginatedCashHistorySchema,
+  setCashOpeningBalanceInputSchema,
 } from "@/lib/cash/schemas";
 
 const id = "00000000-0000-4000-8000-000000000001";
@@ -213,6 +212,26 @@ describe("cash lifecycle", () => {
     expect(cashDaySchema.safeParse(openPersisted).success).toBe(true);
   });
 
+  it("accepts a live register created by setting its initial balance", () => {
+    const withInitialBalance = {
+      ...cashDay,
+      state: "live" as const,
+      closedAt: null,
+      lifecycle: {
+        ...baseLifecycle,
+        openingBalance: 15000,
+        openingSource: "initial_balance" as const,
+        expectedCash: 46000,
+        countedCash: null,
+        difference: null,
+        closeMode: null,
+        reconciliationState: "not_applicable" as const,
+      },
+    };
+
+    expect(cashDaySchema.safeParse(withInitialBalance).success).toBe(true);
+  });
+
   it("accepts a manual confirmed close with zero or non-zero difference", () => {
     const lifecycle = {
       openingBalance: 0,
@@ -297,17 +316,15 @@ describe("cash lifecycle", () => {
 
 describe("cash input schemas", () => {
   it("rejects negative opening balance", () => {
-    expect(openCashInputSchema.safeParse({ openingBalance: -1 }).success).toBe(false);
+    expect(setCashOpeningBalanceInputSchema.safeParse({ openingBalance: -1 }).success).toBe(false);
   });
 
-  it("rejects negative counted cash on close or confirm", () => {
-    expect(closeCashInputSchema.safeParse({ countedCash: -100 }).success).toBe(false);
+  it("rejects negative counted cash on confirm", () => {
     expect(confirmCashInputSchema.safeParse({ countedCash: -100 }).success).toBe(false);
   });
 
   it("accepts a zero opening balance and zero counted cash", () => {
-    expect(openCashInputSchema.safeParse({ openingBalance: 0 }).success).toBe(true);
-    expect(closeCashInputSchema.safeParse({ countedCash: 0 }).success).toBe(true);
+    expect(setCashOpeningBalanceInputSchema.safeParse({ openingBalance: 0 }).success).toBe(true);
     expect(confirmCashInputSchema.safeParse({ countedCash: 0 }).success).toBe(true);
   });
 });

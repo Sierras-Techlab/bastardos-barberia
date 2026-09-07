@@ -5,9 +5,8 @@ import type { CashDependencies } from "@/lib/cash/contracts";
 import { cashRepository } from "@/lib/cash/repository";
 import type {
   CashHistoryQuery,
-  CloseCashInput,
   ConfirmCashInput,
-  OpenCashInput,
+  SetCashOpeningBalanceInput,
 } from "@/types/cash";
 
 const defaults: CashDependencies = { cash: cashRepository };
@@ -45,22 +44,16 @@ export const listCashHistory = (
   return dependencies.cash.list(actor.id, query);
 };
 
-export const openCash = async (
+export const setCashOpeningBalance = (
   actor: SafeUser,
-  input: OpenCashInput,
+  input: SetCashOpeningBalanceInput,
   dependencies: CashDependencies = defaults,
 ) => {
   assertManager(actor);
-  return dependencies.cash.open(actor.id, { ...input, businessDate: currentBuenosAiresDate() });
-};
-
-export const closeCash = async (
-  actor: SafeUser,
-  input: CloseCashInput,
-  dependencies: CashDependencies = defaults,
-) => {
-  assertManager(actor);
-  return dependencies.cash.close(actor.id, { ...input, businessDate: currentBuenosAiresDate() });
+  return dependencies.cash.setOpeningBalance(actor.id, {
+    ...input,
+    businessDate: currentBuenosAiresDate(),
+  });
 };
 
 export const confirmCash = async (

@@ -40,6 +40,10 @@ const employeeFormPaymentSchema = z.object({
 const sharedCreateRefinements = {
   atLeastOneLine: (value: { serviceId: string | null; products: Array<{ productId: string }> }) =>
     value.serviceId !== null || value.products.length > 0,
+  serviceOverrideTargetsSelectedService: (value: {
+    serviceId: string | null;
+    servicePriceOverride?: unknown | null;
+  }) => value.servicePriceOverride == null || value.serviceId !== null,
 };
 
 const sharedFormFields = {
@@ -86,6 +90,9 @@ export const managerIncomeFormSchema = z.object({
 }).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
   message: "Seleccioná un servicio o agregá al menos un producto.",
   path: ["serviceId"],
+}).refine(sharedCreateRefinements.serviceOverrideTargetsSelectedService, {
+  message: "El cambio de precio requiere un servicio seleccionado.",
+  path: ["servicePriceOverride"],
 });
 
 export const employeeIncomeFormSchema = z.object({
@@ -101,10 +108,13 @@ export const employeeIncomeFormSchema = z.object({
       ids.add(payment.paymentMethodId);
     }
   }),
-  servicePriceOverride: z.null().default(null),
+  servicePriceOverride: priceOverrideFormSchema.nullable().default(null),
   productPriceOverrides: z.array(z.unknown()).default([]),
 }).strict().refine((value) => value.serviceId !== null || value.products.length > 0, {
   message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"],
+}).refine(sharedCreateRefinements.serviceOverrideTargetsSelectedService, {
+  message: "El cambio de precio requiere un servicio seleccionado.",
+  path: ["servicePriceOverride"],
 });
 
 export type ManagerIncomeFormValues = z.infer<typeof managerIncomeFormSchema>;
@@ -140,6 +150,9 @@ const managerCreateBaseSchema = z.object({
 }).strict().superRefine((value, context) => {
   if (!sharedCreateRefinements.atLeastOneLine(value)) {
     context.addIssue({ code: "custom", message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"] });
+  }
+  if (!sharedCreateRefinements.serviceOverrideTargetsSelectedService(value)) {
+    context.addIssue({ code: "custom", message: "El cambio de precio requiere un servicio seleccionado.", path: ["servicePriceOverride"] });
   }
   const totalAmount = value.payments.reduce((sum, payment) => sum + payment.amount, 0);
   if (totalAmount > 0 && value.payments.length === 0) {
@@ -178,9 +191,13 @@ const employeeCreateBaseSchema = z.object({
     }
   }),
   grantFullServiceCommission: z.boolean(),
+  servicePriceOverride: priceOverrideSchema.nullable().optional(),
 }).strict().superRefine((value, context) => {
   if (!sharedCreateRefinements.atLeastOneLine(value)) {
     context.addIssue({ code: "custom", message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"] });
+  }
+  if (!sharedCreateRefinements.serviceOverrideTargetsSelectedService(value)) {
+    context.addIssue({ code: "custom", message: "El cambio de precio requiere un servicio seleccionado.", path: ["servicePriceOverride"] });
   }
 });
 

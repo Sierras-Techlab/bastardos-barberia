@@ -10,7 +10,7 @@ describe("cashClient", () => {
     vi.stubGlobal("fetch", fetchMock);
   });
 
-  it("reads day and history without caching or exposing mutations", async () => {
+  it("reads day and history without caching and exposes only supported mutations", async () => {
     fetchMock.mockImplementation(async () => Response.json({ data: {} }));
 
     await cashClient.getDay("2026-08-15");
@@ -31,7 +31,22 @@ describe("cashClient", () => {
       "/api/cash/history?dateFrom=2026-08-01&dateTo=2026-08-15&page=2&pageSize=10",
       { cache: "no-store" },
     );
-    expect(Object.keys(cashClient).sort()).toEqual(["close", "confirm", "getDay", "list", "open"]);
+    expect(Object.keys(cashClient).sort()).toEqual(["confirm", "getDay", "list", "setOpeningBalance"]);
+  });
+
+  it("sends an opening-balance update to its dedicated endpoint", async () => {
+    fetchMock.mockImplementation(async () => Response.json({ data: {} }));
+
+    await (cashClient as typeof cashClient & {
+      setOpeningBalance(input: { openingBalance: number }): Promise<unknown>;
+    }).setOpeningBalance({ openingBalance: 15000 });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/cash/opening-balance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ openingBalance: 15000 }),
+      cache: "no-store",
+    });
   });
 
   it("preserves the public API error contract", async () => {

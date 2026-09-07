@@ -35,7 +35,10 @@ const CashPage = async () => {
         <div className="mb-6 max-w-3xl">
           <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Economía del negocio</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Controlá cada jornada de principio a fin</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">Abrí la caja con el saldo inicial, seguí las ventas y cerrá el día con el conteo de efectivo.</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Cargá el saldo inicial, seguí las ventas y confirmá el conteo físico
+            después del cierre automático.
+          </p>
         </div>
 
         <CashView initialDay={day} initialHistory={history} viewerRole={user.role.name} />

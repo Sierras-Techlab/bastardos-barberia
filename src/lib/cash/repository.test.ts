@@ -141,6 +141,38 @@ describe("cashRepository", () => {
     ).resolves.toBeNull();
   });
 
+  it("sets the live opening balance through the dedicated authoritative RPC", async () => {
+    const liveDay = {
+      ...day,
+      state: "live",
+      closedAt: null,
+      lifecycle: {
+        ...day.lifecycle,
+        openingBalance: 15000,
+        openingSource: "initial_balance",
+        expectedCash: 31000,
+        countedCash: null,
+        difference: null,
+        closeMode: null,
+        reconciliationState: "not_applicable",
+      },
+    };
+    const rpc = vi.fn().mockResolvedValue({ data: liveDay, error: null });
+    getSupabaseAdmin.mockReturnValue({ rpc });
+
+    await expect(
+      cashRepository.setOpeningBalance(actorId, {
+        businessDate: "2026-08-15",
+        openingBalance: 15000,
+      }),
+    ).resolves.toEqual(liveDay);
+    expect(rpc).toHaveBeenCalledWith("set_daily_cash_opening_balance", {
+      actor_user_id: actorId,
+      target_business_date: "2026-08-15",
+      new_opening_balance: 15000,
+    });
+  });
+
   it("rejects malformed database JSON instead of leaking it to the UI", async () => {
     getSupabaseAdmin.mockReturnValue({
       rpc: vi.fn().mockResolvedValue({
@@ -173,5 +205,21 @@ describe("cashRepository", () => {
     await expect(
       cashRepository.getDay(actorId, "2026-08-16"),
     ).rejects.toMatchObject({ code: "INVALID_CASH_DATE", status: 400 });
+  });
+
+  it("maps a balance update racing with automatic closure to a conflict", async () => {
+    getSupabaseAdmin.mockReturnValue({
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "CASH_ALREADY_CLOSED", code: "P0001" },
+      }),
+    });
+
+    await expect(
+      cashRepository.setOpeningBalance(actorId, {
+        businessDate: "2026-08-15",
+        openingBalance: 15000,
+      }),
+    ).rejects.toMatchObject({ code: "CASH_ALREADY_CLOSED", status: 409 });
   });
 });

@@ -44,17 +44,19 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 38. `038_cash_close_charged_snapshot_repair.sql`
 39. `039_business_reports.sql`
 40. `040_production_hardening.sql`
+41. `041_employee_service_prices_and_automatic_cash.sql`
 
-Run each entire file and stop if Supabase reports an error. Once the colleague-owned Reports migration is integrated, verify the complete `001` through `040` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
+Run each entire file and stop if Supabase reports an error. Once the colleague-owned Reports migration is integrated, verify the complete `001` through `041` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
 
 ## Production paths
 
-- Empty production database: execute `001` through `040` exactly once in numeric order, then bootstrap the first owner.
-- Existing database already installed through Reports migration `039`: back it up, execute only `040_production_hardening.sql`, then run the read-only audit and rollback-only database acceptance.
+- Empty production database: execute `001` through `041` exactly once in numeric order, then bootstrap the first owner.
+- Existing database already installed through production hardening `040`: back it up, execute only `041_employee_service_prices_and_automatic_cash.sql`, then run the read-only audit and rollback-only database acceptance.
+- Existing database already installed through Reports migration `039`: back it up, execute `040_production_hardening.sql` and then `041_employee_service_prices_and_automatic_cash.sql`, then run the read-only audit and rollback-only database acceptance.
 - Existing database installed only through `038`: apply the colleague-owned Reports migration `039` before `040_production_hardening.sql`.
 - Do not rerun structural migrations on a populated database unless a file explicitly documents that upgrade path.
 - Files `024` through `038` are retained intentionally as historical upgrade/repair steps. Some are no-ops against the current canonical sources, but deleting them would make deployed database lineages unreproducible.
-- `039_business_reports.sql` belongs to Reports. `040` is the convergence point for current clean and upgraded databases; new migrations start at `041`.
+- `039_business_reports.sql` belongs to Reports. `040` is the convergence point for current clean and upgraded databases; `041` changes employee service pricing and restores automatic Caja lifecycle.
 
 Clean-install verification (creates and always drops an isolated database):
 
@@ -87,6 +89,8 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `027_expense_void_contract_repair.sql` replaces the initial unversioned expense-void RPC with the optimistic four-argument contract expected by the application and removes the PostgreSQL `42702` parameter/column ambiguity from the void reason. It is safe to rerun after `026`; do not rerun the one-shot structural migration to repair an already installed database.
 
 `028_open_cash_projection_repair.sql` restores the persisted register UUID in the live Caja projection. Without it, opening succeeds in PostgreSQL but the response retains the old `id: null` sentinel from the read-only Caja model, so the interface continues to offer `Abrir caja`. Run it once after `027`; it is safe to rerun.
+
+`041_employee_service_prices_and_automatic_cash.sql` allows an employee to change the charged price of the selected service when a non-empty reason is supplied; product-price changes remain manager-only. It replaces manual Caja opening/closing with `set_daily_cash_opening_balance`: a manager may create or update today's non-negative opening balance before or during sales, while `close_pending_daily_cash` remains the only closer and `confirm_daily_cash` preserves the post-close physical count. Historical manual lifecycle values remain readable. Run it once after `040`; do not apply it to a configured database without an approved backup and deployment window.
 
 Validate migration `026` authorization, lifecycle, concurrency, projections and Caja isolation without retaining temporary records. An exact void replay with the original pre-void `updatedAt` must return `EXPENSE_CONFLICT`; a request using the current voided version must return `EXPENSE_NOT_ACTIVE`. Neither retry may append a revision.
 
@@ -299,17 +303,22 @@ from information_schema.routines
 where routine_schema = 'public'
   and routine_name in (
     'close_pending_daily_cash',
+    'confirm_daily_cash',
     'get_daily_cash',
-    'list_daily_cash'
+    'list_daily_cash',
+    'set_daily_cash_opening_balance'
   )
 order by routine_name;
+
+select pg_catalog.to_regprocedure('public.open_daily_cash(uuid,date,bigint)') as manual_open,
+       pg_catalog.to_regprocedure('public.close_daily_cash(uuid,date,bigint)') as manual_close;
 
 select jobname, schedule, command, active
 from cron.job
 where jobname = 'bastardos-close-daily-cash';
 ```
 
-All five tables must report `rowsecurity = true`, all three public cash functions must exist, and the cron query must return one active hourly job whose command calls `public.close_pending_daily_cash()`.
+All five tables must report `rowsecurity = true`, all five supported cash functions must exist, both manual routine columns must be `null`, and the cron query must return one active hourly job whose command calls `public.close_pending_daily_cash()`.
 
 Validate closure idempotency, split payments, same-day void exclusion and one
 post-close adjustment without retaining the temporary records:

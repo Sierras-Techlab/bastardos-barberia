@@ -72,13 +72,15 @@ const main = async () => {
     cash_expected_scoped: boolean;
     employee_agenda_scoped: boolean;
     employee_attendance_scoped: boolean;
+    manual_cash_function_count: number;
   }>(`
     with required_functions(name) as (
       values
         ('create_income'), ('list_incomes'), ('get_income_detail'), ('void_income'),
         ('pay_fixed_customer_month'), ('list_customer_visits'),
         ('list_fixed_customer_occurrences'), ('resolve_fixed_customer_occurrence'),
-        ('open_daily_cash'), ('close_daily_cash'), ('confirm_daily_cash'),
+        ('close_pending_daily_cash'), ('confirm_daily_cash'),
+        ('set_daily_cash_opening_balance'),
         ('create_expense'), ('update_expense'), ('void_expense')
     ), definitions as (
       select p.proname, lower(pg_catalog.pg_get_functiondef(p.oid)) as body
@@ -114,7 +116,12 @@ const main = async () => {
       coalesce((select body like '%source_type = ''sale''%' from definitions where proname = 'void_income'), false) as subscription_void_scoped,
       coalesce((select body like '%current_cash_expected%' from definitions where proname = 'cash_day_as_json'), false) as cash_expected_scoped,
       coalesce((select body like '%responsible_user_id%' from definitions where proname = 'list_fixed_customer_occurrences'), false) as employee_agenda_scoped,
-      coalesce((select body like '%responsible_user_id%' from definitions where proname = 'resolve_fixed_customer_occurrence'), false) as employee_attendance_scoped
+      coalesce((select body like '%responsible_user_id%' from definitions where proname = 'resolve_fixed_customer_occurrence'), false) as employee_attendance_scoped,
+      (select count(*)::integer
+         from pg_catalog.pg_proc p
+         join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public'
+          and p.proname in ('open_daily_cash', 'close_daily_cash')) as manual_cash_function_count
   `);
 
   const state = finalState.rows[0];
@@ -128,6 +135,7 @@ const main = async () => {
   assert.equal(state.cash_expected_scoped, true);
   assert.equal(state.employee_agenda_scoped, true);
   assert.equal(state.employee_attendance_scoped, true);
+  assert.equal(state.manual_cash_function_count, 0);
 
   const acceptance = spawnSync(
     process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "npm",

@@ -47,7 +47,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
     ? values as ManagerIncomeFormValues
     : null;
   const servicePrice = service && "price" in service
-    ? (managerValues?.servicePriceOverride?.chargedUnitPrice ?? getServicePrice(service))
+    ? (values.servicePriceOverride?.chargedUnitPrice ?? getServicePrice(service))
     : service ? getServicePrice(service) : 0;
 
   return (
