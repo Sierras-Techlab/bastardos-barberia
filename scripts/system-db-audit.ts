@@ -12,7 +12,7 @@ const client = new Client({
 });
 
 const requiredFunctions = [
-  "close_daily_cash",
+  "close_pending_daily_cash",
   "confirm_daily_cash",
   "create_expense",
   "create_income",
@@ -22,9 +22,9 @@ const requiredFunctions = [
   "list_customer_visits",
   "list_fixed_customer_occurrences",
   "list_incomes",
-  "open_daily_cash",
   "pay_fixed_customer_month",
   "resolve_fixed_customer_occurrence",
+  "set_daily_cash_opening_balance",
   "update_expense",
   "update_user_profile",
   "void_expense",
@@ -73,7 +73,11 @@ const main = async () => {
           from pg_catalog.pg_proc p
           join pg_catalog.pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public'
-           and (p.proname = any($1::text[]) or p.proname like '%work_session%')
+           and (
+             p.proname = any($1::text[])
+             or p.proname in ('open_daily_cash', 'close_daily_cash')
+             or p.proname like '%work_session%'
+           )
          order by p.proname, args
       `, [requiredFunctions]),
       client.query<{ name: string; definition: string }>(`
@@ -229,6 +233,9 @@ const main = async () => {
     liveCashUsesAdjustmentAwareExpectedCash: definitions.get("cash_day_as_json")?.includes("current_cash_expected") ?? false,
     employeeAgendaIsScoped: definitions.get("list_fixed_customer_occurrences")?.includes("responsible_user_id") ?? false,
     employeeAttendanceIsScoped: definitions.get("resolve_fixed_customer_occurrence")?.includes("responsible_user_id") ?? false,
+    manualCashLifecycleRemoved:
+      !installedNames.has("open_daily_cash") &&
+      !installedNames.has("close_daily_cash"),
   };
   const output = {
     connection: connection.rows[0],

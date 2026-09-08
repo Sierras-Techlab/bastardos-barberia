@@ -24,6 +24,17 @@ const migration040 = readFileSync(
 )
   .replace(/^\s*begin;\s*/i, "")
   .replace(/\s*commit;\s*$/i, "");
+const migration041 = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "queries",
+    "041_employee_service_prices_and_automatic_cash.sql",
+  ),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -49,6 +60,8 @@ const main = async () => {
   await client.query("set local lock_timeout = '5s'");
   await client.query(migration040);
   pass("apply migration 040 inside the rollback-only acceptance transaction");
+  await client.query(migration041);
+  pass("apply migration 041 inside the rollback-only acceptance transaction");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
@@ -351,14 +364,23 @@ const main = async () => {
   const employeeIncomeResult = await client.query<{ create_income: string }>(`
     select public.create_income(
       $1::uuid, $1::uuid, $2::uuid, null::uuid, $3::uuid,
-      '[]'::jsonb, $4::jsonb, false, null::jsonb, '{}'::jsonb
+      '[]'::jsonb, $4::jsonb, false, $5::jsonb, '{}'::jsonb
     )
-  `, [employeeId, employeeRequestId, serviceId, JSON.stringify([{ paymentMethodId, basisPoints: 10000 }])]);
+  `, [
+    employeeId,
+    employeeRequestId,
+    serviceId,
+    JSON.stringify([{ paymentMethodId, basisPoints: 10000 }]),
+    JSON.stringify({
+      chargedUnitPrice: 14000,
+      reason: "Acceptance employee service adjustment",
+    }),
+  ]);
   const employeeIncomeId = employeeIncomeResult.rows[0].create_income;
   const employeeIncome = await client.query<{ total: number; commission_total: number }>(`
     select total, commission_total from public.incomes where id = $1
   `, [employeeIncomeId]);
-  assert.deepEqual(employeeIncome.rows[0], { total: 18000, commission_total: 9900 });
+  assert.deepEqual(employeeIncome.rows[0], { total: 14000, commission_total: 7700 });
   const employeeDetail = await client.query<{ get_income_detail: Record<string, unknown> }>(`
     select public.get_income_detail($1, false, $2)
   `, [employeeId, employeeIncomeId]);
@@ -366,8 +388,62 @@ const main = async () => {
   for (const forbidden of ["total", "grossTotal", "payments", "barbershopNet", "registeredBy"]) {
     assert.equal(forbidden in employeeProjection, false, `employee projection leaked ${forbidden}`);
   }
-  assert.equal(employeeProjection.employeeCommission, 9900);
-  pass("create employee percentage sale with sanitized detail");
+  assert.equal(employeeProjection.employeeCommission, 7700);
+  pass("create employee service-price adjustment with sanitized detail");
+
+  await expectDatabaseError(
+    "reject employee product-price adjustment",
+    "PRICE_OVERRIDE_NOT_ALLOWED_FOR_EMPLOYEE",
+    () =>
+      client.query(
+        `
+          select public.create_income(
+            $1::uuid, $1::uuid, $2::uuid, null::uuid, null::uuid,
+            $3::jsonb, $4::jsonb, false, null::jsonb, $5::jsonb
+          )
+        `,
+        [
+          employeeId,
+          randomUUID(),
+          JSON.stringify([
+            { productId, quantity: 1, grantFullCommission: false },
+          ]),
+          JSON.stringify([{ paymentMethodId, basisPoints: 10000 }]),
+          JSON.stringify({
+            [productId]: {
+              chargedUnitPrice: 10000,
+              reason: "Acceptance forbidden product adjustment",
+            },
+          }),
+        ],
+      ),
+  );
+
+  await expectDatabaseError(
+    "reject a service-price adjustment without a selected service",
+    "INVALID_SERVICE_PRICE_OVERRIDE",
+    () =>
+      client.query(
+        `
+          select public.create_income(
+            $1::uuid, $1::uuid, $2::uuid, null::uuid, null::uuid,
+            $3::jsonb, $4::jsonb, false, $5::jsonb, '{}'::jsonb
+          )
+        `,
+        [
+          employeeId,
+          randomUUID(),
+          JSON.stringify([
+            { productId, quantity: 1, grantFullCommission: false },
+          ]),
+          JSON.stringify([{ paymentMethodId, basisPoints: 10000 }]),
+          JSON.stringify({
+            chargedUnitPrice: 10000,
+            reason: "Acceptance missing service",
+          }),
+        ],
+      ),
+  );
 
   const employeeSplitResult = await client.query<{ create_income: string }>(`
     select public.create_income(
@@ -490,6 +566,56 @@ const main = async () => {
   const businessDate = await client.query<{ business_date: string }>(`
     select pg_catalog.timezone('America/Argentina/Buenos_Aires', now())::date::text as business_date
   `);
+
+  const manualLifecycleFunctions = await client.query<{
+    open_function: string | null;
+    close_function: string | null;
+  }>(`
+    select
+      pg_catalog.to_regprocedure('public.open_daily_cash(uuid,date,bigint)')::text as open_function,
+      pg_catalog.to_regprocedure('public.close_daily_cash(uuid,date,bigint)')::text as close_function
+  `);
+  assert.deepEqual(manualLifecycleFunctions.rows[0], {
+    open_function: null,
+    close_function: null,
+  });
+  pass("remove manual Caja opening and closing functions");
+
+  const cashBeforeBalanceResult = await client.query<{ get_daily_cash: unknown }>(`
+    select public.get_daily_cash($1, $2::date)
+  `, [managerId, businessDate.rows[0].business_date]);
+  const cashBeforeBalance = cashDaySchema.parse(
+    cashBeforeBalanceResult.rows[0].get_daily_cash,
+  );
+  const balanceCreatedResult = await client.query<{
+    set_daily_cash_opening_balance: unknown;
+  }>(`
+    select public.set_daily_cash_opening_balance($1, $2::date, 15000::bigint)
+  `, [managerId, businessDate.rows[0].business_date]);
+  const balanceCreated = cashDaySchema.parse(
+    balanceCreatedResult.rows[0].set_daily_cash_opening_balance,
+  );
+  assert.equal(balanceCreated.lifecycle.openingBalance, 15000);
+  assert.equal(balanceCreated.lifecycle.openingSource, "initial_balance");
+  assert.equal(
+    balanceCreated.lifecycle.expectedCash,
+    cashBeforeBalance.lifecycle.expectedCash + 15000,
+  );
+  const balanceEditedResult = await client.query<{
+    set_daily_cash_opening_balance: unknown;
+  }>(`
+    select public.set_daily_cash_opening_balance($1, $2::date, 12000::bigint)
+  `, [managerId, businessDate.rows[0].business_date]);
+  const balanceEdited = cashDaySchema.parse(
+    balanceEditedResult.rows[0].set_daily_cash_opening_balance,
+  );
+  assert.equal(balanceEdited.lifecycle.openingBalance, 12000);
+  assert.equal(
+    balanceEdited.lifecycle.expectedCash,
+    cashBeforeBalance.lifecycle.expectedCash + 12000,
+  );
+  pass("set and edit today's opening balance without manual Caja lifecycle");
+
   const cashBeforeExpenseResult = await client.query<{ get_daily_cash: unknown }>(`
     select public.get_daily_cash($1, $2::date)
   `, [managerId, businessDate.rows[0].business_date]);
@@ -528,19 +654,75 @@ const main = async () => {
   await client.query("rollback to savepoint live_cash_adjustment_acceptance");
   pass("include cash adjustments in live Caja expected cash");
 
-  await client.query("savepoint cash_close_acceptance");
-  const closedCashResult = await client.query<{ close_daily_cash: unknown }>(`
-    select public.close_daily_cash($1, $2::date, $3::bigint)
-  `, [managerId, businessDate.rows[0].business_date, parsedCash.data.lifecycle.expectedCash]);
-  const parsedClosedCash = cashDaySchema.safeParse(closedCashResult.rows[0].close_daily_cash);
-  assert.equal(parsedClosedCash.success, true, parsedClosedCash.success ? undefined : parsedClosedCash.error.message);
-  if (!parsedClosedCash.success || !parsedClosedCash.data) assert.fail("cash schema rejected closure");
-  assert.equal(parsedClosedCash.data.state, "closed");
-  assert.equal(parsedClosedCash.data.summary.serviceTotal + parsedClosedCash.data.summary.productTotal,
-    parsedClosedCash.data.summary.grossTotal);
-  assert.equal(parsedClosedCash.data.lifecycle.reconciliationState, "confirmed");
-  await client.query("rollback to savepoint cash_close_acceptance");
-  pass("close Caja with charged snapshots and roll the closure back");
+  await client.query("savepoint automatic_cash_close_acceptance");
+  const pastBusinessDateResult = await client.query<{ business_date: string }>(`
+    select candidate::date::text as business_date
+    from pg_catalog.generate_series(
+      pg_catalog.timezone('America/Argentina/Buenos_Aires', now())::date - 10000,
+      pg_catalog.timezone('America/Argentina/Buenos_Aires', now())::date - 1,
+      interval '1 day'
+    ) candidate
+    where not exists (
+      select 1 from public.daily_cash_registers r
+      where r.business_date = candidate::date
+    )
+    limit 1
+  `);
+  const pastBusinessDate = pastBusinessDateResult.rows[0].business_date;
+  const pastCashResult = await client.query<{ id: string }>(`
+    insert into public.daily_cash_registers (
+      business_date,
+      sales_gross_total,
+      sales_commission_total,
+      sales_barbershop_net,
+      service_sales_total,
+      product_sales_total,
+      sale_count,
+      active_sale_count,
+      voided_sale_count,
+      opening_balance,
+      opening_source,
+      opened_at,
+      opened_by,
+      close_mode,
+      expected_cash,
+      reconciliation_state,
+      closed_at
+    ) values (
+      $1::date, 0, 0, 0, 0, 0, 0, 0, 0,
+      1234, 'initial_balance', pg_catalog.clock_timestamp(), $2,
+      null, 1234, 'not_applicable', null
+    )
+    returning id
+  `, [pastBusinessDate, managerId]);
+  const automaticClose = await client.query<{ close_pending_daily_cash: number }>(`
+    select public.close_pending_daily_cash()
+  `);
+  assert.ok(automaticClose.rows[0].close_pending_daily_cash >= 1);
+  const closedCashResult = await client.query<{ get_daily_cash: unknown }>(`
+    select public.get_daily_cash($1, $2::date)
+  `, [managerId, pastBusinessDate]);
+  const parsedClosedCash = cashDaySchema.parse(
+    closedCashResult.rows[0].get_daily_cash,
+  );
+  assert.equal(parsedClosedCash.state, "closed");
+  assert.equal(parsedClosedCash.lifecycle.closeMode, "automatic");
+  assert.equal(
+    parsedClosedCash.lifecycle.reconciliationState,
+    "pending_confirmation",
+  );
+  assert.equal(parsedClosedCash.lifecycle.countedCash, null);
+  const confirmedCashResult = await client.query<{ confirm_daily_cash: unknown }>(`
+    select public.confirm_daily_cash($1, $2, 1200::bigint)
+  `, [managerId, pastCashResult.rows[0].id]);
+  const confirmedCash = cashDaySchema.parse(
+    confirmedCashResult.rows[0].confirm_daily_cash,
+  );
+  assert.equal(confirmedCash.lifecycle.reconciliationState, "confirmed");
+  assert.equal(confirmedCash.lifecycle.countedCash, 1200);
+  assert.equal(confirmedCash.lifecycle.difference, -34);
+  await client.query("rollback to savepoint automatic_cash_close_acceptance");
+  pass("close Caja automatically and preserve physical-count confirmation");
 
   const expenseCategoryResult = await client.query<{ create_expense_category: Record<string, unknown> }>(`
     select public.create_expense_category($1, $2, 'supplies')

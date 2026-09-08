@@ -43,6 +43,13 @@ const mapCashRpcError = (operation: string, error: DatabaseError): never => {
       409,
     );
   }
+  if (message.includes("CASH_ALREADY_CLOSED")) {
+    throw new AppError(
+      "CASH_ALREADY_CLOSED",
+      "La caja ya se cerró automáticamente y el saldo inicial no puede cambiarse.",
+      409,
+    );
+  }
   if (message.includes("CASH_NOT_OPEN")) {
     throw new AppError(
       "CASH_NOT_OPEN",
@@ -139,24 +146,17 @@ export const cashRepository: CashRepository = {
     return parsed.data;
   },
 
-  async open(actorId, input) {
-    const { data, error } = await getSupabaseAdmin().rpc("open_daily_cash", {
-      actor_user_id: actorId,
-      target_business_date: input.businessDate,
-      opening_balance: input.openingBalance,
-    });
-    if (error) mapCashRpcError("open daily cash", error);
-    return parseCashDay("validate opened daily cash", data);
-  },
-
-  async close(actorId, input) {
-    const { data, error } = await getSupabaseAdmin().rpc("close_daily_cash", {
-      actor_user_id: actorId,
-      target_business_date: input.businessDate,
-      counted_cash: input.countedCash,
-    });
-    if (error) mapCashRpcError("close daily cash", error);
-    return parseCashDay("validate closed daily cash", data);
+  async setOpeningBalance(actorId, input) {
+    const { data, error } = await getSupabaseAdmin().rpc(
+      "set_daily_cash_opening_balance",
+      {
+        actor_user_id: actorId,
+        target_business_date: input.businessDate,
+        new_opening_balance: input.openingBalance,
+      },
+    );
+    if (error) mapCashRpcError("set daily cash opening balance", error);
+    return parseCashDay("validate updated daily cash opening balance", data);
   },
 
   async confirm(actorId, registerId, input) {

@@ -86,8 +86,7 @@ const history: PaginatedCashHistory = {
 };
 
 describe("CashView", () => {
-  it("treats an open persisted register as a manual close", async () => {
-    const browser = userEvent.setup();
+  it("never offers manual opening or closing for a persisted live register", () => {
     const persistedLiveDay: CashDay = {
       ...liveDay,
       id,
@@ -107,11 +106,9 @@ describe("CashView", () => {
       />,
     );
 
-    await browser.click(screen.getByRole("button", { name: "Cerrar caja" }));
-
-    expect(
-      screen.getByRole("heading", { name: "Cerrar caja con conteo" }),
-    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Abrir caja" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cerrar caja" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cargar saldo inicial" })).toBeVisible();
   });
 
   it("shows today's economics, dynamic payments and both audit tables", () => {
@@ -124,9 +121,9 @@ describe("CashView", () => {
     );
 
     expect(screen.getByText("Caja de hoy")).toBeVisible();
-    expect(screen.getByText("Sin abrir")).toBeVisible();
-    expect(screen.getByText(/Aún no abriste la caja de hoy\. Definí el saldo inicial físico/)).toBeVisible();
-    expect(screen.getByText("—")).toBeVisible();
+    expect(screen.getByText("Automática")).toBeVisible();
+    expect(screen.getByText(/permanece activa automáticamente/i)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Cargar saldo inicial" })).toBeVisible();
     expect(screen.getByText("Efectivo")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Cargar ingreso" }),
@@ -155,7 +152,7 @@ describe("CashView", () => {
     expect(paymentCard?.parentElement).toHaveClass("cash-payment-column");
   });
 
-  it("stops offering another opening after the server returns the open register", async () => {
+  it("lets the manager set and later edit the opening balance without closing the day", async () => {
     const browser = userEvent.setup();
     const openedDay: CashDay = {
       ...liveDay,
@@ -163,7 +160,7 @@ describe("CashView", () => {
       lifecycle: {
         ...liveDay.lifecycle,
         openingBalance: 100,
-        openingSource: "manual",
+        openingSource: "initial_balance",
         openedAt: "2026-08-15T12:00:00.000Z",
         openedBy: { id, firstName: "Uriel", lastName: "Alessandro" },
         expectedCash: 100,
@@ -172,18 +169,20 @@ describe("CashView", () => {
     const cashClient = {
       getDay: vi.fn(),
       list: vi.fn(),
-      open: vi.fn().mockResolvedValue(openedDay),
-      close: vi.fn(),
+      setOpeningBalance: vi.fn().mockResolvedValue(openedDay),
       confirm: vi.fn(),
     };
 
     render(<CashView initialDay={liveDay} initialHistory={history} viewerRole="owner" cashClient={cashClient} />);
-    await browser.click(screen.getByRole("button", { name: "Abrir caja" }));
-    await browser.click(screen.getByRole("button", { name: /^Abrir caja \(/ }));
+    await browser.click(screen.getByRole("button", { name: "Cargar saldo inicial" }));
+    const openingBalance = screen.getByRole("spinbutton", { name: "Saldo inicial" });
+    await browser.clear(openingBalance);
+    await browser.type(openingBalance, "100");
+    await browser.click(screen.getByRole("button", { name: /^Guardar saldo inicial/ }));
 
-    expect(await screen.findByText("En curso")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Abrir caja" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cerrar caja" })).toBeVisible();
+    expect(cashClient.setOpeningBalance).toHaveBeenCalledWith({ openingBalance: 100 });
+    expect(await screen.findByRole("button", { name: "Editar saldo inicial" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Cerrar caja" })).not.toBeInTheDocument();
   });
 
   it("loads a selected historical closure without mutating it", async () => {
@@ -209,8 +208,7 @@ describe("CashView", () => {
     const cashClient = {
       getDay: vi.fn().mockResolvedValue(closedDay),
       list: vi.fn(),
-      open: vi.fn(),
-      close: vi.fn(),
+      setOpeningBalance: vi.fn(),
       confirm: vi.fn(),
     };
 
@@ -244,5 +242,27 @@ describe("CashView", () => {
     />);
 
     expect(screen.queryByRole("link", { name: "Cargar ingreso" })).not.toBeInTheDocument();
+  });
+
+  it("keeps physical-count confirmation after an automatic close", () => {
+    render(<CashView
+      initialDay={{
+        ...liveDay,
+        id,
+        state: "closed",
+        closedAt: "2026-08-16T03:00:00.000Z",
+        lifecycle: {
+          ...liveDay.lifecycle,
+          openingSource: "initial_balance",
+          closeMode: "automatic",
+          expectedCash: 31000,
+          reconciliationState: "pending_confirmation",
+        },
+      }}
+      initialHistory={history}
+      viewerRole="owner"
+    />);
+
+    expect(screen.getByRole("button", { name: "Confirmar conteo" })).toBeVisible();
   });
 });

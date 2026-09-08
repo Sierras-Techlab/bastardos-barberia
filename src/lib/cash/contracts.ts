@@ -1,10 +1,9 @@
 import type {
   CashDay,
   CashHistoryQuery,
-  CloseCashInput,
   ConfirmCashInput,
-  OpenCashInput,
   PaginatedCashHistory,
+  SetCashOpeningBalanceInput,
 } from "@/types/cash";
 
 export type CashRepository = {
@@ -13,8 +12,10 @@ export type CashRepository = {
     actorId: string,
     query: CashHistoryQuery,
   ): Promise<PaginatedCashHistory>;
-  open(actorId: string, input: OpenCashInput & { businessDate: string }): Promise<CashDay>;
-  close(actorId: string, input: CloseCashInput & { businessDate: string }): Promise<CashDay>;
+  setOpeningBalance(
+    actorId: string,
+    input: SetCashOpeningBalanceInput & { businessDate: string },
+  ): Promise<CashDay>;
   confirm(actorId: string, registerId: string, input: ConfirmCashInput): Promise<CashDay>;
 };
 

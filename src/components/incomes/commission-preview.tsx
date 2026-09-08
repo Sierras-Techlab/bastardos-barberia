@@ -43,8 +43,14 @@ export const CommissionPreview = ({
 
   if (data.viewer === "employee") {
     const service = data.services.find((item) => item.id === values.serviceId);
-    const serviceEarning =
-      service && "earning" in service ? service.earning : 0;
+    const serviceEarning = service
+      ? values.servicePriceOverride
+        ? Math.round(
+            (values.servicePriceOverride.chargedUnitPrice * service.commissionRate) /
+              100,
+          )
+        : service.earning
+      : 0;
     const productEarnings = values.products.reduce((sum, item) => {
       const product = data.products.find(
         (candidate) => candidate.id === item.productId,
@@ -59,12 +65,7 @@ export const CommissionPreview = ({
           : Math.round((lineTotal * employee.productCommissionRate) / 100))
       );
     }, 0);
-    const isFullServiceCommission = values.grantFullServiceCommission;
-    const serviceTotal = service
-      ? isFullServiceCommission
-        ? serviceEarning
-        : Math.round((serviceEarning * employee.serviceCommissionRate) / 100)
-      : 0;
+    const serviceTotal = service ? serviceEarning : 0;
     const total = serviceTotal + productEarnings;
     return (
       <section

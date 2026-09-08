@@ -10,7 +10,13 @@ export type Product = { id: string; name: string; price: number; stock: number }
 export type CurrentUser = Employee & { role: UserRole };
 export type IncomeFormEmployee = CurrentUser & { isActive: boolean; serviceCommissionRate: number; productCommissionRate: number };
 
-export type EmployeeCatalogService = { id: string; name: string; earning: number };
+export type EmployeeCatalogService = {
+  id: string;
+  name: string;
+  price: number;
+  earning: number;
+  commissionRate: number;
+};
 export type EmployeeCatalogProduct = { id: string; name: string; earning: number; stock: number };
 
 export type ManagerIncomeFormData = {

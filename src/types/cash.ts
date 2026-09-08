@@ -6,7 +6,7 @@ export type CashPerson = {
   lastName: string;
 };
 
-export type CashOpeningSource = "manual" | "first_income";
+export type CashOpeningSource = "manual" | "first_income" | "initial_balance";
 export type CashCloseMode = "manual" | "automatic";
 export type CashReconciliationState = "not_applicable" | "pending_confirmation" | "confirmed";
 
@@ -112,6 +112,5 @@ export type PaginatedCashHistory = {
   pagination: CashPagination;
 };
 
-export type OpenCashInput = { openingBalance: number };
-export type CloseCashInput = { countedCash: number };
+export type SetCashOpeningBalanceInput = { openingBalance: number };
 export type ConfirmCashInput = { countedCash: number };

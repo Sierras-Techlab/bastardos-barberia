@@ -44,7 +44,7 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
     INVALID_PRODUCT_COMMISSION_OVERRIDE: ["INVALID_PRODUCT_COMMISSION_OVERRIDE", "No se puede otorgar el producto completo en esta venta.", 403],
     COMMISSION_RATE_OUT_OF_RANGE: ["COMMISSION_RATE_OUT_OF_RANGE", "La comisión configurada no es válida.", 409],
     INCOME_REQUEST_CONFLICT: ["INCOME_REQUEST_CONFLICT", "Este intento de venta ya fue usado con otros datos.", 409],
-    PRICE_OVERRIDE_NOT_ALLOWED_FOR_EMPLOYEE: ["PRICE_OVERRIDE_NOT_ALLOWED_FOR_EMPLOYEE", "Solo un manager puede modificar precios.", 403],
+    PRICE_OVERRIDE_NOT_ALLOWED_FOR_EMPLOYEE: ["PRICE_OVERRIDE_NOT_ALLOWED_FOR_EMPLOYEE", "Solo un manager puede modificar precios de productos.", 403],
     PRICE_OVERRIDE_REASON_REQUIRED: ["PRICE_OVERRIDE_REASON_REQUIRED", "Indicá el motivo del cambio de precio.", 400],
     BASIS_POINTS_PAYMENTS_FORBIDDEN_FOR_MANAGER: ["BASIS_POINTS_PAYMENTS_FORBIDDEN_FOR_MANAGER", "Los porcentajes solo los usan los empleados.", 403],
     ZERO_TOTAL_SALE_REQUIRES_NO_PAYMENTS: ["ZERO_TOTAL_SALE_REQUIRES_NO_PAYMENTS", "Una venta sin cargo no admite medios de pago.", 400],

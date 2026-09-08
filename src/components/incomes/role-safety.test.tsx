@@ -18,7 +18,7 @@ const transferId = "60000000-0000-4000-8000-000000000007";
 const employeeFormData: IncomeFormData = {
   viewer: "employee",
   currentUser: { id: employeeId, firstName: "Fer", lastName: "Pérez", role: "employee" },
-  services: [{ id: serviceId, name: "Corte", earning: 5000 }],
+  services: [{ id: serviceId, name: "Corte", price: 10000, earning: 5000, commissionRate: 50 }],
   products: [{ id: productId, name: "Cera", earning: 500, stock: 3 }],
   customers: [],
   paymentMethods: [
@@ -80,7 +80,7 @@ const captureCreate = () => {
   return { client, calls };
 };
 
-const FORBIDDEN_KEYS = ["price", "catalogUnitPrice", "chargedUnitPrice", "total", "barbershopNet", "registeredBy", "amount"];
+const FORBIDDEN_KEYS = ["catalogUnitPrice", "total", "barbershopNet", "registeredBy", "amount"];
 
 describe("020 application layer role safety", () => {
   it("hides the manager-only professional selector and renders the form for an employee", () => {
@@ -91,8 +91,9 @@ describe("020 application layer role safety", () => {
     expect(screen.getByText("Cera")).toBeInTheDocument();
   });
 
-  it("never leaks forbidden financial keys through the serialized employee form data", () => {
-    expect(JSON.stringify(employeeFormData)).not.toMatch(/\bprice\b/i);
+  it("exposes only service prices through the serialized employee form data", () => {
+    expect(employeeFormData.services[0]).toMatchObject({ price: 10000 });
+    expect(employeeFormData.products[0]).not.toHaveProperty("price");
     expect(JSON.stringify(employeeFormData)).not.toMatch(/\bcatalogUnitPrice\b/i);
     expect(JSON.stringify(employeeFormData)).not.toMatch(/\bchargedUnitPrice\b/i);
     expect(JSON.stringify(employeeFormData)).not.toMatch(/\btotal\b/i);
@@ -108,21 +109,102 @@ describe("020 application layer role safety", () => {
     expect(screen.queryByText(/precio de catálogo|total de la venta/i)).not.toBeInTheDocument();
   });
 
-  it("submits an employee sale with a single payment method using basis points", async () => {
+  it("recalculates the employee earning from the overridden service price", () => {
+    render(
+      <CommissionPreview
+        values={{
+          ...employeeFormValues,
+          products: [],
+          grantFullServiceCommission: false,
+          servicePriceOverride: {
+            chargedUnitPrice: 7000,
+            reason: "Precio acordado",
+          },
+        }}
+        data={employeeFormData}
+      />,
+    );
+
+    expect(screen.getByText(/3\.500/)).toBeVisible();
+  });
+
+  it("submits an employee service price override without product price authority", async () => {
     const user = userEvent.setup();
     const { client, calls } = captureCreate();
     render(<IncomeForm data={employeeFormData} incomeClient={client} />);
     await user.click(screen.getByRole("button", { name: /Corte/i }));
     await user.click(screen.getByRole("button", { name: /agregar cera/i }));
+    await user.click(screen.getByRole("checkbox", { name: "Modificar precio de Corte" }));
+    const chargedPrice = screen.getByRole("spinbutton", { name: "Precio cobrado de Corte" });
+    await user.clear(chargedPrice);
+    await user.type(chargedPrice, "7000");
+    await user.type(screen.getByRole("textbox", { name: "Motivo del cambio de precio de Corte" }), "Precio acordado");
+    expect(screen.queryByRole("checkbox", { name: "Modificar precio de Cera × 1" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     await waitFor(() => expect(calls).toHaveLength(1));
     const input = calls[0];
     expect(input.payments).toEqual([{ paymentMethodId: cashId, basisPoints: 10000 }]);
-    expect(input).not.toHaveProperty("servicePriceOverride");
+    expect(input.servicePriceOverride).toEqual({ chargedUnitPrice: 7000, reason: "Precio acordado" });
     expect(input).not.toHaveProperty("productPriceOverrides");
     FORBIDDEN_KEYS.forEach((key) => {
       expect(JSON.stringify(input)).not.toMatch(new RegExp(`"${key}"\\s*:`, "i"));
+    });
+  });
+
+  it("clears the price override when the employee switches directly to another service", async () => {
+    const user = userEvent.setup();
+    const { client, calls } = captureCreate();
+    const secondServiceId = "00000000-0000-4000-8000-000000000006";
+    render(
+      <IncomeForm
+        data={{
+          ...employeeFormData,
+          services: [
+            ...employeeFormData.services,
+            {
+              id: secondServiceId,
+              name: "Barba",
+              price: 8000,
+              earning: 4000,
+              commissionRate: 50,
+            },
+          ],
+        }}
+        incomeClient={client}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Corte/i }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Modificar precio de Corte" }),
+    );
+    const cutPrice = screen.getByRole("spinbutton", {
+      name: "Precio cobrado de Corte",
+    });
+    await user.clear(cutPrice);
+    await user.type(cutPrice, "7000");
+    await user.type(
+      screen.getByRole("textbox", {
+        name: "Motivo del cambio de precio de Corte",
+      }),
+      "Precio acordado",
+    );
+
+    await user.click(screen.getByRole("button", { name: /Barba/i }));
+    expect(
+      screen.getByRole("checkbox", { name: "Modificar precio de Barba" }),
+    ).not.toBeChecked();
+    expect(
+      screen.queryByRole("spinbutton", { name: "Precio cobrado de Barba" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
+    await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]).toMatchObject({
+      serviceId: secondServiceId,
+      servicePriceOverride: null,
     });
   });
 

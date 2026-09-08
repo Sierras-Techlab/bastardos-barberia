@@ -68,7 +68,7 @@ const buildTotalInputs = (data: IncomeFormData) => {
   const services: EmployeeCatalogService[] = data.services;
   const products: EmployeeCatalogProduct[] = data.products;
   return {
-    services: services.map((service) => ({ id: service.id, name: service.name, price: service.earning })),
+    services: services.map((service) => ({ id: service.id, name: service.name, price: service.price })),
     products: products.map((product) => ({ id: product.id, name: product.name, price: product.earning, stock: product.stock })),
   };
 };
@@ -198,7 +198,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           .map((payment) => ({ paymentMethodId: payment.paymentMethodId, basisPoints: payment.basisPoints }));
 
     const managerReview = isManager ? (reviewValues as ManagerIncomeFormValues) : null;
-    const servicePriceOverride = managerReview?.servicePriceOverride ?? null;
+    const servicePriceOverride = reviewValues.servicePriceOverride ?? null;
     const productPriceOverridesEntries = (managerReview?.productPriceOverrides ?? [])
       .filter((entry) => entry.override !== null) as Array<{ productId: string; override: { chargedUnitPrice: number; reason: string } }>;
     const productPriceOverrides = productPriceOverridesEntries.length > 0
@@ -213,7 +213,8 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       products: reviewValues.products,
       payments,
       grantFullServiceCommission: reviewValues.grantFullServiceCommission,
-      ...(isManager ? { servicePriceOverride, productPriceOverrides } : {}),
+      servicePriceOverride,
+      ...(isManager ? { productPriceOverrides } : {}),
     };
     submittingRef.current = true;
     setIsSubmitting(true);
@@ -356,12 +357,13 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                 />
               )}
             />
-            {isManager && values.serviceId && (() => {
+            {values.serviceId && (() => {
               const catalogService = data.services.find((s) => "price" in s && s.id === values.serviceId);
               if (!catalogService) return null;
               return <Controller control={form.control} name="servicePriceOverride" render={({ field }) => (
                 <div className="mt-3">
                   <LinePriceEditor
+                    key={catalogService.id}
                     catalogUnitPrice={"price" in catalogService ? catalogService.price : 0}
                     label={catalogService.name}
                     value={field.value as LinePriceOverride | null}

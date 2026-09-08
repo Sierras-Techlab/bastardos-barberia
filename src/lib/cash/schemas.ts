@@ -15,7 +15,7 @@ const cashPersonSchema = z
 const cashLifecycleSchema = z
   .object({
     openingBalance: nonnegativeAmount,
-    openingSource: z.enum(["manual", "first_income"]).nullable(),
+    openingSource: z.enum(["manual", "first_income", "initial_balance"]).nullable(),
     openedAt: z.iso.datetime({ offset: true }).nullable(),
     openedBy: cashPersonSchema.nullable(),
     expectedCash: integer,
@@ -224,11 +224,10 @@ export const paginatedCashHistorySchema = z
   })
   .strict();
 
-export const openCashInputSchema = z
+export const setCashOpeningBalanceInputSchema = z
   .object({ openingBalance: z.number().int().nonnegative() })
   .strict();
 export const countedCashInputSchema = z
   .object({ countedCash: z.number().int().nonnegative() })
   .strict();
-export const closeCashInputSchema = countedCashInputSchema;
 export const confirmCashInputSchema = countedCashInputSchema;

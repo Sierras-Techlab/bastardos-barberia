@@ -1,10 +1,9 @@
 import type {
   CashDay,
   CashHistoryQuery,
-  CloseCashInput,
   ConfirmCashInput,
-  OpenCashInput,
   PaginatedCashHistory,
+  SetCashOpeningBalanceInput,
 } from "@/types/cash";
 
 type ErrorBody = {
@@ -56,20 +55,14 @@ const historyQueryString = (query: CashHistoryQuery) => {
 export type CashClient = {
   getDay(date: string): Promise<CashDay>;
   list(query: CashHistoryQuery): Promise<PaginatedCashHistory>;
-  open(input: OpenCashInput): Promise<CashDay>;
-  close(input: CloseCashInput): Promise<CashDay>;
+  setOpeningBalance(input: SetCashOpeningBalanceInput): Promise<CashDay>;
   confirm(registerId: string, input: ConfirmCashInput): Promise<CashDay>;
 };
 
 export const cashClient: CashClient = {
   getDay: (date) => request(`/api/cash?date=${encodeURIComponent(date)}`),
   list: (query) => request(`/api/cash/history?${historyQueryString(query)}`),
-  open: (input) => request("/api/cash/open", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  }),
-  close: (input) => request("/api/cash/close", {
+  setOpeningBalance: (input) => request("/api/cash/opening-balance", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),

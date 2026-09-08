@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeDollarSign, BookOpenText, LockKeyhole, PackageSearch, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
+import { BadgeDollarSign, BookOpenText, PackageSearch, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -16,7 +16,6 @@ const linkActions: LinkAction[] = [
 
 const futureActions: FutureAction[] = [
   { label: "Registrar gasto", icon: ReceiptText },
-  { label: "Cerrar caja", icon: LockKeyhole },
 ];
 
 const actionClassName = "group flex min-h-24 flex-col items-start justify-between rounded-2xl border p-3 text-left text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70";

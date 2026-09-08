@@ -139,7 +139,9 @@ const NewIncomePage = async () => {
         services: services.map((service) => ({
           id: service.id,
           name: service.name,
+          price: service.price,
           earning: Math.round((service.price * employeeServiceRate) / 100),
+          commissionRate: employeeServiceRate,
         })),
         products: products.map((product) => ({
           id: product.id,

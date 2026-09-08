@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Plus, RefreshCcw, ShieldCheck, TriangleAlert, Wallet } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { CashCloseDialog } from "@/components/cash/cash-close-dialog";
 import { CashConfirmDialog } from "@/components/cash/cash-confirm-dialog";
 import { CashHistoryTable } from "@/components/cash/cash-history-table";
-import { CashOpenDialog } from "@/components/cash/cash-open-dialog";
+import { CashOpeningBalanceDialog } from "@/components/cash/cash-opening-balance-dialog";
 import { CashPaymentBreakdown } from "@/components/cash/cash-payment-breakdown";
 import { CashSalesAudit } from "@/components/cash/cash-sales-audit";
 import { CashSummaryCards } from "@/components/cash/cash-summary-cards";
@@ -59,7 +57,6 @@ export const CashView = ({
   cashClient = defaultCashClient,
   incomeClient = defaultIncomeClient,
 }: CashViewProps) => {
-  const router = useRouter();
   const [day, setDay] = useState(initialDay);
   const [history, setHistory] = useState(initialHistory);
   const [loadingDay, setLoadingDay] = useState(false);
@@ -67,8 +64,7 @@ export const CashView = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<IncomeListItem | null>(null);
   const [loadingIncome, setLoadingIncome] = useState(false);
-  const [opening, setOpening] = useState(false);
-  const [closing, setClosing] = useState(false);
+  const [editingOpeningBalance, setEditingOpeningBalance] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busyMutation, setBusyMutation] = useState(false);
 
@@ -108,36 +104,17 @@ export const CashView = ({
     }
   };
 
-  const onOpenCash = async (input: { openingBalance: number }) => {
+  const onSetOpeningBalance = async (input: { openingBalance: number }) => {
     setBusyMutation(true);
     try {
-      const updated = await cashClient.open(input);
+      const updated = await cashClient.setOpeningBalance(input);
       setDay(updated);
-      toast.success("Caja abierta. Ahora podés cargar ingresos.");
-      router.push("/incomes/new");
+      toast.success("Saldo inicial actualizado.");
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "No se pudo abrir la caja.");
+      toast.error(caught instanceof Error ? caught.message : "No se pudo guardar el saldo inicial.");
     } finally {
       setBusyMutation(false);
-      setOpening(false);
-    }
-  };
-
-  const onCloseCash = async (input: { countedCash: number }) => {
-    setBusyMutation(true);
-    try {
-      const updated = await cashClient.close(input);
-      setDay(updated);
-      toast.success(
-        updated.lifecycle.reconciliationState === "confirmed"
-          ? "Caja cerrada y conteo confirmado."
-          : "Caja cerrada. Quedó pendiente de confirmación.",
-      );
-    } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "No se pudo cerrar la caja.");
-    } finally {
-      setBusyMutation(false);
-      setClosing(false);
+      setEditingOpeningBalance(false);
     }
   };
 
@@ -156,11 +133,10 @@ export const CashView = ({
     }
   };
 
-const isManager = viewerRole === "owner" || viewerRole === "admin";
+  const isManager = viewerRole === "owner" || viewerRole === "admin";
   const lifecycle = resolveLifecycle(day);
   const isToday = day.businessDate === initialDay.businessDate;
-  const canOpen = isManager && isToday && day.state === "live" && day.id === null;
-  const canClose = isManager && isToday && day.state === "live" && day.id !== null;
+  const canEditOpeningBalance = isManager && isToday && day.state === "live";
   const canConfirm = isManager && day.state === "closed" && lifecycle.reconciliationState === "pending_confirmation";
 
   return (
@@ -173,11 +149,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
                 {day.state === "live" ? "Caja de hoy" : "Caja cerrada"}
               </h2>
               {day.state === "live" ? (
-                day.id === null ? (
-                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Sin abrir</Badge>
-                ) : (
-                  <Badge className="bg-primary/10 text-primary hover:bg-primary/10">En curso</Badge>
-                )
+                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Automática</Badge>
               ) : (
                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Cierre guardado</Badge>
               )}
@@ -192,9 +164,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
             </p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               {day.state === "live"
-                ? day.id === null
-                  ? "Aún no abriste la caja de hoy. Definí el saldo inicial físico antes de cargar ingresos."
-                  : "Se actualiza automáticamente con los ingresos y anulaciones del día."
+                ? "La caja permanece activa automáticamente y se actualiza con los ingresos y anulaciones del día."
                 : "Este cierre es inmutable; las anulaciones posteriores se registran como ajustes auditados."}
             </p>
           </div>
@@ -204,14 +174,9 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
                 <ArrowLeft /> Volver a hoy
               </Button>
             )}
-            {canOpen && (
-              <Button type="button" className="rounded-xl" onClick={() => setOpening(true)}>
-                <Wallet /> Abrir caja
-              </Button>
-            )}
-            {canClose && (
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setClosing(true)}>
-                <ShieldCheck /> Cerrar caja
+            {canEditOpeningBalance && (
+              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setEditingOpeningBalance(true)}>
+                <Wallet /> {day.lifecycle.openingSource === "initial_balance" ? "Editar saldo inicial" : "Cargar saldo inicial"}
               </Button>
             )}
             {canConfirm && (
@@ -236,7 +201,7 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <LifecycleField label="Saldo inicial" value={lifecycle ? formatArs(lifecycle.openingBalance) : "—"} hint={lifecycle?.openingSource === "manual" ? "Apertura manual" : lifecycle?.openingSource === "first_income" ? "Apertura automática" : null} />
+          <LifecycleField label="Saldo inicial" value={formatArs(lifecycle.openingBalance)} hint={lifecycle.openingSource === "initial_balance" ? "Saldo cargado" : lifecycle.openingSource === "manual" ? "Apertura manual histórica" : lifecycle.openingSource === "first_income" ? "Inicio automático" : "Sin saldo cargado"} />
           <LifecycleField label="Efectivo esperado" value={lifecycle ? formatArs(lifecycle.expectedCash) : "—"} />
           <LifecycleField label="Conteo físico" value={lifecycle.countedCash !== null ? formatArs(lifecycle.countedCash) : "—"} hint={lifecycle.countedCash !== null ? differenceLabel(lifecycle.difference) : null} accent={lifecycle.countedCash !== null && lifecycle.difference !== 0} />
         </div>
@@ -266,20 +231,11 @@ const isManager = viewerRole === "owner" || viewerRole === "admin";
         </div>
       )}
 
-      {opening && (
-        <CashOpenDialog
-          openingBalance={0}
-          onClose={() => setOpening(false)}
-          onConfirm={onOpenCash}
-        />
-      )}
-
-      {closing && lifecycle && (
-        <CashCloseDialog
-          expectedCash={lifecycle.expectedCash}
-          mode="manual"
-          onClose={() => setClosing(false)}
-          onConfirm={onCloseCash}
+      {editingOpeningBalance && (
+        <CashOpeningBalanceDialog
+          openingBalance={lifecycle.openingBalance}
+          onClose={() => setEditingOpeningBalance(false)}
+          onConfirm={onSetOpeningBalance}
         />
       )}
 
