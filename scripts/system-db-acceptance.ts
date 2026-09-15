@@ -35,6 +35,12 @@ const migration041 = readFileSync(
 )
   .replace(/^\s*begin;\s*/i, "")
   .replace(/\s*commit;\s*$/i, "");
+const migration042 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "042_optional_customer_phone.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -62,6 +68,8 @@ const main = async () => {
   pass("apply migration 040 inside the rollback-only acceptance transaction");
   await client.query(migration041);
   pass("apply migration 041 inside the rollback-only acceptance transaction");
+  await client.query(migration042);
+  pass("apply migration 042 inside the rollback-only acceptance transaction");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
@@ -234,6 +242,32 @@ const main = async () => {
     { responsible_user_id: employeeId, monthly_price: 30000 },
   );
   pass("create customer with responsible fixed schedule");
+
+  const customerWithoutPhoneIds: string[] = [];
+  for (let index = 0; index < 2; index += 1) {
+    const result = await client.query<{ create_customer: string }>(`
+      select public.create_customer(
+        actor_user_id => $1,
+        new_first_name => 'Cliente',
+        new_last_name => 'Sin teléfono',
+        new_phone => null,
+        new_email => null,
+        fixed_schedule => null
+      )
+    `, [managerId]);
+    customerWithoutPhoneIds.push(result.rows[0].create_customer);
+  }
+  const customersWithoutPhone = await client.query<{
+    total: string;
+    all_contacts_null: boolean;
+  }>(`
+    select count(*)::text as total,
+      bool_and(phone is null and normalized_phone is null) as all_contacts_null
+    from public.customers
+    where id = any($1::uuid[])
+  `, [customerWithoutPhoneIds]);
+  assert.deepEqual(customersWithoutPhone.rows[0], { total: "2", all_contacts_null: true });
+  pass("create duplicate customer names without a phone");
 
   const occurrenceRange = await client.query<{ date_from: string; date_to: string }>(`
     select local_date::text as date_from, (local_date + 7)::text as date_to

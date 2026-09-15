@@ -12,3 +12,14 @@ it("allows authenticated listing and creation", async () => {
   expect(createCustomer).toHaveBeenCalledWith(actor, { firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: null, fixedSchedule: null });
   expect(response.status).toBe(201);
 });
+
+it("creates a customer without a phone", async () => {
+  createCustomer.mockResolvedValue({ id: "customer-id" });
+  const response = await POST(new Request("http://localhost/api/customers", {
+    method: "POST",
+    body: JSON.stringify({ firstName: "Tomi", lastName: "Pérez", phone: null, email: null }),
+  }));
+
+  expect(createCustomer).toHaveBeenCalledWith(actor, { firstName: "Tomi", lastName: "Pérez", phone: null, email: null, fixedSchedule: null });
+  expect(response.status).toBe(201);
+});

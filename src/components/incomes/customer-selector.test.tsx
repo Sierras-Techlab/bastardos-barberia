@@ -55,7 +55,7 @@ it("creates and immediately selects a missing customer", async () => {
   await user.click(screen.getByRole("button", { name: /crear cliente/i }));
   await user.type(screen.getByLabelText("Nombre"), "Ana");
   await user.type(screen.getByLabelText("Apellido"), "Pérez");
-  await user.type(screen.getByLabelText("Teléfono"), "3515550101");
+  await user.type(screen.getByLabelText(/Teléfono/), "3515550101");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
   expect(onCreated).toHaveBeenCalledWith(created);
 });

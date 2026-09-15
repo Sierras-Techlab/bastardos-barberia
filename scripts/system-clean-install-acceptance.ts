@@ -73,6 +73,8 @@ const main = async () => {
     employee_agenda_scoped: boolean;
     employee_attendance_scoped: boolean;
     manual_cash_function_count: number;
+    customer_phone_nullable: boolean;
+    customer_normalized_phone_nullable: boolean;
   }>(`
     with required_functions(name) as (
       values
@@ -122,6 +124,16 @@ const main = async () => {
          join pg_catalog.pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public'
           and p.proname in ('open_daily_cash', 'close_daily_cash')) as manual_cash_function_count
+      , coalesce((select c.is_nullable = 'YES'
+          from information_schema.columns c
+         where c.table_schema = 'public'
+           and c.table_name = 'customers'
+           and c.column_name = 'phone'), false) as customer_phone_nullable
+      , coalesce((select c.is_nullable = 'YES'
+          from information_schema.columns c
+         where c.table_schema = 'public'
+           and c.table_name = 'customers'
+           and c.column_name = 'normalized_phone'), false) as customer_normalized_phone_nullable
   `);
 
   const state = finalState.rows[0];
@@ -136,6 +148,8 @@ const main = async () => {
   assert.equal(state.employee_agenda_scoped, true);
   assert.equal(state.employee_attendance_scoped, true);
   assert.equal(state.manual_cash_function_count, 0);
+  assert.equal(state.customer_phone_nullable, true);
+  assert.equal(state.customer_normalized_phone_nullable, true);
 
   const acceptance = spawnSync(
     process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "npm",

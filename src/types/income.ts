@@ -4,7 +4,7 @@ export type { IncomePayment, IncomePaymentInput } from "@/types/payment-method";
 export type UserRole = "owner" | "admin" | "employee";
 export type IncomeSourceType = "sale" | "fixed_subscription";
 export type Employee = { id: string; firstName: string; lastName: string };
-export type Customer = Employee & { phone?: string };
+export type Customer = Employee & { phone?: string | null };
 export type Service = { id: string; name: string; price: number };
 export type Product = { id: string; name: string; price: number; stock: number };
 export type CurrentUser = Employee & { role: UserRole };

@@ -176,12 +176,13 @@ describe("CashView", () => {
     render(<CashView initialDay={liveDay} initialHistory={history} viewerRole="owner" cashClient={cashClient} />);
     await browser.click(screen.getByRole("button", { name: "Cargar saldo inicial" }));
     const openingBalance = screen.getByRole("spinbutton", { name: "Saldo inicial" });
-    await browser.clear(openingBalance);
+    expect(openingBalance).toHaveValue(null);
     await browser.type(openingBalance, "100");
     await browser.click(screen.getByRole("button", { name: /^Guardar saldo inicial/ }));
 
     expect(cashClient.setOpeningBalance).toHaveBeenCalledWith({ openingBalance: 100 });
-    expect(await screen.findByRole("button", { name: "Editar saldo inicial" })).toBeVisible();
+    await browser.click(await screen.findByRole("button", { name: "Editar saldo inicial" }));
+    expect(screen.getByRole("spinbutton", { name: "Saldo inicial" })).toHaveValue(100);
     expect(screen.queryByRole("button", { name: "Cerrar caja" })).not.toBeInTheDocument();
   });
 

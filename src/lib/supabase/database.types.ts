@@ -96,8 +96,8 @@ export type CustomerRow = {
   id: string;
   first_name: string;
   last_name: string;
-  phone: string;
-  normalized_phone: string;
+  phone: string | null;
+  normalized_phone: string | null;
   email: string | null;
   visits: number;
   created_by: string;

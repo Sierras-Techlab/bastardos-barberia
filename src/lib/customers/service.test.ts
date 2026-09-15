@@ -24,9 +24,12 @@ const deps = (): CustomerServiceDependencies => ({
 });
 
 describe("customer schemas", () => {
-  it("requires phone, permits duplicate names and normalizes optional email", () => {
+  it("allows an omitted phone, permits duplicate names and normalizes optional contact", () => {
     expect(createCustomerSchema.parse({ firstName: " Ana ", lastName: " Pérez ", phone: "+54 351 555 0101", email: "" }))
       .toMatchObject({ firstName: "Ana", lastName: "Pérez", phone: "+54 351 555 0101", email: null, fixedSchedule: null });
+    expect(createCustomerSchema.parse({ firstName: "Ana", lastName: "Pérez", phone: "  ", email: null }))
+      .toMatchObject({ phone: null, email: null, fixedSchedule: null });
+    expect(updateCustomerSchema.parse({ phone: "" })).toEqual({ phone: null });
     expect(createCustomerSchema.safeParse({ firstName: "Ana", lastName: "Pérez", phone: "12", email: null }).success).toBe(false);
     expect(customerIdSchema.safeParse("customer-ana").success).toBe(false);
     expect(updateCustomerSchema.safeParse({}).success).toBe(false);

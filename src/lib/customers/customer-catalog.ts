@@ -15,7 +15,7 @@ const customerSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   email: z.email().nullable(),
-  phone: z.string().min(1),
+  phone: z.string().min(1).nullable(),
   visits: z.number().int().nonnegative(),
   createdAt: z.iso.datetime({ offset: true }),
   fixedSchedule: fixedScheduleSchema.nullable().default(null),
@@ -36,7 +36,7 @@ const customerCatalogSchema = z.union([
 export const customerEditorSchema = createCustomerSchema;
 
 const normalizeText = (value: string) => value.trim().toLocaleLowerCase("es-AR");
-const normalizePhone = (value: string) => value.replace(/\D/g, "");
+const normalizePhone = (value: string | null | undefined) => value?.replace(/\D/g, "") ?? "";
 
 export const authorizeCustomerCatalogData = (input: unknown): CustomerCatalogData =>
   customerCatalogSchema.parse(input);
@@ -99,7 +99,7 @@ export const validateUniqueCustomerContact = (
   if (email && candidates.some((customer) => customer.email && normalizeText(customer.email) === email)) {
     return "Ya existe un cliente con ese email.";
   }
-  if (candidates.some((customer) => normalizePhone(customer.phone) === phone)) {
+  if (phone && candidates.some((customer) => normalizePhone(customer.phone) === phone)) {
     return "Ya existe un cliente con ese teléfono.";
   }
   return null;

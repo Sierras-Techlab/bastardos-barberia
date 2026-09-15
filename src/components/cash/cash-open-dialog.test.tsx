@@ -5,6 +5,18 @@ import { describe, expect, it, vi } from "vitest";
 import { CashOpeningBalanceDialog } from "./cash-opening-balance-dialog";
 
 describe("CashOpeningBalanceDialog", () => {
+  it("requires an explicit amount when loading the opening balance", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    render(<CashOpeningBalanceDialog openingBalance={null} onClose={vi.fn()} onConfirm={onConfirm} />);
+
+    const input = screen.getByLabelText("Saldo inicial");
+    expect(input).toHaveValue(null);
+    await user.click(screen.getByRole("button", { name: /guardar saldo inicial/i }));
+
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it("accepts a non-negative integer ARS opening balance and forwards it as integer", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();

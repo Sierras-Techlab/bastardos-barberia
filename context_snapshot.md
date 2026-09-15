@@ -1,6 +1,6 @@
 # Context snapshot
 
-Captured: 2026-09-07
+Captured: 2026-09-15
 
 ## Current state
 
@@ -8,7 +8,9 @@ Captured: 2026-09-07
 - Reports is implemented end to end: monthly financial narrative, active-period selector, service/product highlights and manager-only team performance combining responsible-user economics with employee attendance productivity.
 - The configured PostgreSQL test database has both `039_business_reports.sql` and the behavior owned by `040_production_hardening.sql` applied and audited on PostgreSQL 17.6.
 - Migration `041_employee_service_prices_and_automatic_cash.sql` is implemented locally but has not been applied to the configured database. Employees may adjust only the selected service/cut price with a reason; product-price adjustments remain manager-only.
+- Migration `042_optional_customer_phone.sql` and its application changes are implemented locally but have not been applied to the configured database. Customer phone is optional, blank values become `NULL`, and supplied active phone numbers remain unique.
 - Caja has no supported manual opening or closing operation. Managers may load or correct today's opening balance before or during sales, automatic closing remains owned by `close_pending_daily_cash`, and the physical-count confirmation remains a separate post-close step.
+- The opening-balance dialog starts empty when no balance has been loaded, requires an explicit amount (including an explicitly typed zero), and preloads the saved amount only when editing an existing balance.
 - Production remains gated on a target backup/restore point, approved deployment window and the runbook in `docs/production-deployment.md`.
 - TASK-01 responsive hardening has been reapplied after an external git reset; the shared shell, tablet card/list breakpoints, overflow containment and narrow dialog/sheet handling are restored.
 - TASK-01 verification after restoration: 225 test files / 1028 tests passed; typegen, typecheck and production build passed. Lint passed with the pre-existing unused `Store` warning in `src/components/app-sidebar.tsx`.
@@ -27,7 +29,7 @@ Captured: 2026-09-07
 - `040_production_hardening.sql` converges databases after the colleague-owned Reports migration `039`; the same final behavior is folded into the canonical clean-install migrations.
 - `018_automatic_daily_cash.sql` installs `pg_cron` only in Supabase's managed `postgres` database and skips scheduler setup in isolated disposable databases.
 - Clean installation exposed and fixed a canonical `021` defect where the amount-allocation SQL alias shadowed the PL/pgSQL `raw_item` record in `compute_fixed_subscription_payments`.
-- Reports owns migration `039_business_reports.sql`; production hardening follows as `040_production_hardening.sql`. New migrations start at `041`.
+- Reports owns migration `039_business_reports.sql`; production hardening follows as `040_production_hardening.sql`. Migrations `041` and `042` are the current local increments.
 
 ## Verification
 
@@ -39,6 +41,8 @@ Captured: 2026-09-07
 - `npm run build`: Next.js 16.3 Turbopack production build passed and emitted the complete application route surface.
 - `git diff --check`: passed.
 - Current `041` verification: focused RED/GREEN regressions passed 3 files / 43 tests; the final complete application suite passed 227 files / 1051 tests. Route type generation, TypeScript, ESLint (zero errors, the pre-existing `Store` warning only) and the Next.js production build passed.
+- Current `042` application verification: focused customer coverage passed 17 files / 82 tests; the final complete application suite passed 227 files / 1057 tests. Route type generation, TypeScript and the Next.js production build passed; ESLint reported zero errors and only the pre-existing unused `Store` warning. PostgreSQL acceptance and the disposable `001`-`042` clean-install gate were not run because applying the pending migrations to the configured database was not authorized.
+- Current opening-balance UX verification: focused RED/GREEN coverage passed 3 files / 12 tests; the final complete application suite passed 227 files / 1058 tests. A preliminary full run had one unrelated income-form timing failure that passed immediately in isolation; the required clean rerun passed completely. Route type generation, TypeScript and the production build passed; ESLint reported zero errors and only the pre-existing unused `Store` warning.
 - Independent code review found no remaining critical or important issue after the service-switch draft reset and service-override target invariant were added.
 - The updated rollback-only PostgreSQL acceptance and clean-install scripts cover employee service overrides, employee product rejection, opening-balance create/edit, removed manual RPCs, automatic close and physical-count confirmation. Execution against the configured external database was not authorized in this task, so PostgreSQL compilation/behavior remains a deployment gate.
 - `npm run acceptance:db`: migration `040` compiled inside the transaction and all 43 rollback-only PostgreSQL scenarios passed, including Reports authorization/financial identities, employee agenda isolation, subscription visit semantics and adjustment-aware live expected cash; all fixtures rolled back.
@@ -54,4 +58,4 @@ Captured: 2026-09-07
 
 ## Recommended next task
 
-Install migration `041` only during an explicitly authorized test/deployment operation, then run the rollback-only database acceptance, read-only audit and disposable `001`-`041` clean-install gate. Production rollout remains a separate approved operation following `docs/production-deployment.md`, including the paused older-database migration recovery described above.
+Install migrations `041` and `042` only during an explicitly authorized test/deployment operation, then run the rollback-only database acceptance, read-only audit and disposable `001`-`042` clean-install gate. Production rollout remains a separate approved operation following `docs/production-deployment.md`, including the paused older-database migration recovery described above.

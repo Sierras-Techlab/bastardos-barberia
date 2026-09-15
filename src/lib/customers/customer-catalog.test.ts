@@ -30,6 +30,13 @@ describe("customer catalog", () => {
     ).toBe(postgresCustomer.createdAt);
   });
 
+  it("accepts and searches customers without a phone", () => {
+    const customerWithoutPhone = { ...data.customers[0], phone: null };
+
+    expect(authorizeCustomerCatalogData({ customers: [customerWithoutPhone] }).customers[0].phone).toBeNull();
+    expect(filterCustomers([customerWithoutPhone], customerWithoutPhone.firstName)).toEqual([customerWithoutPhone]);
+  });
+
   it("searches identity and normalized contact fields", () => {
     expect(filterCustomers(data.customers, "lucas").map(({ firstName }) => firstName)).toEqual(["Lucas"]);
     expect(filterCustomers(data.customers, "3515550101")).toHaveLength(1);
@@ -84,7 +91,10 @@ describe("customer catalog", () => {
   it("rejects normalized duplicate email and phone while allowing self edits", () => {
     const first = data.customers[0];
     expect(validateUniqueCustomerContact({ email: ` ${first.email!.toUpperCase()} `, phone: "9999999999" }, data.customers)).toBe("Ya existe un cliente con ese email.");
-    expect(validateUniqueCustomerContact({ email: "otro@mail.com", phone: first.phone.replaceAll(" ", "") }, data.customers)).toBe("Ya existe un cliente con ese teléfono.");
+    expect(validateUniqueCustomerContact({ email: "otro@mail.com", phone: first.phone!.replaceAll(" ", "") }, data.customers)).toBe("Ya existe un cliente con ese teléfono.");
     expect(validateUniqueCustomerContact({ email: first.email, phone: first.phone }, data.customers, first.id)).toBeNull();
+    expect(validateUniqueCustomerContact({ email: null, phone: null }, [
+      { ...first, phone: null, email: null },
+    ])).toBeNull();
   });
 });

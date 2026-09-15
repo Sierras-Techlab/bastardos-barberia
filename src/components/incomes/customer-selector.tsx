@@ -21,8 +21,8 @@ type Props = {
   customerClient?: Pick<CustomerClient, "create">;
 };
 const name = (customer: Customer) => `${customer.firstName} ${customer.lastName}`;
-const digits = (value: string) => value.replace(/\D/g, "");
-const asStored = (customer: Customer): StoredCustomer => ({ id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone ?? "", email: null, visits: 0, createdAt: new Date(0).toISOString(), fixedSchedule: null, fixedScheduleVersion: null });
+const digits = (value: string | null | undefined) => value?.replace(/\D/g, "") ?? "";
+const asStored = (customer: Customer): StoredCustomer => ({ id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone ?? null, email: null, visits: 0, createdAt: new Date(0).toISOString(), fixedSchedule: null, fixedScheduleVersion: null });
 
 export const CustomerSelector = ({ id, customers, value, currentUserRole, availableProfessionals, onChange, onCustomerCreated, customerClient = defaultCustomerClient }: Props) => {
   const [query, setQuery] = useState(""); const [creating, setCreating] = useState(false); const [duplicate, setDuplicate] = useState<Customer | null>(null);
@@ -30,7 +30,7 @@ export const CustomerSelector = ({ id, customers, value, currentUserRole, availa
   const filtered = useMemo(() => { const text = query.trim().toLocaleLowerCase("es-AR"); const phone = digits(query); return customers.filter((customer) => name(customer).toLocaleLowerCase("es-AR").includes(text) || (phone && digits(customer.phone ?? "").includes(phone))).slice(0, 5); }, [customers, query]);
   const save = async (input: FrontendCustomerEditorInput) => {
     try { const created = await customerClient.create(input); onCustomerCreated?.(created); setCreating(false); setQuery(""); return created; }
-    catch (error) { if (error instanceof CustomerApiError && error.code === "CUSTOMER_PHONE_EXISTS") setDuplicate(customers.find((customer) => digits(customer.phone ?? "") === digits(input.phone)) ?? null); throw error; }
+    catch (error) { if (input.phone && error instanceof CustomerApiError && error.code === "CUSTOMER_PHONE_EXISTS") setDuplicate(customers.find((customer) => digits(customer.phone ?? "") === digits(input.phone)) ?? null); throw error; }
   };
 
   if (selected) return <div className="flex h-11 items-center gap-3 rounded-xl border border-black/5 bg-[#f6f5f2] px-3"><UserRound className="size-4 text-primary" /><span className="min-w-0 flex-1 truncate text-sm font-medium">{name(selected)}</span><Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar cliente" onClick={() => { onChange(null); setQuery(""); }}><X /></Button></div>;

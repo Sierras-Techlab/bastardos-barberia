@@ -100,13 +100,13 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
         <DialogHeader>
           <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary"><UserRoundPlus className="size-5" /></span>
           <DialogTitle>{mode === "create" ? "Nuevo cliente" : "Editar cliente"}</DialogTitle>
-          <DialogDescription>El teléfono es obligatorio y único. El email es opcional.</DialogDescription>
+          <DialogDescription>El teléfono y el email son opcionales.</DialogDescription>
         </DialogHeader>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm font-medium">Nombre<Input value={firstName} onChange={(event) => setFirstName(event.target.value)} className={fieldClassName} /></label>
           <label className="space-y-1.5 text-sm font-medium">Apellido<Input value={lastName} onChange={(event) => setLastName(event.target.value)} className={fieldClassName} /></label>
           <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Email (opcional)<Input aria-label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} className={fieldClassName} /></label>
-          <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Teléfono<Input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className={fieldClassName} /></label>
+          <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Teléfono (opcional)<Input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className={fieldClassName} /></label>
         </div>
         <section className="mt-4 rounded-2xl border border-black/8 bg-[#f7f6f3] p-4">
           <label className="flex cursor-pointer items-start gap-3">

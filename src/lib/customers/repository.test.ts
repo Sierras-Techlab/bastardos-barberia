@@ -10,6 +10,10 @@ const row: CustomerRow = { id: "10000000-0000-4000-8000-000000000001", first_nam
 
 describe("customer repository", () => {
   beforeEach(() => vi.clearAllMocks());
+  it("maps a customer without a phone", () => {
+    expect(toCustomer({ ...row, phone: null, normalized_phone: null })).toMatchObject({ phone: null });
+  });
+
   it("delegates to list_customers with the authenticated actor id", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: [{ ...toCustomer(row), lastVisitBusinessDate: "2026-08-15" }],
@@ -110,6 +114,27 @@ describe("customer repository", () => {
     expect(query.select).toHaveBeenCalledWith(expect.stringContaining(
       "responsible_user:users!customer_fixed_schedules_responsible_user_id_fkey",
     ));
+  });
+
+  it("persists a customer without a phone as null", async () => {
+    const rowWithoutPhone = { ...row, phone: null, normalized_phone: null };
+    const rpc = vi.fn().mockResolvedValue({ data: row.id, error: null });
+    const query = { select: vi.fn(), eq: vi.fn(), is: vi.fn(), maybeSingle: vi.fn() };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    query.is.mockReturnValue(query);
+    query.maybeSingle.mockResolvedValue({ data: rowWithoutPhone, error: null });
+    getSupabaseAdmin.mockReturnValue({ rpc, from: vi.fn().mockReturnValue(query) });
+
+    await expect(customerRepository.create({
+      firstName: "Tomi",
+      lastName: "Pérez",
+      phone: null,
+      email: null,
+      fixedSchedule: null,
+      createdBy: row.created_by,
+    })).resolves.toMatchObject({ phone: null });
+    expect(rpc).toHaveBeenCalledWith("create_customer", expect.objectContaining({ new_phone: null }));
   });
 
   it("maps the schedule row with responsible professional identity and monthly price", () => {
