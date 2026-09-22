@@ -41,6 +41,12 @@ const migration042 = readFileSync(
 )
   .replace(/^\s*begin;\s*/i, "")
   .replace(/\s*commit;\s*$/i, "");
+const migration043 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "043_initial_balance_cash_close_constraint.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -70,6 +76,8 @@ const main = async () => {
   pass("apply migration 041 inside the rollback-only acceptance transaction");
   await client.query(migration042);
   pass("apply migration 042 inside the rollback-only acceptance transaction");
+  await client.query(migration043);
+  pass("apply migration 043 inside the rollback-only acceptance transaction");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
