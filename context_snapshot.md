@@ -1,15 +1,16 @@
 # Context snapshot
 
-Captured: 2026-09-22
+Captured: 2026-09-26
 
 ## Current state
 
-- Active branch: `dev`; the latest upstream change integrated before this repair was `14c89d2`.
+- Active branch: `dev`; the latest upstream change integrated before this repair was `fa0af88`.
 - Reports is implemented end to end: monthly financial narrative, active-period selector, service/product highlights and manager-only team performance combining responsible-user economics with employee attendance productivity.
 - The configured PostgreSQL test database has both `039_business_reports.sql` and the behavior owned by `040_production_hardening.sql` applied and audited on PostgreSQL 17.6.
 - Migration `041_employee_service_prices_and_automatic_cash.sql` is applied to the configured database. Employees may adjust only the selected service/cut price with a reason; product-price adjustments remain manager-only.
 - Migration `042_optional_customer_phone.sql` is installed in the configured test database. Customer phone is optional, blank values become `NULL`, and supplied active phone numbers remain unique.
 - Migration `043_initial_balance_cash_close_constraint.sql` is installed in test. It repairs the legacy `daily_cash_counts_check` so an `initial_balance`-only day can close automatically.
+- Migration `044_income_list_charged_totals.sql` is ready but not installed in the configured test database. It changes only the `list_incomes` projection so revenue totals and average ticket use charged `incomes.total` snapshots; rollback-only acceptance verifies the repair without rewriting existing sales.
 - Caja has no supported manual opening or closing operation. Managers may load or correct today's opening balance before or during sales, automatic closing remains owned by `close_pending_daily_cash`, and the physical-count confirmation remains a separate post-close step.
 - The opening-balance dialog starts empty when no balance has been loaded, requires an explicit amount (including an explicitly typed zero), and preloads the saved amount only when editing an existing balance.
 - Production remains gated on a target backup/restore point, approved deployment window and the runbook in `docs/production-deployment.md`.
@@ -30,7 +31,8 @@ Captured: 2026-09-22
 - `040_production_hardening.sql` converges databases after the colleague-owned Reports migration `039`; the same final behavior is folded into the canonical clean-install migrations.
 - `018_automatic_daily_cash.sql` installs `pg_cron` only in Supabase's managed `postgres` database and skips scheduler setup in isolated disposable databases.
 - Clean installation exposed and fixed a canonical `021` defect where the amount-allocation SQL alias shadowed the PL/pgSQL `raw_item` record in `compute_fixed_subscription_payments`.
-- Reports owns migration `039_business_reports.sql`; production hardening follows as `040_production_hardening.sql`. Migrations `041` and `042` are the current local increments.
+- Reports owns migration `039_business_reports.sql`; production hardening follows as `040_production_hardening.sql`. Migrations `041` through `044` are the current local increments.
+- Income-list manager metrics now converge with Reports, payments and stored commission identities when a charged price differs from catalog: `grossTotal` and `average` use active `incomes.total`, while catalog snapshots remain available for audit.
 
 ## Verification
 
@@ -53,6 +55,8 @@ Captured: 2026-09-22
 - `npm run acceptance:db`: migration `040` compiled inside the transaction and all 43 rollback-only PostgreSQL scenarios passed, including Reports authorization/financial identities, employee agenda isolation, subscription visit semantics and adjustment-aware live expected cash; all fixtures rolled back.
 - `npm run audit:db`: 25 RLS-enabled domain tables, no missing required functions, no unsafe table/routine grants, every hardening fingerprint true, zero stored-data invariant violations (including the three commission projection/rollup checks) and no abandoned disposable databases.
 - The disposable clean-install gate applied all 40 migrations from `001_extensions_and_roles.sql` through `040_production_hardening.sql`, then passed the complete behavioral acceptance with 25 tables, no missing functions, no unsafe grants and every hardening fingerprint true. Its temporary database was dropped.
+- Migration `044` RED/GREEN acceptance reproduced an adjusted sale reporting catalog ARS 42,000 instead of charged ARS 35,000, then passed with exact charged revenue, commission, net, average and payment identities. The rollback-only database acceptance passed all scenarios and removed every synthetic fixture.
+- The disposable clean-install gate applied all 44 migrations through `044_income_list_charged_totals.sql`, reran the behavioral acceptance against the final schema and dropped its temporary database. The final schema retained 25 tables, no missing required functions and no unsafe table or routine grants.
 
 ## Boundaries
 

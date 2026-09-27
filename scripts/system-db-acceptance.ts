@@ -47,6 +47,12 @@ const migration043 = readFileSync(
 )
   .replace(/^\s*begin;\s*/i, "")
   .replace(/\s*commit;\s*$/i, "");
+const migration044 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "044_income_list_charged_totals.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -78,6 +84,8 @@ const main = async () => {
   pass("apply migration 042 inside the rollback-only acceptance transaction");
   await client.query(migration043);
   pass("apply migration 043 inside the rollback-only acceptance transaction");
+  await client.query(migration044);
+  pass("apply migration 044 inside the rollback-only acceptance transaction");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
@@ -368,6 +376,35 @@ const main = async () => {
     work_session_id: (started.rows[0].start_work_session as { id: string }).id,
   });
   pass("create manager combined sale with charged-price snapshots");
+
+  const adjustedIncomeList = await client.query<{
+    list_incomes: {
+      metrics: {
+        grossTotal: number;
+        commissionTotal: number;
+        barbershopNet: number;
+        count: number;
+        average: number;
+        paymentTotals: Array<{ amount: number }>;
+      };
+    };
+  }>(`
+    select public.list_incomes(
+      $1::uuid, true, $2::uuid, null::date, null::date,
+      null::uuid, null::text, null::text, $3::text, 1, 10
+    )
+  `, [managerId, employeeId, service.rows[0].name]);
+  const adjustedIncomeMetrics = adjustedIncomeList.rows[0].list_incomes.metrics;
+  assert.equal(adjustedIncomeMetrics.grossTotal, 35000);
+  assert.equal(adjustedIncomeMetrics.commissionTotal, 15250);
+  assert.equal(adjustedIncomeMetrics.barbershopNet, 19750);
+  assert.equal(adjustedIncomeMetrics.count, 1);
+  assert.equal(adjustedIncomeMetrics.average, 35000);
+  assert.equal(
+    adjustedIncomeMetrics.paymentTotals.reduce((total, method) => total + method.amount, 0),
+    35000,
+  );
+  pass("summarize adjusted sales from charged totals instead of catalog totals");
 
   const managerRetry = await client.query<{ create_income: string }>(`
     select public.create_income(

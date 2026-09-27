@@ -24,11 +24,12 @@ Current classification:
 | `041_employee_service_prices_and_automatic_cash.sql` | Employee service pricing and automatic Caja lifecycle | Required after `040`; verify the deployed schema before applying. |
 | `042_optional_customer_phone.sql` | Optional customer phone with unique supplied numbers | Required after `041`. |
 | `043_initial_balance_cash_close_constraint.sql` | Repair legacy Caja count check for balance-only closure | Required after `042`, including on upgraded databases that retain the older check. |
+| `044_income_list_charged_totals.sql` | Income-list revenue metrics based on charged totals | Required after `043`; replaces only `list_incomes` and does not rewrite sale data. |
 
 ## Empty production database
 
 1. Confirm the target database is empty and create a restore point.
-2. Execute every file from `001_extensions_and_roles.sql` through `043_initial_balance_cash_close_constraint.sql` exactly once in numeric order.
+2. Execute every file from `001_extensions_and_roles.sql` through `044_income_list_charged_totals.sql` exactly once in numeric order.
 3. Stop immediately on the first SQL error.
 4. Run the read-only audit.
 5. Bootstrap the first owner only after the complete SQL chain succeeds.
@@ -50,13 +51,13 @@ For a database already installed and verified through `041`:
 
 1. Create a backup or restore point.
 2. Run `npm run audit:db` and retain the sanitized output. Before `042` and `043`, the command is expected to exit nonzero for `customerPhoneIsOptional` and `cashCountsAllowInitialBalanceOnlyClosure`; stop if it reports any stored-data invariant, RLS, grant or unrelated contract failure.
-3. Execute `042_optional_customer_phone.sql`, then `043_initial_balance_cash_close_constraint.sql`, stopping on the first error.
+3. Execute `042_optional_customer_phone.sql`, `043_initial_balance_cash_close_constraint.sql` and `044_income_list_charged_totals.sql` in numeric order, stopping on the first error.
 4. Run `npm run audit:db` again. Every hardening flag and invariant must pass.
 5. Run `npm run acceptance:db`; it creates synthetic rows inside one transaction and rolls everything back.
 6. Deploy the matching application build.
 7. Perform manager and employee smoke tests for login, scoped fixed-customer agenda, normal sale, monthly payment, income history and Caja.
 
-If production is still paused before `030_create_income_override_record_repair.sql` after the older `020` backfill failure, do not jump to `042`. Confirm the restore point and actual installed schema, rerun the corrected `020`, rerun the idempotent projection repair `024`, verify the ten-argument canonical `create_income`, then run `030` through `043` in numeric order. Stop on the first SQL error and repeat the audit and rollback-only acceptance before deploying the matching application build. This path comes from the recorded paused rollout in `context_snapshot.md`; verify it against the production database before use.
+If production is still paused before `030_create_income_override_record_repair.sql` after the older `020` backfill failure, do not jump to `042`. Confirm the restore point and actual installed schema, rerun the corrected `020`, rerun the idempotent projection repair `024`, verify the ten-argument canonical `create_income`, then run `030` through `044` in numeric order. Stop on the first SQL error and repeat the audit and rollback-only acceptance before deploying the matching application build. This path comes from the recorded paused rollout in `context_snapshot.md`; verify it against the production database before use.
 
 The signature check before `030` is:
 
