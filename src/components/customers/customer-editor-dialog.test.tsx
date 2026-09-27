@@ -5,10 +5,24 @@ import { CustomerEditorDialog } from "@/components/customers/customer-editor-dia
 
 const professional = { id: "00000000-0000-4000-8000-000000000003", firstName: "Fer", lastName: "Pérez", isActive: true };
 
+it("creates a customer without a phone", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn().mockResolvedValue({});
+  render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" onClose={vi.fn()} onSave={onSave} />);
+
+  expect(screen.getByText("El teléfono y el email son opcionales.")).toBeVisible();
+  expect(screen.getByLabelText("Teléfono (opcional)")).toHaveValue("");
+  await user.type(screen.getByLabelText("Nombre"), "Tomi");
+  await user.type(screen.getByLabelText("Apellido"), "Pérez");
+  await user.click(screen.getByRole("button", { name: "Crear cliente" }));
+
+  expect(onSave).toHaveBeenCalledWith({ firstName: "Tomi", lastName: "Pérez", phone: null, email: null, fixedSchedule: null });
+});
+
 it("keeps optional email and draft state when async creation fails", async () => {
   const user = userEvent.setup(); const onSave = vi.fn().mockRejectedValue(new Error("Ya existe un cliente con ese teléfono."));
   render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={onSave} />);
-  await user.type(screen.getByLabelText("Nombre"), "Ana"); await user.type(screen.getByLabelText("Apellido"), "Pérez"); await user.type(screen.getByLabelText("Teléfono"), "3515550101");
+  await user.type(screen.getByLabelText("Nombre"), "Ana"); await user.type(screen.getByLabelText("Apellido"), "Pérez"); await user.type(screen.getByLabelText(/Teléfono/), "3515550101");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un cliente con ese teléfono.");
   expect(onSave).toHaveBeenCalledWith({ firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: null, fixedSchedule: null });
@@ -34,7 +48,7 @@ it("does not submit a parent sale form when saving the customer dialog", async (
 
   await user.type(screen.getByLabelText("Nombre"), "Ana");
   await user.type(screen.getByLabelText("Apellido"), "Pérez");
-  await user.type(screen.getByLabelText("Teléfono"), "3515550101");
+  await user.type(screen.getByLabelText(/Teléfono/), "3515550101");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
 
   expect(onSave).toHaveBeenCalledOnce();
@@ -54,7 +68,7 @@ it("adds one required weekly schedule and shows its readable preview", async () 
   expect(screen.getByText("Todos los jueves a las 10:00")).toBeVisible();
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");
-  await user.type(screen.getByLabelText("Teléfono"), "3515550200");
+  await user.type(screen.getByLabelText(/Teléfono/), "3515550200");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fixedSchedule: { weekday: 4, time: "10:00", responsibleUserId: professional.id, monthlyPrice: 15000 } }));
 });
@@ -65,7 +79,7 @@ it("requires managers to choose a responsible professional for a habitual custom
   render(<CustomerEditorDialog mode="create" customer={null} customers={[]} currentUserRole="owner" availableProfessionals={[professional]} onClose={vi.fn()} onSave={onSave} />);
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");
-  await user.type(screen.getByLabelText("Teléfono"), "3515550200");
+  await user.type(screen.getByLabelText(/Teléfono/), "3515550200");
   await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.type(screen.getByLabelText("Hora fija"), "10:00");
   await user.type(screen.getByLabelText("Precio mensual"), "150");
@@ -82,7 +96,7 @@ it("requires a valid time when a fixed schedule is enabled", async () => {
   await user.click(screen.getByRole("checkbox", { name: /es cliente habitual/i }));
   await user.type(screen.getByLabelText("Nombre"), "Juan");
   await user.type(screen.getByLabelText("Apellido"), "Cruz");
-  await user.type(screen.getByLabelText("Teléfono"), "3515550200");
+  await user.type(screen.getByLabelText(/Teléfono/), "3515550200");
   await user.click(screen.getByRole("button", { name: "Crear cliente" }));
   expect(screen.getByRole("alert")).toHaveTextContent("Ingresá una hora válida.");
   expect(onSave).not.toHaveBeenCalled();

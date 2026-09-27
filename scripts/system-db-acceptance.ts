@@ -35,6 +35,24 @@ const migration041 = readFileSync(
 )
   .replace(/^\s*begin;\s*/i, "")
   .replace(/\s*commit;\s*$/i, "");
+const migration042 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "042_optional_customer_phone.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
+const migration043 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "043_initial_balance_cash_close_constraint.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
+const migration044 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "044_income_list_charged_totals.sql"),
+  "utf8",
+)
+  .replace(/^\s*begin;\s*/i, "")
+  .replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -62,6 +80,12 @@ const main = async () => {
   pass("apply migration 040 inside the rollback-only acceptance transaction");
   await client.query(migration041);
   pass("apply migration 041 inside the rollback-only acceptance transaction");
+  await client.query(migration042);
+  pass("apply migration 042 inside the rollback-only acceptance transaction");
+  await client.query(migration043);
+  pass("apply migration 043 inside the rollback-only acceptance transaction");
+  await client.query(migration044);
+  pass("apply migration 044 inside the rollback-only acceptance transaction");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
@@ -235,6 +259,32 @@ const main = async () => {
   );
   pass("create customer with responsible fixed schedule");
 
+  const customerWithoutPhoneIds: string[] = [];
+  for (let index = 0; index < 2; index += 1) {
+    const result = await client.query<{ create_customer: string }>(`
+      select public.create_customer(
+        actor_user_id => $1,
+        new_first_name => 'Cliente',
+        new_last_name => 'Sin teléfono',
+        new_phone => null,
+        new_email => null,
+        fixed_schedule => null
+      )
+    `, [managerId]);
+    customerWithoutPhoneIds.push(result.rows[0].create_customer);
+  }
+  const customersWithoutPhone = await client.query<{
+    total: string;
+    all_contacts_null: boolean;
+  }>(`
+    select count(*)::text as total,
+      bool_and(phone is null and normalized_phone is null) as all_contacts_null
+    from public.customers
+    where id = any($1::uuid[])
+  `, [customerWithoutPhoneIds]);
+  assert.deepEqual(customersWithoutPhone.rows[0], { total: "2", all_contacts_null: true });
+  pass("create duplicate customer names without a phone");
+
   const occurrenceRange = await client.query<{ date_from: string; date_to: string }>(`
     select local_date::text as date_from, (local_date + 7)::text as date_to
     from (
@@ -326,6 +376,35 @@ const main = async () => {
     work_session_id: (started.rows[0].start_work_session as { id: string }).id,
   });
   pass("create manager combined sale with charged-price snapshots");
+
+  const adjustedIncomeList = await client.query<{
+    list_incomes: {
+      metrics: {
+        grossTotal: number;
+        commissionTotal: number;
+        barbershopNet: number;
+        count: number;
+        average: number;
+        paymentTotals: Array<{ amount: number }>;
+      };
+    };
+  }>(`
+    select public.list_incomes(
+      $1::uuid, true, $2::uuid, null::date, null::date,
+      null::uuid, null::text, null::text, $3::text, 1, 10
+    )
+  `, [managerId, employeeId, service.rows[0].name]);
+  const adjustedIncomeMetrics = adjustedIncomeList.rows[0].list_incomes.metrics;
+  assert.equal(adjustedIncomeMetrics.grossTotal, 35000);
+  assert.equal(adjustedIncomeMetrics.commissionTotal, 15250);
+  assert.equal(adjustedIncomeMetrics.barbershopNet, 19750);
+  assert.equal(adjustedIncomeMetrics.count, 1);
+  assert.equal(adjustedIncomeMetrics.average, 35000);
+  assert.equal(
+    adjustedIncomeMetrics.paymentTotals.reduce((total, method) => total + method.amount, 0),
+    35000,
+  );
+  pass("summarize adjusted sales from charged totals instead of catalog totals");
 
   const managerRetry = await client.query<{ create_income: string }>(`
     select public.create_income(

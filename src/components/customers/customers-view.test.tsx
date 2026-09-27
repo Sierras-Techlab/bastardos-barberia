@@ -38,6 +38,20 @@ const fixedCustomer: Customer = {
 };
 
 describe("CustomersView last visit column", () => {
+  it("does not offer a call action when the customer has no phone", () => {
+    const { container } = render(
+      <CustomersView
+        data={{ customers: [{ ...baseCustomer, phone: null }] }}
+        canDelete={false}
+        currentUserId="00000000-0000-4000-8000-000000000099"
+        currentUserRole="owner"
+        today="2026-08-15"
+      />,
+    );
+
+    expect(container.querySelector('a[href^="tel:"]')).not.toBeInTheDocument();
+  });
+
   it("renders Sin visitas when the customer has never visited", () => {
     render(
       <CustomersView

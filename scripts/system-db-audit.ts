@@ -34,7 +34,7 @@ const requiredFunctions = [
 const main = async () => {
   await client.connect();
 
-  const [connection, disposableDatabases, tables, functions, functionDefinitions, legacyPaymentConstraint, unsafeTableGrants, unsafeRoutineGrants, generatedColumns, invariants] =
+  const [connection, disposableDatabases, tables, functions, functionDefinitions, legacyPaymentConstraint, cashCountsConstraint, customerPhoneColumns, unsafeTableGrants, unsafeRoutineGrants, generatedColumns, invariants] =
     await Promise.all([
       client.query<{
         database: string;
@@ -103,6 +103,22 @@ const main = async () => {
          where n.nspname = 'public'
            and t.relname = 'incomes'
            and c.conname = 'incomes_payment_method_check'
+      `),
+      client.query<{ definition: string }>(`
+        select pg_catalog.pg_get_constraintdef(c.oid) as definition
+          from pg_catalog.pg_constraint c
+          join pg_catalog.pg_class t on t.oid = c.conrelid
+          join pg_catalog.pg_namespace n on n.oid = t.relnamespace
+         where n.nspname = 'public'
+           and t.relname = 'daily_cash_registers'
+           and c.conname = 'daily_cash_counts_check'
+      `),
+      client.query<{ column_name: string; is_nullable: string }>(`
+        select column_name, is_nullable
+          from information_schema.columns
+         where table_schema = 'public'
+           and table_name = 'customers'
+           and column_name in ('phone', 'normalized_phone')
       `),
       client.query<{ grantee: string; table_name: string; privilege_type: string }>(`
         select grantee, table_name, privilege_type
@@ -226,6 +242,8 @@ const main = async () => {
 
   const installedNames = new Set(functions.rows.map((row) => row.name));
   const definitions = new Map(functionDefinitions.rows.map((row) => [row.name, row.definition.toLowerCase()]));
+  const phoneColumns = new Map(customerPhoneColumns.rows.map((row) => [row.column_name, row.is_nullable]));
+  const cashCountsDefinition = cashCountsConstraint.rows[0]?.definition.toLowerCase();
   const hardening = {
     legacyPaymentConstraintRemoved: Number(legacyPaymentConstraint.rows[0]?.count ?? 0) === 0,
     visitHistoryExcludesSubscriptions: definitions.get("list_customer_visits")?.includes("source_type = 'sale'") ?? false,
@@ -236,6 +254,14 @@ const main = async () => {
     manualCashLifecycleRemoved:
       !installedNames.has("open_daily_cash") &&
       !installedNames.has("close_daily_cash"),
+    customerPhoneIsOptional:
+      phoneColumns.get("phone") === "YES" &&
+      phoneColumns.get("normalized_phone") === "YES",
+    cashCountsAllowInitialBalanceOnlyClosure:
+      cashCountsConstraint.rowCount === 1 &&
+      cashCountsDefinition?.includes("active_sale_count + voided_sale_count") === true &&
+      !cashCountsDefinition.includes("closed_at") &&
+      !cashCountsDefinition.includes("sale_count + adjustment_count"),
   };
   const output = {
     connection: connection.rows[0],

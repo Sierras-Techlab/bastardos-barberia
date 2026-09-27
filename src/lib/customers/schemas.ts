@@ -8,12 +8,18 @@ const optionalEmailSchema = z.preprocess(
     z.string().trim().toLowerCase().pipe(z.email("Ingresá un email válido, sin ñ ni acentos.")),
   ]),
 );
-const phoneSchema = z.string().trim().refine(
-  (value) => {
-    const length = value.replace(/\D/g, "").length;
-    return length >= 8 && length <= 15;
-  },
-  "Ingresá un teléfono válido.",
+const optionalPhoneSchema = z.preprocess(
+  (value) => typeof value === "string" && value.trim() === "" ? null : value,
+  z.union([
+    z.null(),
+    z.string().trim().refine(
+      (value) => {
+        const length = value.replace(/\D/g, "").length;
+        return length >= 8 && length <= 15;
+      },
+      "Ingresá un teléfono válido.",
+    ),
+  ]),
 );
 
 export const customerIdSchema = z.uuid("El cliente no es válido.");
@@ -42,7 +48,7 @@ export const fixedScheduleInputSchema = z.object({
 const customerFieldsSchema = z.object({
   firstName: z.string().trim().min(1, "Ingresá el nombre.").max(80),
   lastName: z.string().trim().min(1, "Ingresá el apellido.").max(80),
-  phone: phoneSchema,
+  phone: optionalPhoneSchema,
   email: optionalEmailSchema,
 });
 export const createCustomerSchema = customerFieldsSchema.extend({
@@ -51,7 +57,7 @@ export const createCustomerSchema = customerFieldsSchema.extend({
 export const updateCustomerSchema = z.object({
   firstName: z.string().trim().min(1, "Ingresá el nombre.").max(80).optional(),
   lastName: z.string().trim().min(1, "Ingresá el apellido.").max(80).optional(),
-  phone: phoneSchema.optional(),
+  phone: optionalPhoneSchema.optional(),
   email: optionalEmailSchema.optional(),
   fixedSchedule: fixedScheduleInputSchema.nullable().optional(),
   expectedScheduleVersion: z.number().int().nonnegative().optional(),

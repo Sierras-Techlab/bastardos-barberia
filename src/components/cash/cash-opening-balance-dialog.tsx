@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { formatArs } from "@/lib/incomes/income-calculations";
 
 export type CashOpeningBalanceDialogProps = {
-  openingBalance: number;
+  openingBalance: number | null;
   onClose(): void;
   onConfirm(input: { openingBalance: number }): Promise<void>;
 };
@@ -27,13 +27,17 @@ export const CashOpeningBalanceDialog = ({
   onClose,
   onConfirm,
 }: CashOpeningBalanceDialogProps) => {
-  const [value, setValue] = useState(String(openingBalance));
+  const [value, setValue] = useState(openingBalance === null ? "" : String(openingBalance));
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submitting) return;
-    const amount = Number(value || "0");
+    if (value.trim() === "") {
+      toast.error("Ingresá un saldo inicial válido.");
+      return;
+    }
+    const amount = Number(value);
     if (!Number.isInteger(amount) || amount < 0) {
       toast.error("Ingresá un saldo inicial válido.");
       return;

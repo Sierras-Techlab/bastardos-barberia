@@ -45,18 +45,24 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 39. `039_business_reports.sql`
 40. `040_production_hardening.sql`
 41. `041_employee_service_prices_and_automatic_cash.sql`
+42. `042_optional_customer_phone.sql`
+43. `043_initial_balance_cash_close_constraint.sql`
+44. `044_income_list_charged_totals.sql`
 
-Run each entire file and stop if Supabase reports an error. Once the colleague-owned Reports migration is integrated, verify the complete `001` through `041` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
+Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `044` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
 
 ## Production paths
 
-- Empty production database: execute `001` through `041` exactly once in numeric order, then bootstrap the first owner.
-- Existing database already installed through production hardening `040`: back it up, execute only `041_employee_service_prices_and_automatic_cash.sql`, then run the read-only audit and rollback-only database acceptance.
-- Existing database already installed through Reports migration `039`: back it up, execute `040_production_hardening.sql` and then `041_employee_service_prices_and_automatic_cash.sql`, then run the read-only audit and rollback-only database acceptance.
+- Empty production database: execute `001` through `044` exactly once in numeric order, then bootstrap the first owner.
+- Existing database already installed through `043`: back it up, execute only `044_income_list_charged_totals.sql`, then run the read-only audit and rollback-only database acceptance.
+- Existing database already installed through `042`: back it up, execute `043_initial_balance_cash_close_constraint.sql` and then `044_income_list_charged_totals.sql`, then run the read-only audit and rollback-only database acceptance.
+- Existing database already installed through `041`: back it up, execute `042_optional_customer_phone.sql`, `043_initial_balance_cash_close_constraint.sql` and then `044_income_list_charged_totals.sql`, then run the read-only audit and rollback-only database acceptance.
+- Existing database already installed through production hardening `040`: back it up, execute `041_employee_service_prices_and_automatic_cash.sql` through `044_income_list_charged_totals.sql` in numeric order, then run the read-only audit and rollback-only database acceptance.
+- Existing database already installed through Reports migration `039`: back it up, execute `040_production_hardening.sql` through `044_income_list_charged_totals.sql` in numeric order, then run the read-only audit and rollback-only database acceptance.
 - Existing database installed only through `038`: apply the colleague-owned Reports migration `039` before `040_production_hardening.sql`.
 - Do not rerun structural migrations on a populated database unless a file explicitly documents that upgrade path.
 - Files `024` through `038` are retained intentionally as historical upgrade/repair steps. Some are no-ops against the current canonical sources, but deleting them would make deployed database lineages unreproducible.
-- `039_business_reports.sql` belongs to Reports. `040` is the convergence point for current clean and upgraded databases; `041` changes employee service pricing and restores automatic Caja lifecycle.
+- `039_business_reports.sql` belongs to Reports. `040` is the convergence point for current clean and upgraded databases; `041` changes employee service pricing and restores automatic Caja lifecycle; `042` makes customer phone optional while keeping supplied phones unique; `043` repairs the legacy Caja check so an initial-balance-only day closes automatically; `044` makes income-list revenue metrics use charged totals instead of catalog totals.
 
 Clean-install verification (creates and always drops an isolated database):
 
@@ -91,6 +97,12 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `028_open_cash_projection_repair.sql` restores the persisted register UUID in the live Caja projection. Without it, opening succeeds in PostgreSQL but the response retains the old `id: null` sentinel from the read-only Caja model, so the interface continues to offer `Abrir caja`. Run it once after `027`; it is safe to rerun.
 
 `041_employee_service_prices_and_automatic_cash.sql` allows an employee to change the charged price of the selected service when a non-empty reason is supplied; product-price changes remain manager-only. It replaces manual Caja opening/closing with `set_daily_cash_opening_balance`: a manager may create or update today's non-negative opening balance before or during sales, while `close_pending_daily_cash` remains the only closer and `confirm_daily_cash` preserves the post-close physical count. Historical manual lifecycle values remain readable. Run it once after `040`; do not apply it to a configured database without an approved backup and deployment window.
+
+`042_optional_customer_phone.sql` makes `customers.phone` and `normalized_phone` nullable, normalizes blank input to `NULL` and keeps the active-phone uniqueness rule only for supplied numbers. Names may continue to repeat, including between multiple customers without a phone. Run it once after `041`; do not apply it to a configured database without an approved backup and deployment window.
+
+`043_initial_balance_cash_close_constraint.sql` replaces only the legacy `daily_cash_counts_check` with the count invariant from canonical `022`. It permits automatic closure of a zero-sale `initial_balance` day without altering financial snapshots or reconciliation. Run it once after `042`; do not apply it to a configured database without an approved backup and deployment window.
+
+`044_income_list_charged_totals.sql` replaces only the installed `list_incomes` projection so `grossTotal` and `average` use active `incomes.total` charged snapshots rather than pre-adjustment catalog `gross_total`. It does not update income, item, payment, commission or Caja rows. Run it once after `043`; do not apply it to a configured database without an approved backup and deployment window.
 
 Validate migration `026` authorization, lifecycle, concurrency, projections and Caja isolation without retaining temporary records. An exact void replay with the original pre-void `updatedAt` must return `EXPENSE_CONFLICT`; a request using the current voided version must return `EXPENSE_NOT_ACTIVE`. Neither retry may append a revision.
 

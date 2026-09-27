@@ -233,7 +233,7 @@ export const CashView = ({
 
       {editingOpeningBalance && (
         <CashOpeningBalanceDialog
-          openingBalance={lifecycle.openingBalance}
+          openingBalance={lifecycle.openingSource === "initial_balance" ? lifecycle.openingBalance : null}
           onClose={() => setEditingOpeningBalance(false)}
           onConfirm={onSetOpeningBalance}
         />

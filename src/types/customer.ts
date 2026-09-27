@@ -6,7 +6,7 @@ export type Customer = {
   firstName: string;
   lastName: string;
   email: string | null;
-  phone: string;
+  phone: string | null;
   visits: number;
   createdAt: string;
   fixedSchedule: FixedSchedule | null;
