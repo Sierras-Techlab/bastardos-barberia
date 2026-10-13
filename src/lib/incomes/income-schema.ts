@@ -23,19 +23,13 @@ const managerProductPriceOverrideSchema = z.record(
 );
 
 const managerCreatePaymentSchema = incomePaymentSchema;
-const employeeCreatePaymentSchema = z.object({
-  paymentMethodId: z.uuid(),
-  basisPoints: z.number().int().min(1).max(10000),
-}).strict();
+const employeeCreatePaymentSchema = incomePaymentSchema;
 
 const managerFormPaymentSchema = z.object({
   paymentMethodId: z.uuid(),
   amount: z.number().int().nonnegative(),
 }).strict();
-const employeeFormPaymentSchema = z.object({
-  paymentMethodId: z.uuid(),
-  basisPoints: z.number().int().min(0).max(10000),
-}).strict();
+const employeeFormPaymentSchema = managerFormPaymentSchema;
 
 const sharedCreateRefinements = {
   atLeastOneLine: (value: { serviceId: string | null; products: Array<{ productId: string }> }) =>
@@ -98,10 +92,6 @@ export const managerIncomeFormSchema = z.object({
 export const employeeIncomeFormSchema = z.object({
   ...sharedFormFields,
   payments: z.array(employeeFormPaymentSchema).min(1, "Seleccioná un medio de pago.").superRefine((payments, context) => {
-    const total = payments.reduce((sum, payment) => sum + payment.basisPoints, 0);
-    if (total !== 10000) {
-      context.addIssue({ code: "custom", message: "Los porcentajes deben sumar 100%." });
-    }
     const ids = new Set<string>();
     for (const [index, payment] of payments.entries()) {
       if (ids.has(payment.paymentMethodId)) context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez.", path: [index, "paymentMethodId"] });
@@ -123,7 +113,7 @@ export type IncomeFormValues = ManagerIncomeFormValues | EmployeeIncomeFormValue
 
 export const employeeIncomeFormPaymentSchema = z.object({
   paymentMethodId: z.uuid(),
-  basisPoints: z.coerce.number().int().min(0).max(10000),
+  amount: z.coerce.number().int().nonnegative(),
 }).strict();
 
 const managerCreateBaseSchema = z.object({
@@ -181,10 +171,6 @@ const employeeCreateBaseSchema = z.object({
     }
   }),
   payments: z.array(employeeCreatePaymentSchema).min(1).superRefine((payments, context) => {
-    const total = payments.reduce((sum, payment) => sum + payment.basisPoints, 0);
-    if (total !== 10000) {
-      context.addIssue({ code: "custom", message: "Los porcentajes deben sumar 100%." });
-    }
     const methodIds = new Set(payments.map(({ paymentMethodId }) => paymentMethodId));
     if (methodIds.size !== payments.length) {
       context.addIssue({ code: "custom", message: "Cada medio de pago puede aparecer una sola vez." });
@@ -209,7 +195,7 @@ export const incomeIdSchema = z.uuid("El ingreso no es válido.");
 export const incomeListQuerySchema = z.object({
   query: z.string().trim().max(120).optional(), dateFrom: z.iso.date().optional(), dateTo: z.iso.date().optional(),
   userId: z.uuid().optional(), paymentMethodId: z.uuid().optional(),
-  kind: z.enum(["service", "products", "combined", "subscription"]).optional(), status: z.enum(["active", "voided"]).optional(),
+   kind: z.enum(["service", "products", "combined", "subscription", "chair_rental"]).optional(), status: z.enum(["active", "voided"]).optional(),
   page: z.number().int().positive().default(1), pageSize: z.number().int().min(1).max(100).default(10),
 }).strict();
 

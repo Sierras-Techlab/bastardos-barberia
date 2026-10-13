@@ -18,15 +18,45 @@ const results: Array<{ test: string; status: "PASS" }> = [];
 const ids: Record<string, string | undefined> = {};
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
+const deleteCashForUsers = async (userIds: string[]) => {
+  if (userIds.length === 0) return;
+  const registers = await control.query<{ id: string }>(`
+    select id from public.daily_cash_registers where opened_by = any($1::uuid[])
+  `, [userIds]);
+  const registerIds = registers.rows.map((row) => row.id);
+  if (registerIds.length === 0) return;
+  await control.query(`
+    delete from public.daily_cash_adjustment_payments
+     where adjustment_id in (
+       select id from public.daily_cash_adjustments
+        where original_daily_cash_id = any($1::uuid[])
+     )
+  `, [registerIds]);
+  await control.query(`
+    delete from public.daily_cash_adjustments
+     where original_daily_cash_id = any($1::uuid[])
+  `, [registerIds]);
+  await control.query("delete from public.daily_cash_payment_totals where daily_cash_id = any($1::uuid[])", [registerIds]);
+  await control.query("delete from public.daily_cash_sales where daily_cash_id = any($1::uuid[])", [registerIds]);
+  await control.query("delete from public.daily_cash_registers where id = any($1::uuid[])", [registerIds]);
+};
+
 const cleanup = async () => {
   if (!control) return;
   await control.query("begin");
   try {
     await control.query("set local session_replication_role = replica");
+    await deleteCashForUsers([ids.employeeId, ids.managerId].filter((id): id is string => Boolean(id)));
     if (ids.incomeId) {
       await control.query("delete from public.income_payments where income_id = $1", [ids.incomeId]);
       await control.query("delete from public.income_items where income_id = $1", [ids.incomeId]);
       await control.query("delete from public.incomes where id = $1", [ids.incomeId]);
+    }
+    if (ids.employeeId) {
+      await control.query("delete from public.chair_rental_payment_attempts where employee_id=$1", [ids.employeeId]);
+      await control.query("delete from public.chair_rental_obligations where employee_id=$1", [ids.employeeId]);
+      await control.query("delete from public.income_payments where income_id in (select id from public.incomes where employee_id=$1 and source_type='chair_rental')", [ids.employeeId]);
+      await control.query("delete from public.incomes where employee_id=$1 and source_type='chair_rental'", [ids.employeeId]);
     }
     if (ids.productId) {
       await control.query("delete from public.inventory_movements where product_id = $1", [ids.productId]);
@@ -37,6 +67,7 @@ const cleanup = async () => {
     if (ids.employeeId) await control.query("delete from public.employee_work_sessions where employee_id = $1", [ids.employeeId]);
     if (ids.employeeId || ids.managerId) {
       const userIds = [ids.employeeId, ids.managerId].filter(Boolean);
+      await control.query("delete from public.employee_commercial_agreement_audit where employee_id = any($1::uuid[]) or changed_by = any($1::uuid[])", [userIds]);
       await control.query("delete from public.sessions where user_id = any($1::uuid[])", [userIds]);
       if (ids.employeeId) await control.query("delete from public.users where id = $1", [ids.employeeId]);
       if (ids.managerId) await control.query("delete from public.users where id = $1", [ids.managerId]);
@@ -57,6 +88,7 @@ const cleanupStaleFixtures = async () => {
   await control.query("begin");
   try {
     await control.query("set local session_replication_role = replica");
+    await deleteCashForUsers(userIds);
     const staleIncomes = await control.query<{ id: string }>(`
       select id from public.incomes where registered_by = any($1::uuid[])
     `, [userIds]);
@@ -77,6 +109,7 @@ const cleanupStaleFixtures = async () => {
     await control.query("delete from public.product_categories where created_by = any($1::uuid[])", [userIds]);
     await control.query("delete from public.services where created_by = any($1::uuid[])", [userIds]);
     await control.query("delete from public.employee_work_sessions where employee_id = any($1::uuid[])", [userIds]);
+    await control.query("delete from public.employee_commercial_agreement_audit where employee_id = any($1::uuid[]) or changed_by = any($1::uuid[])", [userIds]);
     await control.query("delete from public.sessions where user_id = any($1::uuid[])", [userIds]);
     await control.query("delete from public.users where id = any($1::uuid[])", [userIds]);
     await control.query("commit");
@@ -93,11 +126,11 @@ const main = async () => {
   const users = await control.query<{ id: string; role_id: number }>(`
     insert into public.users (first_name, last_name, username, password_hash, role_id)
     values
-      ('RaceManager', $1, 'placeholder.racemanager', '$argon2id$acceptance', 2),
+      ('RaceManager', $1, 'placeholder.racemanager', '$argon2id$acceptance', 1),
       ('RaceEmployee', $1, 'placeholder.raceemployee', '$argon2id$acceptance', 3)
     returning id, role_id
   `, [`Acceptance${suffix}`]);
-  ids.managerId = users.rows.find((row) => row.role_id === 2)?.id;
+  ids.managerId = users.rows.find((row) => row.role_id === 1)?.id;
   ids.employeeId = users.rows.find((row) => row.role_id === 3)?.id;
   assert.ok(ids.managerId && ids.employeeId);
 
@@ -175,6 +208,26 @@ const main = async () => {
   assert.equal(incomeCount.rows[0].count, "1");
   pass("coalesce simultaneous identical income requests into one sale");
 
+  await control.query(`
+    select public.update_employee_commercial_agreement(
+      $1, $2,
+      '{"serviceCommissionEnabled":true,"productCommissionEnabled":true,"chairRentalEnabled":true,"monthlyChairRentalAmount":21000,"chairRentalEffectiveFrom":"2026-01","chairRentalDueDay":10}'::jsonb
+    )
+  `, [ids.managerId, ids.employeeId]);
+  const rentalMethod = await control.query<{ id: string }>("select id from public.payment_methods where system_code='cash' and is_active");
+  const rentalRequestId = randomUUID();
+  const rentalArgs = [ids.managerId, ids.employeeId, "2026-01", rentalMethod.rows[0].id, rentalRequestId];
+  const rentalRace = await Promise.allSettled([
+    first.query("select public.confirm_chair_rental_payment($1,$2,$3,$4,$5) as result", rentalArgs),
+    second.query("select public.confirm_chair_rental_payment($1,$2,$3,$4,$5) as result", rentalArgs),
+  ]);
+  assert.equal(rentalRace.filter((result) => result.status === "fulfilled").length, 2);
+  const rentalResults = rentalRace.map((result) => result.status === "fulfilled" ? result.value.rows[0].result : null);
+  assert.equal(rentalResults[0]?.incomeId, rentalResults[1]?.incomeId);
+  const rentalCount = await control.query<{ count: string }>("select count(*)::text as count from public.chair_rental_payment_attempts where employee_id=$1 and period='2026-01' and status='active'", [ids.employeeId]);
+  assert.equal(rentalCount.rows[0].count, "1");
+  pass("coalesce simultaneous identical chair-rental confirmations");
+
   await cleanup();
   for (const key of Object.keys(ids)) ids[key] = undefined;
   const residue = await control.query<{ count: string }>(`
@@ -183,6 +236,14 @@ const main = async () => {
   `, [`Acceptance${suffix}`]);
   assert.equal(residue.rows[0].count, "0");
   pass("remove committed concurrency fixtures");
+  const orphanCash = await control.query<{ count: string }>(`
+    select count(*)::text as count
+      from public.daily_cash_registers cash
+      left join public.users opener on opener.id = cash.opened_by
+     where opener.id is null
+  `);
+  assert.equal(orphanCash.rows[0].count, "0");
+  pass("leave no daily cash register opened by a deleted fixture user");
   console.log(JSON.stringify({ suite: "multi-connection-concurrency", results }, null, 2));
 };
 

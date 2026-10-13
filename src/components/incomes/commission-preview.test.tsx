@@ -56,3 +56,22 @@ it("calculates commissions from manager charged-price overrides", () => {
   expect(preview).toHaveTextContent("$ 6.200");
   expect(preview).toHaveTextContent("$ 13.800");
 });
+
+it("shows zero effective commission when the employee agreement disables both types", () => {
+  const disabledEmployee = {
+    ...employee,
+    serviceCommissionEnabled: false,
+    productCommissionEnabled: false,
+  };
+  render(<CommissionPreview
+    values={baseValues}
+    data={{ ...data, employees: [disabledEmployee] }}
+    onGrantFullServiceCommission={vi.fn()}
+  />);
+
+  const preview = screen.getByLabelText("Comisión estimada");
+  expect(preview).toHaveTextContent("Corte · 0% · $ 0");
+  expect(preview).toHaveTextContent("Cera · 0% · $ 0");
+  expect(preview).toHaveTextContent("$ 0");
+  expect(screen.queryByText(/Regalar el 100%/)).not.toBeInTheDocument();
+});

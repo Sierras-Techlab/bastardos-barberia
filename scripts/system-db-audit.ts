@@ -29,12 +29,19 @@ const requiredFunctions = [
   "update_user_profile",
   "void_expense",
   "void_income",
+  "confirm_chair_rental_payment",
+  "void_chair_rental_payment",
+  "update_employee_commercial_agreement",
+  "get_employee_commercial_agreement",
+  "list_chair_rental_payments",
+  "get_chair_rental_detail",
+  "chair_rental_month_summary",
 ] as const;
 
 const main = async () => {
   await client.connect();
 
-  const [connection, disposableDatabases, tables, functions, functionDefinitions, legacyPaymentConstraint, cashCountsConstraint, customerPhoneColumns, unsafeTableGrants, unsafeRoutineGrants, generatedColumns, invariants] =
+  const [connection, disposableDatabases, tables, functions, functionDefinitions, legacyPaymentConstraint, cashCountsConstraint, customerPhoneColumns, agreementTables, unsafeTableGrants, unsafeRoutineGrants, generatedColumns, invariants] =
     await Promise.all([
       client.query<{
         database: string;
@@ -90,10 +97,13 @@ const main = async () => {
          order by p.proname
       `, [[
         "cash_day_as_json",
+        "cash_day_as_json_045_base",
         "list_customer_visits",
         "list_fixed_customer_occurrences",
-        "resolve_fixed_customer_occurrence",
-        "void_income",
+         "resolve_fixed_customer_occurrence",
+         "void_income",
+         "void_income_045_base",
+         "chair_rental_month_summary",
       ]]),
       client.query<{ count: string }>(`
         select count(*)::text as count
@@ -119,6 +129,12 @@ const main = async () => {
          where table_schema = 'public'
            and table_name = 'customers'
            and column_name in ('phone', 'normalized_phone')
+      `),
+      client.query<{ table_name: string; rls: boolean }>(`
+        select c.relname as table_name, c.relrowsecurity as rls
+          from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = 'public' and c.relname in ('employee_commercial_agreement_audit','chair_rental_payment_attempts','chair_rental_obligations')
+         order by c.relname
       `),
       client.query<{ grantee: string; table_name: string; privilege_type: string }>(`
         select grantee, table_name, privilege_type
@@ -157,9 +173,25 @@ const main = async () => {
         select 'negative_product_stock', count(*)::text
           from public.products where stock < 0
         union all
-        select 'income_parent_economics', count(*)::text
-          from public.incomes
-         where total <> commission_total + barbershop_net
+         select 'income_parent_economics', count(*)::text
+           from public.incomes
+          where total <> commission_total + barbershop_net
+         union all
+         select 'chair_rental_income_economics', count(*)::text
+           from public.incomes
+          where source_type = 'chair_rental'
+            and (commission_total <> 0 or barbershop_net <> total
+              or service_commission_amount <> 0 or product_commission_amount <> 0
+              or service_commission_rate <> 0 or product_commission_rate <> 0)
+         union all
+         select 'chair_rental_attempt_income_links', count(*)::text
+           from public.chair_rental_payment_attempts a
+           left join public.incomes i on i.id = a.income_id
+          where i.id is null or i.source_type <> 'chair_rental'
+             or i.chair_rental_attempt_id is distinct from a.id
+             or i.employee_id is distinct from a.employee_id
+             or i.chair_rental_period is distinct from a.period
+             or i.total is distinct from a.amount
         union all
         select 'income_item_rollups', count(*)::text
           from (
@@ -198,11 +230,12 @@ const main = async () => {
            and employee.deleted_at is null
            and (projection->'metrics'->>'employeeCommissionTotal')::bigint
              <> (
-               select coalesce(sum(i.commission_total), 0)::bigint
-                 from public.incomes i
-                where i.employee_id = employee.id
-                  and i.status = 'active'
-             )
+                select coalesce(sum(i.commission_total), 0)::bigint
+                  from public.incomes i
+                 where i.employee_id = employee.id
+                   and i.status = 'active'
+                   and i.source_type <> 'chair_rental'
+              )
         union all
         select 'income_payment_totals', count(*)::text
           from public.incomes i
@@ -247,10 +280,15 @@ const main = async () => {
   const hardening = {
     legacyPaymentConstraintRemoved: Number(legacyPaymentConstraint.rows[0]?.count ?? 0) === 0,
     visitHistoryExcludesSubscriptions: definitions.get("list_customer_visits")?.includes("source_type = 'sale'") ?? false,
-    subscriptionVoidPreservesVisits: definitions.get("void_income")?.includes("source_type = 'sale'") ?? false,
-    liveCashUsesAdjustmentAwareExpectedCash: definitions.get("cash_day_as_json")?.includes("current_cash_expected") ?? false,
+    subscriptionVoidPreservesVisits:
+      (definitions.get("void_income")?.includes("source_type = 'sale'") ?? false)
+      || (definitions.get("void_income_045_base")?.includes("source_type = 'sale'") ?? false),
+    liveCashUsesAdjustmentAwareExpectedCash:
+      (definitions.get("cash_day_as_json")?.includes("current_cash_expected") ?? false)
+      || (definitions.get("cash_day_as_json_045_base")?.includes("current_cash_expected") ?? false),
     employeeAgendaIsScoped: definitions.get("list_fixed_customer_occurrences")?.includes("responsible_user_id") ?? false,
     employeeAttendanceIsScoped: definitions.get("resolve_fixed_customer_occurrence")?.includes("responsible_user_id") ?? false,
+    chairRentalReportIncludesEffectiveDates: definitions.get("chair_rental_month_summary")?.includes("byeffectivedate") ?? false,
     manualCashLifecycleRemoved:
       !installedNames.has("open_daily_cash") &&
       !installedNames.has("close_daily_cash"),
@@ -276,6 +314,7 @@ const main = async () => {
       installed: functions.rows,
     },
     security: {
+      agreementTables: agreementTables.rows,
       unsafeTableGrants: unsafeTableGrants.rows,
       unsafeRoutineGrantCount: unsafeRoutineGrants.rowCount ?? 0,
       unsafeRoutineGrants: unsafeRoutineGrants.rows,
@@ -294,6 +333,8 @@ const main = async () => {
     || output.schema.rlsDisabled.length > 0
     || output.security.unsafeTableGrants.length > 0
     || output.security.unsafeRoutineGrantCount > 0
+    || output.security.agreementTables.length !== 3
+    || output.security.agreementTables.some((table) => !table.rls)
     || Object.values(hardening).some((value) => !value)
     || output.invariants.some((invariant) => invariant.violations > 0);
   if (hasFailures) process.exitCode = 1;

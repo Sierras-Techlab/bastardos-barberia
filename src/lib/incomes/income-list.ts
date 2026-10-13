@@ -7,6 +7,7 @@ import type {
   IncomeListMetrics,
   IncomeListRow,
 } from "@/types/income";
+import { formatChairRentalPeriod } from "@/lib/chair-rentals/presentation";
 
 const normalize = (value: string) =>
   value
@@ -28,6 +29,8 @@ const isManagerRow = (item: IncomeListRow): item is IncomeListItem =>
   "total" in item;
 
 export const getIncomeKind = (item: IncomeListItem): IncomeKind => {
+  if (item.sourceType === "chair_rental") return "chair_rental";
+  if (item.sourceType === "fixed_subscription") return "subscription";
   if (item.service && item.products.length > 0) {
     return "combined";
   }
@@ -53,6 +56,10 @@ export const formatIncomeConcept = (item: IncomeListRow): string => {
       return serviceNames.join(" + ");
     }
     return `${quantity} ${quantity === 1 ? "producto" : "productos"}`;
+  }
+  if (item.sourceType === "chair_rental") {
+    const period = item.chairRental?.period ?? item.chairRentalPeriod;
+    return period ? `Alquiler de silla · ${formatChairRentalPeriod(period)}` : "Alquiler de silla";
   }
   if (item.sourceType === "fixed_subscription" && item.subscription) {
     return `Mensualidad ${item.subscription.label}`;
@@ -169,6 +176,7 @@ export const calculateIncomeMetrics = (
   }
   const managerItems = activeItems.filter(isManagerRow);
   const total = managerItems.reduce((sum, item) => sum + item.total, 0);
+  const saleItems = managerItems.filter((item) => item.sourceType !== "chair_rental");
   const commissionTotal = managerItems.reduce(
     (sum, item) => sum + item.commission.total,
     0,
@@ -191,8 +199,8 @@ export const calculateIncomeMetrics = (
     grossTotal: total,
     commissionTotal,
     barbershopNet,
-    count: managerItems.length,
-    average: managerItems.length > 0 ? total / managerItems.length : 0,
+    count: saleItems.length,
+    average: saleItems.length > 0 ? saleItems.reduce((sum, item) => sum + item.total, 0) / saleItems.length : 0,
     paymentTotals: [...paymentTotalsById.values()],
   } satisfies IncomeListMetrics;
 };

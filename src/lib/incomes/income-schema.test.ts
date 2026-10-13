@@ -169,19 +169,19 @@ describe("employeeCreateIncomeSchema", () => {
     customerId: null,
     serviceId: "00000000-0000-4000-8000-000000000020",
     products: [],
-    payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10000 }],
+    payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 10000 }],
     grantFullServiceCommission: false,
   };
 
-  it("accepts integer basis-point allocations", () => {
+  it("accepts integer amount allocations", () => {
     expect(employeeCreateIncomeSchema.safeParse(validEmployee).success).toBe(true);
   });
 
-  it("rejects an amount field on employee payments", () => {
+  it("rejects basis points on employee payments", () => {
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
-        payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 10000 }],
+        payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10000 }],
       }).success,
     ).toBe(false);
   });
@@ -223,25 +223,25 @@ describe("employeeCreateIncomeSchema", () => {
     ).toBe(false);
   });
 
-  it("rejects non-positive basis points and values above 10000", () => {
+  it("rejects non-positive amounts", () => {
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
-        payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: -1 }],
+        payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: -1 }],
       }).success,
     ).toBe(false);
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
-        payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10001 }],
+        payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 0 }],
       }).success,
     ).toBe(false);
     expect(
       employeeCreateIncomeSchema.safeParse({
         ...validEmployee,
         payments: [
-          { paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: 10000 },
-          { paymentMethodId: "60000000-0000-4000-8000-000000000002", basisPoints: 0 },
+          { paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 10000 },
+          { paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 0 },
         ],
       }).success,
     ).toBe(false);
@@ -249,7 +249,7 @@ describe("employeeCreateIncomeSchema", () => {
 });
 
 describe("employeeIncomeFormSchema", () => {
-  it("accepts integer basis points inside the allowed range", () => {
+  it("accepts nonnegative integer amounts while editing", () => {
     expect(employeeIncomeFormSchema.safeParse({
       employeeId: "00000000-0000-4000-8000-000000000099",
       customerId: null,
@@ -258,14 +258,14 @@ describe("employeeIncomeFormSchema", () => {
       payments: [
         {
           paymentMethodId: "60000000-0000-4000-8000-000000000001",
-          basisPoints: 10000,
+          amount: 10000,
         },
       ],
       grantFullServiceCommission: false,
     }).success).toBe(true);
   });
 
-  it("rejects when basis points do not sum to 10000", () => {
+  it("does not require a percentage total", () => {
     expect(employeeIncomeFormSchema.safeParse({
       employeeId: "00000000-0000-4000-8000-000000000099",
       customerId: null,
@@ -274,22 +274,22 @@ describe("employeeIncomeFormSchema", () => {
       payments: [
         {
           paymentMethodId: "60000000-0000-4000-8000-000000000001",
-          basisPoints: 6000,
+          amount: 6000,
         },
       ],
       grantFullServiceCommission: false,
-    }).success).toBe(false);
+    }).success).toBe(true);
   });
 
-  it("rejects a negative or non-integer basis points entry", () => {
+  it("rejects a negative or non-integer amount entry", () => {
     const result = employeeIncomeFormSchema.safeParse({
       employeeId: "00000000-0000-4000-8000-000000000099",
       customerId: null,
       serviceId: "00000000-0000-4000-8000-000000000001",
       products: [],
       payments: [
-        { paymentMethodId: "60000000-0000-4000-8000-000000000001", basisPoints: -100 },
-        { paymentMethodId: "60000000-0000-4000-8000-000000000002", basisPoints: 10200 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: -100 },
+        { paymentMethodId: "60000000-0000-4000-8000-000000000002", amount: 100.5 },
       ],
       grantFullServiceCommission: false,
     });

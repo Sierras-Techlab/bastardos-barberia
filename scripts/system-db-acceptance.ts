@@ -53,6 +53,10 @@ const migration044 = readFileSync(
 )
   .replace(/^\s*begin;\s*/i, "")
   .replace(/\s*commit;\s*$/i, "");
+const migration045 = readFileSync(
+  join(process.cwd(), "supabase", "queries", "045_employee_commercial_agreements_and_chair_rentals.sql"),
+  "utf8",
+).replace(/^\s*begin;\s*/i, "").replace(/\s*commit;\s*$/i, "");
 
 const pass = (test: string) => results.push({ test, status: "PASS" });
 
@@ -86,6 +90,52 @@ const main = async () => {
   pass("apply migration 043 inside the rollback-only acceptance transaction");
   await client.query(migration044);
   pass("apply migration 044 inside the rollback-only acceptance transaction");
+  await client.query(migration045);
+  pass("apply migration 045 inside the rollback-only acceptance transaction");
+
+  const agreementObjects = await client.query<{ table_name: string; rowsecurity: boolean }>(`
+    select c.relname as table_name, c.relrowsecurity as rowsecurity
+      from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname in ('employee_commercial_agreement_audit','chair_rental_payment_attempts','chair_rental_obligations')
+     order by c.relname
+  `);
+  assert.deepEqual(agreementObjects.rows, [
+    { table_name: "chair_rental_obligations", rowsecurity: true },
+    { table_name: "chair_rental_payment_attempts", rowsecurity: true },
+    { table_name: "employee_commercial_agreement_audit", rowsecurity: true },
+  ]);
+  pass("install migration 045 agreement and chair-rental RLS objects");
+  const chairRpcSignatures = await client.query<{ signature: string | null }>(`
+    select pg_catalog.regexp_replace(pg_catalog.to_regprocedure(x.signature)::text, '^public\\.', '') as signature
+      from unnest(array[
+        'public.get_employee_commercial_agreement(uuid,uuid)',
+        'public.list_chair_rental_payments(uuid,text,text,integer,integer)',
+        'public.get_chair_rental_detail(uuid,uuid)',
+        'public.update_employee_commercial_agreement(uuid,uuid,jsonb)',
+        'public.confirm_chair_rental_payment(uuid,uuid,text,uuid,uuid)',
+        'public.void_chair_rental_payment(uuid,uuid,text)'
+      ]) x(signature)
+  `);
+  assert.deepEqual(chairRpcSignatures.rows.map((row) => row.signature), [
+    "get_employee_commercial_agreement(uuid,uuid)",
+    "list_chair_rental_payments(uuid,text,text,integer,integer)",
+    "get_chair_rental_detail(uuid,uuid)",
+    "update_employee_commercial_agreement(uuid,uuid,jsonb)",
+    "confirm_chair_rental_payment(uuid,uuid,text,uuid,uuid)",
+    "void_chair_rental_payment(uuid,uuid,text)",
+  ]);
+  pass("install canonical chair-rental RPC signatures");
+
+  const rentalConstraints = await client.query<{ conname: string }>(`
+    select conname from pg_catalog.pg_constraint
+     where conname in ('chair_rental_attempt_metadata_check','income_chair_rental_attempt_fk')
+     order by conname
+  `);
+  assert.deepEqual(rentalConstraints.rows.map((row) => row.conname), [
+    "chair_rental_attempt_metadata_check",
+    "income_chair_rental_attempt_fk",
+  ]);
+  pass("install chair-rental metadata and income-attempt link constraints");
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
   const phone = `549${Date.now().toString().slice(-10)}`;
@@ -128,7 +178,7 @@ const main = async () => {
 
   await client.query(`
     select public.update_user_profile(
-      $1::uuid,
+       $1::uuid, $2::uuid,
       false, null::text,
       false, null::text,
       false, null::smallint,
@@ -136,13 +186,45 @@ const main = async () => {
       true, 55::smallint,
       true, 35::smallint
     )
-  `, [employeeId]);
+  `, [ownerId, employeeId]);
   const rates = await client.query<{ service: number; product: number }>(`
     select service_commission_rate as service, product_commission_rate as product
       from public.users where id = $1
   `, [employeeId]);
   assert.deepEqual(rates.rows[0], { service: 55, product: 35 });
   pass("update user commission rates");
+
+  const initialAgreementFlags = await client.query<{
+    role_id: number;
+    service_commission_enabled: boolean;
+    product_commission_enabled: boolean;
+    chair_rental_enabled: boolean;
+  }>(`
+    select role_id, service_commission_enabled, product_commission_enabled, chair_rental_enabled
+      from public.users where id = any($1::uuid[]) order by role_id
+  `, [[managerId, employeeId, ownerId]]);
+  assert.deepEqual(initialAgreementFlags.rows, [
+    { role_id: 1, service_commission_enabled: false, product_commission_enabled: false, chair_rental_enabled: false },
+    { role_id: 2, service_commission_enabled: false, product_commission_enabled: false, chair_rental_enabled: false },
+    { role_id: 3, service_commission_enabled: true, product_commission_enabled: true, chair_rental_enabled: false },
+  ]);
+  pass("normalize commercial agreement defaults by user role");
+
+  await expectDatabaseError("reject admin agreement mutation", "OWNER_REQUIRED", () =>
+    client.query(`
+      select public.update_employee_commercial_agreement(
+        $1, $2,
+        '{"serviceCommissionEnabled":false,"productCommissionEnabled":true,"chairRentalEnabled":false}'::jsonb
+      )
+    `, [managerId, employeeId]));
+  await expectDatabaseError("reject employee agreement mutation", "OWNER_REQUIRED", () =>
+    client.query(`
+      select public.update_employee_commercial_agreement(
+        $1, $2,
+        '{"serviceCommissionEnabled":false,"productCommissionEnabled":true,"chairRentalEnabled":false}'::jsonb
+      )
+    `, [employeeId, employeeId]));
+  pass("enforce owner-only agreement mutations at the database boundary");
 
   await expectDatabaseError("reject commission above 100", "users_service_commission_rate_check", () =>
     client.query("update public.users set service_commission_rate = 101 where id = $1", [employeeId]));
@@ -470,6 +552,62 @@ const main = async () => {
   assert.equal(employeeProjection.employeeCommission, 7700);
   pass("create employee service-price adjustment with sanitized detail");
 
+  await client.query("savepoint commercial_flags_acceptance");
+  const agreementSaleItems = JSON.stringify([{ productId, quantity: 1, grantFullCommission: false }]);
+  const agreementSalePayments = JSON.stringify([{ paymentMethodId, amount: 30000 }]);
+  await client.query(`
+    select public.update_employee_commercial_agreement(
+      $1, $2,
+      '{"serviceCommissionEnabled":false,"productCommissionEnabled":true,"chairRentalEnabled":false}'::jsonb
+    )
+  `, [ownerId, employeeId]);
+  const serviceDisabledIncome = await client.query<{ create_income: string }>(`
+    select public.create_income(
+      $1::uuid, $2::uuid, $3::uuid, null::uuid, $4::uuid,
+      $5::jsonb, $6::jsonb, false, null::jsonb, '{}'::jsonb
+    )
+  `, [managerId, employeeId, randomUUID(), serviceId, agreementSaleItems, agreementSalePayments]);
+  const serviceDisabledAmounts = await client.query<{
+    service_commission_amount: number;
+    product_commission_amount: number;
+    commission_total: number;
+  }>(`
+    select service_commission_amount, product_commission_amount, commission_total
+      from public.incomes where id = $1
+  `, [serviceDisabledIncome.rows[0].create_income]);
+  assert.deepEqual(serviceDisabledAmounts.rows[0], {
+    service_commission_amount: 0,
+    product_commission_amount: 4200,
+    commission_total: 4200,
+  });
+  await client.query(`
+    select public.update_employee_commercial_agreement(
+      $1, $2,
+      '{"serviceCommissionEnabled":true,"productCommissionEnabled":false,"chairRentalEnabled":false}'::jsonb
+    )
+  `, [ownerId, employeeId]);
+  const productDisabledIncome = await client.query<{ create_income: string }>(`
+    select public.create_income(
+      $1::uuid, $2::uuid, $3::uuid, null::uuid, $4::uuid,
+      $5::jsonb, $6::jsonb, false, null::jsonb, '{}'::jsonb
+    )
+  `, [managerId, employeeId, randomUUID(), serviceId, agreementSaleItems, agreementSalePayments]);
+  const productDisabledAmounts = await client.query<{
+    service_commission_amount: number;
+    product_commission_amount: number;
+    commission_total: number;
+  }>(`
+    select service_commission_amount, product_commission_amount, commission_total
+      from public.incomes where id = $1
+  `, [productDisabledIncome.rows[0].create_income]);
+  assert.deepEqual(productDisabledAmounts.rows[0], {
+    service_commission_amount: 9900,
+    product_commission_amount: 0,
+    commission_total: 9900,
+  });
+  await client.query("rollback to savepoint commercial_flags_acceptance");
+  pass("apply service and product agreement flags independently to new sales");
+
   await expectDatabaseError(
     "reject employee product-price adjustment",
     "PRICE_OVERRIDE_NOT_ALLOWED_FOR_EMPLOYEE",
@@ -598,6 +736,23 @@ const main = async () => {
   const period = await client.query<{ period: string }>(`
     select to_char(pg_catalog.timezone('America/Argentina/Buenos_Aires', now()), 'YYYY-MM') as period
   `);
+  const businessDate = await client.query<{ business_date: string }>(`
+    select pg_catalog.timezone('America/Argentina/Buenos_Aires', now())::date::text as business_date
+  `);
+  const chairRentalBaseline = await client.query<{
+    total: string;
+    count: string;
+    effective_total: string;
+    effective_count: string;
+  }>(`
+    select
+      coalesce(sum(i.total) filter (where to_char(i.business_date, 'YYYY-MM') = $1), 0)::text as total,
+      count(*) filter (where to_char(i.business_date, 'YYYY-MM') = $1)::text as count,
+      coalesce(sum(i.total) filter (where i.business_date = $2::date), 0)::text as effective_total,
+      count(*) filter (where i.business_date = $2::date)::text as effective_count
+    from public.incomes i
+    where i.source_type = 'chair_rental' and i.status = 'active'
+  `, [period.rows[0].period, businessDate.rows[0].business_date]);
   const monthlyRequestId = randomUUID();
   const monthlyResult = await client.query<{ pay_fixed_customer_month: Record<string, unknown> }>(`
     select public.pay_fixed_customer_month($1, $2, $3, $4, $5::jsonb)
@@ -642,9 +797,91 @@ const main = async () => {
       JSON.stringify([{ paymentMethodId, amount: 30000 }]),
     ]));
 
-  const businessDate = await client.query<{ business_date: string }>(`
-    select pg_catalog.timezone('America/Argentina/Buenos_Aires', now())::date::text as business_date
-  `);
+  await client.query(`
+    select public.update_employee_commercial_agreement(
+      $1, $2,
+      $3::jsonb
+    )
+  `, [ownerId, employeeId, JSON.stringify({
+    serviceCommissionEnabled: true,
+    productCommissionEnabled: true,
+    chairRentalEnabled: true,
+    monthlyChairRentalAmount: 21000,
+    chairRentalEffectiveFrom: period.rows[0].period,
+    chairRentalDueDay: 28,
+  })]);
+  await expectDatabaseError("reject admin chair-rental confirmation", "OWNER_REQUIRED", () =>
+    client.query("select public.confirm_chair_rental_payment($1, $2, $3, $4, $5)", [
+      managerId, employeeId, period.rows[0].period, cashMethod.rows[0].id, randomUUID(),
+    ]));
+  await expectDatabaseError("reject employee chair-rental confirmation", "OWNER_REQUIRED", () =>
+    client.query("select public.confirm_chair_rental_payment($1, $2, $3, $4, $5)", [
+      employeeId, employeeId, period.rows[0].period, cashMethod.rows[0].id, randomUUID(),
+    ]));
+  const rentalRequestId = randomUUID();
+  const rentalResult = await client.query<{ confirm_chair_rental_payment: Record<string, unknown> }>(`
+    select public.confirm_chair_rental_payment($1, $2, $3, $4, $5)
+  `, [ownerId, employeeId, period.rows[0].period, cashMethod.rows[0].id, rentalRequestId]);
+  const firstRental = rentalResult.rows[0].confirm_chair_rental_payment;
+  const firstRentalIncomeId = String(firstRental.incomeId);
+  const firstRentalAttemptId = String(firstRental.id);
+  assert.equal(firstRental.status, "paid");
+  assert.equal(firstRental.amount, 21000);
+  const rentalIncome = await client.query<{
+    source_type: string;
+    total: number;
+    commission_total: number;
+    barbershop_net: number;
+    work_session_id: string | null;
+    payment_count: string;
+  }>(`
+    select i.source_type, i.total, i.commission_total, i.barbershop_net, i.work_session_id,
+           count(ip.id)::text as payment_count
+      from public.incomes i left join public.income_payments ip on ip.income_id = i.id
+     where i.id = $1 group by i.id
+  `, [firstRentalIncomeId]);
+  assert.deepEqual(rentalIncome.rows[0], {
+    source_type: "chair_rental",
+    total: 21000,
+    commission_total: 0,
+    barbershop_net: 21000,
+    work_session_id: null,
+    payment_count: "1",
+  });
+  const rentalRetry = await client.query<{ confirm_chair_rental_payment: Record<string, unknown> }>(`
+    select public.confirm_chair_rental_payment($1, $2, $3, $4, $5)
+  `, [ownerId, employeeId, period.rows[0].period, cashMethod.rows[0].id, rentalRequestId]);
+  assert.equal(String(rentalRetry.rows[0].confirm_chair_rental_payment.incomeId), firstRentalIncomeId);
+  await expectDatabaseError("reject conflicting chair-rental retry", "CHAIR_RENTAL_REQUEST_CONFLICT", () =>
+    client.query("select public.confirm_chair_rental_payment($1, $2, $3, $4, $5)", [
+      ownerId, employeeId, period.rows[0].period, paymentMethodId, rentalRequestId,
+    ]));
+  await expectDatabaseError("reject generic chair-rental void", "CHAIR_RENTAL_CANONICAL_VOID_REQUIRED", () =>
+    client.query("select public.void_income($1, $2)", [firstRentalIncomeId, managerId]));
+  await expectDatabaseError("require chair-rental void reason", "VOID_REASON_REQUIRED", () =>
+    client.query("select public.void_chair_rental_payment($1, $2, '   ')", [ownerId, firstRentalAttemptId]));
+  const voidedRental = await client.query<{ void_chair_rental_payment: Record<string, unknown> }>(`
+    select public.void_chair_rental_payment($1, $2, 'Acceptance correction')
+  `, [ownerId, firstRentalAttemptId]);
+  assert.equal(voidedRental.rows[0].void_chair_rental_payment.status, "voided");
+  const voidedRentalRetry = await client.query<{ void_chair_rental_payment: Record<string, unknown> }>(`
+    select public.void_chair_rental_payment($1, $2, 'Different retry reason')
+  `, [ownerId, firstRentalAttemptId]);
+  assert.equal(voidedRentalRetry.rows[0].void_chair_rental_payment.status, "voided");
+  const replacementRental = await client.query<{ confirm_chair_rental_payment: Record<string, unknown> }>(`
+    select public.confirm_chair_rental_payment($1, $2, $3, $4, $5)
+  `, [ownerId, employeeId, period.rows[0].period, cashMethod.rows[0].id, randomUUID()]);
+  const replacementRentalIncomeId = String(replacementRental.rows[0].confirm_chair_rental_payment.incomeId);
+  const rentalAttempts = await client.query<{ status: string; count: string }>(`
+    select status, count(*)::text as count
+      from public.chair_rental_payment_attempts
+     where employee_id = $1 and period = $2 group by status order by status
+  `, [employeeId, period.rows[0].period]);
+  assert.deepEqual(rentalAttempts.rows, [
+    { status: "active", count: "1" },
+    { status: "voided", count: "1" },
+  ]);
+  pass("confirm, void, replay and reopen an auditable chair-rental payment");
 
   const manualLifecycleFunctions = await client.query<{
     open_function: string | null;
@@ -704,11 +941,41 @@ const main = async () => {
   const subscriptionSale = parsedCash.data?.sales.find((sale) => sale.id === monthlyIncomeId);
   assert.equal(subscriptionSale?.kind, "subscription");
   assert.ok(parsedCash.data?.sales.some((sale) => sale.id === employeeIncomeId));
+  const rentalSale = parsedCash.data?.sales.find((sale) => sale.id === replacementRentalIncomeId);
+  assert.equal(rentalSale?.kind, "chair_rental");
+  assert.equal(parsedCash.data?.summary.chairRentalTotal, 21000);
   pass("validate live Caja projection and subscription classification");
 
   assert.equal(parsedCash.data?.state, "live");
   const liveCashId = parsedCash.data?.id;
   assert.ok(liveCashId);
+  await client.query("savepoint chair_rental_post_close_void_acceptance");
+  await client.query(`
+    update public.daily_cash_registers
+       set close_mode = 'automatic', reconciliation_state = 'pending_confirmation', closed_at = pg_catalog.clock_timestamp()
+     where id = $1
+  `, [liveCashId]);
+  await client.query(
+    "select public.void_chair_rental_payment($1, $2, 'Acceptance post-close void')",
+    [ownerId, String(replacementRental.rows[0].confirm_chair_rental_payment.id)],
+  );
+  const rentalAdjustment = await client.query<{
+    gross_delta: number;
+    commission_delta: number;
+    barbershop_net_delta: number;
+    chair_rental_delta: number;
+  }>(`
+    select gross_delta::integer, commission_delta::integer, barbershop_net_delta::integer, chair_rental_delta::integer
+      from public.daily_cash_adjustments where source_income_id = $1
+  `, [replacementRentalIncomeId]);
+  assert.deepEqual(rentalAdjustment.rows[0], {
+    gross_delta: -21000,
+    commission_delta: 0,
+    barbershop_net_delta: -21000,
+    chair_rental_delta: -21000,
+  });
+  await client.query("rollback to savepoint chair_rental_post_close_void_acceptance");
+  pass("represent a post-close chair-rental void as one Caja adjustment");
   await client.query("savepoint live_cash_adjustment_acceptance");
   const adjustmentResult = await client.query<{ id: string }>(`
     insert into public.daily_cash_adjustments (
@@ -867,6 +1134,23 @@ const main = async () => {
     parsedReport.data.summary.grossIncome);
   assert.equal(parsedReport.data.paymentComposition.reduce((sum, item) => sum + item.amount, 0),
     parsedReport.data.summary.grossIncome);
+  assert.ok(parsedReport.data.chairRentals);
+  assert.equal(
+    parsedReport.data.chairRentals?.total,
+    Number(chairRentalBaseline.rows[0].total) + 21000,
+  );
+  assert.equal(
+    parsedReport.data.chairRentals?.count,
+    Number(chairRentalBaseline.rows[0].count) + 1,
+  );
+  const currentDateRental = parsedReport.data.chairRentals?.byEffectiveDate?.find(
+    (entry) => entry.date === businessDate.rows[0].business_date,
+  );
+  assert.deepEqual(currentDateRental, {
+    date: businessDate.rows[0].business_date,
+    amount: Number(chairRentalBaseline.rows[0].effective_total) + 21000,
+    count: Number(chairRentalBaseline.rows[0].effective_count) + 1,
+  });
   assert.equal(parsedReport.data.daily.length, parsedReport.data.period.elapsedDays);
   const employeePerformance = parsedReport.data.teamPerformance.find((member) => member.id === employeeId);
   const ownerPerformance = parsedReport.data.teamPerformance.find((member) => member.id === ownerId);
@@ -879,6 +1163,26 @@ const main = async () => {
   assert.equal(ownerPerformance.current.workedMinutes, null);
   assert.equal(ownerPerformance.current.grossPerHour, null);
   pass("project the manager business report with exact financial identities");
+
+  await client.query("savepoint demoted_rental_history_acceptance");
+  await client.query(`
+    select public.update_user_profile(
+      $1, $2,
+      false, null::text,
+      false, null::text,
+      true, 2::smallint,
+      false, null::boolean,
+      false, null::smallint,
+      false, null::smallint
+    )
+  `, [ownerId, employeeId]);
+  const demotedHistory = await client.query<{ get_chair_rental_detail: unknown }>(`
+    select public.get_chair_rental_detail($1, $2)
+  `, [managerId, employeeId]);
+  assert.equal(Array.isArray(demotedHistory.rows[0].get_chair_rental_detail), true);
+  assert.equal((demotedHistory.rows[0].get_chair_rental_detail as unknown[]).length, 2);
+  await client.query("rollback to savepoint demoted_rental_history_acceptance");
+  pass("retain rental history after an employee role transition");
 
   await expectDatabaseError("reject employee business reports", "MANAGER_REQUIRED", () =>
     client.query("select public.get_business_report($1, $2)", [employeeId, period.rows[0].period]));

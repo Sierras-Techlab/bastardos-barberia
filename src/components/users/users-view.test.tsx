@@ -15,6 +15,9 @@ const {
   resetAdminUserPassword,
   setAdminUserActive,
   deleteAdminUser,
+  getAgreement,
+  updateAgreement,
+  listChairRentals,
 } = vi.hoisted(() => ({
   router: { replace: vi.fn() },
   listAdminRoles: vi.fn(),
@@ -24,6 +27,9 @@ const {
   resetAdminUserPassword: vi.fn(),
   setAdminUserActive: vi.fn(),
   deleteAdminUser: vi.fn(),
+  getAgreement: vi.fn(),
+  updateAgreement: vi.fn(),
+  listChairRentals: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -41,6 +47,19 @@ vi.mock("@/lib/users/client", async (importOriginal) => {
     resetAdminUserPassword,
     setAdminUserActive,
     deleteAdminUser,
+  };
+});
+
+vi.mock("@/lib/chair-rentals/client", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/chair-rentals/client")>();
+  return {
+    ...original,
+    chairRentalClient: {
+      ...original.chairRentalClient,
+      agreement: getAgreement,
+      updateAgreement,
+      list: listChairRentals,
+    },
   };
 });
 
@@ -88,8 +107,17 @@ const page: PaginatedUsers = {
   totalPages: 1,
 };
 
+const agreement = {
+  serviceCommissionEnabled: true,
+  productCommissionEnabled: true,
+  chairRentalEnabled: true,
+  monthlyChairRentalAmount: 18000,
+  chairRentalEffectiveFrom: "2026-10",
+  chairRentalDueDay: 15,
+};
+
 const renderUsersWithToaster = () =>
-  render(<><UsersView currentUser={owner} /><DashboardToaster /></>);
+  render(<><UsersView currentUser={owner} currentPeriod="2026-08" /><DashboardToaster /></>);
 
 const expectToast = async (message: string) =>
   expect(
@@ -110,11 +138,39 @@ describe("UsersView", () => {
     vi.clearAllMocks();
     listAdminRoles.mockResolvedValue(roles);
     listAdminUsers.mockResolvedValue(page);
+    getAgreement.mockResolvedValue(agreement);
+    updateAgreement.mockResolvedValue(agreement);
+    listChairRentals.mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0, totalPages: 0 });
+  });
+
+  it("does not let a stale agreement response replace the employee currently open", async () => {
+    const browser = userEvent.setup();
+    let resolveFirst: ((value: typeof agreement) => void) | undefined;
+    getAgreement
+      .mockRejectedValueOnce(new Error("preload failed"))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockResolvedValueOnce({ ...agreement, chairRentalDueDay: 15 });
+
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
+    await screen.findByText("@lucia.ferreyra");
+    await openActions(browser, /Acciones de Luc/);
+    await browser.click(screen.getByRole("menuitem", { name: "Editar acuerdo" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando acuerdo");
+    await browser.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    await openActions(browser, /Acciones de Luc/);
+    await browser.click(screen.getByRole("menuitem", { name: "Editar acuerdo" }));
+    await screen.findByRole("button", { name: "Seleccionar mes de inicio" });
+    expect(screen.getByRole("button", { name: "Seleccionar día de vencimiento" })).toHaveTextContent("Día 15");
+
+    resolveFirst?.({ ...agreement, chairRentalDueDay: 3 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByRole("button", { name: "Seleccionar día de vencimiento" })).toHaveTextContent("Día 15");
   });
 
   it("loads users and applies manager filters", async () => {
     const browser = userEvent.setup();
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
 
     expect(screen.getByRole("heading", { name: "Usuarios" })).toBeVisible();
     expect(await screen.findByText("@lucia.ferreyra")).toBeVisible();
@@ -150,7 +206,7 @@ describe("UsersView", () => {
   it("shows a useful empty state after filters", async () => {
     listAdminUsers.mockResolvedValue({ ...page, items: [], total: 0, totalPages: 0 });
 
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
 
     expect(await screen.findByText("No encontramos usuarios")).toBeVisible();
     expect(screen.getByRole("button", { name: "Restablecer filtros" })).toBeVisible();
@@ -166,7 +222,7 @@ describe("UsersView", () => {
       ))
       .mockResolvedValueOnce(roles);
 
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
 
     expect(await screen.findByText("No pudimos cargar los roles.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Nuevo usuario" })).toBeDisabled();
@@ -186,7 +242,7 @@ describe("UsersView", () => {
       id: "00000000-0000-4000-8000-000000000003",
       username: "lucia.ferreyra2",
     });
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
     await screen.findByText("@lucia.ferreyra");
 
     await browser.click(screen.getByRole("button", { name: "Nuevo usuario" }));
@@ -234,6 +290,35 @@ describe("UsersView", () => {
       });
     });
     await expectToast("Datos del usuario actualizados.");
+  });
+
+  it("syncs disabled commission flags into the profile editor after saving the agreement", async () => {
+    const browser = userEvent.setup();
+    const disabledAgreement = {
+      ...agreement,
+      serviceCommissionEnabled: false,
+      productCommissionEnabled: false,
+    };
+    updateAgreement.mockResolvedValue(disabledAgreement);
+    renderUsersWithToaster();
+    await screen.findByText("@lucia.ferreyra");
+
+    await openActions(browser, /Acciones de Luc/);
+    await browser.click(screen.getByRole("menuitem", { name: "Editar acuerdo" }));
+    await screen.findByRole("checkbox", { name: "Comisión de servicios habilitada" });
+    await browser.click(screen.getByRole("checkbox", { name: "Comisión de servicios habilitada" }));
+    await browser.click(screen.getByRole("checkbox", { name: "Comisión de productos habilitada" }));
+    await browser.click(screen.getByRole("button", { name: "Guardar acuerdo" }));
+
+    await waitFor(() => expect(updateAgreement).toHaveBeenCalledWith(employee.id, expect.objectContaining({
+      serviceCommissionEnabled: false,
+      productCommissionEnabled: false,
+    })));
+
+    await openActions(browser, /Acciones de Luc/);
+    await browser.click(screen.getByRole("menuitem", { name: "Editar datos" }));
+    expect(screen.getAllByRole("spinbutton")[0]).toBeDisabled();
+    expect(screen.getAllByRole("spinbutton")[1]).toBeDisabled();
   });
 
   it("requires matching passwords before replacing credentials", async () => {
@@ -383,7 +468,7 @@ describe("UsersView", () => {
       };
     });
 
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
     await screen.findByText("@ana.garcia");
     await browser.click(screen.getByRole("button", { name: "Siguiente" }));
     await screen.findByText("@lucia.ferreyra");
@@ -439,7 +524,7 @@ describe("UsersView", () => {
       };
     });
 
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
     await screen.findByText("@lucia.ferreyra");
     await browser.selectOptions(screen.getByLabelText("Estado"), "active");
     await waitFor(() => {
@@ -467,7 +552,7 @@ describe("UsersView", () => {
 
   it("closes the action menu with Escape and restores trigger focus", async () => {
     const browser = userEvent.setup();
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
     await screen.findByText("@lucia.ferreyra");
 
     const trigger = screen.getByRole("button", { name: /Acciones de Luc/ });
@@ -483,7 +568,7 @@ describe("UsersView", () => {
 
   it("keeps self restrictions focusable and explains them accessibly", async () => {
     const browser = userEvent.setup();
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
     await screen.findByText("@ana.garcia");
 
     const trigger = screen.getByRole("button", { name: /Acciones de Ana/ });
@@ -519,7 +604,7 @@ describe("UsersView", () => {
         "Debe quedar al menos un owner activo.",
       ),
     );
-    render(<UsersView currentUser={owner} />);
+    render(<UsersView currentUser={owner} currentPeriod="2026-08" />);
     await screen.findByText("@lucia.ferreyra");
 
     await openActions(browser, /Acciones de Luc/);

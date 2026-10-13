@@ -59,6 +59,9 @@ export const cashSummarySchema = z
     barbershopNet: integer,
     serviceTotal: integer,
     productTotal: integer,
+    // Optional keeps the reader compatible with databases before migration 045;
+    // default makes the parsed contract uniform for the application.
+    chairRentalTotal: integer.optional(),
     saleCount: integer.nonnegative(),
     activeSaleCount: integer.nonnegative(),
     voidedSaleCount: integer.nonnegative(),
@@ -78,7 +81,7 @@ export const cashSummarySchema = z
         summary.commissionTotal &&
       summary.salesBarbershopNet + summary.adjustmentBarbershopNet ===
         summary.barbershopNet &&
-      summary.serviceTotal + summary.productTotal === summary.grossTotal &&
+      summary.serviceTotal + summary.productTotal + (summary.chairRentalTotal ?? 0) === summary.grossTotal &&
       summary.activeSaleCount + summary.voidedSaleCount ===
         summary.saleCount;
 
@@ -111,7 +114,7 @@ const cashSaleAuditItemSchema = z
     createdAt: z.iso.datetime({ offset: true }),
     employee: cashPersonSchema,
     customerName: z.string().min(1).nullable(),
-    kind: z.enum(["service", "products", "combined", "subscription"]),
+     kind: z.enum(["service", "products", "combined", "subscription", "chair_rental"]),
     statusAtClose: z.enum(["active", "voided"]),
     currentStatus: z.enum(["active", "voided"]),
     grossTotal: nonnegativeAmount,

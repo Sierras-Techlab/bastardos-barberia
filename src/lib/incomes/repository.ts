@@ -49,6 +49,7 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
     BASIS_POINTS_PAYMENTS_FORBIDDEN_FOR_MANAGER: ["BASIS_POINTS_PAYMENTS_FORBIDDEN_FOR_MANAGER", "Los porcentajes solo los usan los empleados.", 403],
     ZERO_TOTAL_SALE_REQUIRES_NO_PAYMENTS: ["ZERO_TOTAL_SALE_REQUIRES_NO_PAYMENTS", "Una venta sin cargo no admite medios de pago.", 400],
     CASH_ALREADY_CLOSED: ["CASH_ALREADY_CLOSED", "La caja del día ya está cerrada.", 409],
+    CHAIR_RENTAL_CANONICAL_VOID_REQUIRED: ["CHAIR_RENTAL_CANONICAL_VOID_REQUIRED", "Los alquileres se anulan desde su historial.", 409],
   };
   for (const [sentinel, [code, publicMessage, status]] of Object.entries(mappings)) {
     if (message.includes(sentinel)) throw new AppError(code, publicMessage, status);

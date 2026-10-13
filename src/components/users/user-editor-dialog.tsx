@@ -28,6 +28,7 @@ type UserEditorDialogProps = {
   onClose: () => void;
   onCreate: (input: FrontendCreateUserInput) => Promise<boolean>;
   onUpdate: (changes: FrontendUpdateUserInput) => Promise<void>;
+  canEditRates?: boolean;
 };
 
 const fieldClassName =
@@ -43,6 +44,7 @@ export const UserEditorDialog = ({
   onClose,
   onCreate,
   onUpdate,
+  canEditRates = true,
 }: UserEditorDialogProps) => {
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [lastName, setLastName] = useState(user?.lastName ?? "");
@@ -52,6 +54,12 @@ export const UserEditorDialog = ({
   const [serviceCommissionRate, setServiceCommissionRate] = useState(String(commissionUser?.serviceCommissionRate ?? 0));
   const [productCommissionRate, setProductCommissionRate] = useState(String(commissionUser?.productCommissionRate ?? 0));
   const [validationError, setValidationError] = useState<string | null>(null);
+  const serviceCommissionDisabled = mode === "edit"
+    && user?.role.name === "employee"
+    && commissionUser?.serviceCommissionEnabled === false;
+  const productCommissionDisabled = mode === "edit"
+    && user?.role.name === "employee"
+    && commissionUser?.productCommissionEnabled === false;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -96,8 +104,8 @@ export const UserEditorDialog = ({
     if (cleanFirstName !== user.firstName) changes.firstName = cleanFirstName;
     if (cleanLastName !== user.lastName) changes.lastName = cleanLastName;
     if (roleId !== user.role.id) changes.roleId = roleId;
-    if (parsedServiceCommissionRate !== commissionUser?.serviceCommissionRate) changes.serviceCommissionRate = parsedServiceCommissionRate;
-    if (parsedProductCommissionRate !== commissionUser?.productCommissionRate) changes.productCommissionRate = parsedProductCommissionRate;
+    if (!serviceCommissionDisabled && parsedServiceCommissionRate !== commissionUser?.serviceCommissionRate) changes.serviceCommissionRate = parsedServiceCommissionRate;
+    if (!productCommissionDisabled && parsedProductCommissionRate !== commissionUser?.productCommissionRate) changes.productCommissionRate = parsedProductCommissionRate;
     if (Object.keys(changes).length === 0) {
       onClose();
       return;
@@ -201,11 +209,13 @@ export const UserEditorDialog = ({
               <div className="grid gap-4 rounded-2xl bg-[#f7f6f3] p-4 sm:col-span-2 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por servicios (%)
-                  <Input type="number" min="0" max="100" step="1" value={serviceCommissionRate} onChange={(event) => setServiceCommissionRate(event.target.value)} className={fieldClassName} />
+                   <Input type="number" min="0" max="100" step="1" value={serviceCommissionDisabled ? "0" : serviceCommissionRate} disabled={serviceCommissionDisabled || pending} readOnly={!canEditRates} onChange={(event) => setServiceCommissionRate(event.target.value)} className={fieldClassName} aria-describedby={serviceCommissionDisabled ? "service-commission-disabled-help" : undefined} />
+                   {serviceCommissionDisabled && <span id="service-commission-disabled-help" className="block text-xs font-normal text-zinc-500">Deshabilitada por acuerdo. La tasa guardada se conserva para cuando se reactive.</span>}
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por productos (%)
-                  <Input type="number" min="0" max="100" step="1" value={productCommissionRate} onChange={(event) => setProductCommissionRate(event.target.value)} className={fieldClassName} />
+                   <Input type="number" min="0" max="100" step="1" value={productCommissionDisabled ? "0" : productCommissionRate} disabled={productCommissionDisabled || pending} readOnly={!canEditRates} onChange={(event) => setProductCommissionRate(event.target.value)} className={fieldClassName} aria-describedby={productCommissionDisabled ? "product-commission-disabled-help" : undefined} />
+                   {productCommissionDisabled && <span id="product-commission-disabled-help" className="block text-xs font-normal text-zinc-500">Deshabilitada por acuerdo. La tasa guardada se conserva para cuando se reactive.</span>}
                 </label>
                 <p className="text-xs text-zinc-500 sm:col-span-2">Los cambios se aplicarán a ventas futuras y no modificarán el historial.</p>
               </div>

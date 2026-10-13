@@ -35,7 +35,7 @@ export interface UserRepository {
   findById(id: string): Promise<SafeUser | null>;
   list(query: UserListQuery): Promise<PaginatedUsers>;
   create(input: NewUserRecord): Promise<SafeUser>;
-  update(id: string, changes: UserRecordChanges): Promise<SafeUser | null>;
+  update(id: string, changes: UserRecordChanges, actorId?: string): Promise<SafeUser | null>;
   softDelete(id: string, actorId: string, at: string): Promise<string | null>;
   recordFailedLogin(id: string, maxAttempts: number, attemptedAt: string, lockedUntil: string): Promise<void>;
   recordSuccessfulLogin(id: string, at: string): Promise<void>;

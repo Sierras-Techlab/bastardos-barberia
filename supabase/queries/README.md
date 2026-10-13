@@ -48,8 +48,9 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 42. `042_optional_customer_phone.sql`
 43. `043_initial_balance_cash_close_constraint.sql`
 44. `044_income_list_charged_totals.sql`
+45. `045_employee_commercial_agreements_and_chair_rentals.sql`
 
-Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `044` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
+Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `045` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
 
 ## Production paths
 
@@ -57,6 +58,7 @@ Run each entire file and stop if Supabase reports an error. Verify the complete 
 - Existing database already installed through `043`: back it up, execute only `044_income_list_charged_totals.sql`, then run the read-only audit and rollback-only database acceptance.
 - Existing database already installed through `042`: back it up, execute `043_initial_balance_cash_close_constraint.sql` and then `044_income_list_charged_totals.sql`, then run the read-only audit and rollback-only database acceptance.
 - Existing database already installed through `041`: back it up, execute `042_optional_customer_phone.sql`, `043_initial_balance_cash_close_constraint.sql` and then `044_income_list_charged_totals.sql`, then run the read-only audit and rollback-only database acceptance.
+- Existing database already installed through `044`: back it up, execute only `045_employee_commercial_agreements_and_chair_rentals.sql`, then run the read-only audit and rollback-only database acceptance.
 - Existing database already installed through production hardening `040`: back it up, execute `041_employee_service_prices_and_automatic_cash.sql` through `044_income_list_charged_totals.sql` in numeric order, then run the read-only audit and rollback-only database acceptance.
 - Existing database already installed through Reports migration `039`: back it up, execute `040_production_hardening.sql` through `044_income_list_charged_totals.sql` in numeric order, then run the read-only audit and rollback-only database acceptance.
 - Existing database installed only through `038`: apply the colleague-owned Reports migration `039` before `040_production_hardening.sql`.
@@ -103,6 +105,10 @@ If `016_payment_methods.sql` was installed before the product-availability proje
 `043_initial_balance_cash_close_constraint.sql` replaces only the legacy `daily_cash_counts_check` with the count invariant from canonical `022`. It permits automatic closure of a zero-sale `initial_balance` day without altering financial snapshots or reconciliation. Run it once after `042`; do not apply it to a configured database without an approved backup and deployment window.
 
 `044_income_list_charged_totals.sql` replaces only the installed `list_incomes` projection so `grossTotal` and `average` use active `incomes.total` charged snapshots rather than pre-adjustment catalog `gross_total`. It does not update income, item, payment, commission or Caja rows. Run it once after `043`; do not apply it to a configured database without an approved backup and deployment window.
+
+`045_employee_commercial_agreements_and_chair_rentals.sql` adds owner-controlled employee agreement flags, append-only agreement audit, chair-rental attempts and owner-only atomic confirm/void RPCs. Rentals use the Buenos Aires business date, immutable payment/name snapshots, active employee-period uniqueness and request idempotency; they never require a work session and snapshot zero commission with full barbershop net. It extends source constraints, RLS/grants and Caja kind validation without rewriting historical income rows. There is no destructive rollback migration: restore the approved backup if deployment must be reverted.
+
+Migration 045 exposes the canonical manager reads `get_employee_commercial_agreement`, `list_chair_rental_payments` and `get_chair_rental_detail`; the owner mutations are `update_employee_commercial_agreement(actor_user_id, target_employee_id, agreement jsonb)`, `confirm_chair_rental_payment(actor_user_id, target_employee_id, billed_period, target_payment_method_id, request_id)` and `void_chair_rental_payment(actor_user_id, target_payment_id, void_reason)`. The read projections derive Buenos Aires pending/overdue/paid/voided states and preserve voided attempts as audit history.
 
 Validate migration `026` authorization, lifecycle, concurrency, projections and Caja isolation without retaining temporary records. An exact void replay with the original pre-void `updatedAt` must return `EXPENSE_CONFLICT`; a request using the current voided version must return `EXPENSE_NOT_ACTIVE`. Neither retry may append a revision.
 

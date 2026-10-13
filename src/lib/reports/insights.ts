@@ -26,6 +26,7 @@ const incomeLabels: Record<IncomeBreakdownKey, string> = {
   services: "Los servicios",
   products: "Los productos",
   subscriptions: "Las mensualidades",
+  chair_rentals: "Los alquileres de silla",
 };
 const expenseLabels: Record<ExpenseBreakdownKey, string> = {
   fixed: "Los gastos fijos",

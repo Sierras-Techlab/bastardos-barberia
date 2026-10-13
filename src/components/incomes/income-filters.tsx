@@ -132,6 +132,7 @@ const FilterFields = ({
         <option value="service">Servicio</option>
         <option value="products">Productos</option>
         <option value="combined">Combinada</option>
+        <option value="chair_rental">Alquiler de silla</option>
       </select>
     </label>
   </div>
