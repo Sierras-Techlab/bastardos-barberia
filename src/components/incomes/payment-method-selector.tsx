@@ -1,22 +1,33 @@
 "use client";
 
-import { Plus, Split, Trash2, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { Equal, Plus, Split, Trash2, WalletCards } from "lucide-react";
+import { useEffect, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import type { IncomePaymentInput, PaymentMethod } from "@/types/payment-method";
 
-const isManagerPayment = (
-  payment: IncomePaymentInput,
-): payment is { paymentMethodId: string; amount: number } =>
+type AmountPayment = { paymentMethodId: string; amount: number };
+
+const isAmountPayment = (payment: IncomePaymentInput): payment is AmountPayment =>
   "amount" in payment;
 
-const isEmployeePayment = (
-  payment: IncomePaymentInput,
-): payment is { paymentMethodId: string; basisPoints: number } =>
-  "basisPoints" in payment;
+const distributeRemainder = (payments: AmountPayment[], total: number): AmountPayment[] => {
+  if (payments.length === 0) return [];
+  if (payments.length === 1) return [{ ...payments[0], amount: total }];
+
+  let remaining = total;
+  const editable = payments.slice(0, -1).map((payment) => {
+    const amount = Math.min(Math.max(0, payment.amount), remaining);
+    remaining -= amount;
+    return { ...payment, amount };
+  });
+  return [
+    ...editable,
+    { ...payments[payments.length - 1], amount: remaining },
+  ];
+};
 
 type Props = {
   mode?: "manager" | "employee";
@@ -27,106 +38,74 @@ type Props = {
   error?: string;
 };
 
-export const PaymentMethodSelector = ({ mode = "manager", methods, payments, total, onChange, error }: Props) => {
+export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, error }: Props) => {
   const activeMethods = useMemo(() => methods.filter((method) => method.isActive), [methods]);
   const activeIds = useMemo(() => new Set(activeMethods.map((method) => method.id)), [activeMethods]);
   const activeKey = activeMethods.map((method) => method.id).join(":");
-  const previousTotal = useRef(total);
 
   useEffect(() => {
-    if (mode === "employee") return;
     const seen = new Set<string>();
-    const valid = payments.filter((payment) => {
-      if (!isManagerPayment(payment)) return false;
+    const valid = payments.filter((payment): payment is AmountPayment => {
+      if (!isAmountPayment(payment)) return false;
       if (!activeIds.has(payment.paymentMethodId) || seen.has(payment.paymentMethodId)) return false;
       seen.add(payment.paymentMethodId);
       return true;
     });
     const next = valid.length > 0
-      ? valid
-      : activeMethods[0] && total
+      ? distributeRemainder(valid, total)
+      : activeMethods[0] && total > 0
         ? [{ paymentMethodId: activeMethods[0].id, amount: total }]
         : [];
 
     if (JSON.stringify(next) !== JSON.stringify(payments)) onChange(next);
-  }, [activeKey, activeIds, activeMethods, onChange, payments, total, mode]);
+  }, [activeKey, activeIds, activeMethods, onChange, payments, total]);
 
-  useEffect(() => {
-    if (mode === "employee" || !total) return;
-    const oldTotal = previousTotal.current;
-    previousTotal.current = total;
-    if (oldTotal !== total && payments.length === 1 && isManagerPayment(payments[0]) && payments[0].amount === oldTotal) {
-      onChange([{ paymentMethodId: payments[0].paymentMethodId, amount: total }]);
-    }
-  }, [onChange, payments, total, mode]);
-
-  const selectedIds = new Set(payments.map((payment) => payment.paymentMethodId));
-  const combined = payments.length > 1;
+  const amountPayments = payments.filter(isAmountPayment);
+  const selectedIds = new Set(amountPayments.map((payment) => payment.paymentMethodId));
+  const combined = amountPayments.length > 1;
 
   const selectSingle = (paymentMethodId: string) => {
     if (selectedIds.has(paymentMethodId)) return;
-    if (payments.length === 0) {
-      if (mode === "manager") {
-        onChange([{ paymentMethodId, amount: total ?? 0 }]);
-      } else {
-        onChange([{ paymentMethodId, basisPoints: 10000 }]);
-      }
+    if (amountPayments.length === 0) {
+      onChange([{ paymentMethodId, amount: total }]);
       return;
     }
-    if (mode === "manager") {
-      onChange([...payments, { paymentMethodId, amount: 0 }]);
-    } else {
-      onChange([...payments, { paymentMethodId, basisPoints: 0 }]);
-    }
+    onChange([...amountPayments, { paymentMethodId, amount: 0 }]);
   };
 
   const selectCombined = () => {
     if (combined) return;
-
-    const first = payments[0];
-    const current = first
-      ? isManagerPayment(first)
-        ? { paymentMethodId: first.paymentMethodId, amount: first.amount }
-        : isEmployeePayment(first)
-        ? { paymentMethodId: first.paymentMethodId, basisPoints: first.basisPoints }
-        : null
-      : null;
-    const additional = activeMethods.find((method) => method.id !== current?.paymentMethodId);
-
-    if (current && additional) {
-      if (mode === "manager") {
-        onChange([current as { paymentMethodId: string; amount: number }, { paymentMethodId: additional.id, amount: 0 }]);
-      } else {
-        onChange([current as { paymentMethodId: string; basisPoints: number }, { paymentMethodId: additional.id, basisPoints: 0 }]);
-      }
-    }
+    const first = amountPayments[0];
+    const additional = activeMethods.find((method) => method.id !== first?.paymentMethodId);
+    if (first && additional) onChange([first, { paymentMethodId: additional.id, amount: 0 }]);
   };
 
   const removePayment = (paymentMethodId: string) => {
-    onChange(payments.filter((payment) => payment.paymentMethodId !== paymentMethodId));
+    const remaining = amountPayments.filter((payment) => payment.paymentMethodId !== paymentMethodId);
+    onChange(distributeRemainder(remaining, total));
   };
 
-  const setManagerAmount = (paymentMethodId: string, amount: number) => {
-    const rest = payments.filter((payment) => payment.paymentMethodId !== paymentMethodId);
-    onChange([...rest, { paymentMethodId, amount: Math.max(0, Math.round(amount)) }]);
+  const setAmount = (paymentMethodId: string, requestedAmount: number) => {
+    const index = amountPayments.findIndex((payment) => payment.paymentMethodId === paymentMethodId);
+    if (index < 0 || index === amountPayments.length - 1) return;
+    const otherEditableTotal = amountPayments
+      .slice(0, -1)
+      .reduce((sum, payment, paymentIndex) => sum + (paymentIndex === index ? 0 : payment.amount), 0);
+    const amount = Math.min(Math.max(0, Math.round(requestedAmount)), Math.max(0, total - otherEditableTotal));
+    const next = amountPayments.map((payment, paymentIndex) =>
+      paymentIndex === index ? { ...payment, amount } : payment,
+    );
+    onChange(distributeRemainder(next, total));
   };
 
-  const setEmployeePercentage = (paymentMethodId: string, percentage: number) => {
-    const rest = payments.filter((payment) => payment.paymentMethodId !== paymentMethodId);
-    const boundedPercentage = Math.max(0, Math.min(100, percentage));
-    onChange([...rest, { paymentMethodId, basisPoints: Math.round(boundedPercentage * 100) }]);
+  const splitInHalf = () => {
+    if (amountPayments.length !== 2) return;
+    const firstHalf = Math.floor(total / 2);
+    onChange([
+      { ...amountPayments[0], amount: firstHalf },
+      { ...amountPayments[1], amount: total - firstHalf },
+    ]);
   };
-
-  const employeeTotalBasis = payments.reduce(
-    (sum, payment) => sum + (isEmployeePayment(payment) ? payment.basisPoints : 0),
-    0,
-  );
-  const employeeRemainingBasis = 10000 - employeeTotalBasis;
-  const managerTotalAmount = payments.reduce(
-    (sum, payment) => sum + (isManagerPayment(payment) ? payment.amount : 0),
-    0,
-  );
-  const managerRemainingAmount = (total ?? 0) - managerTotalAmount;
 
   return (
     <div className="space-y-3">
@@ -134,124 +113,63 @@ export const PaymentMethodSelector = ({ mode = "manager", methods, payments, tot
         {activeMethods.map((method) => {
           const isSelected = selectedIds.has(method.id);
           return (
-            <Button
-              key={method.id}
-              type="button"
-              variant={isSelected ? "default" : "outline"}
-              size="sm"
-              aria-pressed={isSelected}
-              onClick={() => selectSingle(method.id)}
-              className="rounded-xl"
-            >
+            <Button key={method.id} type="button" variant={isSelected ? "default" : "outline"} size="sm" aria-pressed={isSelected} onClick={() => selectSingle(method.id)} className="rounded-xl">
               {isSelected ? <WalletCards /> : <Plus />}
               {method.name}
             </Button>
           );
         })}
-        {mode === "manager" && activeMethods.length >= 2 && !combined && payments.length < activeMethods.length && payments.length > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-pressed={false}
-            onClick={selectCombined}
-            className="rounded-xl"
-          >
+        {activeMethods.length >= 2 && !combined && amountPayments.length < activeMethods.length && amountPayments.length > 0 && (
+          <Button type="button" variant="ghost" size="sm" aria-pressed={false} onClick={selectCombined} className="rounded-xl">
             <Split /> Combinado
           </Button>
         )}
       </div>
 
-      {payments.length > 0 && (
+      {combined && amountPayments.length === 2 && (
+        <Button type="button" variant="outline" size="sm" onClick={splitInHalf} className="rounded-xl">
+          <Equal /> Mitad y mitad
+        </Button>
+      )}
+
+      {amountPayments.length > 0 && (
         <div className="space-y-2">
-          {payments.map((payment) => {
+          {amountPayments.map((payment, index) => {
             const method = activeMethods.find((candidate) => candidate.id === payment.paymentMethodId);
             if (!method) return null;
-            if (mode === "manager" && isManagerPayment(payment)) {
-              return (
-                <div key={method.id} className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2">
-                  <span className="flex-1 text-sm font-medium">{method.name}</span>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    step="1"
-                    value={String(payment.amount)}
-                    onChange={(event) => setManagerAmount(method.id, Number(event.target.value || 0))}
-                    className="h-9 w-28 rounded-lg text-right"
-                    aria-label={`Monto en ${method.name}`}
-                  />
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removePayment(method.id)} aria-label={`Quitar ${method.name}`} className="rounded-lg">
-                    <Trash2 />
-                  </Button>
+            const isRemainder = combined && index === amountPayments.length - 1;
+            return (
+              <div key={method.id} className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{method.name}</span>
+                  {isRemainder && <span className="text-xs text-muted-foreground">Resto</span>}
                 </div>
-              );
-            }
-            if (mode === "employee" && isEmployeePayment(payment)) {
-              return (
-                <div key={method.id} className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2">
-                  <span className="flex-1 text-sm font-medium">{method.name}</span>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={String(payment.basisPoints / 100)}
-                    onChange={(event) => setEmployeePercentage(method.id, Number(event.target.value || 0))}
-                    className="h-9 w-24 rounded-lg text-right"
-                    aria-label={`Porcentaje en ${method.name}`}
-                  />
-                  <span className="text-xs text-muted-foreground">%</span>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removePayment(method.id)} aria-label={`Quitar ${method.name}`} className="rounded-lg">
-                    <Trash2 />
-                  </Button>
-                </div>
-              );
-            }
-            return null;
+                <span className="text-sm text-muted-foreground">$</span>
+                <Input type="number" inputMode="numeric" min="0" max={total} step="1" value={String(payment.amount)} disabled={isRemainder || !combined} onChange={(event) => setAmount(method.id, Number(event.target.value || 0))} className="h-9 w-32 rounded-lg text-right" aria-label={`Monto en ${method.name}`} />
+                <Button type="button" variant="ghost" size="icon" onClick={() => removePayment(method.id)} aria-label={`Quitar ${method.name}`} className="rounded-lg">
+                  <Trash2 />
+                </Button>
+              </div>
+            );
           })}
         </div>
       )}
 
-      {mode === "manager" && combined && payments.length > 0 && (
-        <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${
-          managerRemainingAmount === 0
-            ? "bg-emerald-50 text-emerald-700"
-            : managerRemainingAmount > 0
-              ? "bg-amber-50 text-amber-700"
-              : "bg-red-50 text-red-700"
-        }`}>
-          <span className="font-medium">
-            {managerRemainingAmount === 0
-              ? "Importe distribuido correctamente"
-              : managerRemainingAmount > 0
-                ? `Faltan ${formatArs(managerRemainingAmount)}`
-                : `Sobran ${formatArs(Math.abs(managerRemainingAmount))}`}
-          </span>
-          <span className="text-xs">{payments.length} medios</span>
+      {combined && amountPayments.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <span className="font-medium">Importe distribuido correctamente</span>
+          <span className="text-xs">{amountPayments.length} medios</span>
         </div>
       )}
 
-      {mode === "manager" && !combined && payments.length > 0 && isManagerPayment(payments[0]) && (
+      {!combined && amountPayments.length > 0 && (
         <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          <span className="font-medium">Asignado {formatArs(payments[0].amount)}</span>
+          <span className="font-medium">Asignado {formatArs(amountPayments[0].amount)}</span>
           <span className="text-xs text-muted-foreground">Método único</span>
         </div>
       )}
 
-      {mode === "employee" && payments.length > 0 && (
-        <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${employeeRemainingBasis === 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-          <span className="font-medium">Porcentaje distribuido</span>
-          <span>{employeeTotalBasis / 100}% / 100%</span>
-        </div>
-      )}
-
-      {error && (
-        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
     </div>
   );
 };

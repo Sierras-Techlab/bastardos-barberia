@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Plus, RefreshCcw, ShieldCheck, TriangleAlert, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarDays, Eye, Plus, RefreshCcw, ShieldCheck, TriangleAlert, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -40,6 +40,14 @@ const formatLongDate = (date: string) =>
     weekday: "long",
     day: "numeric",
     month: "long",
+    year: "numeric",
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(new Date(`${date}T12:00:00-03:00`));
+
+const formatShortDate = (date: string) =>
+  new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "short",
     year: "numeric",
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date(`${date}T12:00:00-03:00`));
@@ -197,7 +205,7 @@ export const CashView = ({
         )}
 
         <div className={`mt-5 transition-opacity ${loadingDay ? "opacity-45" : ""}`}>
-          <CashSummaryCards summary={day.summary} />
+          <CashSummaryCards summary={day.summary} sales={day.sales} />
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -216,6 +224,24 @@ export const CashView = ({
               <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Ajustes auditados</p>
               <p className="mt-2 text-lg font-semibold">{day.adjustments.length} {day.adjustments.length === 1 ? "anulación posterior" : "anulaciones posteriores"}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">Impacto neto: {formatArs(day.summary.adjustmentBarbershopNet)}</p>
+              <ul className="mt-4 space-y-2 border-t border-primary/10 pt-3">
+                {day.adjustments.map((adjustment) => (
+                  <li key={adjustment.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-3 ring-1 ring-primary/10">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Anulación posterior</p>
+                      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                        Ingreso original del {formatShortDate(adjustment.originalBusinessDate)} · {adjustment.createdBy.firstName} {adjustment.createdBy.lastName}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-sm font-semibold text-red-600">{formatArs(adjustment.grossDelta)}</span>
+                      <Button type="button" variant="ghost" size="icon" aria-label="Ver ingreso anulado" onClick={() => void openIncome(adjustment.sourceIncomeId)}>
+                        <Eye />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
         </div>

@@ -12,6 +12,7 @@ const report = {
   period: { from: "2026-08-01", to: "2026-08-25", elapsedDays: 25, daysInMonth: 31, isCurrentMonth: true },
   comparison: { month: "2026-07", from: "2026-07-01", to: "2026-07-25" },
   summary: { grossIncome: 0, commission: 0, barbershopNet: 0, expenses: 0, operatingResult: 0, operatingMarginBps: null },
+  chairRentals: { total: 0, count: 0, byEffectiveDate: [], payingEmployees: [], pending: [], overdue: [] },
   previousSummary: { grossIncome: 0, commission: 0, barbershopNet: 0, expenses: 0, operatingResult: 0, operatingMarginBps: null },
   projection: { grossIncome: 0, commission: 0, barbershopNet: 0, expenses: 0, operatingResult: 0, operatingMarginBps: null },
   daily: [{ day: 1, selected: { grossIncome: 0, expenses: 0, operatingResult: 0 }, previous: { grossIncome: 0, expenses: 0, operatingResult: 0 } }],

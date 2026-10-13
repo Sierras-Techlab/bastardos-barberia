@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -265,5 +265,93 @@ describe("CashView", () => {
     />);
 
     expect(screen.getByRole("button", { name: "Confirmar conteo" })).toBeVisible();
+  });
+
+  it("explains when a post-close cancellation offsets an active rental", () => {
+    const rentalDay: CashDay = {
+      ...liveDay,
+      summary: {
+        ...summary,
+        salesGrossTotal: 360000,
+        salesCommissionTotal: 0,
+        salesBarbershopNet: 360000,
+        adjustmentGrossTotal: -360000,
+        adjustmentCommissionTotal: 0,
+        adjustmentBarbershopNet: -360000,
+        grossTotal: 0,
+        commissionTotal: 0,
+        barbershopNet: 0,
+        serviceTotal: 0,
+        productTotal: 0,
+        chairRentalTotal: 0,
+        saleCount: 1,
+        activeSaleCount: 1,
+        voidedSaleCount: 0,
+        adjustmentCount: 1,
+      },
+      payments: [{
+        paymentMethodId: id,
+        name: "Transferencia",
+        salesAmount: 360000,
+        adjustmentAmount: -360000,
+        netAmount: 0,
+      }],
+      sales: [{
+        ...liveDay.sales[0],
+        kind: "chair_rental",
+        grossTotal: 360000,
+        commissionTotal: 0,
+        barbershopNet: 360000,
+      }],
+      adjustments: [{
+        id: "40000000-0000-4000-8000-000000000001",
+        sourceIncomeId: incomeId,
+        originalBusinessDate: "2026-08-14",
+        createdAt: "2026-08-15T15:05:00.000Z",
+        createdBy: { id, firstName: "Lauti", lastName: "Bastardos" },
+        grossDelta: -360000,
+        commissionDelta: 0,
+        barbershopNetDelta: -360000,
+      }],
+    };
+
+    render(<CashView initialDay={rentalDay} initialHistory={history} viewerRole="owner" />);
+
+    expect(screen.getAllByText(/antes de anulaciones posteriores/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Cobros/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Ajuste de anulación posterior/i)).toBeVisible();
+    expect(screen.getByText("Alquileres de silla")).toBeVisible();
+    expect(screen.getByText("Anulación posterior")).toBeVisible();
+    expect(screen.getByText(/compensa el ingreso original/i)).toBeVisible();
+    expect(screen.getByText(/Ingreso original del/i)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Ver ingreso anulado" })).toBeVisible();
+  });
+
+  it("shows a same-day void as excluded from the selected day's amounts", () => {
+    const voidedDay: CashDay = {
+      ...liveDay,
+      summary: {
+        ...summary,
+        salesGrossTotal: 0,
+        salesCommissionTotal: 0,
+        salesBarbershopNet: 0,
+        grossTotal: 0,
+        commissionTotal: 0,
+        barbershopNet: 0,
+        serviceTotal: 0,
+        productTotal: 0,
+        saleCount: 1,
+        activeSaleCount: 0,
+        voidedSaleCount: 1,
+      },
+      payments: [{ ...liveDay.payments[0], salesAmount: 0, netAmount: 0 }],
+      sales: [{ ...liveDay.sales[0], statusAtClose: "voided", currentStatus: "voided" }],
+    };
+
+    render(<CashView initialDay={voidedDay} initialHistory={history} viewerRole="owner" />);
+
+    const row = screen.getByRole("row", { name: /Anulada/ });
+    expect(within(row).getByText("Excluida del neto")).toBeVisible();
+    expect(within(row).getAllByText(/\$.*0/)).toHaveLength(2);
   });
 });

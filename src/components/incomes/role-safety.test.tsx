@@ -19,7 +19,7 @@ const employeeFormData: IncomeFormData = {
   viewer: "employee",
   currentUser: { id: employeeId, firstName: "Fer", lastName: "Pérez", role: "employee" },
   services: [{ id: serviceId, name: "Corte", price: 10000, earning: 5000, commissionRate: 50 }],
-  products: [{ id: productId, name: "Cera", earning: 500, stock: 3 }],
+  products: [{ id: productId, name: "Cera", price: 5000, earning: 500, stock: 3 }],
   customers: [],
   paymentMethods: [
     { id: cashId, name: "Efectivo", isActive: true },
@@ -32,7 +32,7 @@ const employeeFormValues: EmployeeIncomeFormValues = {
   customerId: null,
   serviceId,
   products: [{ productId, quantity: 1, grantFullCommission: true }],
-  payments: [{ paymentMethodId: cashId, basisPoints: 10000 }],
+  payments: [{ paymentMethodId: cashId, amount: 15000 }],
   grantFullServiceCommission: true,
   servicePriceOverride: null,
   productPriceOverrides: [],
@@ -80,7 +80,7 @@ const captureCreate = () => {
   return { client, calls };
 };
 
-const FORBIDDEN_KEYS = ["catalogUnitPrice", "total", "barbershopNet", "registeredBy", "amount"];
+const FORBIDDEN_KEYS = ["catalogUnitPrice", "total", "barbershopNet", "registeredBy"];
 
 describe("020 application layer role safety", () => {
   it("hides the manager-only professional selector and renders the form for an employee", () => {
@@ -91,9 +91,9 @@ describe("020 application layer role safety", () => {
     expect(screen.getByText("Cera")).toBeInTheDocument();
   });
 
-  it("exposes only service prices through the serialized employee form data", () => {
+  it("exposes line prices needed to enter exact payment amounts", () => {
     expect(employeeFormData.services[0]).toMatchObject({ price: 10000 });
-    expect(employeeFormData.products[0]).not.toHaveProperty("price");
+    expect(employeeFormData.products[0]).toMatchObject({ price: 5000 });
     expect(JSON.stringify(employeeFormData)).not.toMatch(/\bcatalogUnitPrice\b/i);
     expect(JSON.stringify(employeeFormData)).not.toMatch(/\bchargedUnitPrice\b/i);
     expect(JSON.stringify(employeeFormData)).not.toMatch(/\btotal\b/i);
@@ -144,7 +144,7 @@ describe("020 application layer role safety", () => {
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     await waitFor(() => expect(calls).toHaveLength(1));
     const input = calls[0];
-    expect(input.payments).toEqual([{ paymentMethodId: cashId, basisPoints: 10000 }]);
+    expect(input.payments).toEqual([{ paymentMethodId: cashId, amount: 12000 }]);
     expect(input.servicePriceOverride).toEqual({ chargedUnitPrice: 7000, reason: "Precio acordado" });
     expect(input).not.toHaveProperty("productPriceOverrides");
     FORBIDDEN_KEYS.forEach((key) => {
@@ -219,8 +219,8 @@ describe("020 application layer role safety", () => {
     const transferenciaInput = screen.getByLabelText("Monto en Transferencia");
     await user.clear(efectivoInput);
     await user.type(efectivoInput, "10000");
-    await user.clear(transferenciaInput);
-    await user.type(transferenciaInput, "5000");
+    expect(transferenciaInput).toBeDisabled();
+    expect(transferenciaInput).toHaveValue(5000);
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     await waitFor(() => expect(calls).toHaveLength(1));
@@ -231,15 +231,16 @@ describe("020 application layer role safety", () => {
     ]);
   });
 
-  it("forbids negative payment allocations", async () => {
+  it("clamps a combined allocation so it cannot exceed the sale total", async () => {
     const user = userEvent.setup();
     const client: Pick<IncomeClient, "create"> = { create: vi.fn() };
     render(<IncomeForm data={managerFormData} incomeClient={client} />);
     await user.click(screen.getByRole("button", { name: /Corte/i }));
+    await user.click(screen.getByRole("button", { name: /Transferencia/i }));
     const efectivoInput = screen.getByLabelText("Monto en Efectivo");
     await user.clear(efectivoInput);
-    await user.type(efectivoInput, "-100");
-    await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
-    expect(screen.getAllByRole("alert").some((node) => /distribu/i.test(node.textContent ?? ""))).toBe(true);
+    await user.type(efectivoInput, "20000");
+    expect(efectivoInput).toHaveValue(10000);
+    expect(screen.getByLabelText("Monto en Transferencia")).toHaveValue(0);
   });
 });

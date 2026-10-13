@@ -41,6 +41,11 @@ export const CommissionPreview = ({
       : fallbackEmployee);
   if (!employee) return null;
 
+  const serviceCommissionEnabled = employee.role !== "employee" || employee.serviceCommissionEnabled !== false;
+  const productCommissionEnabled = employee.role !== "employee" || employee.productCommissionEnabled !== false;
+  const effectiveServiceRate = serviceCommissionEnabled ? employee.serviceCommissionRate : 0;
+  const effectiveProductRate = productCommissionEnabled ? employee.productCommissionRate : 0;
+
   if (data.viewer === "employee") {
     const service = data.services.find((item) => item.id === values.serviceId);
     const serviceEarning = service
@@ -93,9 +98,9 @@ export const CommissionPreview = ({
     responsibleRole: employee?.role ?? "employee",
     serviceBase,
     serviceChargedBase,
-    serviceRate: employee?.serviceCommissionRate ?? 0,
-    productRate: employee?.productCommissionRate ?? 0,
-    grantFullServiceCommission: values.grantFullServiceCommission,
+    serviceRate: effectiveServiceRate,
+    productRate: effectiveProductRate,
+    grantFullServiceCommission: values.grantFullServiceCommission && serviceCommissionEnabled,
     products: values.products.flatMap((item) => {
       const product = data.products.find(
         (candidate) => candidate.id === item.productId,
@@ -107,6 +112,7 @@ export const CommissionPreview = ({
         ? [
             {
               ...item,
+              grantFullCommission: item.grantFullCommission && productCommissionEnabled,
               price: product.price,
               chargedUnitPrice: productOverride?.chargedUnitPrice,
             },
@@ -120,7 +126,8 @@ export const CommissionPreview = ({
     manager &&
     employee?.role !== "owner" &&
     Boolean(service) &&
-    employee?.id !== data.currentUser.id;
+    employee?.id !== data.currentUser.id &&
+    serviceCommissionEnabled;
   return (
     <section
       aria-label="Comisión estimada"

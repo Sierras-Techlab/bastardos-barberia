@@ -234,6 +234,7 @@ describe("user repository mappers", () => {
     });
 
     expect(rpc).toHaveBeenCalledWith("update_user_profile", expect.objectContaining({
+      actor_user_id: row.id,
       target_user_id: row.id,
       set_first_name: true,
       new_first_name: "Juana",

@@ -13,7 +13,7 @@ export type DailyReportMetrics = {
   operatingResult: number;
 };
 
-export type IncomeBreakdownKey = "services" | "products" | "subscriptions";
+export type IncomeBreakdownKey = "services" | "products" | "subscriptions" | "chair_rentals";
 export type ExpenseBreakdownKey = "fixed" | "variable" | "supplies";
 
 export type ReportBreakdown = {
@@ -48,6 +48,34 @@ export type ReportTeamMember = {
   previous: ReportTeamMetrics;
 };
 
+export type ChairRentalObligation = {
+  employeeId: string;
+  employeeName: string;
+  period: string;
+  amount: number;
+  dueDay: number;
+  status: "pending" | "overdue";
+};
+export type ChairRentalPayer = {
+  employeeId: string;
+  employeeName: string;
+  amount: number;
+  paymentCount: number;
+};
+export type ChairRentalEffectiveDate = {
+  date: string;
+  amount: number;
+  count: number;
+};
+export type ChairRentalSummary = {
+  total: number;
+  count: number;
+  byEffectiveDate?: ChairRentalEffectiveDate[];
+  payingEmployees: ChairRentalPayer[];
+  pending: ChairRentalObligation[];
+  overdue: ChairRentalObligation[];
+};
+
 export type BusinessReport = {
   month: string;
   availableMonths: string[];
@@ -65,6 +93,7 @@ export type BusinessReport = {
     to: string;
   };
   summary: ReportMetrics;
+  chairRentals?: ChairRentalSummary;
   previousSummary: ReportMetrics;
   projection: ReportMetrics | null;
   daily: Array<{

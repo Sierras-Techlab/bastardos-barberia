@@ -113,8 +113,8 @@ const NewIncomePage = async () => {
     lastName: user.lastName,
     role: user.role.name,
   };
-  const employeeServiceRate = user.role.name === "employee" ? user.serviceCommissionRate : 0;
-  const employeeProductRate = user.role.name === "employee" ? user.productCommissionRate : 0;
+  const employeeServiceRate = user.role.name === "employee" && user.serviceCommissionEnabled !== false ? user.serviceCommissionRate : 0;
+  const employeeProductRate = user.role.name === "employee" && user.productCommissionEnabled !== false ? user.productCommissionRate : 0;
   const data: IncomeFormData = viewer === "manager"
     ? {
         viewer,
@@ -131,6 +131,8 @@ const NewIncomePage = async () => {
           isActive: candidate.isActive,
           serviceCommissionRate: candidate.serviceCommissionRate,
           productCommissionRate: candidate.productCommissionRate,
+          serviceCommissionEnabled: candidate.serviceCommissionEnabled,
+          productCommissionEnabled: candidate.productCommissionEnabled,
         })),
       }
     : {
@@ -146,6 +148,7 @@ const NewIncomePage = async () => {
         products: products.map((product) => ({
           id: product.id,
           name: product.name,
+          price: product.price,
           earning: Math.round((product.price * employeeProductRate) / 100),
           stock: product.stock,
         })),

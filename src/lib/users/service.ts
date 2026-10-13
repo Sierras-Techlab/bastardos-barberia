@@ -1,6 +1,6 @@
 import "server-only";
 
-import { assertManager } from "@/lib/auth/authorization";
+import { assertManager, assertOwner } from "@/lib/auth/authorization";
 import { AppError } from "@/lib/auth/errors";
 import { hashPassword } from "@/lib/auth/password";
 import type { SessionRepository, UserRepository } from "@/lib/auth/repository-contracts";
@@ -39,6 +39,9 @@ export const getUser = async (actor: SafeUser, id: string, dependencies = defaul
 
 export const createUser = async (actor: SafeUser, input: CreateUserInput, dependencies = defaultDependencies) => {
   assertManager(actor);
+  if (actor.role.name !== "owner" && (input.serviceCommissionRate !== 0 || input.productCommissionRate !== 0)) {
+    throw new AppError("FORBIDDEN", "Solo un owner puede configurar comisiones.", 403);
+  }
   const passwordHash = await dependencies.hashPassword(input.password);
   return dependencies.users.create({
     firstName: input.firstName,
@@ -59,7 +62,27 @@ export const updateUser = async (
   now = new Date(),
 ) => {
   assertManager(actor);
+  if (changes.serviceCommissionRate !== undefined || changes.productCommissionRate !== undefined) {
+    assertOwner(actor);
+  }
   const target = await requireTarget(id, dependencies);
+
+  if (target.role.name === "employee") {
+    if (changes.serviceCommissionRate !== undefined && target.serviceCommissionEnabled === false) {
+      throw new AppError(
+        "COMMISSION_DISABLED",
+        "La comisión de servicios está deshabilitada en el acuerdo del empleado. Reactivala antes de cambiar la tasa.",
+        409,
+      );
+    }
+    if (changes.productCommissionRate !== undefined && target.productCommissionEnabled === false) {
+      throw new AppError(
+        "COMMISSION_DISABLED",
+        "La comisión de productos está deshabilitada en el acuerdo del empleado. Reactivala antes de cambiar la tasa.",
+        409,
+      );
+    }
+  }
 
   if (actor.id === id && changes.isActive === false) {
     throw new AppError("CANNOT_DEACTIVATE_SELF", "No podés desactivar tu propia cuenta.", 409);
@@ -72,7 +95,7 @@ export const updateUser = async (
     throw new AppError("LAST_OWNER_REQUIRED", "Debe quedar al menos un owner activo.", 409);
   }
 
-  const updated = await dependencies.users.update(id, changes);
+  const updated = await dependencies.users.update(id, changes, actor.id);
   if (!updated) throw new AppError("USER_NOT_FOUND", "Usuario no encontrado.", 404);
   if (changes.isActive === false) {
     await dependencies.sessions.revokeAllForUser(id, now.toISOString());

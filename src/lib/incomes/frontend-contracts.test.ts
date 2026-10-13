@@ -137,4 +137,22 @@ describe("managerIncomeResponseSchema", () => {
   it("accepts the manager shape with charged-price snapshots", () => {
     expect(managerIncomeResponseSchema.safeParse(managerItem).success).toBe(true);
   });
+
+  it("accepts all SQL chair-rental fields in the manager projection", () => {
+    const rental = {
+      ...managerItem,
+      customer: null,
+      service: null,
+      products: [],
+      payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", methodName: "Transferencia", amount: 20000 }],
+      commission: { total: 0, barbershopNet: 20000 },
+      total: 20000,
+      grossTotal: 20000,
+      sourceType: "chair_rental",
+      chairRentalPeriod: "2026-08",
+      paidAt: "2026-08-22T12:00:00.000Z",
+    };
+    expect(managerIncomeResponseSchema.safeParse(rental).success).toBe(true);
+    expect(employeeIncomeResponseSchema.safeParse({ ...employeeBase, sourceType: "chair_rental" }).success).toBe(false);
+  });
 });

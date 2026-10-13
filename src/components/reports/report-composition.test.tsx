@@ -12,3 +12,22 @@ it("explains income, payment and expense composition with semantic bars", () => 
   expect(screen.getByText("Efectivo")).toBeVisible();
   expect(screen.getAllByRole("meter").length).toBeGreaterThan(3);
 });
+
+it("uses singular labels for one rental payment", () => {
+  render(<ReportComposition
+    income={[]}
+    payments={[]}
+    expenses={[]}
+    chairRentals={{
+      total: 18000,
+      count: 1,
+      byEffectiveDate: [{ date: "2026-10-05", amount: 18000, count: 1 }],
+      payingEmployees: [{ employeeId: "employee-1", employeeName: "Lucía Ferreyra", amount: 18000, paymentCount: 1 }],
+      pending: [],
+      overdue: [],
+    }}
+  />);
+
+  expect(screen.getByText("1 pago efectivo")).toBeVisible();
+  expect(screen.getByText(/1 pago$/)).toBeVisible();
+});

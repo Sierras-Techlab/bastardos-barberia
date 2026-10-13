@@ -72,9 +72,11 @@ const main = async () => {
     cash_expected_scoped: boolean;
     employee_agenda_scoped: boolean;
     employee_attendance_scoped: boolean;
+    chair_rental_report_dates: boolean;
     manual_cash_function_count: number;
     customer_phone_nullable: boolean;
     customer_normalized_phone_nullable: boolean;
+    agreement_tables: number;
   }>(`
     with required_functions(name) as (
       values
@@ -83,15 +85,19 @@ const main = async () => {
         ('list_fixed_customer_occurrences'), ('resolve_fixed_customer_occurrence'),
         ('close_pending_daily_cash'), ('confirm_daily_cash'),
         ('set_daily_cash_opening_balance'),
-        ('create_expense'), ('update_expense'), ('void_expense')
+         ('create_expense'), ('update_expense'), ('void_expense')
+         ,('get_employee_commercial_agreement'), ('list_chair_rental_payments'), ('get_chair_rental_detail')
+         ,('confirm_chair_rental_payment'), ('void_chair_rental_payment'), ('update_employee_commercial_agreement'), ('chair_rental_month_summary')
     ), definitions as (
       select p.proname, lower(pg_catalog.pg_get_functiondef(p.oid)) as body
         from pg_catalog.pg_proc p
         join pg_catalog.pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public'
          and p.proname in (
-           'cash_day_as_json', 'list_customer_visits', 'list_fixed_customer_occurrences',
-           'resolve_fixed_customer_occurrence', 'void_income'
+           'cash_day_as_json', 'cash_day_as_json_045_base',
+           'list_customer_visits', 'list_fixed_customer_occurrences',
+           'resolve_fixed_customer_occurrence', 'void_income', 'void_income_045_base',
+           'chair_rental_month_summary'
          )
     )
     select
@@ -115,10 +121,11 @@ const main = async () => {
         join pg_catalog.pg_class t on t.oid = c.conrelid
        where t.relname = 'incomes' and c.conname = 'incomes_payment_method_check') as legacy_payment_constraint,
       coalesce((select body like '%source_type = ''sale''%' from definitions where proname = 'list_customer_visits'), false) as visit_history_scoped,
-      coalesce((select body like '%source_type = ''sale''%' from definitions where proname = 'void_income'), false) as subscription_void_scoped,
-      coalesce((select body like '%current_cash_expected%' from definitions where proname = 'cash_day_as_json'), false) as cash_expected_scoped,
+      coalesce((select bool_or(body like '%source_type = ''sale''%') from definitions where proname in ('void_income','void_income_045_base')), false) as subscription_void_scoped,
+      coalesce((select bool_or(body like '%current_cash_expected%') from definitions where proname in ('cash_day_as_json','cash_day_as_json_045_base')), false) as cash_expected_scoped,
       coalesce((select body like '%responsible_user_id%' from definitions where proname = 'list_fixed_customer_occurrences'), false) as employee_agenda_scoped,
-      coalesce((select body like '%responsible_user_id%' from definitions where proname = 'resolve_fixed_customer_occurrence'), false) as employee_attendance_scoped,
+       coalesce((select body like '%responsible_user_id%' from definitions where proname = 'resolve_fixed_customer_occurrence'), false) as employee_attendance_scoped,
+       coalesce((select body like '%byeffectivedate%' from definitions where proname = 'chair_rental_month_summary'), false) as chair_rental_report_dates,
       (select count(*)::integer
          from pg_catalog.pg_proc p
          join pg_catalog.pg_namespace n on n.oid = p.pronamespace
@@ -129,11 +136,15 @@ const main = async () => {
          where c.table_schema = 'public'
            and c.table_name = 'customers'
            and c.column_name = 'phone'), false) as customer_phone_nullable
-      , coalesce((select c.is_nullable = 'YES'
-          from information_schema.columns c
-         where c.table_schema = 'public'
-           and c.table_name = 'customers'
-           and c.column_name = 'normalized_phone'), false) as customer_normalized_phone_nullable
+       , coalesce((select c.is_nullable = 'YES'
+           from information_schema.columns c
+          where c.table_schema = 'public'
+            and c.table_name = 'customers'
+            and c.column_name = 'normalized_phone'), false) as customer_normalized_phone_nullable
+       , (select count(*)::integer
+            from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public'
+             and c.relname in ('employee_commercial_agreement_audit','chair_rental_payment_attempts','chair_rental_obligations')) as agreement_tables
   `);
 
   const state = finalState.rows[0];
@@ -146,10 +157,12 @@ const main = async () => {
   assert.equal(state.subscription_void_scoped, true);
   assert.equal(state.cash_expected_scoped, true);
   assert.equal(state.employee_agenda_scoped, true);
-  assert.equal(state.employee_attendance_scoped, true);
+   assert.equal(state.employee_attendance_scoped, true);
+   assert.equal(state.chair_rental_report_dates, true);
   assert.equal(state.manual_cash_function_count, 0);
   assert.equal(state.customer_phone_nullable, true);
   assert.equal(state.customer_normalized_phone_nullable, true);
+       assert.equal(state.agreement_tables, 3);
 
   const acceptance = spawnSync(
     process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "npm",

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { chairRentalSummarySchema } from "@/lib/reports/schemas";
+
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha no es válida.");
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "El mes no es válido.");
 const timestamp = z.iso.datetime({ offset: true });
@@ -33,4 +35,4 @@ export const expenseListQuerySchema = z.object({ month: month.optional(), dateFr
 export const expenseMonthQuerySchema = z.object({ month }).strict();
 const metrics = z.object({ total: z.number().int().nonnegative().safe(), count: z.number().int().nonnegative(), fixedTotal: z.number().int().nonnegative().safe(), variableTotal: z.number().int().nonnegative().safe(), suppliesTotal: z.number().int().nonnegative().safe() }).strict();
 export const paginatedExpensesSchema = z.object({ items: z.array(expenseSchema), metrics, page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict();
-export const expenseMonthSummarySchema = z.object({ month, grossIncome: z.number().int().nonnegative().safe(), commission: z.number().int().nonnegative().safe(), barbershopNet: z.number().int().safe(), expenses: z.number().int().nonnegative().safe(), operatingResult: z.number().int().safe(), fixedTotal: z.number().int().nonnegative().safe(), variableTotal: z.number().int().nonnegative().safe(), suppliesTotal: z.number().int().nonnegative().safe() }).strict();
+export const expenseMonthSummarySchema = z.object({ month, grossIncome: z.number().int().nonnegative().safe(), commission: z.number().int().nonnegative().safe(), barbershopNet: z.number().int().safe(), expenses: z.number().int().nonnegative().safe(), operatingResult: z.number().int().safe(), fixedTotal: z.number().int().nonnegative().safe(), variableTotal: z.number().int().nonnegative().safe(), suppliesTotal: z.number().int().nonnegative().safe(), chairRentals: chairRentalSummarySchema.optional() }).strict();

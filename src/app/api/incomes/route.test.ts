@@ -14,6 +14,27 @@ it("parses list query and public create body", async () => {
   expect(createIncome).toHaveBeenCalledWith(actor, input);
 });
 
+it("accepts exact amount allocations from an employee", async () => {
+  const employeeActor = {
+    id: "00000000-0000-4000-8000-000000000003",
+    role: { id: 3, name: "employee" as const },
+  };
+  requireUser.mockResolvedValue({ user: employeeActor });
+  createIncome.mockResolvedValue({ id: "id" });
+  const input = {
+    requestId: "40000000-0000-4000-8000-000000000002",
+    employeeId: employeeActor.id,
+    customerId: null,
+    serviceId: "30000000-0000-4000-8000-000000000001",
+    products: [],
+    payments: [{ paymentMethodId: "60000000-0000-4000-8000-000000000001", amount: 13000 }],
+    grantFullServiceCommission: false,
+  };
+
+  expect((await POST(new Request("http://localhost/api/incomes", { method: "POST", body: JSON.stringify(input) }))).status).toBe(201);
+  expect(createIncome).toHaveBeenCalledWith(employeeActor, input);
+});
+
 it("preserves the work-session conflict returned by income creation", async () => {
   createIncome.mockRejectedValue(
     new AppError(

@@ -143,6 +143,16 @@ describe("income list domain", () => {
     })).toBe("Mensualidad agosto 2026");
   });
 
+  it("describes chair rental income with a readable billing period", () => {
+    expect(formatIncomeConcept({
+      ...productsOnly,
+      sourceType: "chair_rental",
+      products: [],
+      chairRentalPeriod: "2026-10",
+      chairRental: { sourceType: "chair_rental", period: "2026-10", paidAt: "2026-10-02T15:30:00.000Z" },
+    })).toBe("Alquiler de silla · octubre de 2026");
+  });
+
   it("searches customers, services, products and employees", () => {
     const items = [serviceOnly, productsOnly, combined];
 

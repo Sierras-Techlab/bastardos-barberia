@@ -20,6 +20,11 @@ export const CashPaymentBreakdown = ({
           <p className="mt-0.5 text-xs text-muted-foreground">
             Distribución dinámica de la caja seleccionada
           </p>
+          {payments.some((payment) => payment.adjustmentAmount !== 0) && (
+            <p className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">
+              La anulación posterior compensa el ingreso original de una Caja cerrada y se muestra aparte de los cobros del día.
+            </p>
+          )}
         </div>
       </div>
     </CardHeader>
@@ -36,12 +41,15 @@ export const CashPaymentBreakdown = ({
                 <span className="truncate font-medium">{payment.name}</span>
               </span>
               <span className="text-right">
+                <span className="block text-xs text-muted-foreground">
+                  Cobros del día
+                </span>
                 <span className="block font-semibold">
-                  {formatArs(payment.netAmount)}
+                  {formatArs(payment.salesAmount)}
                 </span>
                 {payment.adjustmentAmount !== 0 && (
-                  <span className="text-xs text-primary">
-                    Ajuste {formatArs(payment.adjustmentAmount)}
+                  <span className="block text-xs font-medium text-red-600">
+                    Ajuste de anulación posterior {formatArs(payment.adjustmentAmount)}
                   </span>
                 )}
               </span>

@@ -19,6 +19,12 @@ export type SafeUser = {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+  serviceCommissionEnabled?: boolean;
+  productCommissionEnabled?: boolean;
+  chairRentalEnabled?: boolean;
+  monthlyChairRentalAmount?: number | null;
+  chairRentalEffectiveFrom?: string | null;
+  chairRentalDueDay?: number | null;
 };
 
 export type CredentialUser = SafeUser & {
