@@ -15,6 +15,13 @@ export const assertManager = (user: SafeUser) => {
   return user;
 };
 
+export const assertOwner = (user: SafeUser) => {
+  if (user.role.name !== "owner") {
+    throw new AppError("FORBIDDEN", "No tenés permisos para realizar esta acción.", 403);
+  }
+  return user;
+};
+
 const resolveCurrentUser = cache(async () =>
   getCurrentSession(await getSessionCookie()));
 
@@ -23,6 +30,12 @@ export const requireUser = async () => resolveCurrentUser();
 export const requireManager = async () => {
   const session = await requireUser();
   assertManager(session.user);
+  return session;
+};
+
+export const requireOwner = async () => {
+  const session = await requireUser();
+  assertOwner(session.user);
   return session;
 };
 

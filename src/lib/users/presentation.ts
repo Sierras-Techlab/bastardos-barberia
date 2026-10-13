@@ -41,3 +41,8 @@ export const getUserInitials = (user: SafeUser) =>
   ((user.firstName[0] ?? "") + (user.lastName[0] ?? "")).toUpperCase();
 
 export const formatCommissionRate = (rate: number): string => `${rate}%`;
+
+export const formatEffectiveCommissionRate = (
+  rate: number,
+  enabled: boolean | undefined,
+): string => enabled === false ? "Sin comisión" : formatCommissionRate(rate);

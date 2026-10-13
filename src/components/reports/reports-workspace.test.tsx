@@ -27,3 +27,23 @@ it("keeps the last report visible when changing month fails", async () => {
   expect(screen.getByLabelText("Mes del reporte")).toHaveValue("2026-08");
   expect(screen.getByText("Resultado operativo")).toBeVisible();
 });
+
+it("forwards rental composition and renders a rental-only report", () => {
+  const rentalOnly = {
+    ...report,
+    summary: { ...metrics, grossIncome: 0, barbershopNet: 0, operatingResult: 0, expenses: 0 },
+    incomeComposition: [{ key: "chair_rentals" as const, amount: 0 }],
+    chairRentals: {
+      total: 0,
+      count: 0,
+      byEffectiveDate: [],
+      payingEmployees: [],
+      pending: [{ employeeId: "00000000-0000-4000-8000-000000000001", employeeName: "Ana Pérez", period: "2026-08", amount: 20000, dueDay: 10, status: "pending" as const }],
+      overdue: [],
+    },
+  } as BusinessReport;
+  render(<ReportsWorkspace initialReport={rentalOnly} />);
+  expect(screen.getAllByText("Alquileres de silla").length).toBeGreaterThan(1);
+  expect(screen.getByText(/Ana Pérez · agosto de 2026/)).toBeVisible();
+  expect(screen.queryByText("Todavía no hay actividad en este mes")).not.toBeInTheDocument();
+});

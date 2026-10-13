@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SafeUser } from "@/lib/auth/types";
 import {
   formatCommissionRate,
+  formatEffectiveCommissionRate,
   formatLastLogin,
   getUserInitials,
   ROLE_LABELS,
@@ -55,5 +56,11 @@ describe("user presentation", () => {
     expect(formatCommissionRate(0)).toBe("0%");
     expect(formatCommissionRate(35)).toBe("35%");
     expect(formatCommissionRate(100)).toBe("100%");
+  });
+
+  it("does not present a preserved base rate as active when its agreement is disabled", () => {
+    expect(formatEffectiveCommissionRate(45, false)).toBe("Sin comisión");
+    expect(formatEffectiveCommissionRate(45, true)).toBe("45%");
+    expect(formatEffectiveCommissionRate(45, undefined)).toBe("45%");
   });
 });

@@ -21,6 +21,12 @@ export type UserRow = {
   deleted_by: string | null;
   created_at: string;
   updated_at: string;
+  service_commission_enabled?: boolean;
+  product_commission_enabled?: boolean;
+  chair_rental_enabled?: boolean;
+  monthly_chair_rental_amount?: number | null;
+  chair_rental_effective_from?: string | null;
+  chair_rental_due_day?: number | null;
 };
 
 export type UserWithRoleRow = UserRow & { role: Pick<RoleRow, "id" | "name"> };
@@ -151,7 +157,7 @@ export type FixedCustomerMonthlyPaymentAttemptRow = {
   created_at: string;
 };
 
-export type IncomeSourceType = "sale" | "fixed_subscription";
+export type IncomeSourceType = "sale" | "fixed_subscription" | "chair_rental";
 export type IncomePaymentMethod = "cash" | "transfer" | "mixed";
 export type IncomeStatus = "active" | "voided";
 
@@ -206,6 +212,9 @@ export type IncomeRow = {
   fixed_customer_id: string | null;
   fixed_period: string | null;
   subscription_concept: unknown;
+  chair_rental_period: string | null;
+  chair_rental_paid_at: string | null;
+  chair_rental_attempt_id: string | null;
   status: IncomeStatus;
   created_at: string;
   business_date: string;

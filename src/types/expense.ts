@@ -103,4 +103,5 @@ export type ExpenseMonthSummary = {
   fixedTotal: number;
   variableTotal: number;
   suppliesTotal: number;
+  chairRentals?: import("@/types/report").ChairRentalSummary;
 };

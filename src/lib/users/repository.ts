@@ -6,11 +6,11 @@ import type { UserWithRoleRow } from "@/lib/supabase/database.types";
 
 export type SafeUserRow = Pick<
   UserWithRoleRow,
-  "id" | "first_name" | "last_name" | "username" | "is_active" | "service_commission_rate" | "product_commission_rate" | "last_login_at" | "created_at" | "updated_at" | "role"
+  "id" | "first_name" | "last_name" | "username" | "is_active" | "service_commission_rate" | "product_commission_rate" | "last_login_at" | "created_at" | "updated_at" | "role" | "service_commission_enabled" | "product_commission_enabled" | "chair_rental_enabled" | "monthly_chair_rental_amount" | "chair_rental_effective_from" | "chair_rental_due_day"
 >;
 
-const SAFE_USER_SELECT = "id,first_name,last_name,username,is_active,service_commission_rate,product_commission_rate,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
-const CREDENTIAL_USER_SELECT = "id,first_name,last_name,username,password_hash,is_active,service_commission_rate,product_commission_rate,failed_login_attempts,locked_until,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
+const SAFE_USER_SELECT = "id,first_name,last_name,username,is_active,service_commission_rate,product_commission_rate,service_commission_enabled,product_commission_enabled,chair_rental_enabled,monthly_chair_rental_amount,chair_rental_effective_from,chair_rental_due_day,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
+const CREDENTIAL_USER_SELECT = "id,first_name,last_name,username,password_hash,is_active,service_commission_rate,product_commission_rate,service_commission_enabled,product_commission_enabled,chair_rental_enabled,monthly_chair_rental_amount,chair_rental_effective_from,chair_rental_due_day,failed_login_attempts,locked_until,last_login_at,created_at,updated_at,role:roles!users_role_id_fkey(id,name)";
 
 const databaseFailure = (operation: string, error: unknown): never => {
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
@@ -51,6 +51,14 @@ export const toSafeUser = (row: SafeUserRow): SafeUser => ({
   lastLoginAt: row.last_login_at,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+  ...(row.service_commission_enabled !== undefined ? {
+    serviceCommissionEnabled: row.service_commission_enabled,
+    productCommissionEnabled: row.product_commission_enabled ?? row.product_commission_rate > 0,
+    chairRentalEnabled: row.chair_rental_enabled ?? false,
+    monthlyChairRentalAmount: row.monthly_chair_rental_amount ?? null,
+    chairRentalEffectiveFrom: row.chair_rental_effective_from ?? null,
+    chairRentalDueDay: row.chair_rental_due_day ?? null,
+  } : {}),
 });
 
 export const toCredentialUser = (row: UserWithRoleRow): CredentialUser => ({
@@ -126,7 +134,7 @@ export const userRepository: UserRepository = {
     return toSafeUser(asSafeUserRow(data));
   },
 
-  async update(id, changes: UserRecordChanges) {
+  async update(id, changes: UserRecordChanges, actorId?: string) {
     const hasProfileChanges = changes.firstName !== undefined
       || changes.lastName !== undefined
       || changes.roleId !== undefined
@@ -144,6 +152,7 @@ export const userRepository: UserRepository = {
 
     if (hasProfileChanges) {
       const { error } = await getSupabaseAdmin().rpc("update_user_profile", {
+        actor_user_id: actorId ?? id,
         target_user_id: id,
         set_first_name: changes.firstName !== undefined,
         new_first_name: changes.firstName ?? null,

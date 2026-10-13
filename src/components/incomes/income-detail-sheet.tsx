@@ -50,6 +50,7 @@ export const IncomeDetailSheet = ({
     : "Sin cliente";
   const manager = viewerRole === "owner" || viewerRole === "admin";
   const employee = isEmployeeRow(income) ? null : (income as IncomeListItem);
+  const isChairRental = employee?.sourceType === "chair_rental";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -88,6 +89,9 @@ export const IncomeDetailSheet = ({
               Concepto
             </h3>
             <div className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
+              {employee?.sourceType === "chair_rental" && (
+                <DetailRow label="Alquiler de silla" value={formatArs(employee.total)} />
+              )}
               {employee?.service && (
                 <DetailRow
                   label={employee.service.name}
@@ -135,7 +139,7 @@ export const IncomeDetailSheet = ({
                   value={`${employee.registeredBy.firstName} ${employee.registeredBy.lastName}`}
                 />
               )}
-              <DetailRow label="Cliente" value={customerName} />
+              <DetailRow label="Cliente" value={employee?.sourceType === "chair_rental" ? "No corresponde" : customerName} />
               {employee?.payments.map((payment) => (
                 <DetailRow
                   key={payment.paymentMethodId}
@@ -149,7 +153,12 @@ export const IncomeDetailSheet = ({
           <section>
             <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-primary" />Comisión</h3>
             <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
-              {employee ? (
+              {employee?.sourceType === "chair_rental" ? (
+                <>
+                  <DetailRow label="Comisión" value={formatArs(0)} />
+                  {manager && <DetailRow label="Neto barbería" value={formatArs(employee.commission.barbershopNet)} />}
+                </>
+              ) : employee ? (
                 <>
                   <DetailRow label="Comisión devengada" value={formatArs(employee.commission.total)} />
                   {employee.service && (
@@ -195,8 +204,10 @@ export const IncomeDetailSheet = ({
         </div>
 
         <SheetFooter className="border-t border-black/5 bg-white px-6 py-4">
-          {canVoid && income.status === "active" ? (
+          {canVoid && income.status === "active" && !isChairRental ? (
             <Button type="button" variant="destructive" onClick={() => onVoid?.(income)}>Anular venta</Button>
+          ) : isChairRental && income.status === "active" ? (
+            <p className="text-center text-xs text-muted-foreground">Los alquileres se anulan desde el historial del empleado.</p>
           ) : income.status === "active" ? (
             <p className="text-center text-xs text-muted-foreground">Venta de solo lectura</p>
           ) : (

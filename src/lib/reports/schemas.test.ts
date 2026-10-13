@@ -26,6 +26,14 @@ export const reportFixture = {
     operatingResult: -15_000,
     operatingMarginBps: -833,
   },
+  chairRentals: {
+    total: 0,
+    count: 0,
+    byEffectiveDate: [],
+    payingEmployees: [],
+    pending: [],
+    overdue: [],
+  },
   previousSummary: {
     grossIncome: 150_000,
     commission: 37_500,

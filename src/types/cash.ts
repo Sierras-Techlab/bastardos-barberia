@@ -34,6 +34,7 @@ export type CashSummary = {
   barbershopNet: number;
   serviceTotal: number;
   productTotal: number;
+  chairRentalTotal?: number;
   saleCount: number;
   activeSaleCount: number;
   voidedSaleCount: number;
@@ -53,7 +54,7 @@ export type CashSaleAuditItem = {
   createdAt: string;
   employee: CashPerson;
   customerName: string | null;
-  kind: "service" | "products" | "combined" | "subscription";
+  kind: "service" | "products" | "combined" | "subscription" | "chair_rental";
   statusAtClose: "active" | "voided";
   currentStatus: "active" | "voided";
   grossTotal: number;

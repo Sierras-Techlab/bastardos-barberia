@@ -71,6 +71,10 @@ export const managerIncomeResponseSchema = z.object({
   commission: commissionSchema,
   total: z.number().int().nonnegative(),
   grossTotal: z.number().int().nonnegative(),
+  sourceType: z.enum(["sale", "fixed_subscription", "chair_rental"]).optional(),
+  chairRentalPeriod: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).nullable().optional(),
+  paidAt: z.iso.datetime({ offset: true }).nullable().optional(),
+  chairRental: z.object({ sourceType: z.literal("chair_rental"), period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), paidAt: z.iso.datetime({ offset: true }).nullable() }).strict().nullable().optional(),
   status: z.enum(["active", "voided"]),
 }).strict();
 const employeeConceptSchema = z.object({

@@ -55,6 +55,23 @@ describe("user lifecycle", () => {
     }));
   });
 
+  it("allows an admin to create non-financial users only", async () => {
+    const deps = dependencies();
+    const admin = { ...owner, id: "00000000-0000-4000-8000-000000000009", role: { id: 2 as const, name: "admin" as const } };
+
+    await createUser(admin, {
+      firstName: "Luis", lastName: "Pérez", password: "password-2026", roleId: 3,
+      serviceCommissionRate: 0, productCommissionRate: 0,
+    }, deps);
+    expect(deps.users.create).toHaveBeenCalled();
+
+    await expect(createUser(admin, {
+      firstName: "Luz", lastName: "Pérez", password: "password-2026", roleId: 3,
+      serviceCommissionRate: 1, productCommissionRate: 0,
+    }, deps)).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    expect(deps.hashPassword).toHaveBeenCalledTimes(1);
+  });
+
   it("persists the submitted commission rates when creating an owner", async () => {
     const deps = dependencies();
 
@@ -89,7 +106,7 @@ describe("user lifecycle", () => {
       roleId: 1,
       serviceCommissionRate: 35,
       productCommissionRate: 12,
-    }));
+    }), owner.id);
   });
 
   it("persists updated commission rates for an owner", async () => {
@@ -103,7 +120,35 @@ describe("user lifecycle", () => {
     expect(deps.users.update).toHaveBeenCalledWith(owner.id, expect.objectContaining({
       serviceCommissionRate: 45,
       productCommissionRate: 12,
-    }));
+    }), owner.id);
+  });
+
+  it("rejects manager commission-rate changes before persistence", async () => {
+    const deps = dependencies();
+    const admin = { ...owner, id: "00000000-0000-4000-8000-000000000009", role: { id: 2 as const, name: "admin" as const } };
+    await expect(updateUser(admin, owner.id, { serviceCommissionRate: 25 }, deps))
+      .rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    expect(deps.users.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects changing a disabled employee commission until the agreement is reactivated", async () => {
+    const deps = dependencies();
+    const employee = {
+      ...owner,
+      id: "00000000-0000-4000-8000-000000000003",
+      role: { id: 3 as const, name: "employee" as const },
+      serviceCommissionRate: 45,
+      productCommissionRate: 10,
+      serviceCommissionEnabled: false,
+      productCommissionEnabled: false,
+    };
+    vi.mocked(deps.users.findById).mockResolvedValue(employee);
+
+    await expect(updateUser(owner, employee.id, { serviceCommissionRate: 50 }, deps))
+      .rejects.toMatchObject({ code: "COMMISSION_DISABLED", status: 409 });
+    await expect(updateUser(owner, employee.id, { productCommissionRate: 15 }, deps))
+      .rejects.toMatchObject({ code: "COMMISSION_DISABLED", status: 409 });
+    expect(deps.users.update).not.toHaveBeenCalled();
   });
 
   it("prevents self-deactivation", async () => {

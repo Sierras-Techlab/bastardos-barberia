@@ -69,7 +69,7 @@ const buildTotalInputs = (data: IncomeFormData) => {
   const products: EmployeeCatalogProduct[] = data.products;
   return {
     services: services.map((service) => ({ id: service.id, name: service.name, price: service.price })),
-    products: products.map((product) => ({ id: product.id, name: product.name, price: product.earning, stock: product.stock })),
+    products: products.map((product) => ({ id: product.id, name: product.name, price: product.price, stock: product.stock })),
   };
 };
 
@@ -106,7 +106,6 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
 
   const isManager = data.viewer === "manager";
   const schema = isManager ? managerIncomeFormSchema : employeeIncomeFormSchema;
-  const activePaymentMethods = data.paymentMethods.filter((method) => method.isActive);
   const form = useForm<ManagerIncomeFormValues | EmployeeIncomeFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: isManager
@@ -125,9 +124,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           employeeId: data.currentUser.id,
           serviceId: null,
           products: [],
-          payments: activePaymentMethods.length > 0
-            ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
-            : [],
+          payments: [],
           grantFullServiceCommission: false,
           servicePriceOverride: null,
           productPriceOverrides: [],
@@ -144,32 +141,18 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
   const handleReview = (validValues: ManagerIncomeFormValues | EmployeeIncomeFormValues) => {
     setSubmitError(null);
     const total = calculateIncomeTotal(validValues, totalInputs.services, totalInputs.products);
-    if (isManager) {
-      const managerValues = validValues as ManagerIncomeFormValues;
-      if (total === 0 && managerValues.payments.length === 0) {
-        setReviewValues(managerValues);
-        return;
-      }
-      const totalAmount = managerValues.payments.reduce(
-        (sum, payment) => sum + payment.amount,
-        0,
-      );
-      if (totalAmount !== total) {
-        form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
-        setSubmitError("Distribuí el importe total entre medios de pago válidos.");
-        return;
-      }
-    } else {
-      const employeeValues = validValues as EmployeeIncomeFormValues;
-      const employeeBasisSum = employeeValues.payments.reduce(
-        (sum, payment) => sum + payment.basisPoints,
-        0,
-      );
-      if (employeeBasisSum !== 10000) {
-        form.setError("payments", { message: "Los porcentajes deben sumar 100%." });
-        setSubmitError("Los porcentajes deben sumar 100%.");
-        return;
-      }
+    if (total === 0 && validValues.payments.length === 0) {
+      setReviewValues(validValues as IncomeFormValues);
+      return;
+    }
+    const totalAmount = validValues.payments.reduce(
+      (sum, payment) => sum + payment.amount,
+      0,
+    );
+    if (totalAmount !== total) {
+      form.setError("payments", { message: "Distribuí el importe total entre medios de pago válidos." });
+      setSubmitError("Distribuí el importe total entre medios de pago válidos.");
+      return;
     }
     setReviewValues(validValues as IncomeFormValues);
   };
@@ -189,13 +172,9 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       return;
     }
 
-    const payments: CreateIncomeInput["payments"] = isManager
-      ? (reviewValues as ManagerIncomeFormValues).payments
-          .filter((payment) => payment.amount > 0)
-          .map((payment) => ({ paymentMethodId: payment.paymentMethodId, amount: payment.amount }))
-      : (reviewValues as EmployeeIncomeFormValues).payments
-          .filter((payment) => payment.basisPoints > 0)
-          .map((payment) => ({ paymentMethodId: payment.paymentMethodId, basisPoints: payment.basisPoints }));
+    const payments: CreateIncomeInput["payments"] = reviewValues.payments
+      .filter((payment) => payment.amount > 0)
+      .map((payment) => ({ paymentMethodId: payment.paymentMethodId, amount: payment.amount }));
 
     const managerReview = isManager ? (reviewValues as ManagerIncomeFormValues) : null;
     const servicePriceOverride = reviewValues.servicePriceOverride ?? null;
@@ -256,9 +235,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
             employeeId: data.currentUser.id,
             serviceId: null,
             products: [],
-            payments: activePaymentMethods.length > 0
-              ? [{ paymentMethodId: activePaymentMethods[0].id, basisPoints: 10000 }]
-              : [],
+            payments: [],
             grantFullServiceCommission: false,
             servicePriceOverride: null,
             productPriceOverrides: [],
@@ -391,7 +368,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   products={data.products}
                   value={field.value}
                   onChange={field.onChange}
-                  canGrantFullCommission={isManager && data.viewer === "manager" && (data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner"}
+                  canGrantFullCommission={isManager && data.viewer === "manager" && (data.currentUser.role === "owner" || data.currentUser.role === "admin") && values.employeeId !== data.currentUser.id && (data.employees?.find((employee) => employee.id === values.employeeId)?.role ?? data.currentUser.role) !== "owner" && data.employees?.find((employee) => employee.id === values.employeeId)?.productCommissionEnabled !== false}
                 />
               )}
             />
@@ -440,7 +417,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                   mode={isManager ? "manager" : "employee"}
                   methods={data.paymentMethods}
                   payments={field.value}
-                  total={isManager ? calculateIncomeTotal(values, totalInputs.services, totalInputs.products) : undefined}
+                  total={calculateIncomeTotal(values, totalInputs.services, totalInputs.products)}
                   onChange={field.onChange}
                   error={fieldState.error?.message}
                 />

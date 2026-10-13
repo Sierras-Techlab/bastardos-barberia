@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { expect, it, vi } from "vitest";
@@ -16,7 +16,7 @@ const methods = [
 
 const EmployeeSelectorHarness = ({ onChange }: { onChange: (payments: IncomePaymentInput[]) => void }) => {
   const [payments, setPayments] = useState<IncomePaymentInput[]>([
-    { paymentMethodId: methods[0].id, basisPoints: 10000 },
+    { paymentMethodId: methods[0].id, amount: 49000 },
   ]);
 
   return (
@@ -24,6 +24,7 @@ const EmployeeSelectorHarness = ({ onChange }: { onChange: (payments: IncomePaym
       mode="employee"
       methods={methods}
       payments={payments}
+      total={49000}
       onChange={(next) => {
         onChange(next);
         setPayments(next);
@@ -95,7 +96,7 @@ it("opens combined mode with two distinct dynamic methods", async () => {
   ]);
 });
 
-it("adds and removes distinct allocations up to every active method", async () => {
+it("adds and removes distinct allocations while keeping the last method as the remainder", async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   const { rerender } = render(
@@ -104,10 +105,18 @@ it("adds and removes distinct allocations up to every active method", async () =
 
   await user.click(screen.getByRole("button", { name: "Combinado" }));
   rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 49000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={onChange} />);
+  const cashInput = screen.getByRole("spinbutton", { name: "Monto en Efectivo" });
+  fireEvent.change(cashInput, { target: { value: "20000" } });
+  expect(onChange).toHaveBeenLastCalledWith([
+    { paymentMethodId: methods[0].id, amount: 20000 },
+    { paymentMethodId: methods[1].id, amount: 29000 },
+  ]);
+
+  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={onChange} />);
   await user.click(screen.getByRole("button", { name: "Tarjeta" }));
   expect(onChange).toHaveBeenLastCalledWith([
-    { paymentMethodId: methods[0].id, amount: 49000 },
-    { paymentMethodId: methods[1].id, amount: 0 },
+    { paymentMethodId: methods[0].id, amount: 20000 },
+    { paymentMethodId: methods[1].id, amount: 29000 },
     { paymentMethodId: methods[2].id, amount: 0 },
   ]);
 
@@ -115,19 +124,44 @@ it("adds and removes distinct allocations up to every active method", async () =
   await user.click(screen.getByRole("button", { name: /quitar tarjeta/i }));
   expect(onChange).toHaveBeenLastCalledWith([
     { paymentMethodId: methods[0].id, amount: 20000 },
-    { paymentMethodId: methods[1].id, amount: 19000 },
+    { paymentMethodId: methods[1].id, amount: 29000 },
   ]);
 });
 
-it("reports remaining, exact and excess allocations", () => {
-  const { rerender } = render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 39000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByText(/faltan \$ ?10\.000/i)).toBeVisible();
-
-  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={vi.fn()} />);
+it("shows the exact distribution and marks the last method as the automatic remainder", () => {
+  render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={vi.fn()} />);
   expect(screen.getByText(/importe distribuido correctamente/i)).toBeVisible();
+  expect(screen.getByText("Resto")).toBeVisible();
+  expect(screen.getByRole("spinbutton", { name: "Monto en Transferencia" })).toBeDisabled();
+});
 
-  rerender(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 50000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={vi.fn()} />);
-  expect(screen.getByText(/sobran \$ ?1\.000/i)).toBeVisible();
+it("splits two methods in half with one action", async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<PaymentMethodSelector methods={methods} payments={[{ paymentMethodId: methods[0].id, amount: 49000 }, { paymentMethodId: methods[1].id, amount: 0 }]} total={49000} onChange={onChange} />);
+
+  await user.click(screen.getByRole("button", { name: "Mitad y mitad" }));
+
+  expect(onChange).toHaveBeenLastCalledWith([
+    { paymentMethodId: methods[0].id, amount: 24500 },
+    { paymentMethodId: methods[1].id, amount: 24500 },
+  ]);
+});
+
+it("keeps the distribution within the total when the sale amount decreases", () => {
+  const onChange = vi.fn();
+  const selected = [
+    { paymentMethodId: methods[0].id, amount: 40000 },
+    { paymentMethodId: methods[1].id, amount: 9000 },
+  ];
+  const { rerender } = render(<PaymentMethodSelector methods={methods} payments={selected} total={49000} onChange={onChange} />);
+
+  rerender(<PaymentMethodSelector methods={methods} payments={selected} total={30000} onChange={onChange} />);
+
+  expect(onChange).toHaveBeenLastCalledWith([
+    { paymentMethodId: methods[0].id, amount: 30000 },
+    { paymentMethodId: methods[1].id, amount: 0 },
+  ]);
 });
 
 it("clears allocations for methods that disappear from the active catalog", () => {
@@ -136,26 +170,21 @@ it("clears allocations for methods that disappear from the active catalog", () =
 
   rerender(<PaymentMethodSelector methods={[methods[0], { ...methods[1], isActive: false }, methods[2]]} payments={[{ paymentMethodId: methods[0].id, amount: 20000 }, { paymentMethodId: methods[1].id, amount: 29000 }]} total={49000} onChange={onChange} />);
 
-  expect(onChange).toHaveBeenLastCalledWith([{ paymentMethodId: methods[0].id, amount: 20000 }]);
+  expect(onChange).toHaveBeenLastCalledWith([{ paymentMethodId: methods[0].id, amount: 49000 }]);
 });
 
-it("shows employee allocations as percentages while preserving basis points internally", async () => {
+it("shows employee allocations as integer amounts without percentages", async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(<EmployeeSelectorHarness onChange={onChange} />);
 
-  const cashPercentage = screen.getByRole("spinbutton", { name: "Porcentaje en Efectivo" });
-  expect(cashPercentage).toHaveAttribute("max", "100");
-  expect(cashPercentage).toHaveValue(100);
-  expect(screen.getByText("Porcentaje distribuido")).toBeVisible();
-  expect(screen.getByText("100% / 100%")).toBeVisible();
-  expect(screen.queryByText(/basis points/i)).not.toBeInTheDocument();
-  expect(screen.queryByText("/10000")).not.toBeInTheDocument();
+  const cashAmount = screen.getByRole("spinbutton", { name: "Monto en Efectivo" });
+  expect(cashAmount).toHaveValue(49000);
+  expect(screen.queryByText(/porcentaje|%/i)).not.toBeInTheDocument();
 
-  await user.clear(cashPercentage);
-  await user.type(cashPercentage, "50");
-
+  await user.click(screen.getByRole("button", { name: "Transferencia" }));
   expect(onChange).toHaveBeenLastCalledWith([
-    { paymentMethodId: methods[0].id, basisPoints: 5000 },
+    { paymentMethodId: methods[0].id, amount: 49000 },
+    { paymentMethodId: methods[1].id, amount: 0 },
   ]);
 });

@@ -8,6 +8,7 @@ const hasConcepts = (row: IncomeListRow): row is EmployeeIncomeListItem =>
 
 export const getIncomePaymentLabel = (income: IncomeListRow) => {
   if (hasPayments(income)) {
+    if (income.sourceType === "chair_rental") return "Alquiler de silla";
     if (income.payments.length > 1) return `Combinado (${income.payments.length} medios)`;
     return income.payments[0]?.methodName ?? "Sin medio de pago";
   }
@@ -27,6 +28,7 @@ export const getIncomeTotalAmount = (income: IncomeListRow): number => {
 
 export const getIncomeKindLabel = (income: IncomeListRow): string => {
   if (hasPayments(income)) {
+    if (income.sourceType === "chair_rental") return "Alquiler de silla";
     if (income.sourceType === "fixed_subscription") return "Mensualidad";
     if (income.subscription) return "Suscripción";
     const hasService = Boolean(income.service);

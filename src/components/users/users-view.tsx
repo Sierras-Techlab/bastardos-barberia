@@ -10,7 +10,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,10 @@ import {
 } from "@/lib/users/client";
 import { summarizeUserPage } from "@/lib/users/presentation";
 import type { FrontendCreateUserInput, FrontendUpdateUserInput } from "@/types/user-commissions";
+import type { EmployeeCommercialAgreement, ChairRentalPayment } from "@/types/chair-rental";
+import type { PaymentMethod } from "@/types/payment-method";
+import { chairRentalClient, ChairRentalApiError } from "@/lib/chair-rentals/client";
+import { paymentMethodClient } from "@/lib/payment-methods/client";
 import {
   UserFilters,
   type UserFiltersValue,
@@ -38,9 +42,13 @@ import {
 import { UserEditorDialog } from "./user-editor-dialog";
 import { UserList, type UserAction } from "./user-list";
 import { UserPasswordDialog } from "./user-password-dialog";
+import { EmployeeAgreementDialog } from "./employee-agreement-dialog";
+import { ChairRentalConfirmDialog, ChairRentalVoidDialog } from "./chair-rental-dialogs";
+import { ChairRentalHistorySheet } from "./chair-rental-history-sheet";
 
 type UsersViewProps = {
   currentUser: SafeUser;
+  currentPeriod: string;
 };
 
 const initialFilters: UserFiltersValue = {
@@ -67,7 +75,7 @@ const LoadingList = () => (
   </div>
 );
 
-export const UsersView = ({ currentUser }: UsersViewProps) => {
+export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
   const router = useRouter();
   const [roles, setRoles] = useState<Role[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
@@ -88,6 +96,27 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
   const [confirmUser, setConfirmUser] = useState<SafeUser | null>(null);
   const [mutationPending, setMutationPending] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [agreements, setAgreements] = useState<Record<string, EmployeeCommercialAgreement | null>>({});
+  const [rentals, setRentals] = useState<Record<string, ChairRentalPayment | null>>({});
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(() => currentUser.role.name === "owner");
+  const [paymentMethodsError, setPaymentMethodsError] = useState<string | null>(null);
+  const [paymentMethodsReloadKey, setPaymentMethodsReloadKey] = useState(0);
+  const [agreementUser, setAgreementUser] = useState<SafeUser | null>(null);
+  const [agreementPending, setAgreementPending] = useState(false);
+  const [rentalUser, setRentalUser] = useState<SafeUser | null>(null);
+  const [historyUser, setHistoryUser] = useState<SafeUser | null>(null);
+  const [history, setHistory] = useState<ChairRentalPayment[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [rentalError, setRentalError] = useState<string | null>(null);
+  const [voidPayment, setVoidPayment] = useState<ChairRentalPayment | null>(null);
+  const [agreementLoading, setAgreementLoading] = useState(false);
+  const [agreementDialogLoading, setAgreementDialogLoading] = useState(false);
+  const [agreementError, setAgreementError] = useState<string | null>(null);
+  const [rentalLoading, setRentalLoading] = useState(false);
+  const [rentalListError, setRentalListError] = useState<string | null>(null);
+  const [rentalDataReloadKey, setRentalDataReloadKey] = useState(0);
+  const agreementRequestRef = useRef(0);
 
   useEffect(() => {
     const timeout = window.setTimeout(
@@ -148,6 +177,11 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
           setLoading(true);
           return;
         }
+        setAgreements({});
+        setRentals({});
+        const hasEmployees = result.items.some((user) => user.role.name === "employee");
+        setAgreementLoading(hasEmployees);
+        setRentalLoading(hasEmployees);
         setPage(result);
         setLoading(false);
       })
@@ -177,12 +211,69 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
     pageNumber,
     reloadKey,
     router,
+    currentPeriod,
   ]);
+
+  // Agreement and rental reads are deliberately independent from the user list.
+  useEffect(() => {
+    const employees = page?.items.filter((item) => item.role.name === "employee") ?? [];
+    let active = true;
+    if (!employees.length) {
+      return () => { active = false; };
+    }
+    Promise.all(employees.map(async (employee) => [employee.id, await chairRentalClient.agreement(employee.id)] as const)).then((results) => {
+      if (!active) return;
+      setAgreements(Object.fromEntries(results));
+      setAgreementError(null);
+    }).catch((error: unknown) => {
+      if (active) setAgreementError(error instanceof Error ? error.message : "No pudimos cargar los acuerdos.");
+    }).finally(() => { if (active) setAgreementLoading(false); });
+    const loadRentals = async () => {
+      const query = (pageNumber: number) => `period=${encodeURIComponent(currentPeriod)}&page=${pageNumber}&pageSize=100`;
+      const first = await chairRentalClient.list(query(1));
+      const remaining = first.totalPages > 1
+        ? await Promise.all(Array.from({ length: first.totalPages - 1 }, (_, index) => chairRentalClient.list(query(index + 2))))
+        : [];
+      return [first, ...remaining].flatMap((result) => result.items);
+    };
+    loadRentals().then((items) => {
+      if (!active) return;
+      const next: Record<string, ChairRentalPayment | null> = {};
+      items.forEach((item) => { next[item.employeeId] = item; });
+      setRentals(next);
+      setRentalListError(null);
+    }).catch((error: unknown) => { if (active) setRentalListError(error instanceof Error ? error.message : "No pudimos cargar los alquileres."); }).finally(() => { if (active) setRentalLoading(false); });
+    return () => { active = false; };
+  }, [currentPeriod, page, rentalDataReloadKey]);
+
+  useEffect(() => {
+    if (currentUser.role.name !== "owner") return;
+    let active = true;
+    paymentMethodClient.list()
+      .then((methods) => {
+        if (!active) return;
+        setPaymentMethods(methods);
+        setPaymentMethodsError(null);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setPaymentMethods([]);
+        setPaymentMethodsError(error instanceof Error ? error.message : "No pudimos cargar los medios de pago.");
+      })
+      .finally(() => { if (active) setPaymentMethodsLoading(false); });
+    return () => { active = false; };
+  }, [currentUser.role.name, paymentMethodsReloadKey]);
 
   const summary = useMemo(
     () => summarizeUserPage(page?.items ?? []),
     [page],
   );
+
+  const retryPaymentMethods = () => {
+    setPaymentMethodsLoading(true);
+    setPaymentMethodsError(null);
+    setPaymentMethodsReloadKey((value) => value + 1);
+  };
 
   const changeFilters = (next: UserFiltersValue) => {
     setLoading(true);
@@ -226,6 +317,45 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
         : "No se pudo completar la operación.",
     );
   };
+
+  const reloadRentals = () => {
+    setAgreementLoading(true);
+    setRentalLoading(true);
+    setRentalDataReloadKey((value) => value + 1);
+  };
+  const loadAgreement = (user: SafeUser) => {
+    const requestId = agreementRequestRef.current + 1;
+    agreementRequestRef.current = requestId;
+    setAgreementDialogLoading(true);
+    setAgreementError(null);
+    chairRentalClient.agreement(user.id)
+      .then((agreement) => {
+        if (agreementRequestRef.current !== requestId) return;
+        setAgreements((current) => ({ ...current, [user.id]: agreement }));
+      })
+      .catch((error: unknown) => {
+        if (agreementRequestRef.current !== requestId) return;
+        setAgreementError(error instanceof Error ? error.message : "No pudimos cargar el acuerdo.");
+      })
+      .finally(() => {
+        if (agreementRequestRef.current === requestId) setAgreementDialogLoading(false);
+      });
+  };
+  const openAgreement = (user: SafeUser) => {
+    agreementRequestRef.current += 1;
+    setAgreementUser(user);
+    setRentalError(null);
+    setAgreementError(null);
+    if (agreements[user.id]) {
+      setAgreementDialogLoading(false);
+      return;
+    }
+    loadAgreement(user);
+  };
+  const saveAgreement = async (value: EmployeeCommercialAgreement) => { if (!agreementUser || agreementDialogLoading || !agreements[agreementUser.id]) return; setAgreementPending(true); setRentalError(null); try { const saved = await chairRentalClient.updateAgreement(agreementUser.id, value); setAgreements((current) => ({ ...current, [agreementUser.id]: saved })); setPage((current) => current ? ({ ...current, items: current.items.map((item) => item.id === agreementUser.id ? { ...item, serviceCommissionEnabled: saved.serviceCommissionEnabled, productCommissionEnabled: saved.productCommissionEnabled, chairRentalEnabled: saved.chairRentalEnabled, monthlyChairRentalAmount: saved.monthlyChairRentalAmount, chairRentalEffectiveFrom: saved.chairRentalEffectiveFrom, chairRentalDueDay: saved.chairRentalDueDay } : item) }) : current); setAgreementError(null); setAgreementUser(null); toast.success("Acuerdo guardado."); reloadRentals(); } catch (error) { setAgreementError(error instanceof Error ? error.message : "No se pudo guardar el acuerdo."); } finally { setAgreementPending(false); } };
+  const openHistory = async (user: SafeUser) => { setHistoryUser(user); setHistory([]); setHistoryLoading(true); setRentalError(null); try { setHistory(await chairRentalClient.detail(user.id)); } catch (error) { setRentalError(error instanceof Error ? error.message : "No se pudo cargar el historial."); } finally { setHistoryLoading(false); } };
+  const confirmRental = async (methodId: string) => { if (!rentalUser || !rentals[rentalUser.id]) return; setAgreementPending(true); setRentalError(null); try { await chairRentalClient.confirm(rentalUser.id, { period: rentals[rentalUser.id]!.period, paymentMethodId: methodId, requestId: crypto.randomUUID() }); setRentalUser(null); toast.success("Alquiler confirmado."); reloadRentals(); } catch (error) { setRentalError(error instanceof ChairRentalApiError || error instanceof Error ? error.message : "No se pudo confirmar el alquiler."); } finally { setAgreementPending(false); } };
+  const voidRental = async (reason: string) => { if (!voidPayment) return; setAgreementPending(true); setRentalError(null); try { await chairRentalClient.void(voidPayment.id, { reason: reason.trim() }); setVoidPayment(null); toast.success("Alquiler anulado."); reloadRentals(); if (historyUser) setHistory(await chairRentalClient.detail(historyUser.id)); } catch (error) { setRentalError(error instanceof Error ? error.message : "No se pudo anular el alquiler."); } finally { setAgreementPending(false); } };
 
   const openCreate = () => {
     setEditorUser(null);
@@ -440,6 +570,16 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
         onClear={clearFilters}
       />
 
+      {page && (
+        <section aria-label="Estado de acuerdos y alquileres" className="rounded-[1.2rem] border border-black/5 bg-white px-4 py-3 text-sm">
+          {agreementLoading && <p className="text-zinc-500" role="status">Cargando acuerdos de empleados…</p>}
+          {!agreementLoading && !agreementError && page.items.every((user) => user.role.name !== "employee") && <p className="text-zinc-500">No hay empleados en esta página para mostrar acuerdos.</p>}
+          {agreementError && <div className="flex flex-col gap-2 text-red-700 sm:flex-row sm:items-center sm:justify-between"><p role="alert">No pudimos cargar los acuerdos: {agreementError}</p><Button type="button" variant="outline" onClick={() => setRentalDataReloadKey((value) => value + 1)} className="rounded-xl">Reintentar acuerdos</Button></div>}
+          {rentalLoading && <p className="mt-1 text-zinc-500" role="status">Cargando alquileres del período {currentPeriod}…</p>}
+          {rentalListError && <div className="mt-1 flex flex-col gap-2 text-red-700 sm:flex-row sm:items-center sm:justify-between"><p role="alert">No pudimos cargar los alquileres: {rentalListError}</p><Button type="button" variant="outline" onClick={() => setRentalDataReloadKey((value) => value + 1)} className="rounded-xl">Reintentar alquileres</Button></div>}
+        </section>
+      )}
+
       {loading && !page ? (
         <LoadingList />
       ) : listError ? (
@@ -468,6 +608,12 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
               users={page.items}
               currentUserId={currentUser.id}
               onAction={chooseAction}
+              agreements={agreements}
+              rentals={rentals}
+              canEditAgreement={currentUser.role.name === "owner"}
+              onAgreement={openAgreement}
+              onPayRental={(user, rental) => { setRentalError(null); setRentalUser(user); setRentals((current) => ({ ...current, [user.id]: rental })); }}
+              onRentalHistory={openHistory}
             />
           </div>
           <footer className="flex flex-col gap-3 rounded-[1.2rem] px-1 text-sm text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
@@ -534,6 +680,7 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
         onClose={closeEditor}
         onCreate={createUser}
         onUpdate={updateUser}
+        canEditRates={currentUser.role.name === "owner"}
       />
 
       <UserPasswordDialog
@@ -556,6 +703,10 @@ export const UsersView = ({ currentUser }: UsersViewProps) => {
         onClose={closeConfirmation}
         onConfirm={confirmUserAction}
       />
+      <EmployeeAgreementDialog key={`agreement-dialog-${agreementUser?.id ?? "closed"}:${JSON.stringify(agreementUser ? agreements[agreementUser.id] ?? null : null)}`} employeeName={agreementUser ? `${agreementUser.firstName} ${agreementUser.lastName}` : ""} agreement={agreementUser ? agreements[agreementUser.id] ?? null : null} agreementLoading={agreementDialogLoading} open={agreementUser !== null} editable={currentUser.role.name === "owner"} pending={agreementPending} error={agreementError ?? rentalError} onRetry={() => agreementUser && loadAgreement(agreementUser)} onClose={() => { agreementRequestRef.current += 1; setAgreementUser(null); setAgreementDialogLoading(false); setAgreementError(null); setRentalError(null); }} onSave={saveAgreement} />
+      <ChairRentalConfirmDialog key={`confirm-rental-dialog-${rentalUser?.id ?? "closed"}:${paymentMethods.length}`} payment={rentalUser ? rentals[rentalUser.id] ?? null : null} methods={paymentMethods} methodsLoading={paymentMethodsLoading} methodsError={paymentMethodsError} onRetryMethods={retryPaymentMethods} open={rentalUser !== null} pending={agreementPending} error={rentalError} onClose={() => { setRentalUser(null); setRentalError(null); }} onConfirm={confirmRental} />
+      <ChairRentalHistorySheet employeeName={historyUser ? `${historyUser.firstName} ${historyUser.lastName}` : ""} items={history} open={historyUser !== null} loading={historyLoading} error={rentalError} owner={currentUser.role.name === "owner"} onClose={() => { setHistoryUser(null); setRentalError(null); }} onVoid={setVoidPayment} />
+      <ChairRentalVoidDialog key={`void-rental-dialog-${voidPayment?.id ?? "closed"}`} payment={voidPayment} open={voidPayment !== null} pending={agreementPending} error={rentalError} onClose={() => { setVoidPayment(null); setRentalError(null); }} onVoid={voidRental} />
     </div>
   );
 };

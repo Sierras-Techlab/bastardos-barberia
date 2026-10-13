@@ -24,7 +24,7 @@ const dailyMetricsSchema = z.object({
 }).strict();
 
 const incomeBreakdownSchema = z.object({
-  key: z.enum(["services", "products", "subscriptions"]),
+  key: z.enum(["services", "products", "subscriptions", "chair_rentals"]),
   amount: nonnegativeMoney,
 }).strict();
 
@@ -41,6 +41,25 @@ const namedBreakdownSchema = z.object({
 
 const rankedItemSchema = namedBreakdownSchema.extend({
   quantity: z.number().int().safe().nonnegative(),
+}).strict();
+
+const rentalObligationSchema = z.object({
+  employeeId: z.uuid(), employeeName: z.string().trim().min(1), period: month,
+  amount: nonnegativeMoney, dueDay: z.number().int().min(1).max(28),
+  status: z.enum(["pending", "overdue"]),
+}).strict();
+const rentalPayingEmployeeSchema = z.object({
+  employeeId: z.uuid(), employeeName: z.string().trim().min(1),
+  amount: nonnegativeMoney, paymentCount: z.number().int().positive(),
+}).strict();
+const rentalEffectiveDateSchema = z.object({
+  date, amount: nonnegativeMoney, count: z.number().int().positive(),
+}).strict();
+export const chairRentalSummarySchema = z.object({
+  total: nonnegativeMoney, count: z.number().int().nonnegative(),
+  byEffectiveDate: z.array(rentalEffectiveDateSchema).optional(),
+  payingEmployees: z.array(rentalPayingEmployeeSchema),
+  pending: z.array(rentalObligationSchema), overdue: z.array(rentalObligationSchema),
 }).strict();
 
 const dayHighlightSchema = z.object({
@@ -89,6 +108,7 @@ export const businessReportSchema = z.object({
     to: date,
   }).strict(),
   summary: reportMetricsSchema,
+  chairRentals: chairRentalSummarySchema.optional(),
   previousSummary: reportMetricsSchema,
   projection: reportMetricsSchema.nullable(),
   daily: z.array(z.object({

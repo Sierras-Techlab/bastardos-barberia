@@ -51,3 +51,18 @@ it("labels subscription incomes and exposes Mensualidad as a stable kind", () =>
   expect(getIncomeKindLabel(subscription)).toBe("Mensualidad");
   expect(getIncomeDescription(subscription)).toBe("Mensualidad agosto 2026");
 });
+
+it("presents chair-rental income separately from sales", () => {
+  const rental: IncomeListItem = {
+    ...base,
+    id: "income-rental",
+    sourceType: "chair_rental",
+    chairRentalPeriod: "2026-08",
+    paidAt: "2026-08-12T12:00:00.000Z",
+    chairRental: { sourceType: "chair_rental", period: "2026-08", paidAt: "2026-08-12T12:00:00.000Z" },
+    commission: { total: 0, barbershopNet: 10000 },
+  };
+  expect(getIncomeKindLabel(rental)).toBe("Alquiler de silla");
+  expect(getIncomeDescription(rental)).toBe("Alquiler de silla");
+  expect(getIncomeCommissionAmount(rental)).toBe(0);
+});
