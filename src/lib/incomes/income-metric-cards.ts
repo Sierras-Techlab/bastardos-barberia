@@ -13,16 +13,16 @@ export const buildIncomeMetricCards = (
   if (role === "employee" || isEmployeeMetrics(metrics)) {
     const employee = metrics as EmployeeIncomeListMetrics;
     return [
-      { label: "Tu ingreso", value: formatArs(employee.employeeCommissionTotal), detail: "Comisión registrada", tone: "dark" },
+      { label: "Tu comisión", value: formatArs(employee.employeeCommissionTotal), detail: "Comisión registrada", tone: "dark" },
       { label: "Ventas", value: String(employee.count), detail: "Movimientos activos", tone: "primary" },
       { label: "Tu ganancia promedio", value: employee.count > 0 ? formatArs(Math.round(employee.employeeCommissionTotal / employee.count)) : formatArs(0), detail: "Por venta activa", tone: "light" },
     ];
   }
   const manager = metrics as IncomeListMetrics;
   return [
-    { label: "Facturación bruta", value: formatArs(manager.grossTotal), detail: "Ingresos activos", tone: "dark" },
-    { label: "Comisiones", value: formatArs(manager.commissionTotal), detail: "Comisiones devengadas", tone: "primary" },
-    { label: "Neto barbería", value: formatArs(manager.barbershopNet), detail: "Facturado menos comisiones", tone: "light" },
+    { label: "Total cobrado", value: formatArs(manager.grossTotal), detail: "Ingresos activos", tone: "dark" },
+    { label: "Comisiones generadas", value: formatArs(manager.commissionTotal), detail: "Comisiones devengadas", tone: "primary" },
+    { label: "Para la barbería", value: formatArs(manager.barbershopNet), detail: "Facturado menos comisiones", tone: "light" },
     { label: "Ventas", value: String(manager.count), detail: "Movimientos registrados", tone: "muted" },
   ];
 };

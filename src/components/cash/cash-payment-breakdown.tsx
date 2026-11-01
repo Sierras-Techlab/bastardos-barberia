@@ -16,9 +16,9 @@ export const CashPaymentBreakdown = ({
           <WalletCards className="size-4" />
         </span>
         <div>
-          <CardTitle>Medios de pago</CardTitle>
+          <CardTitle>Cómo se cobró</CardTitle>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Distribución dinámica de la caja seleccionada
+            Cobros del día, separados por medio de pago
           </p>
           {payments.some((payment) => payment.adjustmentAmount !== 0) && (
             <p className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">

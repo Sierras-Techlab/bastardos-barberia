@@ -49,7 +49,7 @@ it("shows zero sales when there are no active incomes", () => {
 
 it("shows employee metrics from the sanitized employeeCommissionTotal and never leaks manager totals", () => {
   render(<IncomeMetrics role="employee" metrics={{ count: 2, employeeCommissionTotal: 10000 }} />);
-  expect(screen.getByText("Tu ingreso")).toBeVisible();
+  expect(screen.getByText("Tu comisión")).toBeVisible();
   expect(screen.getByText("Tu ganancia promedio")).toBeVisible();
   expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
   expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();

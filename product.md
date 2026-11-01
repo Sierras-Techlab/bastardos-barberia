@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-09-15
+Last updated: 2026-11-01
 
 ## Vision
 
@@ -38,7 +38,9 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-The active branch is `dev`, with Reports `039`, production hardening `040`, responsive hardening and the application work for `041` and `042` integrated. Migrations `041` through `043` are installed in the configured test database. The incremental `043` repair lets a balance-only Caja day close automatically on upgraded schemas. The rollback-only database acceptance, read-only audit and complete `001`-`043` disposable clean-install gate passed in test. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses, reports and critical stock/session/idempotency races. The income ledger prevents stale metrics from being presented under a failed filter and provides bounded loading with retry. Production remains gated on its own schema preflight, backup or restore point and deployment window.
+The current frontend increment simplifies only Caja and Ingresos: explain collected totals, generated commissions and the barbershop share; show sales, monthly customer payments and commission-free chair rentals as parts of the same total; make applied filters and exclusions explicit; and distinguish physical cash from other payment methods. Other modules and sale-entry behavior are outside this increment. The local implementation on `codex/caja-ingresos-claridad` includes migration `046_income_composition.sql` for consistent manager-only read aggregation and monthly concepts. Remote installation of `046` remains pending explicit authorization; the application supports its absence without inventing a breakdown or exposing an unsupported monthly filter.
+
+The `dev` baseline has Reports `039`, production hardening `040`, responsive hardening and the application work for `041` and `042` integrated. Migrations `041` through `043` are installed in the configured test database. The incremental `043` repair lets a balance-only Caja day close automatically on upgraded schemas. The rollback-only database acceptance, read-only audit and complete `001`-`043` disposable clean-install gate passed in test. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses, reports and critical stock/session/idempotency races. The income ledger prevents stale metrics from being presented under a failed filter and provides bounded loading with retry. Production remains gated on its own schema preflight, backup or restore point and deployment window.
 
 The operational-control roadmap comprises `019` employee work sessions, `020` price overrides/configurable owner commission/employee-safe projections, `021` professional-owned fixed customers with atomic monthly payments, historical `022` manual Caja lifecycle and `023` derived customer last visit. These blocks and `041` through `043` are installed in the configured test database; `041` supersedes the manual controls and `043` converges the legacy Caja check. Customer visit totals continue to count only active normal sales; subscription incomes affect Caja and dashboards without inflating visit history.
 

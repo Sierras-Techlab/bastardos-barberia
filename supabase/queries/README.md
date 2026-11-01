@@ -49,8 +49,32 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 43. `043_initial_balance_cash_close_constraint.sql`
 44. `044_income_list_charged_totals.sql`
 45. `045_employee_commercial_agreements_and_chair_rentals.sql`
+46. `046_income_composition.sql`
 
-Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `045` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward.
+Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `046` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward. Remote SQL execution requires explicit authorization.
+
+## Migration 046: income composition and monthly concepts
+
+For an existing database through `045`, prepare a backup/restore point and apply only `046_income_composition.sql` in the approved deployment window. This transaction extends the canonical `list_incomes` read query with manager-only `metrics.composition` (`sales`, `subscriptions`, `chairRentals`); all three groups use stored charged totals, commission and net, with identical filters and snapshot before pagination. It also enables the existing `subscription` kind and supplies its immutable period and financial concept through the manager serializer. No rows or financial writers change. The patch rejects unknown/older reader bodies and can be rerun idempotently.
+
+Application deployment can precede SQL installation: missing composition is explicitly unavailable, never shown as zero or computed from the current page. The new monthly filter is offered only after the manager response supplies composition. Employee metrics remain strict and never include administrative composition.
+
+After authorized installation, verify:
+
+- For one manager and identical filters, pages 1 and 2 return identical metrics. Each composition column sums to its corresponding overall metric. Voided-only and empty periods return three zero groups.
+- A chair-rental-only filter has zero commission and zero sale count. A monthly-only filter identifies `sourceType=fixed_subscription` and the stored subscription period/amount; it must not display `0 productos`.
+- A payment-method filter still selects whole operations, including their other payment portions. The frontend explains this; it does not claim the overall amount was collected entirely by the selected method.
+- Employee responses still contain only `count` and `employeeCommissionTotal`, ignore attempts to select another responsible user, and exclude chair rentals.
+- Run the read-only audit in the authorized target environment. Run acceptance/clean-install scenarios only in an explicitly authorized test environment, never production.
+
+The synthetic SQL regression runs entirely in memory, uses the real canonical reader/manager serializer plus the relevant `044`/`045` repairs and `046`, and never reads `.env` or connects to Supabase. PGlite is a temporary verification dependency, not an application dependency:
+
+```powershell
+npm install --prefix tmp/caja-sql-verification --no-save --package-lock=false @electric-sql/pglite
+node scripts/verify-income-composition.mjs tmp/caja-sql-verification/node_modules/@electric-sql/pglite
+```
+
+This checks SQL behavior and idempotence on synthetic tables. It does not replace a full-schema clean-install or acceptance gate against an authorized test database.
 
 ## Production paths
 

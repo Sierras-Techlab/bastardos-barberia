@@ -39,6 +39,7 @@ it("updates search and owner-only filters with complete values", async () => {
     />,
   );
 
+  await user.click(screen.getByRole("button", { name: "Más filtros" }));
   await user.type(
     screen.getByRole("searchbox", { name: /buscar ingresos/i }),
     "tomas",
@@ -103,9 +104,9 @@ it("opens the compact mobile filters", async () => {
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: /^filtrar$/i }));
+  await user.click(screen.getByRole("button", { name: "Más filtros" }));
 
   expect(
-    screen.getByRole("dialog", { name: /filtros de ingresos/i }),
+    screen.getByRole("combobox", { name: "Qué querés ver" }),
   ).toBeVisible();
 });
