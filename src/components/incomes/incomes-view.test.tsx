@@ -254,7 +254,7 @@ describe("IncomesView (employee)", () => {
     render(<IncomesView data={employeeData} initialQuery={initialQuery} currentUser={{ ...currentUser, role: "employee" }} employees={[currentUser]} paymentMethods={paymentMethods} canViewAll={false} canVoid={false} incomeClient={client()} />);
     expect(screen.getByRole("heading", { name: "Tus ventas registradas" })).toBeVisible();
     expect(screen.getAllByText("Corte + 2 productos").length).toBeGreaterThan(0);
-    expect(screen.getByText("Tu ingreso")).toBeVisible();
+    expect(screen.getByText("Tu comisión")).toBeVisible();
     expect(screen.getAllByText("$ 7.000").length).toBeGreaterThan(0);
     expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
     expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();

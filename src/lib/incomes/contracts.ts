@@ -72,6 +72,14 @@ export const managerIncomeResponseSchema = z.object({
   total: z.number().int().nonnegative(),
   grossTotal: z.number().int().nonnegative(),
   sourceType: z.enum(["sale", "fixed_subscription", "chair_rental"]).optional(),
+  subscription: z.object({
+    sourceType: z.literal("fixed_subscription"),
+    period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    label: z.string(),
+    monthlyPrice: z.number().int().nonnegative(),
+    employeeEarning: z.number().int().nonnegative(),
+    barbershopNet: z.number().int().nonnegative(),
+  }).strict().nullable().optional(),
   chairRentalPeriod: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).nullable().optional(),
   paidAt: z.iso.datetime({ offset: true }).nullable().optional(),
   chairRental: z.object({ sourceType: z.literal("chair_rental"), period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), paidAt: z.iso.datetime({ offset: true }).nullable() }).strict().nullable().optional(),
@@ -93,9 +101,35 @@ export const employeeIncomeResponseSchema = z.object({
   employeeCommission: z.number().int().nonnegative(),
   status: z.enum(["active", "voided"]),
 }).strict();
+const compositionAmountsSchema = z.object({
+  grossTotal: z.number().int().nonnegative(),
+  commissionTotal: z.number().int().nonnegative(),
+  barbershopNet: z.number().int().nonnegative(),
+}).strict().refine((amounts) => amounts.grossTotal === amounts.commissionTotal + amounts.barbershopNet, "Los importes del concepto no concilian.");
+const incomeCompositionSchema = z.object({
+  sales: compositionAmountsSchema,
+  subscriptions: compositionAmountsSchema,
+  chairRentals: compositionAmountsSchema.refine((amounts) => amounts.commissionTotal === 0, "El alquiler no genera comisión."),
+}).strict();
+const managerMetricsSchema = z.object({
+  grossTotal: z.number().nonnegative(),
+  commissionTotal: z.number().nonnegative(),
+  barbershopNet: z.number().nonnegative(),
+  count: z.number().int().nonnegative(),
+  average: z.number().nonnegative(),
+  paymentTotals: z.array(z.object({ paymentMethodId: z.uuid(), name: z.string().min(1), amount: z.number().int().nonnegative() }).strict()),
+  composition: incomeCompositionSchema.optional(),
+}).strict().superRefine((metrics, context) => {
+  if (!metrics.composition) return;
+  for (const key of ["grossTotal", "commissionTotal", "barbershopNet"] as const) {
+    const sum = Object.values(metrics.composition).reduce((total, amounts) => total + amounts[key], 0);
+    if (sum !== metrics[key]) context.addIssue({ code: "custom", path: ["composition"], message: "El desglose no coincide con el total del período." });
+  }
+});
+
 export const paginatedIncomesSchema = z.object({
   items: z.array(managerIncomeResponseSchema),
-  metrics: z.object({ grossTotal: z.number().nonnegative(), commissionTotal: z.number().nonnegative(), barbershopNet: z.number().nonnegative(), count: z.number().int().nonnegative(), average: z.number().nonnegative(), paymentTotals: z.array(z.object({ paymentMethodId: z.uuid(), name: z.string().min(1), amount: z.number().int().nonnegative() }).strict()) }).strict(),
+  metrics: managerMetricsSchema,
   pagination: z.object({ page: z.number().int().positive(), pageSize: z.number().int().positive(), total: z.number().int().nonnegative(), totalPages: z.number().int().nonnegative() }).strict(),
 }).strict();
 

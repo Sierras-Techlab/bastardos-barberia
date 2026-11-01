@@ -44,7 +44,7 @@ it("composes the Bastardos income history route", async () => {
   render(await DashboardLayout({ children: await IncomesPage() }));
 
   expect(screen.getByRole("heading", { level: 1, name: /ingresos/i })).toBeVisible();
-  expect(screen.getByText(/historial de ventas/i)).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Movimientos" })).toBeVisible();
   expect(screen.getByAltText("Bastardos Barbería")).toBeVisible();
   expect(screen.getByRole("link", { name: /cargar ingreso/i })).toHaveAttribute(
     "href",

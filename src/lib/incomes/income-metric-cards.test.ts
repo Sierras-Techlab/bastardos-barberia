@@ -12,14 +12,14 @@ it("uses the authoritative gross total for managers", () => {
 
 it("builds employee sales metrics from the sanitized employeeCommissionTotal without leaking gross or net", () => {
   const cards = buildIncomeMetricCards(employeeMetrics, "employee");
-  expect(cards.map((card) => card.label)).toEqual(["Tu ingreso", "Ventas", "Tu ganancia promedio"]);
+  expect(cards.map((card) => card.label)).toEqual(["Tu comisión", "Ventas", "Tu ganancia promedio"]);
   expect(cards.some((card) => card.label === "Neto barbería")).toBe(false);
   expect(cards.some((card) => card.label === "Facturación bruta")).toBe(false);
   expect(cards[0].value).toContain("42.000");
 });
 
 it("builds manager business metrics", () => {
-  expect(buildIncomeMetricCards(managerMetrics, "owner").map((card) => card.label)).toEqual(["Facturación bruta", "Comisiones", "Neto barbería", "Ventas"]);
+  expect(buildIncomeMetricCards(managerMetrics, "owner").map((card) => card.label)).toEqual(["Total cobrado", "Comisiones generadas", "Para la barbería", "Ventas"]);
 });
 
 it("formats zero-valued canonical economics", () => {

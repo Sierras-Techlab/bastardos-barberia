@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import { formatIncomeDateTime } from "@/lib/incomes/income-list";
+import { formatChairRentalPeriod } from "@/lib/chair-rentals/presentation";
 import type { EmployeeIncomeListItem, IncomeListItem, IncomeListRow, UserRole } from "@/types/income";
 
 type IncomeDetailSheetProps = {
@@ -100,7 +101,7 @@ export const IncomeDetailSheet = ({
               )}
               {employee?.sourceType === "fixed_subscription" && employee.subscription && (
                 <DetailRow
-                  label={`Mensualidad ${employee.subscription.label}`}
+                  label={`Mensualidad · ${formatChairRentalPeriod(employee.subscription.period)}`}
                   value={formatArs(employee.subscription.monthlyPrice)}
                 />
               )}

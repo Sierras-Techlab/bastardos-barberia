@@ -121,15 +121,15 @@ describe("CashView", () => {
     );
 
     expect(screen.getByText("Caja de hoy")).toBeVisible();
-    expect(screen.getByText("Automática")).toBeVisible();
-    expect(screen.getByText(/permanece activa automáticamente/i)).toBeVisible();
+    expect(screen.getByText("En curso")).toBeVisible();
+    expect(screen.getByText(/Los cobros del día se actualizan automáticamente/i)).toBeVisible();
     expect(screen.getByRole("button", { name: "Cargar saldo inicial" })).toBeVisible();
     expect(screen.getByText("Efectivo")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Cargar ingreso" }),
     ).toHaveAttribute("href", "/incomes/new");
     expect(
-      screen.getByRole("table", { name: "Ventas de la caja" }),
+      screen.getByRole("table", { name: "Movimientos de la caja" }),
     ).toBeVisible();
     expect(
       screen.getByRole("table", { name: "Historial de cajas" }),
@@ -146,7 +146,7 @@ describe("CashView", () => {
     );
 
     const paymentCard = screen
-      .getByText("Medios de pago")
+      .getByText("Cómo se cobró")
       .closest('[data-slot="card"]');
 
     expect(paymentCard?.parentElement).toHaveClass("cash-payment-column");
@@ -351,7 +351,7 @@ describe("CashView", () => {
     render(<CashView initialDay={voidedDay} initialHistory={history} viewerRole="owner" />);
 
     const row = screen.getByRole("row", { name: /Anulada/ });
-    expect(within(row).getByText("Excluida del neto")).toBeVisible();
+    expect(within(row).getByText("No suma al total")).toBeVisible();
     expect(within(row).getAllByText(/\$.*0/)).toHaveLength(2);
   });
 });

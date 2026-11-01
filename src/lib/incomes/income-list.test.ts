@@ -140,7 +140,7 @@ describe("income list domain", () => {
         employeeEarning: 4500,
         barbershopNet: 10500,
       },
-    })).toBe("Mensualidad agosto 2026");
+    })).toBe("Mensualidad · agosto de 2026");
   });
 
   it("describes chair rental income with a readable billing period", () => {

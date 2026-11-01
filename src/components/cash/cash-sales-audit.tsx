@@ -33,10 +33,10 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
     <div className="mb-3 flex items-end justify-between gap-4 px-1">
       <div>
         <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
-          Auditoría diaria
+          Detalle del día
         </p>
         <h3 id="cash-sales-title" className="mt-1 text-lg font-semibold">
-          Desglose de ventas
+          Movimientos del día
         </h3>
       </div>
       <p className="text-xs text-muted-foreground">
@@ -47,14 +47,14 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
     {sales.length > 0 ? (
       <>
         <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 xl:block">
-          <table aria-label="Ventas de la caja" className="w-full min-w-[44rem] text-left text-sm">
+          <table aria-label="Movimientos de la caja" className="w-full min-w-[44rem] text-left text-sm">
             <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
               <tr>
                 <th className="px-5 py-3 font-medium">Hora</th>
                 <th className="px-5 py-3 font-medium">Responsable</th>
                 <th className="px-5 py-3 font-medium">Concepto</th>
-                <th className="px-5 py-3 text-right font-medium">Bruto</th>
-                <th className="px-5 py-3 text-right font-medium">Neto</th>
+                <th className="px-5 py-3 text-right font-medium">Cobrado</th>
+                <th className="px-5 py-3 text-right font-medium">Para la barbería</th>
                 <th className="w-14 px-3 py-3"><span className="sr-only">Detalle</span></th>
               </tr>
             </thead>
@@ -81,7 +81,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                             Anulada
                           </Badge>
                         )}
-                        {excluded && <Badge variant="secondary">Excluida del neto</Badge>}
+                        {excluded && <Badge variant="secondary">No suma al total</Badge>}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right font-medium">
@@ -108,7 +108,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
           </table>
         </div>
 
-        <ul aria-label="Ventas de la caja en móvil" className="space-y-3 xl:hidden">
+        <ul aria-label="Movimientos de la caja en móvil" className="space-y-3 xl:hidden">
           {sales.map((sale) => {
             const excluded = isExcludedFromSelectedDay(sale);
 
@@ -129,7 +129,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                           <span className="font-medium text-red-600">· Anulada</span>
                         )}
                         {excluded && (
-                          <span className="font-medium text-muted-foreground">· Excluida del neto</span>
+                          <span className="font-medium text-muted-foreground">· No suma al total</span>
                         )}
                       </span>
                     </span>
@@ -138,7 +138,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                     </span>
                   </span>
                   <span className="mt-3 flex items-center justify-between border-t border-black/5 pt-3 text-xs text-muted-foreground">
-                    <span>Neto {formatArs(excluded ? 0 : sale.barbershopNet)}</span>
+                    <span>Para la barbería {formatArs(excluded ? 0 : sale.barbershopNet)}</span>
                     <span className="flex items-center gap-1 text-primary">
                       <Eye className="size-3.5" /> Ver detalle
                     </span>
@@ -152,7 +152,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
     ) : (
       <div className="flex min-h-48 flex-col items-center justify-center rounded-[1.5rem] bg-white px-6 text-center shadow-sm ring-1 ring-black/5">
         <ReceiptText className="size-5 text-primary" />
-        <p className="mt-3 font-semibold">Todavía no hay ventas</p>
+        <p className="mt-3 font-semibold">Todavía no hay cobros</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
           La caja se actualiza automáticamente cuando se registra un ingreso.
         </p>

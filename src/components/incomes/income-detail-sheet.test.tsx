@@ -89,7 +89,7 @@ it("shows the monthly subscription concept instead of an empty product list", ()
   };
   render(<IncomeDetailSheet income={income} open viewerRole="owner" onOpenChange={vi.fn()} />);
 
-  expect(screen.getByText("Mensualidad agosto 2026")).toBeVisible();
+  expect(screen.getByText("Mensualidad · agosto de 2026")).toBeVisible();
   expect(screen.getAllByText(/15\.000/).length).toBeGreaterThan(0);
   expect(screen.queryByText("0 productos")).not.toBeInTheDocument();
 });

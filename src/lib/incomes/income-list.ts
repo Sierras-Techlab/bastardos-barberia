@@ -61,8 +61,8 @@ export const formatIncomeConcept = (item: IncomeListRow): string => {
     const period = item.chairRental?.period ?? item.chairRentalPeriod;
     return period ? `Alquiler de silla · ${formatChairRentalPeriod(period)}` : "Alquiler de silla";
   }
-  if (item.sourceType === "fixed_subscription" && item.subscription) {
-    return `Mensualidad ${item.subscription.label}`;
+  if (item.sourceType === "fixed_subscription") {
+    return item.subscription ? `Mensualidad · ${formatChairRentalPeriod(item.subscription.period)}` : "Mensualidad de cliente";
   }
   const quantity = managerProductQuantity(item);
   const productLabel = `${quantity} ${quantity === 1 ? "producto" : "productos"}`;

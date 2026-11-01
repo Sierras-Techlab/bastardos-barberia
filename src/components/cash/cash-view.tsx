@@ -54,8 +54,8 @@ const formatShortDate = (date: string) =>
 
 const reconciliationBadge: Record<"not_applicable" | "pending_confirmation" | "confirmed", { label: string; className: string } | null> = {
   not_applicable: null,
-  pending_confirmation: { label: "Pendiente de confirmación", className: "bg-amber-100 text-amber-800 hover:bg-amber-100" },
-  confirmed: { label: "Confirmada", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
+  pending_confirmation: { label: "Cerrada · falta contar el efectivo", className: "bg-amber-100 text-amber-800 hover:bg-amber-100" },
+  confirmed: { label: "Cerrada · efectivo contado", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
 };
 
 export const CashView = ({
@@ -157,7 +157,7 @@ export const CashView = ({
                 {day.state === "live" ? "Caja de hoy" : "Caja cerrada"}
               </h2>
               {day.state === "live" ? (
-                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Automática</Badge>
+                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">En curso</Badge>
               ) : (
                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Cierre guardado</Badge>
               )}
@@ -172,8 +172,8 @@ export const CashView = ({
             </p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               {day.state === "live"
-                ? "La caja permanece activa automáticamente y se actualiza con los ingresos y anulaciones del día."
-                : "Este cierre es inmutable; las anulaciones posteriores se registran como ajustes auditados."}
+                ? "Los cobros del día se actualizan automáticamente. La caja se cierra sola."
+                : "Este día ya cerró. Las anulaciones posteriores se muestran aparte, con la fecha del ingreso original."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -208,11 +208,15 @@ export const CashView = ({
           <CashSummaryCards summary={day.summary} sales={day.sales} />
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <section aria-label="Efectivo en caja" className="mt-6 rounded-2xl border border-black/8 p-4">
+          <h3 className="font-semibold">Efectivo en caja</h3>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Son los billetes en la caja. Las transferencias y otros medios se muestran en Cómo se cobró. Para la barbería no equivale al efectivo disponible. Las comisiones generadas no se descuentan del efectivo automáticamente.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <LifecycleField label="Saldo inicial" value={formatArs(lifecycle.openingBalance)} hint={lifecycle.openingSource === "initial_balance" ? "Saldo cargado" : lifecycle.openingSource === "manual" ? "Apertura manual histórica" : lifecycle.openingSource === "first_income" ? "Inicio automático" : "Sin saldo cargado"} />
           <LifecycleField label="Efectivo esperado" value={lifecycle ? formatArs(lifecycle.expectedCash) : "—"} />
           <LifecycleField label="Conteo físico" value={lifecycle.countedCash !== null ? formatArs(lifecycle.countedCash) : "—"} hint={lifecycle.countedCash !== null ? differenceLabel(lifecycle.difference) : null} accent={lifecycle.countedCash !== null && lifecycle.difference !== 0} />
-        </div>
+          </div>
+        </section>
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
