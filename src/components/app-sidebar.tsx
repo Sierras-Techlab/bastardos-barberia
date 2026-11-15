@@ -17,7 +17,6 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import { BastardosWordmark } from "@/components/dashboard/bastardos-wordmark";
 import type { SafeUser } from "@/lib/auth/types";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -100,10 +99,7 @@ export const AppSidebar = ({ activeItem, user }: AppSidebarProps) => {
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4 pt-6">
         <div className="flex h-16 items-center justify-center group-data-[collapsible=icon]:hidden">
-          {pathname === "/" ? (
-            <div className="w-full px-2 text-sidebar-foreground"><BastardosWordmark withSubtitle /></div>
-          ) : (
-            <Image
+          <Image
             src="/brand/bastardos-logo.png"
             alt="Bastardos Barbería"
             width={192}
@@ -111,7 +107,6 @@ export const AppSidebar = ({ activeItem, user }: AppSidebarProps) => {
             priority
             className="h-auto w-full max-w-44"
           />
-          )}
         </div>
         <div className="hidden h-16 items-center justify-center group-data-[collapsible=icon]:flex">
           <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
