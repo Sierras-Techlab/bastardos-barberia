@@ -71,7 +71,7 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
 
         {loading && <p role="status" className="py-10 text-center text-sm text-muted-foreground">Cargando visitas...</p>}
         {!loading && error && (
-          <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+          <div className="rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">
             <p>{error}</p>
             <Button type="button" variant="outline" size="sm" className="mt-3" onClick={retryLoad}>Reintentar</Button>
           </div>
@@ -82,21 +82,21 @@ export const CustomerVisitsDialog = ({ customer, onClose, client = customerClien
         {!loading && !error && data && data.items.length > 0 && (
           <ol className="space-y-3">
             {data.items.map((visit) => (
-              <li key={visit.id} className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4">
+              <li key={visit.id} className="rounded-2xl border border-border bg-muted p-4">
                 <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <CalendarDays className="size-4 text-primary" />
+                  <CalendarDays className="size-4 text-brand-foreground" />
                   {formatVisitDate(visit.occurredAt)}
                 </p>
                 <ul className="mt-3 space-y-2 text-sm">
                   {visit.items.map((item, index) => (
                     <li key={`${visit.id}-${index}`} className="flex flex-wrap items-center gap-2">
-                      {item.type === "service" ? <Scissors className="size-4 text-primary" /> : <Package className="size-4 text-primary" />}
+                      {item.type === "service" ? <Scissors className="size-4 text-brand-foreground" /> : <Package className="size-4 text-brand-foreground" />}
                       <span className="min-w-0 break-words">{item.quantity} × {item.name}</span>
                       <span className="ml-auto max-w-full text-right text-xs text-muted-foreground">{formatArs(item.unitPrice)} c/u · {formatArs(item.subtotal)}</span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-4 border-t border-black/5 pt-3 text-right text-sm font-semibold">Total de la visita {formatArs(visit.totalSpent)}</p>
+                <p className="mt-4 border-t border-border pt-3 text-right text-sm font-semibold">Total de la visita {formatArs(visit.totalSpent)}</p>
               </li>
             ))}
           </ol>

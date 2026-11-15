@@ -154,7 +154,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
       {isManager && (
         <section aria-label="Resumen de presentismo de la página actual" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="sm:col-span-2 xl:col-span-4">
-            <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Página actual</p>
+            <p className="text-xs font-semibold tracking-[0.16em] text-brand-foreground uppercase">Página actual</p>
             <p className="mt-1 text-sm text-muted-foreground">Los totales reflejan únicamente las jornadas visibles en esta página.</p>
           </div>
           {[
@@ -163,8 +163,8 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
             { label: "Comisiones", value: formatArs(managerTotals.employeeCommission), icon: ReceiptText },
             { label: "Ventas registradas", value: String(managerTotals.saleCount), icon: CalendarClock },
           ].map((metric) => (
-            <article key={metric.label} className="rounded-[1.4rem] bg-white p-4 shadow-sm ring-1 ring-black/5">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-red-50 text-primary"><metric.icon className="size-4" /></span>
+            <article key={metric.label} className="rounded-[1.4rem] bg-card p-4 shadow-sm ring-1 ring-black/5">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-destructive/10 text-brand-foreground"><metric.icon className="size-4" /></span>
               <p className="mt-4 text-xs text-muted-foreground">{metric.label}</p>
               <p className="mt-1 text-xl font-semibold tracking-[-0.03em]">{metric.value}</p>
             </article>
@@ -173,7 +173,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
       )}
 
       {isManager && (
-        <section aria-label="Filtros de presentismo" className="rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-black/5">
+        <section aria-label="Filtros de presentismo" className="rounded-[1.5rem] bg-card p-4 shadow-sm ring-1 ring-black/5">
           <div className="grid gap-3 xl:grid-cols-[minmax(12rem,1fr)_10rem_10rem_auto] xl:items-end">
             <label className="space-y-1.5 text-sm font-medium">
               Empleado
@@ -185,7 +185,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
                   setEmployeeId(next);
                   void load({ employeeId: next, dateFrom, dateTo });
                 }}
-                className="h-10 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
+                className="h-10 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
               >
                 <option value="">Todos los empleados</option>
                 {employees.map((employee) => (
@@ -195,11 +195,11 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
             </label>
             <label className="space-y-1.5 text-sm font-medium">
               Desde
-              <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="h-10 rounded-xl border-black/10 bg-[#f7f6f3]" />
+              <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="h-10 rounded-xl border-border bg-muted" />
             </label>
             <label className="space-y-1.5 text-sm font-medium">
               Hasta
-              <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="h-10 rounded-xl border-black/10 bg-[#f7f6f3]" />
+              <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="h-10 rounded-xl border-border bg-muted" />
             </label>
             <Button type="button" variant="outline" className="h-10 rounded-xl" disabled={loading} onClick={() => void load({ employeeId, dateFrom, dateTo })}>
               Aplicar fechas
@@ -209,14 +209,14 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
       )}
 
       {error && (
-        <p role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p role="alert" className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <TriangleAlert className="size-4 shrink-0" /> {error}
         </p>
       )}
 
       <section aria-labelledby="work-session-history-title">
         <div className="mb-3 px-1">
-          <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{isManager ? "Registro del equipo" : "Mi registro"}</p>
+          <p className="text-xs font-semibold tracking-[0.16em] text-brand-foreground uppercase">{isManager ? "Registro del equipo" : "Mi registro"}</p>
           <h3 id="work-session-history-title" className="mt-1 text-lg font-semibold">Historial de jornadas</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {isManager
@@ -227,9 +227,9 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
 
         {data.items.length > 0 ? (
           <>
-            <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 xl:block">
+            <div className="hidden overflow-x-auto rounded-[1.5rem] bg-card shadow-sm ring-1 ring-black/5 xl:block">
               <table aria-label="Historial de jornadas" className={`w-full text-left text-sm ${isManager ? "min-w-[72rem]" : "min-w-[44rem]"}`}>
-                <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
+                <thead className="border-b border-border bg-muted text-xs text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">Fecha</th>
                     {isManager && <th className="px-4 py-3 font-medium">Empleado</th>}
@@ -250,7 +250,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
                 </thead>
                 <tbody className="divide-y divide-black/5">
                   {data.items.map((session) => (
-                    <tr key={session.id} className="transition-colors hover:bg-[#faf9f6]">
+                    <tr key={session.id} className="transition-colors hover:bg-muted">
                       <td className="px-4 py-3.5 font-medium">{formatDate(session.businessDate)}</td>
                       {isManager && <td className="px-4 py-3.5">{session.employee.firstName} {session.employee.lastName}</td>}
                       <td className="px-4 py-3.5"><span>{formatTime(session.startedAt)}</span><span className="text-muted-foreground"> — {session.endedAt ? formatTime(session.endedAt) : "En curso"}</span></td>
@@ -274,13 +274,13 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
 
             <ul aria-label="Historial de jornadas en móvil" className="space-y-3 xl:hidden">
               {data.items.map((session) => (
-                <li key={session.id} className="rounded-[1.4rem] bg-white p-4 shadow-sm ring-1 ring-black/5">
+                <li key={session.id} className="rounded-[1.4rem] bg-card p-4 shadow-sm ring-1 ring-black/5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold">{isManager ? `${session.employee.firstName} ${session.employee.lastName}` : formatDate(session.businessDate)}</p>
                       {isManager && <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(session.businessDate)}</p>}
                     </div>
-                    <Badge className={session.state === "open" ? "bg-red-50 text-primary hover:bg-red-50" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"}>{session.state === "open" ? "En curso" : "Cerrada"}</Badge>
+                    <Badge className={session.state === "open" ? "bg-destructive/10 text-brand-foreground hover:bg-destructive/10" : "bg-success/10 text-success-foreground hover:bg-success/10"}>{session.state === "open" ? "En curso" : "Cerrada"}</Badge>
                   </div>
                   <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" /> {formatTime(session.startedAt)} — {session.endedAt ? formatTime(session.endedAt) : "ahora"}</p>
                   <dl className={`mt-4 grid gap-3 text-sm ${isManager ? "grid-cols-2" : "grid-cols-3"}`}>
@@ -304,7 +304,7 @@ const WorkSessionHistoryState = (props: WorkSessionHistoryProps) => {
             </ul>
           </>
         ) : (
-          <div className="flex min-h-44 flex-col items-center justify-center rounded-[1.5rem] bg-white px-6 text-center shadow-sm ring-1 ring-black/5">
+          <div className="flex min-h-44 flex-col items-center justify-center rounded-[1.5rem] bg-card px-6 text-center shadow-sm ring-1 ring-black/5">
             <CalendarClock className="size-6 text-muted-foreground/55" />
             <p className="mt-3 font-semibold">Todavía no hay jornadas</p>
             <p className="mt-1 text-sm text-muted-foreground">Las entradas y salidas registradas aparecerán acá.</p>

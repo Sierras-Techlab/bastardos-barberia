@@ -55,7 +55,7 @@ export const UserPasswordDialog = ({
       <DialogContent className="rounded-[1.6rem] p-5 sm:max-w-md">
         <form onSubmit={submit}>
           <DialogHeader>
-            <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-warning/10 text-warning-foreground">
               <KeyRound className="size-5" />
             </span>
             <DialogTitle className="text-xl">Cambiar contraseña</DialogTitle>
@@ -72,7 +72,7 @@ export const UserPasswordDialog = ({
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="new-password"
-                className="h-11 rounded-xl border-black/10 bg-[#f7f6f3]"
+                className="h-11 rounded-xl border-border bg-muted"
               />
             </label>
             <label className="space-y-1.5 text-sm font-medium">
@@ -82,13 +82,13 @@ export const UserPasswordDialog = ({
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
                 autoComplete="new-password"
-                className="h-11 rounded-xl border-black/10 bg-[#f7f6f3]"
+                className="h-11 rounded-xl border-border bg-muted"
               />
             </label>
           </div>
 
           {(validationError || error) && (
-            <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {validationError ?? error}
             </p>
           )}

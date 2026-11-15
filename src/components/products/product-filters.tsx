@@ -21,7 +21,7 @@ type ProductFiltersProps = {
 };
 
 const selectClassName =
-  "h-11 min-w-0 rounded-xl border border-black/10 bg-[#f6f5f2] px-3 text-sm outline-none transition-colors focus:border-ring focus:bg-white focus:ring-2 focus:ring-ring/30";
+  "h-11 min-w-0 rounded-xl border border-border bg-muted px-3 text-sm outline-none transition-colors focus:border-ring focus:bg-card focus:ring-2 focus:ring-ring/30";
 
 export const ProductFilters = ({
   value,
@@ -35,7 +35,7 @@ export const ProductFilters = ({
 }: ProductFiltersProps) => (
   <section
     aria-label="Filtros de productos"
-    className="rounded-[1.4rem] bg-white p-3 shadow-sm sm:p-4"
+    className="rounded-[1.4rem] bg-card p-3 shadow-sm sm:p-4"
   >
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(15rem,1fr)_12rem_12rem_12rem_auto]">
       <div className="relative min-w-0 sm:col-span-2 lg:col-span-1 xl:col-span-1">
@@ -46,7 +46,7 @@ export const ProductFilters = ({
           placeholder="Buscar por nombre"
           value={value.query}
           onChange={(event) => onChange({ ...value, query: event.target.value })}
-          className="h-11 rounded-xl border-black/10 bg-[#f6f5f2] pl-10 shadow-none"
+          className="h-11 rounded-xl border-border bg-muted pl-10 shadow-none"
         />
       </div>
 

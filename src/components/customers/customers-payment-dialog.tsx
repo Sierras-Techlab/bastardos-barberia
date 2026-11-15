@@ -52,7 +52,7 @@ export const CustomersPaymentDialog = ({
   }, [customer.id, period]);
 
   if (loading) return <p role="status" className="sr-only">Cargando mensualidad…</p>;
-  if (error) return <div role="alert" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="rounded-2xl bg-white p-5 shadow-xl"><p className="text-sm text-red-700">{error}</p><button type="button" onClick={onClose} className="mt-3 rounded-xl border border-black/10 px-3 py-1.5 text-sm">Cerrar</button></div></div>;
+  if (error) return <div role="alert" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="rounded-2xl bg-card p-5 shadow-xl"><p className="text-sm text-destructive">{error}</p><button type="button" onClick={onClose} className="mt-3 rounded-xl border border-border px-3 py-1.5 text-sm">Cerrar</button></div></div>;
   if (!month) return null;
   return <FixedCustomerPaymentDialog
     month={month}

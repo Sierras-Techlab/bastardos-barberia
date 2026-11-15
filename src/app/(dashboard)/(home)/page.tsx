@@ -17,8 +17,9 @@ const dateFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "
 
 const Home = async () => {
   const { user } = await requirePageUser();
-  const range = getBuenosAiresSevenDayRange();
-  const fixedCustomerRange = getBuenosAiresRemainingWorkweekRange();
+  const referenceInstant = new Date();
+  const range = getBuenosAiresSevenDayRange(referenceInstant);
+  const fixedCustomerRange = getBuenosAiresRemainingWorkweekRange(referenceInstant);
   const incomeQuery = { dateFrom: range.dateFrom, dateTo: range.dateTo, status: "active", pageSize: 100 } as const;
   const fixedOccurrencesPromise = fixedCustomerRange
     ? listFixedOccurrences(user, fixedCustomerRange)
@@ -31,8 +32,8 @@ const Home = async () => {
   const remainingIncomePages = await Promise.all(Array.from({ length: Math.max(firstIncomePage.pagination.totalPages - 1, 0) }, (_, index) => listIncomes(user, { ...incomeQuery, page: index + 2 })));
   const incomeItems: IncomeListRow[] = [firstIncomePage, ...remainingIncomePages].flatMap((page) => page.items as IncomeListRow[]);
   const incomeSummary = buildIncomeSummaryForViewer(user.role.name, incomeItems, range.dateTo);
-  const currentDate = dateFormatter.format(new Date());
+  const currentDate = dateFormatter.format(referenceInstant);
 
-  return <><header className="mx-auto flex h-16 w-full max-w-[1600px] shrink-0 items-center px-5 md:px-7 xl:px-8"><div className="flex min-w-0 items-center gap-3"><SidebarTrigger className="-ml-1" /><div className="min-w-0"><p className="truncate font-semibold">Dashboard</p><p className="truncate text-xs text-muted-foreground capitalize">{currentDate}</p></div></div></header><main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-5 md:px-7 xl:min-h-0 xl:px-8 xl:pb-7"><div className="mb-5"><p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Resumen del negocio</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">Todo lo importante, de un vistazo.</h1><p className="mt-1 text-sm text-muted-foreground">Ingresos, tareas frecuentes y clientes con horarios habituales.</p></div><div data-testid="dashboard-grid" className="grid gap-5 xl:grid-cols-12 xl:items-start"><div className="min-w-0 xl:col-span-8"><IncomeSummaryCard summary={incomeSummary} /></div><div className="grid min-w-0 gap-5 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1"><QuickActionsCard canCreateIncome={!cashClosed} /><FixedCustomersCard occurrences={fixedOccurrences} /></div></div></main></>;
+  return <><header className="mx-auto flex min-h-14 w-full max-w-[1600px] shrink-0 items-center px-4 pt-2 md:h-16 md:px-7 xl:px-8"><div className="flex min-w-0 items-center gap-3"><SidebarTrigger className="-ml-1 size-11" /><div className="min-w-0"><p className="truncate font-semibold">Dashboard</p><p className="truncate text-xs text-muted-foreground capitalize">{currentDate}</p></div></div></header><main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pb-6 md:px-7 xl:min-h-0 xl:px-8 xl:pb-7"><div className="mb-4 md:mb-5"><p className="text-xs font-semibold tracking-[0.2em] text-brand-foreground uppercase">Resumen del negocio</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">Todo lo importante, de un vistazo.</h1><p className="mt-1 text-sm text-muted-foreground">Ingresos, tareas frecuentes y clientes con horarios habituales.</p></div><div data-testid="dashboard-grid" className="grid min-w-0 grid-cols-1 gap-4 md:gap-5 xl:grid-cols-12 xl:items-start"><div className="min-w-0 xl:col-span-4 xl:col-start-9 xl:row-start-1"><QuickActionsCard canCreateIncome={!cashClosed} /></div><div className="min-w-0 xl:col-span-8 xl:col-start-1 xl:row-span-2 xl:row-start-1"><IncomeSummaryCard summary={incomeSummary} /></div><div className="min-w-0 xl:col-span-4 xl:col-start-9 xl:row-start-2"><FixedCustomersCard occurrences={fixedOccurrences} referenceInstant={referenceInstant.toISOString()} /></div></div></main></>;
 };
 export default Home;

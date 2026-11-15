@@ -56,7 +56,7 @@ export const IncomeDetailSheet = ({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full overflow-y-auto border-0 sm:max-w-md">
-        <SheetHeader className="border-b border-black/5 px-6 py-5 pr-14">
+        <SheetHeader className="border-b border-border px-6 py-5 pr-14">
           <div className="flex items-center gap-2">
             <SheetTitle className="text-xl">Detalle del ingreso</SheetTitle>
             {income.status === "voided" && (
@@ -70,8 +70,8 @@ export const IncomeDetailSheet = ({
 
         <div className="space-y-5 px-6 pb-6">
           {employee && (
-            <section className="rounded-[1.35rem] bg-[#f6f5f2] p-4">
-              <p className="text-xs font-medium tracking-[0.16em] text-primary uppercase">
+            <section className="rounded-[1.35rem] bg-muted p-4">
+              <p className="text-xs font-medium tracking-[0.16em] text-brand-foreground uppercase">
                 Total
               </p>
               <p
@@ -86,10 +86,10 @@ export const IncomeDetailSheet = ({
 
           <section>
             <h3 className="mb-2 flex items-center gap-2 font-semibold">
-              <Scissors className="size-4 text-primary" />
+              <Scissors className="size-4 text-brand-foreground" />
               Concepto
             </h3>
-            <div className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
+            <div className="divide-y divide-black/5 rounded-[1.25rem] border border-border px-4">
               {employee?.sourceType === "chair_rental" && (
                 <DetailRow label="Alquiler de silla" value={formatArs(employee.total)} />
               )}
@@ -124,10 +124,10 @@ export const IncomeDetailSheet = ({
 
           <section>
             <h3 className="mb-2 flex items-center gap-2 font-semibold">
-              <UserRound className="size-4 text-primary" />
+              <UserRound className="size-4 text-brand-foreground" />
               Venta
             </h3>
-            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
+            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-border px-4">
               {employee && (
                 <DetailRow
                   label="Empleado responsable"
@@ -152,8 +152,8 @@ export const IncomeDetailSheet = ({
           </section>
 
           <section>
-            <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-primary" />Comisión</h3>
-            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-black/5 px-4">
+            <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-brand-foreground" />Comisión</h3>
+            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-border px-4">
               {employee?.sourceType === "chair_rental" ? (
                 <>
                   <DetailRow label="Comisión" value={formatArs(0)} />
@@ -191,7 +191,7 @@ export const IncomeDetailSheet = ({
               )}
             </dl>
             {employee?.service?.commission?.fullCommission && (
-              <p className="mt-2 text-xs font-medium text-primary">Servicio otorgado al 100% al empleado.</p>
+              <p className="mt-2 text-xs font-medium text-brand-foreground">Servicio otorgado al 100% al empleado.</p>
             )}
             {income.status === "voided" && (
               <p className="mt-2 text-xs text-muted-foreground">Importes excluidos de las métricas activas.</p>
@@ -204,7 +204,7 @@ export const IncomeDetailSheet = ({
           </p>
         </div>
 
-        <SheetFooter className="border-t border-black/5 bg-white px-6 py-4">
+        <SheetFooter className="border-t border-border bg-card px-6 py-4">
           {canVoid && income.status === "active" && !isChairRental ? (
             <Button type="button" variant="destructive" onClick={() => onVoid?.(income)}>Anular venta</Button>
           ) : isChairRental && income.status === "active" ? (

@@ -30,7 +30,7 @@ export const IncomeMobileList = ({
           type="button"
           aria-label={`Abrir ingreso ${income.id}`}
           onClick={() => onSelect(income)}
-          className="w-full rounded-[1.4rem] bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="w-full rounded-[1.4rem] bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -41,12 +41,12 @@ export const IncomeMobileList = ({
                 {formatIncomeConcept(income)}
               </p>
             </div>
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f6f5f2] text-primary">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand-foreground">
               <ArrowUpRight className="size-4" />
             </span>
           </div>
 
-          <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/5 pt-3">
+          <div className="mt-4 flex items-end justify-between gap-3 border-t border-border pt-3">
             <div className="space-y-1 text-xs text-muted-foreground">
               {employeeName ? <p>{employeeName}</p> : null}
               <p className="flex items-center gap-1.5">

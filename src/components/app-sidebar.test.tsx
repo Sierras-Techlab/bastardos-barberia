@@ -61,6 +61,24 @@ it("uses the session identity and hides owner navigation from employees", () => 
   expect(screen.queryByRole("button", { name: "Caja" })).not.toBeInTheDocument();
 });
 
+it("toggles the persistent theme from the profile area without changing the route", async () => {
+  const browser = userEvent.setup();
+  render(
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={employee} />
+      </SidebarProvider>
+    </TooltipProvider>,
+  );
+
+  const toggle = screen.getByRole("button", { name: /cambiar tema/i });
+  await browser.click(toggle);
+
+  expect(document.documentElement).toHaveClass("dark");
+  expect(localStorage.getItem("bastardos-theme")).toBe("dark");
+  expect(pathname.value).toBe("/");
+});
+
 it("closes the database session and returns to login", async () => {
   const browser = userEvent.setup();
   render(

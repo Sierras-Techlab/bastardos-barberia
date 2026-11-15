@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Eye, Plus, RefreshCcw, ShieldCheck, TriangleAlert, Wallet } from "lucide-react";
@@ -54,8 +54,8 @@ const formatShortDate = (date: string) =>
 
 const reconciliationBadge: Record<"not_applicable" | "pending_confirmation" | "confirmed", { label: string; className: string } | null> = {
   not_applicable: null,
-  pending_confirmation: { label: "Cerrada · falta contar el efectivo", className: "bg-amber-100 text-amber-800 hover:bg-amber-100" },
-  confirmed: { label: "Cerrada · efectivo contado", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
+  pending_confirmation: { label: "Cerrada · falta contar el efectivo", className: "bg-warning/10 text-warning-foreground hover:bg-warning/10" },
+  confirmed: { label: "Cerrada · efectivo contado", className: "bg-success/10 text-success-foreground hover:bg-success/10" },
 };
 
 export const CashView = ({
@@ -149,7 +149,7 @@ export const CashView = ({
 
   return (
     <div className="space-y-7" aria-busy={loadingDay || loadingHistory || loadingIncome || busyMutation}>
-      <section className="rounded-[1.8rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
+      <section className="rounded-[1.8rem] bg-card p-5 shadow-sm ring-1 ring-black/5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -157,9 +157,9 @@ export const CashView = ({
                 {day.state === "live" ? "Caja de hoy" : "Caja cerrada"}
               </h2>
               {day.state === "live" ? (
-                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">En curso</Badge>
+                <Badge className="bg-primary/10 text-brand-foreground hover:bg-primary/10">En curso</Badge>
               ) : (
-                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Cierre guardado</Badge>
+                <Badge className="bg-success/10 text-success-foreground hover:bg-success/10">Cierre guardado</Badge>
               )}
               {lifecycle && (() => {
                 const meta = reconciliationBadge[lifecycle.reconciliationState];
@@ -199,7 +199,7 @@ export const CashView = ({
         </div>
 
         {error && (
-          <p role="alert" className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p role="alert" className="mt-4 flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <TriangleAlert className="size-4 shrink-0" /> {error}
           </p>
         )}
@@ -208,7 +208,7 @@ export const CashView = ({
           <CashSummaryCards summary={day.summary} sales={day.sales} />
         </div>
 
-        <section aria-label="Efectivo en caja" className="mt-6 rounded-2xl border border-black/8 p-4">
+        <section aria-label="Efectivo en caja" className="mt-6 rounded-2xl border border-border p-4">
           <h3 className="font-semibold">Efectivo en caja</h3>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Son los billetes en la caja. Las transferencias y otros medios se muestran en Cómo se cobró. Para la barbería no equivale al efectivo disponible. Las comisiones generadas no se descuentan del efectivo automáticamente.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -225,12 +225,12 @@ export const CashView = ({
           <CashPaymentBreakdown payments={day.payments} />
           {day.adjustments.length > 0 && (
             <section className="rounded-[1.6rem] border border-primary/15 bg-primary/5 p-5">
-              <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Ajustes auditados</p>
+              <p className="text-xs font-semibold tracking-[0.16em] text-brand-foreground uppercase">Ajustes auditados</p>
               <p className="mt-2 text-lg font-semibold">{day.adjustments.length} {day.adjustments.length === 1 ? "anulación posterior" : "anulaciones posteriores"}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">Impacto neto: {formatArs(day.summary.adjustmentBarbershopNet)}</p>
               <ul className="mt-4 space-y-2 border-t border-primary/10 pt-3">
                 {day.adjustments.map((adjustment) => (
-                  <li key={adjustment.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-3 ring-1 ring-primary/10">
+                  <li key={adjustment.id} className="flex items-center justify-between gap-3 rounded-xl bg-muted/70 px-3 py-3 ring-1 ring-primary/10">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">Anulación posterior</p>
                       <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
@@ -238,7 +238,7 @@ export const CashView = ({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-sm font-semibold text-red-600">{formatArs(adjustment.grossDelta)}</span>
+                      <span className="text-sm font-semibold text-destructive">{formatArs(adjustment.grossDelta)}</span>
                       <Button type="button" variant="ghost" size="icon" aria-label="Ver ingreso anulado" onClick={() => void openIncome(adjustment.sourceIncomeId)}>
                         <Eye />
                       </Button>
@@ -299,9 +299,9 @@ const resolveLifecycle = (day: CashDay) => day.lifecycle ?? {
 
 type LifecycleFieldProps = { label: string; value: string; hint?: string | null; accent?: boolean };
 const LifecycleField = ({ label, value, hint, accent }: LifecycleFieldProps) => (
-  <div className="rounded-2xl border border-black/8 bg-[#f6f5f2] p-4">
+  <div className="rounded-2xl border border-border bg-muted p-4">
     <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-    <p className={`mt-1 text-xl font-semibold ${accent ? "text-red-700" : ""}`}>{value}</p>
+    <p className={`mt-1 text-xl font-semibold ${accent ? "text-destructive" : ""}`}>{value}</p>
     {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
   </div>
 );

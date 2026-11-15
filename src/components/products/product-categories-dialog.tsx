@@ -29,11 +29,11 @@ type ProductCategoriesDialogProps = {
 };
 
 const fieldClassName =
-  "h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
+  "h-10 rounded-xl border-border bg-muted shadow-none focus:bg-card";
 const activeBadgeClassName =
-  "shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700";
+  "shrink-0 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success-foreground";
 const inactiveBadgeClassName =
-  "shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700";
+  "shrink-0 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning-foreground";
 
 const messageFor = (error: unknown) =>
   error instanceof Error
@@ -150,7 +150,7 @@ export const ProductCategoriesDialog = ({
     <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-xl">
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary">
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground">
             <Tags className="size-5" />
           </span>
           <DialogTitle>Administrar categorías</DialogTitle>
@@ -180,7 +180,7 @@ export const ProductCategoriesDialog = ({
         </form>
 
         {editing && (
-          <form className="mt-4 rounded-xl bg-[#f7f6f3] p-3" onSubmit={rename}>
+          <form className="mt-4 rounded-xl bg-muted p-3" onSubmit={rename}>
             <label className="space-y-1.5 text-sm font-medium">
               Nombre de la categoría
               <Input
@@ -214,7 +214,7 @@ export const ProductCategoriesDialog = ({
           <Button
             type="button"
             variant="outline"
-            className="h-9 rounded-xl bg-white"
+            className="h-9 rounded-xl bg-card"
             onClick={() => {
               setShowInactive((current) => !current);
               setEditing(null);
@@ -234,7 +234,7 @@ export const ProductCategoriesDialog = ({
               <li
                 key={category.id}
                 data-testid={`product-category-card-${category.id}`}
-                className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-3 transition-colors hover:border-black/10 hover:bg-white"
+                className="rounded-2xl border border-border bg-muted p-3 transition-colors hover:border-border hover:bg-card"
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <p className="min-w-0 truncate font-medium">{category.name}</p>
@@ -257,7 +257,7 @@ export const ProductCategoriesDialog = ({
                   type="button"
                   variant="outline"
                   aria-label={`Editar ${category.name}`}
-                  className="h-9 min-w-0 flex-1 rounded-xl bg-white px-2 text-xs sm:text-sm"
+                  className="h-9 min-w-0 flex-1 rounded-xl bg-card px-2 text-xs sm:text-sm"
                   disabled={isSaving}
                   onClick={() => {
                     setEditing(category);
@@ -273,7 +273,7 @@ export const ProductCategoriesDialog = ({
                   aria-label={`${category.isActive ? "Desactivar" : "Reactivar"} ${category.name}`}
                   className={
                     category.isActive
-                      ? "h-9 min-w-0 flex-1 rounded-xl bg-white px-2 text-xs sm:text-sm"
+                      ? "h-9 min-w-0 flex-1 rounded-xl bg-card px-2 text-xs sm:text-sm"
                       : "h-9 min-w-0 flex-1 rounded-xl px-2 text-xs sm:text-sm"
                   }
                   disabled={
@@ -294,7 +294,7 @@ export const ProductCategoriesDialog = ({
                     setDeleting(category);
                     setError(null);
                   }}
-                  className="size-9 shrink-0 rounded-xl text-destructive hover:bg-red-50 hover:text-destructive"
+                  className="size-9 shrink-0 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 />
                 </Button>
@@ -303,14 +303,14 @@ export const ProductCategoriesDialog = ({
             ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-dashed border-black/10 bg-[#f7f6f3] px-4 py-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
             {showInactive
               ? "No hay categorías desactivadas."
               : "Todavía no hay categorías activas."}
           </p>
         )}
 
-        {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
         <DialogFooter className="-mx-5 -mb-5 mt-5 p-5">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} className="rounded-xl">

@@ -21,7 +21,7 @@ export type CustomerEditorDialogProps = {
   onClose(): void;
   onSave(input: FrontendCustomerEditorInput): Promise<Customer>;
 };
-const fieldClassName = "h-11 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
+const fieldClassName = "h-11 rounded-xl border-border bg-muted shadow-none focus:bg-card";
 const weekdayOptions: { value: IsoWeekday; label: string }[] = [
   { value: 1, label: "Lunes" },
   { value: 2, label: "Martes" },
@@ -98,7 +98,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
     <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
       <form noValidate onSubmit={submit}>
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary"><UserRoundPlus className="size-5" /></span>
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground"><UserRoundPlus className="size-5" /></span>
           <DialogTitle>{mode === "create" ? "Nuevo cliente" : "Editar cliente"}</DialogTitle>
           <DialogDescription>El teléfono y el email son opcionales.</DialogDescription>
         </DialogHeader>
@@ -108,7 +108,7 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
           <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Email (opcional)<Input aria-label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} className={fieldClassName} /></label>
           <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Teléfono (opcional)<Input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className={fieldClassName} /></label>
         </div>
-        <section className="mt-4 rounded-2xl border border-black/8 bg-[#f7f6f3] p-4">
+        <section className="mt-4 rounded-2xl border border-border bg-muted p-4">
           <label className="flex cursor-pointer items-start gap-3">
             <input type="checkbox" checked={hasFixedSchedule} onChange={(event) => setHasFixedSchedule(event.target.checked)} className="mt-0.5 size-4 accent-red-600" />
             <span><span className="block text-sm font-semibold">¿Es cliente habitual?</span><span className="mt-0.5 block text-xs text-muted-foreground">Podés asignarle un día, horario, profesional responsable y un precio mensual.</span></span>
@@ -118,10 +118,10 @@ export const CustomerEditorDialog = ({ mode, customer, customers, currentUserRol
             <label className="space-y-1.5 text-sm font-medium">Hora fija<Input aria-label="Hora fija" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={fieldClassName} /></label>
             {isManager ? <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Profesional responsable<select aria-label="Profesional responsable" value={professionalId} onChange={(event) => setProfessionalId(event.target.value)} className={`${fieldClassName} w-full px-3 text-sm`}><option value="" disabled>Seleccionar profesional</option>{activeProfessionals.map((professional) => <option key={professional.id} value={professional.id}>{professional.firstName} {professional.lastName}</option>)}</select></label> : <p className="text-xs text-muted-foreground sm:col-span-2">El profesional responsable se asigna a vos automáticamente.</p>}
             <label className="space-y-1.5 text-sm font-medium sm:col-span-2">Precio mensual (ARS)<Input aria-label="Precio mensual" type="number" inputMode="numeric" min="0" step="1" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} className={fieldClassName} /></label>
-            {schedulePreview.success && <p className="rounded-xl bg-white px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data as { weekday: IsoWeekday; time: string })}</p>}
+            {schedulePreview.success && <p className="rounded-xl bg-card px-3 py-2 text-sm font-medium sm:col-span-2">{formatFixedSchedule(schedulePreview.data as { weekday: IsoWeekday; time: string })}</p>}
           </div>}
         </section>
-        {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <DialogFooter className="-mx-5 -mb-5 mt-5 p-5"><Button type="button" variant="outline" onClick={onClose} disabled={isSaving} className="rounded-xl">Cancelar</Button><Button type="submit" disabled={isSaving} className="rounded-xl">{isSaving ? "Guardando..." : mode === "create" ? "Crear cliente" : "Guardar cambios"}</Button></DialogFooter>
       </form>
     </DialogContent>

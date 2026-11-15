@@ -33,7 +33,7 @@ type ProductEditorDialogProps = {
 };
 
 const fieldClassName =
-  "h-11 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
+  "h-11 rounded-xl border-border bg-muted shadow-none focus:bg-card";
 
 export const ProductEditorDialog = ({
   mode,
@@ -103,7 +103,7 @@ export const ProductEditorDialog = ({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
         <form onSubmit={submit}>
           <DialogHeader>
-            <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary">
+            <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground">
               <PackagePlus className="size-5" />
             </span>
             <DialogTitle className="text-xl">
@@ -131,7 +131,7 @@ export const ProductEditorDialog = ({
               <select
                 value={categoryId}
                 onChange={(event) => setCategoryId(event.target.value)}
-                className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
+                className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
               >
                 {activeCategories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -167,7 +167,7 @@ export const ProductEditorDialog = ({
           </div>
 
           {error && (
-            <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           )}

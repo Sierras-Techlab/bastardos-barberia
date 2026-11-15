@@ -60,7 +60,7 @@ export const LoginForm = () => {
             placeholder="Ingresá tu usuario"
             required
             disabled={isSubmitting}
-            className="h-12 rounded-xl border-black/10 bg-[#f6f5f2] pr-3 pl-10 shadow-none transition-colors focus-visible:bg-white"
+            className="h-12 rounded-xl border-border bg-muted pr-3 pl-10 shadow-none transition-colors focus-visible:bg-card"
           />
         </div>
       </div>
@@ -79,7 +79,7 @@ export const LoginForm = () => {
             placeholder="Ingresá tu contraseña"
             required
             disabled={isSubmitting}
-            className="h-12 rounded-xl border-black/10 bg-[#f6f5f2] pr-11 pl-10 shadow-none transition-colors focus-visible:bg-white"
+            className="h-12 rounded-xl border-border bg-muted pr-11 pl-10 shadow-none transition-colors focus-visible:bg-card"
           />
           <button
             type="button"

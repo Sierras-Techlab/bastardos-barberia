@@ -136,10 +136,10 @@ export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: In
   });
 
   return (
-    <div className="overflow-hidden rounded-[1.6rem] bg-white shadow-sm">
+    <div className="overflow-hidden rounded-[1.6rem] bg-card shadow-sm">
       <div className="overflow-x-auto">
         <table aria-label="Historial de ingresos" className="w-full text-sm">
-          <thead className="border-b border-black/5 bg-[#f8f7f4] text-left text-xs text-muted-foreground">
+          <thead className="border-b border-border bg-muted text-left text-xs text-muted-foreground">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -157,7 +157,7 @@ export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: In
               <tr
                 key={row.id}
                 aria-label={`Ingreso ${row.original.id}`}
-                className="border-b border-black/5 transition-colors last:border-0 hover:bg-[#f6f5f2]"
+                className="border-b border-border transition-colors last:border-0 hover:bg-muted"
               >
                 {row.getAllCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-3.5 align-middle">

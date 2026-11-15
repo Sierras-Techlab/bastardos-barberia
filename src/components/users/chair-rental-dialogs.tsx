@@ -27,21 +27,21 @@ export const ChairRentalConfirmDialog = ({ payment, methods, open, pending = fal
         </DialogHeader>
         <div className="grid gap-3 text-sm">
           <p>
-            <span className="text-zinc-500">Importe a registrar:</span>{" "}
+            <span className="text-muted-foreground">Importe a registrar:</span>{" "}
             <strong>{payment && money(payment.amount)}</strong>
           </p>
-          <p className="rounded-xl bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">
+          <p className="rounded-xl bg-muted px-3 py-2 text-xs leading-5 text-foreground">
             La fecha de cobro se asigna automáticamente según la hora de Buenos Aires.
           </p>
-          {methodsLoading ? <p role="status" className="rounded-xl bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">Cargando medios de pago…</p> : methodsError ? <div className="space-y-2"><p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{methodsError}</p>{onRetryMethods && <Button type="button" variant="outline" onClick={onRetryMethods} disabled={pending} className="rounded-xl">Reintentar medios de pago</Button>}</div> : activeMethods.length === 0 ? <p role="alert" className="rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">No hay medios de pago activos configurados.</p> : <label>
+          {methodsLoading ? <p role="status" className="rounded-xl bg-muted px-3 py-2 text-xs leading-5 text-foreground">Cargando medios de pago…</p> : methodsError ? <div className="space-y-2"><p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-xs leading-5 text-destructive">{methodsError}</p>{onRetryMethods && <Button type="button" variant="outline" onClick={onRetryMethods} disabled={pending} className="rounded-xl">Reintentar medios de pago</Button>}</div> : activeMethods.length === 0 ? <p role="alert" className="rounded-xl bg-warning/10 px-3 py-2 text-xs leading-5 text-warning-foreground">No hay medios de pago activos configurados.</p> : <label>
             Medio de pago
-            <select aria-label="Medio de pago" required value={selectedMethodId} onChange={(e) => setMethodId(e.target.value)} disabled={pending} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3">
+            <select aria-label="Medio de pago" required value={selectedMethodId} onChange={(e) => setMethodId(e.target.value)} disabled={pending} className="mt-1 h-11 w-full rounded-xl border border-border bg-muted px-3">
               <option value="">Elegí un medio</option>
               {activeMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
             </select>
           </label>}
         </div>
-        {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onClose} className="rounded-xl">Cancelar</Button>
           <Button disabled={!selectedMethodId || pending || methodsLoading || Boolean(methodsError) || activeMethods.length === 0} onClick={confirm} className="rounded-xl">{pending && <LoaderCircle className="animate-spin" />}Confirmar pago</Button>
@@ -78,9 +78,9 @@ export const ChairRentalVoidDialog = ({ payment, open, pending = false, error, o
         </p>
         <label className="text-sm">
           Motivo
-          <textarea aria-label="Motivo de anulación" required minLength={1} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} disabled={pending} className="mt-1 min-h-24 w-full rounded-xl border border-black/10 bg-[#f7f6f3] p-3" />
+          <textarea aria-label="Motivo de anulación" required minLength={1} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} disabled={pending} className="mt-1 min-h-24 w-full rounded-xl border border-border bg-muted p-3" />
         </label>
-        {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onClose} className="rounded-xl">Cancelar</Button>
           <Button variant="destructive" disabled={!trimmedReason || trimmedReason.length > 500 || pending} onClick={voidPayment} className="rounded-xl">{pending && <LoaderCircle className="animate-spin" />}Anular pago</Button>

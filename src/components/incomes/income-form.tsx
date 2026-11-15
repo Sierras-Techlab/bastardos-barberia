@@ -257,7 +257,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       noValidate
     >
       <div className="space-y-5">
-        <Card className="overflow-visible rounded-[1.6rem] border-0 bg-white shadow-sm ring-0">
+        <Card className="overflow-visible rounded-[1.6rem] border-0 bg-card shadow-sm ring-0">
           <CardHeader>
             <CardTitle>Datos de la venta</CardTitle>
             <CardDescription>
@@ -304,13 +304,13 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
             </div>
 
             <div className="flex items-center gap-2 text-xs capitalize text-muted-foreground sm:col-span-2">
-              <CalendarDays className="size-4 text-primary" />
+              <CalendarDays className="size-4 text-brand-foreground" />
               {currentDateFormatter.format(new Date())}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.6rem] border-0 bg-white shadow-sm ring-0">
+        <Card className="rounded-[1.6rem] border-0 bg-card shadow-sm ring-0">
           <CardHeader>
             <CardTitle>Servicio</CardTitle>
             <CardDescription>
@@ -352,7 +352,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.6rem] border-0 bg-white shadow-sm ring-0">
+        <Card className="rounded-[1.6rem] border-0 bg-card shadow-sm ring-0">
           <CardHeader>
             <CardTitle>Productos</CardTitle>
             <CardDescription>
@@ -401,7 +401,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           </CardContent>
         </Card>
 
-        <Card className="rounded-[1.6rem] border-0 bg-white shadow-sm ring-0">
+        <Card className="rounded-[1.6rem] border-0 bg-card shadow-sm ring-0">
           <CardHeader>
             <CardTitle>Medio de pago</CardTitle>
             <CardDescription>
@@ -441,7 +441,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
         <div
           role="region"
           aria-label="Acción de ingreso"
-          className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 rounded-2xl bg-white/95 p-2 shadow-xl ring-1 ring-black/5 backdrop-blur xl:static xl:block xl:bg-transparent xl:p-0 xl:shadow-none xl:ring-0"
+          className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 rounded-2xl bg-background/95 p-2 shadow-xl ring-1 ring-black/5 backdrop-blur xl:static xl:block xl:bg-transparent xl:p-0 xl:shadow-none xl:ring-0"
         >
           {isManager && (
             <div className="min-w-0 flex-1 px-2 xl:hidden">

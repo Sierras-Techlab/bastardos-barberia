@@ -8,7 +8,7 @@ export const ServiceMetrics = ({ metrics }: { metrics: ServiceCatalogMetrics }) 
   const items = [
     { label: "Disponibles", value: `${metrics.activeServices} activos`, detail: "Servicios para vender", icon: Scissors, tone: "bg-[#202023] text-white" },
     { label: "Precio promedio", value: formatArs(metrics.averagePrice), detail: "Valor actual", icon: BadgeDollarSign, tone: "bg-primary text-white" },
-    { label: "Rango de precios", value: `${formatArs(metrics.minimumPrice)} — ${formatArs(metrics.maximumPrice)}`, detail: "De menor a mayor", icon: Tags, tone: "bg-white" },
+    { label: "Rango de precios", value: `${formatArs(metrics.minimumPrice)} — ${formatArs(metrics.maximumPrice)}`, detail: "De menor a mayor", icon: Tags, tone: "bg-card" },
   ];
   return (
     <section aria-label="Resumen de servicios" className="grid gap-3 sm:grid-cols-3">

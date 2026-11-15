@@ -62,7 +62,7 @@ const WorkSessionsPage = async () => {
 
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl xl:rounded-t-[2rem]">
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-5 md:px-7 xl:px-8">
           <SidebarTrigger className="-ml-1" />
           <div className="min-w-0">
@@ -76,7 +76,7 @@ const WorkSessionsPage = async () => {
 
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-5 pb-32 md:px-7 xl:px-8 xl:py-7 xl:pb-28">
         <div className="mb-6 max-w-3xl">
-          <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Tiempo y producción</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-brand-foreground uppercase">Tiempo y producción</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
             {user.role.name === "employee"
               ? "Tu jornada, clara de principio a fin"

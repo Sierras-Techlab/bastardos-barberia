@@ -21,7 +21,7 @@ type UserFiltersProps = {
 };
 
 const selectClassName =
-  "h-11 w-full rounded-xl border border-black/8 bg-[#f7f6f3] px-3 text-sm outline-none transition focus:border-primary/50 focus:bg-white focus:ring-3 focus:ring-primary/10";
+  "h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none transition focus:border-primary/50 focus:bg-card focus:ring-3 focus:ring-primary/10";
 
 export const UserFilters = ({
   roles,
@@ -36,19 +36,19 @@ export const UserFilters = ({
   return (
     <section
       aria-label="Filtros de usuarios"
-      className="rounded-[1.4rem] border border-black/5 bg-white p-3 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.42)] sm:p-4"
+      className="rounded-[1.4rem] border border-border bg-card p-3 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.42)] sm:p-4"
     >
       <div className="grid gap-3 lg:grid-cols-[minmax(16rem,1fr)_13rem_13rem_auto]">
         <label className="relative block">
           <span className="sr-only">Buscar usuarios</span>
-          <Search className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-zinc-400" />
+          <Search className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" />
           <Input
             type="search"
             value={value.search}
             onChange={(event) => onChange({ ...value, search: event.target.value })}
             placeholder="Buscar por nombre o usuario"
             aria-label="Buscar usuarios"
-            className="h-11 rounded-xl border-black/8 bg-[#f7f6f3] pl-10 shadow-none"
+            className="h-11 rounded-xl border-border bg-muted pl-10 shadow-none"
           />
         </label>
 
@@ -94,7 +94,7 @@ export const UserFilters = ({
           variant="ghost"
           disabled={!canClear}
           onClick={onClear}
-          className="h-11 rounded-xl px-4 text-zinc-500"
+          className="h-11 rounded-xl px-4 text-muted-foreground"
         >
           {canClear ? <RotateCcw /> : <SlidersHorizontal />}
           Limpiar filtros

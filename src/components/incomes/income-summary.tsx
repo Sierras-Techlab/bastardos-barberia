@@ -59,14 +59,14 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
       <CardHeader className="border-b border-white/10 px-5 py-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-foreground">
               Resumen
             </p>
             <CardTitle className="mt-1 text-lg text-white">
               Detalle del ingreso
             </CardTitle>
           </div>
-          <span className="flex size-10 items-center justify-center rounded-full bg-white/10 text-primary">
+          <span className="flex size-10 items-center justify-center rounded-full bg-white/10 text-brand-foreground">
             <CircleDollarSign className="size-5" />
           </span>
         </div>
@@ -74,7 +74,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
 
       <CardContent className="space-y-5 px-5 py-5">
         <div className="flex items-start gap-3 rounded-2xl bg-white/5 p-3">
-          <UserRound className="mt-0.5 size-4 text-primary" />
+          <UserRound className="mt-0.5 size-4 text-brand-foreground" />
           <div className="min-w-0 text-sm">
             <p className="font-medium">
               {employee

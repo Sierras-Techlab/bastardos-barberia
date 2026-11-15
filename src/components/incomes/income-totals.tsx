@@ -6,7 +6,7 @@ export const IncomeTotals = ({ grossTotal, commissionTotal, barbershopNet }: Inc
     <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {[
         { label: "Total cobrado", amount: grossTotal, hint: "Todos los medios de pago", className: "col-span-2 bg-[#202023] text-white sm:col-span-1" },
-        { label: "Comisiones generadas", amount: commissionTotal, hint: "Parte que corresponde al equipo", className: "bg-[#f6f5f2]" },
+        { label: "Comisiones generadas", amount: commissionTotal, hint: "Parte que corresponde al equipo", className: "bg-muted" },
         { label: "Para la barbería", amount: barbershopNet, hint: "Después de comisiones · antes de gastos", className: "bg-primary/5" },
       ].map((item) => (
         <div key={item.label} className={`min-w-0 rounded-2xl p-4 sm:p-5 ${item.className}`}>

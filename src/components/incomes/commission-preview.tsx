@@ -75,10 +75,10 @@ export const CommissionPreview = ({
     return (
       <section
         aria-label="Tu ganancia"
-        className="rounded-[1.6rem] bg-white p-5 shadow-sm"
+        className="rounded-[1.6rem] bg-card p-5 shadow-sm"
       >
         <div className="flex items-center gap-2">
-          <BadgePercent className="size-4 text-primary" />
+          <BadgePercent className="size-4 text-brand-foreground" />
           <h3 className="font-semibold">Tu ganancia</h3>
         </div>
         <div className="mt-4 text-sm">
@@ -131,10 +131,10 @@ export const CommissionPreview = ({
   return (
     <section
       aria-label="Comisión estimada"
-      className="rounded-[1.6rem] bg-white p-5 shadow-sm"
+      className="rounded-[1.6rem] bg-card p-5 shadow-sm"
     >
       <div className="flex items-center gap-2">
-        <BadgePercent className="size-4 text-primary" />
+        <BadgePercent className="size-4 text-brand-foreground" />
         <h3 className="font-semibold">Comisión estimada</h3>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -171,7 +171,7 @@ export const CommissionPreview = ({
         })}
       </div>
       {eligible && onGrantFullServiceCommission && (
-        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-red-50 p-3 text-sm">
+        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-destructive/10 p-3 text-sm">
           <input
             type="checkbox"
             checked={values.grantFullServiceCommission}

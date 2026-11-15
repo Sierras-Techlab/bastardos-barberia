@@ -82,7 +82,7 @@ export const ExpenseDetailSheet = ({
             </div>
           )}
           {expense.voidReason && (
-            <p className="break-words rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            <p className="break-words rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
               Motivo de anulación: {expense.voidReason}
             </p>
           )}

@@ -32,7 +32,7 @@ type UserEditorDialogProps = {
 };
 
 const fieldClassName =
-  "h-11 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
+  "h-11 rounded-xl border-border bg-muted shadow-none focus:bg-card";
 
 export const UserEditorDialog = ({
   mode,
@@ -124,18 +124,18 @@ export const UserEditorDialog = ({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
         {createdUser && mode === "create" ? (
           <div className="py-3 text-center" role="status" aria-live="polite">
-            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-success/10 text-success-foreground">
               <Check className="size-6" />
             </span>
             <DialogTitle className="mt-4 text-2xl">Usuario creado</DialogTitle>
             <DialogDescription className="mx-auto mt-2 max-w-sm">
               Entregale este usuario junto con la contraseña que acabás de asignar.
             </DialogDescription>
-            <div className="mx-auto mt-5 flex max-w-sm items-center gap-2 rounded-2xl bg-[#f4f2ee] p-2 pl-4">
-              <code className="min-w-0 flex-1 truncate text-left text-base font-bold text-zinc-900">
+            <div className="mx-auto mt-5 flex max-w-sm items-center gap-2 rounded-2xl bg-muted p-2 pl-4">
+              <code className="min-w-0 flex-1 truncate text-left text-base font-bold text-foreground">
                 {createdUser.username}
               </code>
-              <Button type="button" variant="outline" onClick={copyUsername} className="rounded-xl bg-white">
+              <Button type="button" variant="outline" onClick={copyUsername} className="rounded-xl bg-card">
                 <Copy /> Copiar usuario
               </Button>
             </div>
@@ -146,7 +146,7 @@ export const UserEditorDialog = ({
         ) : (
           <form onSubmit={submit}>
             <DialogHeader>
-              <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary">
+              <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground">
                 <UserPlus className="size-5" />
               </span>
               <DialogTitle className="text-xl">
@@ -185,7 +185,7 @@ export const UserEditorDialog = ({
                   <Input
                     readOnly
                     value={user.username}
-                    className={fieldClassName + " text-zinc-500"}
+                    className={fieldClassName + " text-muted-foreground"}
                   />
                 </label>
               )}
@@ -196,7 +196,7 @@ export const UserEditorDialog = ({
                   disabled={roles.length === 0}
                   value={String(roleId)}
                   onChange={(event) => setRoleId(Number(event.target.value) as 1 | 2 | 3)}
-                  className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
+                  className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
                 >
                   {roles.map((role) => (
                     <option key={role.id} value={String(role.id)}>
@@ -206,18 +206,18 @@ export const UserEditorDialog = ({
                 </select>
               </label>
 
-              <div className="grid gap-4 rounded-2xl bg-[#f7f6f3] p-4 sm:col-span-2 sm:grid-cols-2">
+              <div className="grid gap-4 rounded-2xl bg-muted p-4 sm:col-span-2 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por servicios (%)
                    <Input type="number" min="0" max="100" step="1" value={serviceCommissionDisabled ? "0" : serviceCommissionRate} disabled={serviceCommissionDisabled || pending} readOnly={!canEditRates} onChange={(event) => setServiceCommissionRate(event.target.value)} className={fieldClassName} aria-describedby={serviceCommissionDisabled ? "service-commission-disabled-help" : undefined} />
-                   {serviceCommissionDisabled && <span id="service-commission-disabled-help" className="block text-xs font-normal text-zinc-500">Deshabilitada por acuerdo. La tasa guardada se conserva para cuando se reactive.</span>}
+                   {serviceCommissionDisabled && <span id="service-commission-disabled-help" className="block text-xs font-normal text-muted-foreground">Deshabilitada por acuerdo. La tasa guardada se conserva para cuando se reactive.</span>}
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
                   Comisión por productos (%)
                    <Input type="number" min="0" max="100" step="1" value={productCommissionDisabled ? "0" : productCommissionRate} disabled={productCommissionDisabled || pending} readOnly={!canEditRates} onChange={(event) => setProductCommissionRate(event.target.value)} className={fieldClassName} aria-describedby={productCommissionDisabled ? "product-commission-disabled-help" : undefined} />
-                   {productCommissionDisabled && <span id="product-commission-disabled-help" className="block text-xs font-normal text-zinc-500">Deshabilitada por acuerdo. La tasa guardada se conserva para cuando se reactive.</span>}
+                   {productCommissionDisabled && <span id="product-commission-disabled-help" className="block text-xs font-normal text-muted-foreground">Deshabilitada por acuerdo. La tasa guardada se conserva para cuando se reactive.</span>}
                 </label>
-                <p className="text-xs text-zinc-500 sm:col-span-2">Los cambios se aplicarán a ventas futuras y no modificarán el historial.</p>
+                <p className="text-xs text-muted-foreground sm:col-span-2">Los cambios se aplicarán a ventas futuras y no modificarán el historial.</p>
               </div>
 
               {mode === "create" && (
@@ -231,7 +231,7 @@ export const UserEditorDialog = ({
                     autoComplete="new-password"
                     className={fieldClassName}
                   />
-                  <span className="block text-xs font-normal text-zinc-500">
+                  <span className="block text-xs font-normal text-muted-foreground">
                     Mínimo 10 caracteres.
                   </span>
                 </label>
@@ -239,7 +239,7 @@ export const UserEditorDialog = ({
             </div>
 
             {(validationError || error) && (
-              <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {validationError ?? error}
               </p>
             )}

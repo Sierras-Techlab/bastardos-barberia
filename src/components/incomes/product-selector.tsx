@@ -104,7 +104,7 @@ export const ProductSelector = ({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar productos"
           aria-label="Buscar productos"
-          className="h-11 rounded-xl border-black/10 bg-[#f6f5f2] pl-10 shadow-none"
+          className="h-11 rounded-xl border-border bg-muted pl-10 shadow-none"
         />
       </div>
 
@@ -117,9 +117,9 @@ export const ProductSelector = ({
               type="button"
               onClick={() => addProduct(product.id)}
               aria-label={`Agregar ${product.name}`}
-              className="flex min-h-20 items-center gap-3 rounded-xl bg-[#f6f5f2] p-3 text-left ring-1 ring-black/5 transition-all hover:bg-white hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex min-h-20 items-center gap-3 rounded-xl bg-muted p-3 text-left ring-1 ring-black/5 transition-all hover:bg-card hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-card text-brand-foreground">
                 <ShoppingBag className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
@@ -130,14 +130,14 @@ export const ProductSelector = ({
                   {formatArs(unitPrice)} · Stock {product.stock}
                 </span>
               </span>
-              <Plus className="size-4 shrink-0 text-primary" />
+              <Plus className="size-4 shrink-0 text-brand-foreground" />
             </button>
           );
         })}
       </div>
 
       {value.length > 0 && (
-        <div className="space-y-2 border-t border-black/5 pt-4">
+        <div className="space-y-2 border-t border-border pt-4">
           {value.map((item) => {
             const product = products.find(
               (candidate) => candidate.id === item.productId,
@@ -155,7 +155,7 @@ export const ProductSelector = ({
             return (
               <div
                 key={item.productId}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-black/5 bg-white p-3"
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3"
               >
                 <div className="min-w-32 flex-1">
                   <p className="text-sm font-medium">{product.name}</p>
@@ -163,7 +163,7 @@ export const ProductSelector = ({
                     {formatArs(unitPrice)} c/u
                   </p>
                 </div>
-                <div className="flex items-center gap-1 rounded-xl bg-[#f6f5f2] p-1">
+                <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
                   <Button
                     type="button"
                     variant="ghost"

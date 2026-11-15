@@ -21,6 +21,7 @@ import {
 import type { SafeUser } from "@/lib/auth/types";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -117,7 +118,7 @@ export const AppSidebar = ({ activeItem, user }: AppSidebarProps) => {
 
       <SidebarContent>
         <SidebarGroup className="px-3 py-2">
-          <SidebarGroupLabel className="text-sidebar-foreground/40">
+          <SidebarGroupLabel className="text-sidebar-foreground/60">
             Operación
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -151,7 +152,7 @@ export const AppSidebar = ({ activeItem, user }: AppSidebarProps) => {
 
         {canManage && (
           <SidebarGroup className="px-3 py-2">
-            <SidebarGroupLabel className="text-sidebar-foreground/40">
+            <SidebarGroupLabel className="text-sidebar-foreground/60">
               Administración
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -200,11 +201,14 @@ export const AppSidebar = ({ activeItem, user }: AppSidebarProps) => {
               </Avatar>
               <span className="flex min-w-0 flex-col gap-0.5 leading-none">
                 <span className="truncate font-medium">{name}</span>
-                <span className="truncate text-xs font-normal text-sidebar-foreground/45">
+                <span className="truncate text-xs font-normal text-sidebar-foreground/65">
                   {roleLabels[user.role.name]}
                 </span>
               </span>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <ThemeToggle />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton

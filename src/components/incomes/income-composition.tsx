@@ -8,8 +8,8 @@ const groups = [
 ] as const;
 
 export const IncomeComposition = ({ composition }: { composition: Composition }) => (
-  <section aria-label="De dónde viene lo cobrado" className="rounded-2xl border border-black/8 bg-white">
-    <div className="border-b border-black/5 px-4 py-3 sm:px-5">
+  <section aria-label="De dónde viene lo cobrado" className="rounded-2xl border border-border bg-card">
+    <div className="border-b border-border px-4 py-3 sm:px-5">
       <h3 className="text-sm font-semibold">De dónde viene lo cobrado</h3>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">Estos conceptos ya están incluidos en el total de arriba.</p>
     </div>
@@ -38,7 +38,7 @@ export const IncomeComposition = ({ composition }: { composition: Composition })
         );
       })}
     </ul>
-    <p className="rounded-b-2xl bg-[#f8f7f4] px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">El alquiler de silla se suma a los cobros y no genera comisión.</p>
+    <p className="rounded-b-2xl bg-muted px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">El alquiler de silla se suma a los cobros y no genera comisión.</p>
   </section>
 );
 

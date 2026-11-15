@@ -60,16 +60,16 @@ const initialFilters: UserFiltersValue = {
 const LoadingList = () => (
   <div
     aria-label="Cargando usuarios"
-    className="overflow-hidden rounded-[1.5rem] border border-black/5 bg-white"
+    className="overflow-hidden rounded-[1.5rem] border border-border bg-card"
   >
     {Array.from({ length: 5 }, (_, index) => (
       <div
         key={index}
-        className="flex items-center gap-3 border-b border-black/5 px-5 py-4 last:border-0"
+        className="flex items-center gap-3 border-b border-border px-5 py-4 last:border-0"
       >
-        <span className="size-10 animate-pulse rounded-full bg-zinc-100" />
-        <span className="h-4 w-40 animate-pulse rounded bg-zinc-100" />
-        <span className="ml-auto h-7 w-20 animate-pulse rounded-full bg-zinc-100" />
+        <span className="size-10 animate-pulse rounded-full bg-muted" />
+        <span className="h-4 w-40 animate-pulse rounded bg-muted" />
+        <span className="ml-auto h-7 w-20 animate-pulse rounded-full bg-muted" />
       </div>
     ))}
   </div>
@@ -486,7 +486,7 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="mb-2 flex items-center gap-2 text-[0.65rem] font-bold tracking-[0.18em] text-white/40 uppercase">
-              <ShieldCheck className="size-3.5 text-primary" />
+              <ShieldCheck className="size-3.5 text-brand-foreground" />
               Administración · Equipo
             </p>
             <h1 className="text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
@@ -514,7 +514,7 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
         <section
           id="roles-load-error"
           role="alert"
-          className="flex flex-col gap-3 rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-[1.2rem] border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground sm:flex-row sm:items-center sm:justify-between"
         >
           <p>
             <span className="font-medium">{rolesError}</span>{" "}
@@ -525,7 +525,7 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
             variant="outline"
             disabled={rolesLoading}
             onClick={reloadRoles}
-            className="shrink-0 rounded-xl bg-white"
+            className="shrink-0 rounded-xl bg-card"
           >
             <RefreshCw className={rolesLoading ? "animate-spin" : ""} />
             Reintentar roles
@@ -534,31 +534,31 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
       )}
 
       <section aria-label="Resumen de la página" className="grid gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-4 rounded-[1.3rem] border border-black/5 bg-white p-4">
-          <span className="flex size-11 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700">
+        <div className="flex items-center gap-4 rounded-[1.3rem] border border-border bg-card p-4">
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-muted text-foreground">
             <UsersRound className="size-5" />
           </span>
           <div>
             <p className="text-xl font-bold tracking-tight">{totalLabel}</p>
-            <p className="text-xs text-zinc-500">Resultados visibles</p>
+            <p className="text-xs text-muted-foreground">Resultados visibles</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-[1.3rem] border border-black/5 bg-white p-4">
-          <span className="flex size-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+        <div className="flex items-center gap-4 rounded-[1.3rem] border border-border bg-card p-4">
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-success/10 text-success-foreground">
             <UserCheck className="size-5" />
           </span>
           <div>
             <p className="text-xl font-bold tracking-tight">{summary.active} activos</p>
-            <p className="text-xs text-zinc-500">Con acceso habilitado</p>
+            <p className="text-xs text-muted-foreground">Con acceso habilitado</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-[1.3rem] border border-black/5 bg-white p-4">
-          <span className="flex size-11 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+        <div className="flex items-center gap-4 rounded-[1.3rem] border border-border bg-card p-4">
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
             <UserRoundX className="size-5" />
           </span>
           <div>
             <p className="text-xl font-bold tracking-tight">{summary.inactive} inactivos</p>
-            <p className="text-xs text-zinc-500">Sin acceso al sistema</p>
+            <p className="text-xs text-muted-foreground">Sin acceso al sistema</p>
           </div>
         </div>
       </section>
@@ -571,12 +571,12 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
       />
 
       {page && (
-        <section aria-label="Estado de acuerdos y alquileres" className="rounded-[1.2rem] border border-black/5 bg-white px-4 py-3 text-sm">
-          {agreementLoading && <p className="text-zinc-500" role="status">Cargando acuerdos de empleados…</p>}
-          {!agreementLoading && !agreementError && page.items.every((user) => user.role.name !== "employee") && <p className="text-zinc-500">No hay empleados en esta página para mostrar acuerdos.</p>}
-          {agreementError && <div className="flex flex-col gap-2 text-red-700 sm:flex-row sm:items-center sm:justify-between"><p role="alert">No pudimos cargar los acuerdos: {agreementError}</p><Button type="button" variant="outline" onClick={() => setRentalDataReloadKey((value) => value + 1)} className="rounded-xl">Reintentar acuerdos</Button></div>}
-          {rentalLoading && <p className="mt-1 text-zinc-500" role="status">Cargando alquileres del período {currentPeriod}…</p>}
-          {rentalListError && <div className="mt-1 flex flex-col gap-2 text-red-700 sm:flex-row sm:items-center sm:justify-between"><p role="alert">No pudimos cargar los alquileres: {rentalListError}</p><Button type="button" variant="outline" onClick={() => setRentalDataReloadKey((value) => value + 1)} className="rounded-xl">Reintentar alquileres</Button></div>}
+        <section aria-label="Estado de acuerdos y alquileres" className="rounded-[1.2rem] border border-border bg-card px-4 py-3 text-sm">
+          {agreementLoading && <p className="text-muted-foreground" role="status">Cargando acuerdos de empleados…</p>}
+          {!agreementLoading && !agreementError && page.items.every((user) => user.role.name !== "employee") && <p className="text-muted-foreground">No hay empleados en esta página para mostrar acuerdos.</p>}
+          {agreementError && <div className="flex flex-col gap-2 text-destructive sm:flex-row sm:items-center sm:justify-between"><p role="alert">No pudimos cargar los acuerdos: {agreementError}</p><Button type="button" variant="outline" onClick={() => setRentalDataReloadKey((value) => value + 1)} className="rounded-xl">Reintentar acuerdos</Button></div>}
+          {rentalLoading && <p className="mt-1 text-muted-foreground" role="status">Cargando alquileres del período {currentPeriod}…</p>}
+          {rentalListError && <div className="mt-1 flex flex-col gap-2 text-destructive sm:flex-row sm:items-center sm:justify-between"><p role="alert">No pudimos cargar los alquileres: {rentalListError}</p><Button type="button" variant="outline" onClick={() => setRentalDataReloadKey((value) => value + 1)} className="rounded-xl">Reintentar alquileres</Button></div>}
         </section>
       )}
 
@@ -585,13 +585,13 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
       ) : listError ? (
         <section
           role="alert"
-          className="flex min-h-64 flex-col items-center justify-center rounded-[1.5rem] border border-red-100 bg-white px-6 text-center"
+          className="flex min-h-64 flex-col items-center justify-center rounded-[1.5rem] border border-destructive/25 bg-card px-6 text-center"
         >
-          <span className="flex size-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+          <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <AlertCircle className="size-5" />
           </span>
           <h2 className="mt-4 font-semibold">No pudimos cargar los usuarios</h2>
-          <p className="mt-1 max-w-md text-sm text-zinc-500">{listError}</p>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">{listError}</p>
           <Button
             type="button"
             variant="outline"
@@ -616,7 +616,7 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
               onRentalHistory={openHistory}
             />
           </div>
-          <footer className="flex flex-col gap-3 rounded-[1.2rem] px-1 text-sm text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex flex-col gap-3 rounded-[1.2rem] px-1 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>
               {page.total} {page.total === 1 ? "usuario" : "usuarios"} · Página {page.page} de {Math.max(page.totalPages, 1)}
             </p>
@@ -629,7 +629,7 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
                   setLoading(true);
                   setPageNumber((value) => Math.max(1, value - 1));
                 }}
-                className="rounded-xl bg-white"
+                className="rounded-xl bg-card"
               >
                 Anterior
               </Button>
@@ -641,7 +641,7 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
                   setLoading(true);
                   setPageNumber((value) => value + 1);
                 }}
-                className="rounded-xl bg-white"
+                className="rounded-xl bg-card"
               >
                 Siguiente
               </Button>
@@ -649,12 +649,12 @@ export const UsersView = ({ currentUser, currentPeriod }: UsersViewProps) => {
           </footer>
         </>
       ) : (
-        <section className="flex min-h-64 flex-col items-center justify-center rounded-[1.5rem] border border-black/5 bg-white px-6 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+        <section className="flex min-h-64 flex-col items-center justify-center rounded-[1.5rem] border border-border bg-card px-6 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-muted text-foreground">
             <UsersRound className="size-5" />
           </span>
           <h2 className="mt-4 font-semibold">No encontramos usuarios</h2>
-          <p className="mt-1 max-w-sm text-sm text-zinc-500">
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Probá cambiando la búsqueda o limpiando los filtros aplicados.
           </p>
           <Button

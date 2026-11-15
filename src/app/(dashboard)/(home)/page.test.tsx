@@ -4,12 +4,13 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { getBuenosAiresSevenDayRange } from "@/lib/dashboard/income-summary";
 
-const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser, isCashClosedForDate } = vi.hoisted(() => ({
+const { getBuenosAiresRemainingWorkweekRange, listFixedOccurrences, listIncomes, requirePageUser, isCashClosedForDate, refresh } = vi.hoisted(() => ({
   getBuenosAiresRemainingWorkweekRange: vi.fn(),
   listFixedOccurrences: vi.fn(),
   listIncomes: vi.fn(),
   requirePageUser: vi.fn(),
   isCashClosedForDate: vi.fn(),
+  refresh: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/authorization", () => ({ requirePageUser }));
@@ -17,6 +18,7 @@ vi.mock("@/lib/dashboard/workweek-range", () => ({ getBuenosAiresRemainingWorkwe
 vi.mock("@/lib/fixed-customers/service", () => ({ listFixedOccurrences }));
 vi.mock("@/lib/incomes/service", () => ({ listIncomes }));
 vi.mock("@/lib/cash/repository", () => ({ isCashClosedForDate }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 import Home from "./page";
 
@@ -97,18 +99,26 @@ it("renders only the three approved dashboard blocks", async () => {
   expect(screen.getByRole("heading", { name: "Ingresos de hoy" })).toBeVisible();
   expect(screen.getByRole("heading", { name: "Acciones rápidas" })).toBeVisible();
   expect(screen.getByRole("heading", { name: "Clientes fijos" })).toBeVisible();
-  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("md:grid-cols-2", "xl:grid-cols-1");
+  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-start-9");
   expect(screen.queryByText("Servicios destacados")).not.toBeInTheDocument();
   expect(screen.queryByText("Actividad reciente")).not.toBeInTheDocument();
   expect(screen.queryByText(/demostración/i)).not.toBeInTheDocument();
 });
 
+it("orders mobile blocks as quick actions, summary, then agenda", async () => {
+  await renderHome();
+  const sections = Array.from(screen.getByTestId("dashboard-grid").children);
+  expect(sections[0]).toContainElement(screen.getByRole("heading", { name: "Acciones rápidas" }));
+  expect(sections[1]).toContainElement(screen.getByRole("heading", { name: "Ingresos de hoy" }));
+  expect(sections[2]).toContainElement(screen.getByRole("heading", { name: "Clientes fijos" }));
+});
+
 it("uses a spaced twelve-column desktop layout with constrained children", async () => {
   await renderHome();
   const dashboardGrid = screen.getByTestId("dashboard-grid");
-  expect(dashboardGrid).toHaveClass("gap-5", "xl:grid-cols-12");
+  expect(dashboardGrid).toHaveClass("grid-cols-1", "gap-4", "xl:grid-cols-12");
   expect(screen.getByRole("heading", { name: "Ingresos de hoy" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-span-8");
-  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "gap-5", "xl:col-span-4");
+  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-span-4", "xl:col-start-9");
 });
 
   it("keeps employee dashboard data scoped by the server service", async () => {
@@ -129,7 +139,7 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
     requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
     await renderHome();
     expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
-    expect(screen.getByText("Lo generado para vos")).toBeVisible();
+    expect(screen.getByText("Comisión generada para vos")).toBeVisible();
     expect(screen.getByText("$ 16.000")).toBeVisible();
     expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
     expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
@@ -145,7 +155,7 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
     requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
     await renderHome();
     expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
-    expect(screen.getByText("Lo generado para vos")).toBeVisible();
+    expect(screen.getByText("Comisión generada para vos")).toBeVisible();
     expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
     expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
   });
@@ -161,7 +171,7 @@ it("loads every result page before deriving the seven-day summary", async () => 
   await renderHome();
   expect(listIncomes).toHaveBeenNthCalledWith(2, user, expect.objectContaining({ page: 2, pageSize: 100 }));
   expect(screen.getByText("$ 35.000")).toBeVisible();
-  expect(screen.getByText("2 ventas")).toBeVisible();
+  expect(screen.getAllByText("2 ventas").length).toBeGreaterThan(0);
 });
 
 it("does not render the dashboard after session revocation", async () => {

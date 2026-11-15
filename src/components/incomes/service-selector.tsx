@@ -43,20 +43,20 @@ export const ServiceSelector = ({
               "group flex min-h-36 cursor-pointer flex-col justify-between rounded-2xl border-0 p-4 text-left shadow-none ring-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
               isSelected
                 ? "bg-[#202023] text-white ring-[#202023]"
-                : "bg-[#f6f5f2] ring-black/5 hover:bg-white",
+                : "bg-muted ring-black/5 hover:bg-card",
             )}
           >
             <span className="flex items-start justify-between gap-3">
               <span
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full",
-                  isSelected ? "bg-primary" : "bg-white text-primary",
+                  isSelected ? "bg-primary" : "bg-card text-brand-foreground",
                 )}
               >
                 <Scissors className="size-4" />
               </span>
               {isSelected && (
-                <span className="flex size-7 items-center justify-center rounded-full bg-white text-[#202023]">
+                <span className="flex size-7 items-center justify-center rounded-full bg-card text-foreground">
                   <Check className="size-4" />
                 </span>
               )}
@@ -68,7 +68,7 @@ export const ServiceSelector = ({
               <span
                 className={cn(
                   "mt-2 block text-lg font-semibold",
-                  isSelected ? "text-white" : "text-primary",
+                  isSelected ? "text-white" : "text-brand-foreground",
                 )}
               >
                 {formatArs(displayValue)}

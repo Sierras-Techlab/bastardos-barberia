@@ -233,7 +233,7 @@ const WorkSessionControlState = ({
   return (
     <aside
       aria-label="Control de jornada"
-      className="fixed bottom-20 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-[1.4rem] border border-black/8 bg-[#202023] p-3 text-white shadow-2xl shadow-black/20 xl:bottom-6 xl:left-[calc(var(--sidebar-width)+1.5rem)]"
+      className="fixed bottom-20 left-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-[1.4rem] border border-border bg-[#202023] p-3 text-white shadow-2xl shadow-black/20 xl:bottom-6 xl:left-[calc(var(--sidebar-width)+1.5rem)]"
     >
       <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-red-300">
@@ -278,7 +278,7 @@ const WorkSessionControlState = ({
         </Button>
       </div>
       {error && (
-        <p role="alert" className="mt-2 flex items-center gap-2 rounded-xl bg-red-500/15 px-3 py-2 text-xs text-red-100">
+        <p role="alert" className="mt-2 flex items-center gap-2 rounded-xl bg-destructive/20 px-3 py-2 text-xs text-red-100">
           <TriangleAlert className="size-3.5 shrink-0" />
           {error}
         </p>

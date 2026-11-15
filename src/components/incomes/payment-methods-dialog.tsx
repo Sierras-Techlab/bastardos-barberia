@@ -18,9 +18,9 @@ type Props = {
   onClose: () => void;
 };
 
-const fieldClassName = "h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white";
-const activeBadgeClassName = "shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700";
-const inactiveBadgeClassName = "shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700";
+const fieldClassName = "h-10 rounded-xl border-border bg-muted shadow-none focus:bg-card";
+const activeBadgeClassName = "shrink-0 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success-foreground";
+const inactiveBadgeClassName = "shrink-0 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning-foreground";
 const messageFor = (error: unknown) => error instanceof Error ? error.message : "No se pudo actualizar el medio de pago.";
 
 export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodClient, onMethodsChange, onClose }: Props) => {
@@ -102,7 +102,7 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
     <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-xl">
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary"><WalletCards className="size-5" /></span>
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground"><WalletCards className="size-5" /></span>
           <DialogTitle>Administrar medios de pago</DialogTitle>
           <DialogDescription>Actualizá las opciones disponibles sin perder los nombres guardados en ventas anteriores.</DialogDescription>
         </DialogHeader>
@@ -113,7 +113,7 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
         </form>
 
         {editing && (
-          <form className="mt-4 rounded-xl bg-[#f7f6f3] p-3" onSubmit={rename}>
+          <form className="mt-4 rounded-xl bg-muted p-3" onSubmit={rename}>
             <label className="space-y-1.5 text-sm font-medium">Nombre del medio de pago<Input aria-label="Nombre del medio de pago" value={editingName} onChange={(event) => setEditingName(event.target.value)} className={fieldClassName} /></label>
             <div className="mt-3 flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancelar</Button><Button type="submit" className="rounded-xl" disabled={saving}>Guardar nombre</Button></div>
           </form>
@@ -129,7 +129,7 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
           <Button
             type="button"
             variant="outline"
-            className="h-9 rounded-xl bg-white"
+            className="h-9 rounded-xl bg-card"
             onClick={() => {
               setShowInactive((current) => !current);
               setEditing(null);
@@ -144,26 +144,26 @@ export const PaymentMethodsDialog = ({ methods: initialMethods, paymentMethodCli
         {visibleMethods.length > 0 ? (
           <ul className="grid gap-2">
           {visibleMethods.map((method) => (
-            <li key={method.id} data-testid={`payment-method-card-${method.id}`} className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-3">
+            <li key={method.id} data-testid={`payment-method-card-${method.id}`} className="rounded-2xl border border-border bg-muted p-3">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <p className="min-w-0 truncate font-medium">{method.name}</p>
                 <span className={method.isActive ? activeBadgeClassName : inactiveBadgeClassName}>{method.isActive ? "Activo" : "Inactivo"}</span>
               </div>
               <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2">
-                <Button type="button" variant="outline" aria-label={`Editar ${method.name}`} className="rounded-xl bg-white" disabled={saving} onClick={() => { setEditing(method); setEditingName(method.name); setError(null); }}><Pencil /> Editar</Button>
-                <Button type="button" variant={method.isActive ? "outline" : "default"} aria-label={`${method.isActive ? "Desactivar" : "Reactivar"} ${method.name}`} className={method.isActive ? "rounded-xl bg-white" : "rounded-xl"} disabled={saving} onClick={() => setActive(method)}>{method.isActive ? "Desactivar" : "Reactivar"}</Button>
-                <Button type="button" variant="ghost" size="icon" aria-label={`Eliminar ${method.name}`} disabled={saving} onClick={() => { setDeleting(method); setError(null); }} className="w-full rounded-xl text-destructive hover:bg-red-50 hover:text-destructive"><Trash2 /></Button>
+                <Button type="button" variant="outline" aria-label={`Editar ${method.name}`} className="rounded-xl bg-card" disabled={saving} onClick={() => { setEditing(method); setEditingName(method.name); setError(null); }}><Pencil /> Editar</Button>
+                <Button type="button" variant={method.isActive ? "outline" : "default"} aria-label={`${method.isActive ? "Desactivar" : "Reactivar"} ${method.name}`} className={method.isActive ? "rounded-xl bg-card" : "rounded-xl"} disabled={saving} onClick={() => setActive(method)}>{method.isActive ? "Desactivar" : "Reactivar"}</Button>
+                <Button type="button" variant="ghost" size="icon" aria-label={`Eliminar ${method.name}`} disabled={saving} onClick={() => { setDeleting(method); setError(null); }} className="w-full rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"><Trash2 /></Button>
               </div>
             </li>
           ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-dashed border-black/10 bg-[#f7f6f3] px-4 py-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
             {showInactive ? "No hay medios de pago desactivados." : "Todavía no hay medios de pago activos."}
           </p>
         )}
 
-        {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <DialogFooter className="-mx-5 -mb-5 mt-5 p-5"><Button type="button" variant="outline" onClick={onClose} disabled={saving} className="rounded-xl">Cerrar</Button></DialogFooter>
       </DialogContent>
       {deleting && (

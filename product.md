@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-11-01
+Last updated: 2026-11-14
 
 ## Vision
 
@@ -20,7 +20,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Installed in test | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete, including configurable owner commissions and the canonical profile RPC. |
-| Dashboard UI | Installed in test | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences for the remaining current Monday-through-Saturday week. Employees receive and may resolve only occurrences currently assigned to them; managers retain the complete agenda. |
+| Dashboard UI | Redesign implemented locally | On phones, shortcuts precede the role-scoped summary and weekly agenda. The agenda separates future, past unrecorded, and resolved visits. Managers see the team agenda and employees see their assigned visits. |
 | Comisiones y pagos combinados | Implemented | Role-aware responsible employee, exact integer-ARS split payments for every role, automatic final-method remainder, independently rounded item snapshots, owner-safe previews, audited 100% service/product-line exceptions, service charged-price adjustments with reason for employees and managers, manager-only product price adjustments and employee-sanitized history projections. |
 | Historial de ingresos por rol | Installed in test | Responsible-employee scoping/filtering across all historical users, metrics, payments, commissions, registrant audit and full detail. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, integer-ARS payment entry for every role, automatic single-method and final-method allocation, server-authoritative totals, idempotency and inline customer creation. |
@@ -62,7 +62,9 @@ An owner may remain responsible for a sale. Future owner-attributed sales use th
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 
-Dashboard home now loads live fixed-customer occurrences only from the current Buenos Aires date through Saturday. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates, immutable item prices/subtotals and active-sale totals without employee, registrant, payment, commission or authorization data.
+Dashboard home loads live fixed-customer occurrences from the current Buenos Aires date through Saturday. Strictly future unresolved visits appear under Próximas. When the scheduled time arrives, they move to Sin registrar so the team can still record the outcome. Resueltas displays Asistió or No asistió as read-only text. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates, immutable item prices/subtotals and active-sale totals without employee, registrant, payment, commission or authorization data.
+
+The entire app, including login, supports light and dark themes. The selector is next to the navigation profile and saves the choice in the browser. The first visit follows the system preference. Switching theme preserves the current page, entered values, data and permissions.
 
 ## Accepted authentication decisions
 

@@ -19,14 +19,14 @@ type IncomeFiltersProps = {
   onClear: () => void;
   canClear: boolean;
 };
-const selectClassName = "h-11 w-full rounded-xl border border-black/10 bg-[#f6f5f2] px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const selectClassName = "h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 export const IncomeFilters = ({ role, canFilterEmployees = role !== "employee", canFilterSubscriptions = false, employees, paymentMethods, value, onChange, onClear, canClear }: IncomeFiltersProps) => {
   const [expanded, setExpanded] = useState(false);
   const extraId = useId();
   const additionalCount = Number(Boolean(value.query)) + Number(value.paymentMethodId !== "all") + Number(value.kind !== "all");
   return (
     <section aria-label="Filtros de ingresos" className="space-y-3">
-      <div className="space-y-4 rounded-2xl bg-white p-4 shadow-sm">
+      <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="space-y-1 text-xs font-medium text-muted-foreground">Desde
             <Input type="date" aria-label="Fecha desde" value={value.dateFrom} onChange={(event) => onChange({ ...value, dateFrom: event.target.value })} className={selectClassName} />
@@ -43,12 +43,12 @@ export const IncomeFilters = ({ role, canFilterEmployees = role !== "employee", 
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" aria-label="Más filtros" aria-expanded={expanded} aria-controls={extraId} onClick={() => setExpanded(!expanded)} className="rounded-xl">
-            <Filter /> {expanded ? "Ocultar filtros" : "Más filtros"}{additionalCount > 0 && <span className="rounded-full bg-primary/10 px-2 text-xs text-primary">{additionalCount}</span>}
+            <Filter /> {expanded ? "Ocultar filtros" : "Más filtros"}{additionalCount > 0 && <span className="rounded-full bg-primary/10 px-2 text-xs text-brand-foreground">{additionalCount}</span>}
           </Button>
           <Button type="button" variant="ghost" disabled={!canClear} onClick={onClear} className="rounded-xl"><RotateCcw /> Limpiar filtros</Button>
         </div>
         <div id={extraId} hidden={!expanded}>
-          <div className="grid gap-3 border-t border-black/5 pt-4 lg:grid-cols-3">
+          <div className="grid gap-3 border-t border-border pt-4 lg:grid-cols-3">
             <label className="space-y-1 text-xs font-medium text-muted-foreground">Buscar
               <div className="relative">
                 <Search className="pointer-events-none absolute top-3.5 left-3 size-4" />

@@ -38,10 +38,7 @@ it("renders metrics and visual service cards", () => {
   expect(screen.getByText("3 activos")).toBeVisible();
   expect(screen.getByText("Corte de pelo y perfilado de cejas")).toBeVisible();
   expect(screen.getAllByRole("listitem")[0]).toHaveClass("min-h-44", "p-4");
-  expect(screen.getAllByText("Activo")[0]).toHaveClass(
-    "bg-emerald-500",
-    "text-white",
-  );
+  expect(screen.getAllByText("Activo")[0]).toHaveClass("bg-success", "text-success-foreground");
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
 });
 
@@ -103,7 +100,7 @@ it("changes service status after confirmation", async () => {
   await user.click(screen.getByRole("button", { name: "Gestionar Barba" }));
   await user.click(await screen.findByRole("menuitem", { name: "Desactivar" }));
   await user.click(screen.getByRole("button", { name: "Desactivar servicio" }));
-  expect(screen.getByText("Inactivo")).toHaveClass("bg-orange-500", "text-white");
+  expect(screen.getByText("Inactivo")).toHaveClass("bg-warning", "text-warning-foreground");
   await waitFor(() => expectToast("Servicio desactivado correctamente."));
   expect(client.update).toHaveBeenCalledWith(data.services[1].id, { isActive: false });
 });

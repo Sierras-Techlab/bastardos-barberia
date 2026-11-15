@@ -23,7 +23,7 @@ const DashboardLayout = async ({ children }: DashboardLayoutProps) => {
     <TooltipProvider>
       <SidebarProvider className="min-w-0 xl:h-svh xl:overflow-hidden">
         <AppSidebar user={user} />
-        <SidebarInset className="min-w-0 min-h-svh bg-[#f1f0ed] xl:my-3 xl:mr-3 xl:h-[calc(100svh-1.5rem)] xl:min-h-0 xl:overflow-auto xl:rounded-[2rem]">
+        <SidebarInset className="min-w-0 min-h-svh bg-background xl:my-3 xl:mr-3 xl:h-[calc(100svh-1.5rem)] xl:min-h-0 xl:overflow-auto xl:rounded-[2rem]">
           {user.role.name === "employee" && (
             <WorkSessionControl initialSession={currentWorkSession} />
           )}

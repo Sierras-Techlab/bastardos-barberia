@@ -24,7 +24,7 @@ export const IncomeFilterScope = ({ value, role, employees, paymentMethods, onCh
   const excludesRentals = role !== "employee" && value.kind !== "all" && value.kind !== "chair_rental";
   const hasPaymentFilter = value.paymentMethodId !== "all";
   return (
-    <section aria-label="Qué incluyen estos importes" className="rounded-2xl border border-black/8 bg-white px-4 py-3">
+    <section aria-label="Qué incluyen estos importes" className="rounded-2xl border border-border bg-card px-4 py-3">
       <p className="text-xs font-semibold text-foreground">Qué incluyen estos importes</p>
       <p className="mt-1 break-words text-sm leading-6">
         {formatDate(value.dateFrom)} al {formatDate(value.dateTo)} · {role === "employee" ? "Tus ventas" : value.employeeId ? employee ? `${employee.firstName} ${employee.lastName}` : "Empleado seleccionado" : "Todos los empleados"} · {incomeKindLabels[value.kind]} · {hasPaymentFilter ? method?.name ?? "Medio seleccionado" : "Todos los medios"}
@@ -33,7 +33,7 @@ export const IncomeFilterScope = ({ value, role, employees, paymentMethods, onCh
         {value.status === "active" && <> · Solo activos</>}
       </p>
       {excludesRentals && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-amber-900">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-warning-foreground">
           <p>Este filtro no incluye alquileres de silla.</p>
           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => onChange({ ...value, kind: "all" })}>Ver todos los conceptos</Button>
         </div>

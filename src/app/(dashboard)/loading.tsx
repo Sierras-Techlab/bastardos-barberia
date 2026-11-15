@@ -9,7 +9,7 @@ const DashboardLoading = () => (
     className="flex min-h-[calc(100svh-1.5rem)] flex-col gap-5 px-5 py-5 md:px-7 xl:px-8 xl:py-7"
   >
     <div className="flex items-center gap-3">
-      <span className="flex size-9 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
+      <span className="flex size-9 items-center justify-center rounded-xl bg-card text-brand-foreground shadow-sm">
         <LoaderCircle className="size-4 animate-spin" />
       </span>
       <div className="space-y-2">
