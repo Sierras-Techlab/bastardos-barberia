@@ -44,7 +44,9 @@ it("sorts fixed occurrences and renders their current states", () => {
 it("changes only the selected pending occurrence", async () => {
   const user = userEvent.setup();
   const onStatusChange = vi.fn();
-  const now = new Date();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const now = new Date(referenceInstant);
+  vi.setSystemTime(now);
   const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
   const todayOccurrences = occurrences.map((occurrence) => ({ ...occurrence, date }));
   render(<FixedCustomersCard occurrences={todayOccurrences} referenceInstant={now.toISOString()} onStatusChange={onStatusChange} />);

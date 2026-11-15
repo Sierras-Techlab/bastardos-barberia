@@ -16,19 +16,20 @@ import type { FixedCustomerOccurrence, FixedOccurrenceStatus } from "@/types/fix
 type Props = {
   occurrences: FixedCustomerOccurrence[];
   referenceInstant?: string;
+  employee?: boolean;
   onStatusChange?: (id: string, status: Exclude<FixedOccurrenceStatus, "pending">) => void | Promise<void>;
 };
 
-const formatOccurrenceDate = (value: string) => new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(`${value}T12:00:00-03:00`));
+const formatOccurrenceDate = (value: string) => new Intl.DateTimeFormat("es-AR", { weekday: "short", day: "numeric", month: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(`${value}T12:00:00-03:00`));
 const statusCopy = {
-  attended: { label: "Asistió", className: "bg-success/10 text-success-foreground" },
-  missed: { label: "No asistió", className: "bg-warning/10 text-warning-foreground" },
+  attended: { label: "Asistió", className: "border-emerald-700/25 bg-success text-success-foreground" },
+  missed: { label: "No asistió", className: "border-red-700/25 bg-accent text-brand-foreground" },
 } as const;
 const currentBuenosAiresDate = (instant: Date) => new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit",
 }).format(instant);
 
-export const FixedCustomersCard = ({ occurrences, referenceInstant, onStatusChange }: Props) => {
+export const FixedCustomersCard = ({ occurrences, referenceInstant, employee = false, onStatusChange }: Props) => {
   const { refresh } = useRouter();
   const serverReference = referenceInstant ? new Date(referenceInstant) : new Date();
   const serverDay = currentBuenosAiresDate(serverReference);
@@ -98,33 +99,77 @@ export const FixedCustomersCard = ({ occurrences, referenceInstant, onStatusChan
     }
   };
 
-  const renderGroup = (title: string, entries: FixedCustomerOccurrence[], terminal = false) => entries.length > 0 && (
-    <div key={title} className="mt-4 first:mt-0">
-      <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>
-      <ul className="space-y-2.5">
+  const renderGroup = (title: string, entries: FixedCustomerOccurrence[]) => entries.length > 0 && (
+    <div key={title} className="mt-3 first:mt-0">
+      <h3 className="mb-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>
+      <ul className="divide-y divide-border">
         {entries.map((occurrence) => {
           const fullName = `${occurrence.customer.firstName} ${occurrence.customer.lastName}`;
           const saving = pendingId === occurrence.id;
-          return <li key={occurrence.id} className="rounded-2xl border border-border/70 bg-muted/70 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0"><p className="truncate text-sm font-semibold">{fullName}</p><p className="mt-0.5 text-xs text-muted-foreground"><span className="capitalize">{formatOccurrenceDate(occurrence.date)}</span> · {occurrence.time}</p></div>
-              {terminal
-                ? <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusCopy[occurrence.status as "attended" | "missed"].className}`}>{statusCopy[occurrence.status as "attended" | "missed"].label}</span>
-                : <div className="flex flex-wrap gap-1.5"><Button type="button" variant="outline" size="sm" disabled={saving} aria-label={`Marcar ausencia de ${fullName}`} onClick={() => void changeStatus(occurrence.id, "missed")} className="min-h-11 rounded-xl"> <X /> No asistió</Button><Button type="button" size="sm" disabled={saving} aria-label={`Marcar asistencia de ${fullName}`} onClick={() => void changeStatus(occurrence.id, "attended")} className="min-h-11 rounded-xl"><Check /> Asistió</Button></div>}
-            </div>
-          </li>;
+          const status = occurrence.status === "pending" ? null : statusCopy[occurrence.status];
+          return (
+            <li key={occurrence.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
+              <div className="min-w-[8rem] flex-1">
+                <p className="text-xs font-semibold wrap-break-word">{fullName}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                  <span className="first-letter:uppercase">{formatOccurrenceDate(occurrence.date)}</span> · {occurrence.time} hs
+                </p>
+              </div>
+              {status ? (
+                <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold", status.className)}>
+                  {status.label}
+                </span>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  <Button type="button" size="sm" disabled={saving} aria-label={`Marcar asistencia de ${fullName}`} onClick={() => void changeStatus(occurrence.id, "attended")} className="min-h-11 rounded-full bg-foreground px-2.5 text-[11px] text-background hover:bg-foreground/85 lg:min-h-8">
+                    <Check className="text-emerald-500" /> Asistió
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" disabled={saving} aria-label={`Marcar ausencia de ${fullName}`} onClick={() => void changeStatus(occurrence.id, "missed")} className="min-h-11 rounded-full border-red-700/25 bg-card px-2.5 text-[11px] text-brand-foreground hover:bg-accent lg:min-h-8 dark:bg-[#1c1c24]">
+                    <X /> No asistió
+                  </Button>
+                </div>
+              )}
+            </li>
+          );
         })}
       </ul>
     </div>
   );
 
-  return <section aria-labelledby="fixed-customers-title" className="h-fit rounded-3xl border border-border bg-card p-4 shadow-[0_20px_55px_-42px_rgba(0,0,0,0.4)] sm:p-5">
-    <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold tracking-[0.16em] text-brand-foreground uppercase">Agenda semanal</p><h2 id="fixed-customers-title" className="mt-1 text-lg font-semibold">Clientes fijos</h2><p className="mt-1 text-sm text-muted-foreground">Visitas habituales de hoy al sábado</p></div><span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-brand-foreground"><CalendarClock className="size-5" /></span></div>
-    {hasOccurrences ? <div aria-live="polite" className="mt-4">
-      {renderGroup("Próximas", groups.upcoming)}
-      {renderGroup("Sin registrar", groups.unrecorded)}
-      {renderGroup("Resueltas", groups.resolved, true)}
-    </div> : <div className="mt-4 flex min-h-40 flex-col items-center justify-center rounded-2xl border border-border bg-muted px-5 text-center"><UserRoundCheck className="size-7 text-brand-foreground" /><p className="mt-3 font-semibold">No hay turnos fijos para el resto de la semana</p><p className="mt-1 text-sm text-muted-foreground">Podés asignar un horario semanal desde el directorio.</p><Link href="/customers" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3 min-h-11 rounded-xl")}>Gestionar clientes</Link></div>}
-    {hasOccurrences && <Link href="/customers" className={cn(buttonVariants({ variant: "ghost" }), "mt-3 min-h-11 w-full rounded-xl")}>Gestionar clientes fijos <ChevronRight /></Link>}
-  </section>;
+  return (
+    <section aria-labelledby="fixed-customers-title" className="min-w-0 self-start rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5 dark:bg-[#131318]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="fixed-customers-title" className="text-sm font-extrabold tracking-tight">Clientes fijos de la semana</h2>
+          <p className="text-xs text-muted-foreground">
+            {employee ? "Tus asignaciones para el resto de la semana laboral" : "Todas las asignaciones del resto de la semana laboral"}
+          </p>
+        </div>
+        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted text-brand-foreground dark:bg-[#191920]">
+          <CalendarClock aria-hidden="true" className="size-4" />
+        </span>
+      </div>
+      {hasOccurrences ? (
+        <div aria-live="polite" className="mt-3">
+          {renderGroup("Próximas", groups.upcoming)}
+          {renderGroup("Sin registrar", groups.unrecorded)}
+          {renderGroup("Resueltas", groups.resolved)}
+        </div>
+      ) : (
+        <div className="mt-3 flex min-h-32 flex-col items-center justify-center rounded-2xl border border-border bg-muted px-4 py-3 text-center dark:bg-[#191920]">
+          <UserRoundCheck aria-hidden="true" className="size-5 text-brand-foreground" />
+          <p className="mt-1.5 text-xs font-semibold">No hay turnos fijos para el resto de la semana</p>
+          <p className="mt-1 text-xs text-muted-foreground">Podés asignar un horario semanal desde el directorio.</p>
+          <Link href="/customers" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 min-h-11 rounded-full text-xs lg:min-h-8")}>
+            Gestionar clientes <ChevronRight aria-hidden="true" />
+          </Link>
+        </div>
+      )}
+      {hasOccurrences && (
+        <Link href="/customers" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mt-2 min-h-11 rounded-full text-xs lg:min-h-8")}>
+          Gestionar clientes fijos <ChevronRight aria-hidden="true" />
+        </Link>
+      )}
+    </section>
+  );
 };

@@ -5,11 +5,7 @@ import { QuickActionsCard } from "@/components/dashboard/quick-actions-card";
 
 it("renders the four real quick actions and leaves expenses in manager navigation", () => {
   const { container } = render(<QuickActionsCard />);
-  const surface = container.querySelector("section");
-  expect(surface).toHaveClass("rounded-3xl", "border", "border-white/10");
-  expect(surface?.className).toMatch(/\bshadow-/);
-  expect(screen.getByRole("link", { name: "Ver ingresos" }).parentElement).toHaveClass("gap-3");
-  expect(screen.getByRole("link", { name: "Ver ingresos" })).toHaveClass("border", "border-white/10");
+  expect(screen.getByRole("navigation", { name: "Accesos directos" })).toBeVisible();
   expect(screen.getAllByRole("link")).toHaveLength(4);
   expect(screen.getByRole("link", { name: "Cargar ingreso" })).toHaveAttribute("href", "/incomes/new");
   expect(screen.getByRole("link", { name: "Ver ingresos" })).toHaveAttribute("href", "/incomes");

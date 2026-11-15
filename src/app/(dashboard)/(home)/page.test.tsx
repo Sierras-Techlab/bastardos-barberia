@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -90,36 +90,25 @@ it("renders an empty fixed-customer agenda without querying occurrences on Sunda
 
   await renderHome();
 
-  expect(screen.getByRole("heading", { name: "Clientes fijos" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Clientes fijos de la semana" })).toBeVisible();
   expect(listFixedOccurrences).not.toHaveBeenCalled();
 });
 
-it("renders only the three approved dashboard blocks", async () => {
+it("shows the main figure and shortcuts together with the chart and agenda below", async () => {
   await renderHome();
-  expect(screen.getByRole("heading", { name: "Ingresos de hoy" })).toBeVisible();
-  expect(screen.getByRole("heading", { name: "Acciones rápidas" })).toBeVisible();
-  expect(screen.getByRole("heading", { name: "Clientes fijos" })).toBeVisible();
-  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-start-9");
-  expect(screen.queryByText("Servicios destacados")).not.toBeInTheDocument();
-  expect(screen.queryByText("Actividad reciente")).not.toBeInTheDocument();
-  expect(screen.queryByText(/demostración/i)).not.toBeInTheDocument();
+  const hero = screen.getByRole("region", { name: "Total de ingresos activos de hoy" });
+  const shortcuts = within(hero).getByRole("navigation", { name: "Accesos directos" });
+  const chart = screen.getByRole("region", { name: "Últimos 7 días" });
+  const agenda = screen.getByRole("region", { name: "Clientes fijos de la semana" });
+
+  expect(within(shortcuts).getByRole("link", { name: "Cargar ingreso" })).toHaveAttribute("href", "/incomes/new");
+  expect(hero).not.toContainElement(chart);
+  expect(chart.parentElement).toBe(agenda.parentElement);
+  expect(hero.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const mobileNav = screen.getByRole("navigation", { name: "Operación móvil" });
+  expect(within(mobileNav).getByRole("link", { name: "Inicio" })).toHaveAttribute("aria-current", "page");
 });
 
-it("orders mobile blocks as quick actions, summary, then agenda", async () => {
-  await renderHome();
-  const sections = Array.from(screen.getByTestId("dashboard-grid").children);
-  expect(sections[0]).toContainElement(screen.getByRole("heading", { name: "Acciones rápidas" }));
-  expect(sections[1]).toContainElement(screen.getByRole("heading", { name: "Ingresos de hoy" }));
-  expect(sections[2]).toContainElement(screen.getByRole("heading", { name: "Clientes fijos" }));
-});
-
-it("uses a spaced twelve-column desktop layout with constrained children", async () => {
-  await renderHome();
-  const dashboardGrid = screen.getByTestId("dashboard-grid");
-  expect(dashboardGrid).toHaveClass("grid-cols-1", "gap-4", "xl:grid-cols-12");
-  expect(screen.getByRole("heading", { name: "Ingresos de hoy" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-span-8");
-  expect(screen.getByRole("heading", { name: "Acciones rápidas" }).closest("section")?.parentElement).toHaveClass("min-w-0", "xl:col-span-4", "xl:col-start-9");
-});
 
   it("keeps employee dashboard data scoped by the server service", async () => {
     const employeeIncomePage = {
@@ -138,8 +127,7 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
     listIncomes.mockResolvedValueOnce(employeeIncomePage);
     requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
     await renderHome();
-    expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
-    expect(screen.getByText("Comisión generada para vos")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Tu comisión generada hoy" })).toBeVisible();
     expect(screen.getByText("$ 16.000")).toBeVisible();
     expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
     expect(listIncomes.mock.calls[0]?.[1]).not.toHaveProperty("userId");
@@ -154,8 +142,7 @@ it("uses a spaced twelve-column desktop layout with constrained children", async
     listIncomes.mockResolvedValueOnce(emptyEmployeePage);
     requirePageUser.mockResolvedValueOnce({ user: { ...user, role: { id: 3, name: "employee" } } });
     await renderHome();
-    expect(screen.getByRole("heading", { name: /tus ingresos de hoy/i })).toBeVisible();
-    expect(screen.getByText("Comisión generada para vos")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Tu comisión generada hoy" })).toBeVisible();
     expect(screen.queryByText("Facturación bruta")).not.toBeInTheDocument();
     expect(screen.queryByText("Neto barbería")).not.toBeInTheDocument();
   });
@@ -171,7 +158,7 @@ it("loads every result page before deriving the seven-day summary", async () => 
   await renderHome();
   expect(listIncomes).toHaveBeenNthCalledWith(2, user, expect.objectContaining({ page: 2, pageSize: 100 }));
   expect(screen.getByText("$ 35.000")).toBeVisible();
-  expect(screen.getAllByText("2 ventas").length).toBeGreaterThan(0);
+  expect(within(screen.getByRole("region", { name: "Total de ingresos activos de hoy" })).getByText("2")).toBeVisible();
 });
 
 it("does not render the dashboard after session revocation", async () => {

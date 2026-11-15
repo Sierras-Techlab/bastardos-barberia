@@ -51,7 +51,7 @@ export const buildDashboardIncomeSummary = (
   const activeIncomes = incomes.filter(({ status }) => status === "active");
   const todayIncomes = activeIncomes.filter(({ businessDate }) => businessDate === dateTo);
   const todayTotal = todayIncomes.reduce((total, income) => total + income.total, 0);
-  const todaySales = todayIncomes.filter((income) => (income.sourceType ?? "sale") === "sale");
+  const countableTodayIncomes = todayIncomes.filter((income) => income.sourceType !== "chair_rental");
   const paymentTotalsById = new Map<string, { paymentMethodId: string; name: string; amount: number }>();
   for (const payment of todayIncomes.flatMap((income) => income.payments)) {
     const current = paymentTotalsById.get(payment.paymentMethodId);
@@ -66,8 +66,8 @@ export const buildDashboardIncomeSummary = (
   return {
     today: {
       total: todayTotal,
-      count: todaySales.length,
-      average: todaySales.length > 0 ? todaySales.reduce((total, income) => total + income.total, 0) / todaySales.length : 0,
+      count: countableTodayIncomes.length,
+      average: countableTodayIncomes.length > 0 ? countableTodayIncomes.reduce((total, income) => total + income.total, 0) / countableTodayIncomes.length : 0,
       paymentTotals: [...paymentTotalsById.values()],
     },
     series: dates.map((date) => {
@@ -76,7 +76,7 @@ export const buildDashboardIncomeSummary = (
         date,
         label: weekdayLabel(date),
         total: dayIncomes.reduce((total, income) => total + income.total, 0),
-        count: dayIncomes.filter((income) => (income.sourceType ?? "sale") === "sale").length,
+        count: dayIncomes.filter((income) => income.sourceType !== "chair_rental").length,
       };
     }),
   };

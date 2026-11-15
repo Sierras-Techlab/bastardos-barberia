@@ -57,13 +57,13 @@ it("summarizes active daily incomes, split payments and zero-value days", () => 
   expect(summary.series.find(({ date }) => date === "2026-08-11")).toMatchObject({ total: 0, count: 0 });
 });
 
-it("counts only normal sales while keeping subscription and rental money in the daily total", () => {
+it("counts monthly subscriptions but excludes rentals from count and average", () => {
   const summary = buildDashboardIncomeSummary([
     income({ id: "sale", total: 10000 }),
     income({ id: "subscription", total: 3000, sourceType: "fixed_subscription" }),
     income({ id: "rental", total: 2000, sourceType: "chair_rental" }),
   ], "2026-08-12");
 
-  expect(summary.today).toMatchObject({ total: 15000, count: 1, average: 10000 });
-  expect(summary.series.at(-1)).toMatchObject({ total: 15000, count: 1 });
+  expect(summary.today).toMatchObject({ total: 15000, count: 2, average: 6500 });
+  expect(summary.series.at(-1)).toMatchObject({ total: 15000, count: 2 });
 });

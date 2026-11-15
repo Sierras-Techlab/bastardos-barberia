@@ -1,83 +1,76 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 
 import { IncomeSummaryCard } from "@/components/dashboard/income-summary-card";
+import { SevenDayEvolution } from "@/components/dashboard/seven-day-evolution";
 import type { DashboardIncomeSummary, EmployeeDashboardIncomeSummary } from "@/lib/dashboard/income-summary";
 
 const summary: DashboardIncomeSummary = {
-  today: { total: 35000, count: 2, average: 17500, paymentTotals: [
-    { paymentMethodId: "60000000-0000-4000-8000-000000000001", name: "Efectivo", amount: 22000 },
-    { paymentMethodId: "60000000-0000-4000-8000-000000000002", name: "Transferencia", amount: 7000 },
-    { paymentMethodId: "60000000-0000-4000-8000-000000000003", name: "Tarjeta", amount: 6000 },
-  ] },
+  today: {
+    total: 35000, count: 2, average: 17500,
+    paymentTotals: [
+      { paymentMethodId: "cash", name: "Efectivo", amount: 22000 },
+      { paymentMethodId: "qr", name: "QR Billetera", amount: 13000 },
+      { paymentMethodId: "link", name: "Link de pago", amount: 0 },
+    ],
+  },
   series: [
-    { date: "2026-08-06", label: "jue", total: 0, count: 0 },
-    { date: "2026-08-07", label: "vie", total: 16000, count: 1 },
-    { date: "2026-08-08", label: "sáb", total: 32000, count: 2 },
-    { date: "2026-08-09", label: "dom", total: 0, count: 0 },
-    { date: "2026-08-10", label: "lun", total: 13000, count: 1 },
-    { date: "2026-08-11", label: "mar", total: 19000, count: 1 },
-    { date: "2026-08-12", label: "mié", total: 35000, count: 2 },
+    { date: "2026-11-06", label: "vie", total: 0, count: 0 },
+    { date: "2026-11-07", label: "sáb", total: 16000, count: 1 },
+    { date: "2026-11-08", label: "dom", total: 0, count: 0 },
+    { date: "2026-11-09", label: "lun", total: 17000, count: 1 },
+    { date: "2026-11-10", label: "mar", total: 13000, count: 1 },
+    { date: "2026-11-11", label: "mié", total: 19000, count: 1 },
+    { date: "2026-11-12", label: "jue", total: 35000, count: 2 },
   ],
 };
 
-const employeeSummary: EmployeeDashboardIncomeSummary = {
-  viewer: "employee",
-  today: { employeeCommission: 10000, count: 2 },
-  series: summary.series.map((day) => ({ ...day, total: day.count > 0 ? 5000 : 0 })),
-};
+it("puts the actual daily total with the four links and shows positive payment methods", () => {
+  render(<IncomeSummaryCard summary={summary} />);
+  const hero = screen.getByRole("region", { name: "Total de ingresos activos de hoy" });
+  expect(within(hero).getByText("$ 35.000")).toBeVisible();
+  expect(within(hero).getByRole("navigation", { name: "Accesos directos" })).toBeVisible();
+  expect(within(hero).getByText("Cantidad de ingresos")).toBeVisible();
+  expect(within(hero).getByText("$ 17.500")).toBeVisible();
+  const methods = within(hero).getByRole("region", { name: "Totales por medio de pago" });
+  expect(within(methods).getByText("Efectivo").parentElement).toHaveTextContent("$ 22.000");
+  expect(within(methods).getByText("QR Billetera").parentElement).toHaveTextContent("$ 13.000");
+  expect(within(methods).queryByText("Link de pago")).not.toBeInTheDocument();
+});
 
-describe("IncomeSummaryCard", () => {
-  it("renders today's income metrics and accessible seven-day values", () => {
-    const { container } = render(<IncomeSummaryCard summary={summary} />);
-    const surface = container.querySelector("section");
-    expect(surface).toHaveClass("rounded-3xl", "border", "border-border", "bg-card");
-    expect(surface?.className).toMatch(/\bshadow-/);
-    expect(screen.getByRole("heading", { name: "Ingresos de hoy" })).toBeVisible();
-    expect(screen.getByText("$ 35.000")).toBeVisible();
-    expect(screen.getByText("2 ventas")).toBeVisible();
-    expect(screen.getByText("Efectivo").parentElement).toHaveTextContent("$ 22.000");
-    expect(screen.getByText("Transferencia").parentElement).toHaveTextContent("$ 7.000");
-    expect(screen.getByText("Tarjeta").parentElement).toHaveTextContent("$ 6.000");
-    const day = screen.getByLabelText(/miércoles 12 de agosto: 2 ventas/);
-    expect(day).toBeVisible();
-    expect(screen.getByText("Consultar importes por día")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Ver ingresos" })).toHaveAttribute("href", "/incomes");
-    expect(screen.getByText("Promedio por venta").closest("article")).toHaveClass("border", "border-border");
-    expect(screen.getByText("Ventas registradas")).not.toHaveClass("opacity-90");
-  });
+it("shows the employee commission and attributed income count with no manager breakdown", () => {
+  const employeeSummary: EmployeeDashboardIncomeSummary = {
+    viewer: "employee",
+    today: { employeeCommission: 10000, count: 1 },
+    series: summary.series.map((day) => ({ ...day, total: day.count > 0 ? 5000 : 0 })),
+  };
+  render(<IncomeSummaryCard summary={employeeSummary} />);
+  expect(screen.getByRole("heading", { name: "Tu comisión generada hoy" })).toBeVisible();
+  expect(screen.getByText("$ 10.000")).toBeVisible();
+  expect(screen.getByText("Ingresos que te corresponden")).toBeVisible();
+  expect(screen.getByText("ingreso hoy")).toBeInTheDocument();
+  expect(screen.queryByText("Totales por medio de pago")).not.toBeInTheDocument();
+  expect(screen.queryByText("Promedio por ingreso")).not.toBeInTheDocument();
+});
 
-  it("exposes every day amount in a tap and keyboard friendly disclosure", async () => {
-    const browser = userEvent.setup();
-    render(<IncomeSummaryCard summary={summary} />);
-    await browser.click(screen.getByText("Consultar importes por día"));
-    expect(screen.getByText("miércoles 12 de agosto").parentElement).toHaveTextContent("2 ventas");
-    expect(screen.getByText("miércoles 12 de agosto").parentElement).toHaveTextContent("$ 35.000");
-  });
+it("shows seven abbreviated labels and expands the exact amount through a chart button", async () => {
+  const browser = userEvent.setup();
+  render(<SevenDayEvolution series={summary.series} employee={false} />);
+  expect(screen.getByRole("region", { name: "Últimos 7 días" })).toBeVisible();
+  expect(screen.getAllByRole("button")).toHaveLength(7);
+  expect(screen.getByText("$35k")).toBeVisible();
+  const thursday = screen.getByRole("button", { name: /jueves, 12 de noviembre.*35\.000/ });
+  await browser.click(thursday);
+  expect(thursday).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("status")).toHaveTextContent("$ 35.000");
+  await browser.keyboard("{Enter}");
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});
 
-  it("uses personal copy for employees and never leaks the catalog total", () => {
-    render(<IncomeSummaryCard summary={employeeSummary} />);
-    expect(screen.getByRole("heading", { name: "Tus ingresos de hoy" })).toBeVisible();
-    expect(screen.getByText("Comisión generada para vos")).toBeVisible();
-    expect(screen.getByText("$ 10.000")).toBeVisible();
-    expect(screen.queryByText("Efectivo $ 22.000")).not.toBeInTheDocument();
-    expect(screen.queryByText("Transferencia $ 7.000")).not.toBeInTheDocument();
-    expect(screen.queryByText("Tarjeta $ 6.000")).not.toBeInTheDocument();
-    expect(screen.queryByText("Promedio por venta")).not.toBeInTheDocument();
-    expect(screen.getByText("2 ingresos")).toBeVisible();
-    expect(screen.getByLabelText(/miércoles 12 de agosto: 2 ingresos/)).toBeVisible();
-    expect(screen.queryByText("Ventas que registraste")).not.toBeInTheDocument();
-  });
-
-  it("uses singular income wording for an employee with one entry", () => {
-    const oneIncome: EmployeeDashboardIncomeSummary = {
-      ...employeeSummary,
-      today: { employeeCommission: 5000, count: 1 },
-      series: employeeSummary.series.map((day, index) => index === 6 ? { ...day, count: 1 } : day),
-    };
-    render(<IncomeSummaryCard summary={oneIncome} />);
-    expect(screen.getByText("1 ingreso")).toBeVisible();
-    expect(screen.getByLabelText(/^miércoles 12 de agosto: 1 ingreso/)).toBeVisible();
-  });
+it("shows the empty weekly state without fictitious amounts", () => {
+  render(<SevenDayEvolution series={summary.series.map((day) => ({ ...day, total: 0, count: 0 }))} employee />);
+  expect(screen.getByText("Evolución de tus comisiones de los últimos 7 días")).toBeVisible();
+  expect(screen.getByText("Sin movimientos en los últimos 7 días")).toBeVisible();
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
