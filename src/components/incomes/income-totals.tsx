@@ -19,4 +19,3 @@ export const IncomeTotals = ({ grossTotal, commissionTotal, barbershopNet }: Inc
     <p className="mt-3 text-xs leading-5 text-muted-foreground">Total cobrado − comisiones = para la barbería. Que las comisiones estén generadas no significa que ya se hayan pagado.</p>
   </div>
 );
-

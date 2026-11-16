@@ -24,7 +24,6 @@ export const IncomeComposition = ({
 }) => (
   <IncomeCompositionDisclosure composition={composition} className={className}>{children}</IncomeCompositionDisclosure>
 );
-
 const IncomeCompositionDisclosure = ({ composition, children, className }: { composition: Composition; children?: ReactNode; className: string }) => {
   const [open, setOpen] = useState(false);
   const userToggled = useRef(false);

@@ -59,4 +59,3 @@ export const IncomeFilterScope = ({ value, role, employees, paymentMethods, onCh
     </section>
   );
 };
-
