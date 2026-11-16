@@ -51,11 +51,7 @@ export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, 
       seen.add(payment.paymentMethodId);
       return true;
     });
-    const next = valid.length > 0
-      ? distributeRemainder(valid, total)
-      : activeMethods[0] && total > 0
-        ? [{ paymentMethodId: activeMethods[0].id, amount: total }]
-        : [];
+    const next = distributeRemainder(valid, total);
 
     if (JSON.stringify(next) !== JSON.stringify(payments)) onChange(next);
   }, [activeKey, activeIds, activeMethods, onChange, payments, total]);
@@ -125,6 +121,12 @@ export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, 
           </Button>
         )}
       </div>
+
+      {amountPayments.length === 0 && total > 0 && !error && (
+        <p className="rounded-xl bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
+          Elegí cómo se recibió el cobro.
+        </p>
+      )}
 
       {combined && amountPayments.length === 2 && (
         <Button type="button" variant="outline" size="sm" onClick={splitInHalf} className="rounded-xl">
