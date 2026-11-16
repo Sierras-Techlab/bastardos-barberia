@@ -193,6 +193,7 @@ export type IncomeRow = {
   responsible_role_snapshot: RoleName;
   request_fingerprint: string;
   customer_id: string | null;
+  customer_name: string | null;
   payment_method: IncomePaymentMethod | null;
   total: number;
   gross_total: number;

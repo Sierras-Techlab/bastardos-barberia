@@ -33,16 +33,16 @@ export const getIncomeKindLabel = (income: IncomeListRow): string => {
     if (income.subscription) return "Suscripción";
     const hasService = Boolean(income.service);
     const hasProducts = income.products.length > 0;
-    if (hasService && hasProducts) return "Combinado";
-    if (hasService) return "Servicio";
-    if (hasProducts) return "Productos";
+    if (hasService && hasProducts) return "Venta combinada";
+    if (hasService) return "Venta de servicio";
+    if (hasProducts) return "Venta de productos";
   }
   if (hasConcepts(income)) {
     const hasService = income.concepts.some((concept) => concept.type === "service");
     const hasProduct = income.concepts.some((concept) => concept.type === "product");
-    if (hasService && hasProduct) return "Combinado";
-    if (hasService) return "Servicio";
-    if (hasProduct) return "Productos";
+    if (hasService && hasProduct) return "Venta combinada";
+    if (hasService) return "Venta de servicio";
+    if (hasProduct) return "Venta de productos";
   }
   return "Ingreso";
 };

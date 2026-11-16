@@ -48,7 +48,7 @@ export const IncomeDetailSheet = ({
 
   const customerName = income.customer
     ? `${income.customer.firstName} ${income.customer.lastName}`
-    : "Sin cliente";
+    : income.customerName ? `${income.customerName} · Sin ficha de cliente` : "Sin cliente";
   const manager = viewerRole === "owner" || viewerRole === "admin";
   const employee = isEmployeeRow(income) ? null : (income as IncomeListItem);
   const isChairRental = employee?.sourceType === "chair_rental";
@@ -89,7 +89,7 @@ export const IncomeDetailSheet = ({
               <Scissors className="size-4 text-brand-foreground" />
               Concepto
             </h3>
-            <div className="divide-y divide-black/5 rounded-[1.25rem] border border-border px-4">
+            <div className="divide-y divide-border rounded-[1.25rem] border border-border px-4">
               {employee?.sourceType === "chair_rental" && (
                 <DetailRow label="Alquiler de silla" value={formatArs(employee.total)} />
               )}
@@ -127,7 +127,7 @@ export const IncomeDetailSheet = ({
               <UserRound className="size-4 text-brand-foreground" />
               Venta
             </h3>
-            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-border px-4">
+            <dl className="divide-y divide-border rounded-[1.25rem] border border-border px-4">
               {employee && (
                 <DetailRow
                   label="Empleado responsable"
@@ -153,7 +153,7 @@ export const IncomeDetailSheet = ({
 
           <section>
             <h3 className="mb-2 flex items-center gap-2 font-semibold"><WalletCards className="size-4 text-brand-foreground" />Comisión</h3>
-            <dl className="divide-y divide-black/5 rounded-[1.25rem] border border-border px-4">
+            <dl className="divide-y divide-border rounded-[1.25rem] border border-border px-4">
               {employee?.sourceType === "chair_rental" ? (
                 <>
                   <DetailRow label="Comisión" value={formatArs(0)} />

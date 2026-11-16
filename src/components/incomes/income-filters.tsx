@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, Filter, RotateCcw, Search } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,12 +22,19 @@ type IncomeFiltersProps = {
 const selectClassName = "h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 export const IncomeFilters = ({ role, canFilterEmployees = role !== "employee", canFilterSubscriptions = false, employees, paymentMethods, value, onChange, onClear, canClear }: IncomeFiltersProps) => {
   const [expanded, setExpanded] = useState(false);
-  const extraId = useId();
+  const panelId = useId();
   const additionalCount = Number(Boolean(value.query)) + Number(value.paymentMethodId !== "all") + Number(value.kind !== "all");
   return (
     <section aria-label="Filtros de ingresos" className="space-y-3">
-      <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-3 rounded-2xl bg-card p-3 shadow-sm sm:p-4">
+        <div className="flex items-center gap-2 md:hidden">
+          <Button type="button" variant="outline" aria-label="Filtros de ingresos" aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded(!expanded)} className="min-h-11 flex-1 justify-between rounded-xl">
+            <span className="flex items-center gap-2"><Filter /> {expanded ? "Ocultar filtros" : "Filtros"}{additionalCount > 0 && <span className="rounded-full bg-primary/10 px-2 text-xs text-brand-foreground">{additionalCount}</span>}</span>
+            <ChevronDown aria-hidden="true" className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </Button>
+          <Button type="button" variant="ghost" disabled={!canClear} onClick={onClear} aria-label="Limpiar filtros" className="min-h-11 shrink-0 rounded-xl px-3"><RotateCcw /><span className="sr-only sm:not-sr-only">Limpiar</span></Button>
+        </div>
+        <div className="hidden items-end gap-3 md:grid md:grid-cols-2 lg:grid-cols-3">
           <label className="space-y-1 text-xs font-medium text-muted-foreground">Desde
             <Input type="date" aria-label="Fecha desde" value={value.dateFrom} onChange={(event) => onChange({ ...value, dateFrom: event.target.value })} className={selectClassName} />
           </label>
@@ -41,14 +48,28 @@ export const IncomeFilters = ({ role, canFilterEmployees = role !== "employee", 
             </select>
           </label>}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" aria-label="Más filtros" aria-expanded={expanded} aria-controls={extraId} onClick={() => setExpanded(!expanded)} className="rounded-xl">
+        <div className="hidden items-center gap-2 md:flex">
+          <Button type="button" variant="outline" aria-label="Más filtros" aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded(!expanded)} className="min-h-11 rounded-xl">
             <Filter /> {expanded ? "Ocultar filtros" : "Más filtros"}{additionalCount > 0 && <span className="rounded-full bg-primary/10 px-2 text-xs text-brand-foreground">{additionalCount}</span>}
           </Button>
-          <Button type="button" variant="ghost" disabled={!canClear} onClick={onClear} className="rounded-xl"><RotateCcw /> Limpiar filtros</Button>
+          <Button type="button" variant="ghost" disabled={!canClear} onClick={onClear} className="min-h-11 rounded-xl"><RotateCcw /> Limpiar filtros</Button>
         </div>
-        <div id={extraId} hidden={!expanded}>
-          <div className="grid gap-3 border-t border-border pt-4 lg:grid-cols-3">
+        <div id={panelId} className={`${expanded ? "grid" : "hidden"} gap-3 border-t border-border pt-4 md:grid-cols-2 lg:grid-cols-3`}>
+          <div className="grid gap-3 md:hidden">
+            <label className="space-y-1 text-xs font-medium text-muted-foreground">Desde
+              <Input type="date" aria-label="Fecha desde" value={value.dateFrom} onChange={(event) => onChange({ ...value, dateFrom: event.target.value })} className={selectClassName} />
+            </label>
+            <label className="space-y-1 text-xs font-medium text-muted-foreground">Hasta
+              <Input type="date" aria-label="Fecha hasta" value={value.dateTo} onChange={(event) => onChange({ ...value, dateTo: event.target.value })} className={selectClassName} />
+            </label>
+            {canFilterEmployees && <label className="space-y-1 text-xs font-medium text-muted-foreground">Empleado
+              <select aria-label="Empleado" value={value.employeeId} onChange={(event) => onChange({ ...value, employeeId: event.target.value })} className={selectClassName}>
+                <option value="">Todos los empleados</option>
+                {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.firstName} {employee.lastName}</option>)}
+              </select>
+            </label>}
+          </div>
+          <div className="grid gap-3 border-t border-border pt-4 md:col-span-2 md:grid-cols-2 md:border-0 md:pt-0 lg:col-span-3 lg:grid-cols-3">
             <label className="space-y-1 text-xs font-medium text-muted-foreground">Buscar
               <div className="relative">
                 <Search className="pointer-events-none absolute top-3.5 left-3 size-4" />
@@ -70,7 +91,8 @@ export const IncomeFilters = ({ role, canFilterEmployees = role !== "employee", 
           <p className="mt-3 text-xs leading-5 text-muted-foreground">Los tipos seleccionan operaciones completas. Servicio + productos tiene su propia opción.</p>
         </div>
       </div>
-      <IncomeFilterScope role={role} value={value} employees={employees} paymentMethods={paymentMethods} onChange={onChange} />
+      <div className="md:hidden"><IncomeFilterScope compact role={role} value={value} employees={employees} paymentMethods={paymentMethods} onChange={onChange} /></div>
+      <div className="hidden md:block"><IncomeFilterScope role={role} value={value} employees={employees} paymentMethods={paymentMethods} onChange={onChange} /></div>
     </section>
   );
 };

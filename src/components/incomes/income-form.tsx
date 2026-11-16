@@ -111,6 +111,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
     defaultValues: isManager
       ? ({
           customerId: null,
+          customerName: null,
           employeeId: data.currentUser.id,
           serviceId: null,
           products: [],
@@ -121,6 +122,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
         } satisfies ManagerIncomeFormValues)
       : ({
           customerId: null,
+          customerName: null,
           employeeId: data.currentUser.id,
           serviceId: null,
           products: [],
@@ -188,6 +190,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       requestId: requestIdRef.current,
       employeeId: reviewValues.employeeId,
       customerId: reviewValues.customerId,
+      customerName: reviewValues.customerName?.trim() || null,
       serviceId: reviewValues.serviceId,
       products: reviewValues.products,
       payments,
@@ -222,6 +225,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
       isManager
         ? ({
             customerId: null,
+            customerName: null,
             employeeId: data.currentUser.id,
             serviceId: null,
             products: [],
@@ -232,6 +236,7 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
           } satisfies ManagerIncomeFormValues)
         : ({
             customerId: null,
+            customerName: null,
             employeeId: data.currentUser.id,
             serviceId: null,
             products: [],
@@ -293,7 +298,9 @@ export const IncomeForm = ({ data, incomeClient = defaultIncomeClient }: IncomeF
                     value={field.value}
                     currentUserRole={data.currentUser.role}
                     availableProfessionals={availableProfessionals}
-                    onChange={field.onChange}
+                    onChange={(id) => { field.onChange(id); if (id) form.setValue("customerName", null); }}
+                    freeName={values.customerName}
+                    onFreeNameChange={(name) => form.setValue("customerName", name)}
                     onCustomerCreated={(customer) => {
                       setCustomers((current) => [...current, customer]);
                       field.onChange(customer.id);

@@ -46,7 +46,7 @@ it("maps create and list to exact RPC parameters and validates JSON", async () =
   const rpc = vi.fn().mockResolvedValueOnce({ data: item.id, error: null }).mockResolvedValueOnce({ data: employeeItem, error: null }).mockResolvedValueOnce({ data: { items: [employeeItem], metrics: { count: 1, employeeCommissionTotal: 26500 }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } }, error: null });
   getSupabaseAdmin.mockReturnValue({ rpc });
   await incomeRepository.create(actor, input);
-  expect(rpc).toHaveBeenNthCalledWith(1, "create_income", expect.objectContaining({ actor_user_id: actor.id, responsible_employee_id: actor.id, income_request_id: input.requestId, selected_customer_id: null, selected_service_id: item.service.id, product_items: [{ productId: item.products[0].id, quantity: 2, grantFullCommission: true }], payment_items: input.payments, grant_full_service_commission: false, service_price_override: null, product_price_overrides: {} }));
+  expect(rpc).toHaveBeenNthCalledWith(1, "create_income_with_customer_name", expect.objectContaining({ actor_user_id: actor.id, responsible_employee_id: actor.id, income_request_id: input.requestId, selected_customer_id: null, selected_customer_name: null, selected_service_id: item.service.id, product_items: [{ productId: item.products[0].id, quantity: 2, grantFullCommission: true }], payment_items: input.payments, grant_full_service_commission: false, service_price_override: null, product_price_overrides: {} }));
   await incomeRepository.list({ requestingUserId: item.employee.id, canViewAll: false, userId: item.employee.id }, { page: 1, pageSize: 10, paymentMethodId: "60000000-0000-4000-8000-000000000001" });
   expect(rpc).toHaveBeenLastCalledWith("list_incomes", expect.objectContaining({ requesting_user_id: item.employee.id, can_view_all: false, filter_user_id: item.employee.id, filter_payment_method_id: "60000000-0000-4000-8000-000000000001", page_number: 1, page_size: 10 }));
 });
@@ -55,6 +55,18 @@ it("returns the sanitized manager projection when a manager fetches a sale", asy
   const rpc = vi.fn().mockResolvedValueOnce({ data: item.id, error: null }).mockResolvedValueOnce({ data: item, error: null });
   getSupabaseAdmin.mockReturnValue({ rpc });
   await expect(incomeRepository.create(managerActor, input)).resolves.toEqual(item);
+});
+
+it("sends the chosen free customer name to the atomic writer for an employee sale", async () => {
+  const response = { ...employeeItem, customerName: "Raul" };
+  const rpc = vi.fn().mockResolvedValueOnce({ data: item.id, error: null }).mockResolvedValueOnce({ data: response, error: null });
+  getSupabaseAdmin.mockReturnValue({ rpc });
+  await expect(incomeRepository.create(actor, { ...input, customerName: " Raul " })).resolves.toEqual(response);
+  expect(rpc).toHaveBeenNthCalledWith(1, "create_income_with_customer_name", expect.objectContaining({
+    selected_customer_id: null,
+    selected_customer_name: "Raul",
+    income_request_id: input.requestId,
+  }));
 });
 
 it("accepts the charged-price manager projection in income history", async () => {

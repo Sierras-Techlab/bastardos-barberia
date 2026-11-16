@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { formatArs } from "@/lib/incomes/income-calculations";
 import type { IncomeComposition as Composition } from "@/types/income";
@@ -13,24 +16,46 @@ const groups = [
 export const IncomeComposition = ({
   composition,
   children,
+  className = "",
 }: {
   composition: Composition;
   children?: ReactNode;
+  className?: string;
 }) => (
-  <details className="group rounded-2xl border border-border bg-card">
-    <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset marker:hidden [&::-webkit-details-marker]:hidden sm:px-5">
+  <IncomeCompositionDisclosure composition={composition} className={className}>{children}</IncomeCompositionDisclosure>
+);
+
+const IncomeCompositionDisclosure = ({ composition, children, className }: { composition: Composition; children?: ReactNode; className: string }) => {
+  const [open, setOpen] = useState(false);
+  const userToggled = useRef(false);
+  const contentId = useId();
+
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const applyViewportDefault = () => {
+      if (!userToggled.current) setOpen(media.matches);
+    };
+    applyViewportDefault();
+    media.addEventListener("change", applyViewportDefault);
+    return () => media.removeEventListener("change", applyViewportDefault);
+  }, []);
+
+  return (
+  <section className={`${className} rounded-2xl border border-border bg-card`}>
+    <button type="button" aria-expanded={open} aria-controls={contentId} onClick={() => { userToggled.current = true; setOpen((current) => !current); }} className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-5">
       <span className="min-w-0">
         <span className="block text-sm font-semibold">De dónde viene lo cobrado</span>
         <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">Ventas, mensualidades y alquileres</span>
       </span>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 group-open:rotate-180" />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+        <ChevronDown aria-hidden="true" className={`size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </span>
-    </summary>
+    </button>
 
-    <section aria-label="De dónde viene lo cobrado" className="border-t border-border">
+    <section id={contentId} aria-label="De dónde viene lo cobrado" hidden={!open} className="border-t border-border">
       <p className="px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">Estos conceptos ya están incluidos en el total de arriba.</p>
-      <ul className="divide-y divide-black/5">
+      <ul className="divide-y divide-border">
         {groups.map(({ key, label }) => {
           const amounts = composition[key];
           return (
@@ -58,6 +83,7 @@ export const IncomeComposition = ({
       <p className="bg-muted px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">El alquiler de silla se suma a los cobros y no genera comisión.</p>
       {children && <div className="space-y-2 border-t border-border px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">{children}</div>}
     </section>
-  </details>
-);
+  </section>
+  );
+};
 

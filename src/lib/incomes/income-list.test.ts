@@ -170,6 +170,10 @@ describe("income list domain", () => {
     ).toEqual([productsOnly]);
   });
 
+  it("searches an explicitly stored free customer name", () => {
+    expect(filterIncomeItems([{ ...serviceOnly, customer: null, customerName: "Raul" }], { ...emptyFilters, query: "raul" })).toHaveLength(1);
+  });
+
   it("combines employee, payment, kind and inclusive date filters", () => {
     const items = [serviceOnly, productsOnly, combined];
 

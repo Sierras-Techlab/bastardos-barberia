@@ -1,6 +1,5 @@
 import { ArrowUpRight, CreditCard } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
   formatIncomeConcept,
@@ -8,6 +7,7 @@ import {
 } from "@/lib/incomes/income-list";
 import type { IncomeListRow } from "@/types/income";
 import { getIncomeCommissionAmount, getIncomePaymentLabel, getIncomeTotalAmount } from "@/lib/incomes/income-presentation";
+import { IncomeTags } from "./income-tags";
 
 type IncomeMobileListProps = {
   incomes: IncomeListRow[];
@@ -30,7 +30,7 @@ export const IncomeMobileList = ({
           type="button"
           aria-label={`Abrir ingreso ${income.id}`}
           onClick={() => onSelect(income)}
-          className="w-full rounded-[1.4rem] bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className={`min-h-11 w-full rounded-[1.4rem] border border-border p-4 text-left shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${income.status === "voided" ? "bg-muted/50 opacity-60" : "bg-card hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"}`}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -40,8 +40,9 @@ export const IncomeMobileList = ({
               <p className="mt-1 line-clamp-2 font-medium">
                 {formatIncomeConcept(income)}
               </p>
+              <IncomeTags income={income} className="mt-2" />
             </div>
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
               <ArrowUpRight className="size-4" />
             </span>
           </div>
@@ -49,24 +50,17 @@ export const IncomeMobileList = ({
           <div className="mt-4 flex items-end justify-between gap-3 border-t border-border pt-3">
             <div className="space-y-1 text-xs text-muted-foreground">
               {employeeName ? <p>{employeeName}</p> : null}
+              {income.customer ? <p>Cliente: {income.customer.firstName} {income.customer.lastName}</p> : income.customerName ? <p>Cliente: {income.customerName}</p> : null}
               <p className="flex items-center gap-1.5">
-                <CreditCard className="size-3.5" />
+                <CreditCard className="size-3.5 text-brand-foreground" />
                 {getIncomePaymentLabel(income)}
               </p>
               <p>Comisión: {formatArs(getIncomeCommissionAmount(income))}</p>
             </div>
-            <div className="text-right">
-              {income.status === "voided" && (
-                <Badge
-                  variant="secondary"
-                  className="mb-1 rounded-full bg-black/5 text-[10px] text-muted-foreground"
-                >
-                  Anulado
-                </Badge>
-              )}
+            <div className="min-w-0 max-w-32 shrink-0 text-right">
               {total > 0 ? (
                 <p
-                  className={`text-lg font-semibold ${
+                  className={`max-w-full text-base font-semibold tabular-nums [overflow-wrap:anywhere] sm:text-lg ${
                     income.status === "voided"
                       ? "text-muted-foreground line-through"
                       : ""

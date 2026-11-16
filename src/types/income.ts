@@ -50,6 +50,7 @@ export type CreateIncomeInput = {
   requestId: string;
   employeeId: string;
   customerId: string | null;
+  customerName?: string | null;
   serviceId: string | null;
   products: IncomeProductInput[];
   payments: IncomePaymentInput[];
@@ -83,7 +84,7 @@ export type IncomeListChairRental = {
   paidAt: string | null;
 };
 export type IncomeListItem = {
-  id: string; createdAt: string; businessDate: string; sourceType?: IncomeSourceType; chairRentalPeriod?: string | null; paidAt?: string | null; employee: Employee; customer: Employee | null;
+  id: string; createdAt: string; businessDate: string; sourceType?: IncomeSourceType; chairRentalPeriod?: string | null; paidAt?: string | null; employee: Employee; customer: Employee | null; customerName?: string | null;
   service: IncomeListService | null; products: IncomeListProduct[]; subscription?: IncomeListSubscription | null; chairRental?: IncomeListChairRental | null;
   payments: IncomePayment[]; registeredBy: Employee; commission: import("@/types/income-commissions").IncomeCommissionSnapshot; total: number; grossTotal?: number; status: IncomeStatus;
 };
@@ -100,6 +101,7 @@ export type EmployeeIncomeListItem = {
   createdAt: string;
   businessDate: string;
   customer: Employee | null;
+  customerName?: string | null;
   concepts: EmployeeIncomeListConcept[];
   employeeCommission: number;
   status: IncomeStatus;

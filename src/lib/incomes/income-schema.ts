@@ -43,6 +43,7 @@ const sharedCreateRefinements = {
 const sharedFormFields = {
   employeeId: z.uuid("Seleccioná un empleado responsable."),
   customerId: z.string().nullable(),
+  customerName: z.string().max(80).nullable().optional(),
   serviceId: z.string().nullable(),
   products: z.array(formProductSchema),
   grantFullServiceCommission: z.boolean(),
@@ -120,6 +121,7 @@ const managerCreateBaseSchema = z.object({
   requestId: z.uuid(),
   employeeId: z.uuid(),
   customerId: z.uuid().nullable(),
+  customerName: z.string().trim().min(1).max(80).nullable().optional(),
   serviceId: z.uuid().nullable(),
   products: z.array(publicProductSchema).superRefine((products, context) => {
     const ids = new Set<string>();
@@ -138,6 +140,7 @@ const managerCreateBaseSchema = z.object({
   servicePriceOverride: priceOverrideSchema.nullable().optional(),
   productPriceOverrides: managerProductPriceOverrideSchema.optional(),
 }).strict().superRefine((value, context) => {
+  if (value.customerName && value.customerId) context.addIssue({ code: "custom", message: "Elegí una ficha o un nombre libre, no ambos.", path: ["customerName"] });
   if (!sharedCreateRefinements.atLeastOneLine(value)) {
     context.addIssue({ code: "custom", message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"] });
   }
@@ -162,6 +165,7 @@ const employeeCreateBaseSchema = z.object({
   requestId: z.uuid(),
   employeeId: z.uuid(),
   customerId: z.uuid().nullable(),
+  customerName: z.string().trim().min(1).max(80).nullable().optional(),
   serviceId: z.uuid().nullable(),
   products: z.array(publicProductSchema).superRefine((products, context) => {
     const ids = new Set<string>();
@@ -179,6 +183,7 @@ const employeeCreateBaseSchema = z.object({
   grantFullServiceCommission: z.boolean(),
   servicePriceOverride: priceOverrideSchema.nullable().optional(),
 }).strict().superRefine((value, context) => {
+  if (value.customerName && value.customerId) context.addIssue({ code: "custom", message: "Elegí una ficha o un nombre libre, no ambos.", path: ["customerName"] });
   if (!sharedCreateRefinements.atLeastOneLine(value)) {
     context.addIssue({ code: "custom", message: "Seleccioná un servicio o agregá al menos un producto.", path: ["serviceId"] });
   }

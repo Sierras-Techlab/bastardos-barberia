@@ -1,4 +1,5 @@
 // Local, synthetic SQL verification. Never reads .env or connects to a server.
+// Covers migrations 044-047, including free customer names and retries.
 // Usage: node scripts/verify-income-composition.mjs <local @electric-sql/pglite directory>
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -17,11 +18,23 @@ try {
   await db.exec(`
     create table public.users(id uuid primary key, role_id smallint, is_active boolean default true, deleted_at timestamptz, first_name text, last_name text);
     create table public.customers(id uuid primary key, first_name text, last_name text);
-    create table public.incomes(id uuid primary key, employee_id uuid, customer_id uuid, business_date date, created_at timestamptz, status text, source_type text, total bigint, gross_total bigint, commission_total bigint, barbershop_net bigint, registered_by uuid, fixed_period text, chair_rental_period text, chair_rental_paid_at timestamptz);
+    create table public.incomes(id uuid primary key, request_id uuid, employee_id uuid, customer_id uuid, customer_name text, business_date date, created_at timestamptz, status text, source_type text, total bigint, gross_total bigint, commission_total bigint, barbershop_net bigint, registered_by uuid, fixed_period text, chair_rental_period text, chair_rental_paid_at timestamptz);
     create table public.income_items(income_id uuid, item_type text, name_snapshot text, id uuid, service_id uuid, product_id uuid, created_at timestamptz, full_commission_authorized_by uuid, catalog_unit_price bigint, charged_unit_price bigint, catalog_subtotal bigint, charged_subtotal bigint, adjustment_amount bigint, price_override_reason text, line_subtotal bigint, commission_rate integer, commission_amount bigint, full_commission boolean, quantity integer);
     create table public.payment_methods(id uuid primary key, name text, created_at timestamptz default now());
     create table public.income_payments(income_id uuid, payment_method_id uuid, amount bigint, id uuid, method_name_snapshot text, basis_points integer, created_at timestamptz);
     create function public.normalize_catalog_name(value text) returns text language sql immutable as $$ select lower(trim(value)) $$;
+    create role anon;
+    create role authenticated;
+    create role service_role;
+    create function public.create_income(actor_user_id uuid, responsible_employee_id uuid, income_request_id uuid, selected_customer_id uuid, selected_service_id uuid, product_items jsonb, payment_items jsonb, grant_full_service_commission boolean, service_price_override jsonb, product_price_overrides jsonb) returns uuid language plpgsql as $$
+    declare existing_id uuid;
+    begin
+      select id into existing_id from public.incomes where request_id=income_request_id and registered_by=actor_user_id;
+      if found then return existing_id; end if;
+      insert into public.incomes(id,request_id,employee_id,customer_id,customer_name,business_date,created_at,status,source_type,total,gross_total,commission_total,barbershop_net,registered_by)
+      values(income_request_id,income_request_id,responsible_employee_id,selected_customer_id,null,'2026-10-15','2026-10-15T12:00:00Z','active','sale',0,0,0,0,actor_user_id);
+      return income_request_id;
+    end $$;
     create function public.income_as_employee_json(target_income_id uuid) returns jsonb language sql stable as $$ select jsonb_build_object('id', id, 'employeeCommission', commission_total) from public.incomes where id=target_income_id $$;
   `);
   await db.query("insert into public.users(id,role_id,first_name,last_name) values ($1,1,'Owner','Test'),($2,3,'Milton','Test'),($3,3,'Other','Test')", [manager, employee, other]);
@@ -45,7 +58,7 @@ try {
   await db.exec(migration045.slice(wrapperStart, migration045.indexOf("\n$$;", wrapperStart) + 4));
 
   const addIncome = async (number, source, total, commission, kind = "service", status = "active") => {
-    await db.query("insert into public.incomes values ($1,$2,null,'2026-10-13','2026-10-13T12:00:00Z',$3,$4,$5,$6,$7,$8)", [id(number), employee, status, source, total, total + 1000, commission, total - commission]);
+    await db.query("insert into public.incomes(id,employee_id,customer_id,business_date,created_at,status,source_type,total,gross_total,commission_total,barbershop_net) values ($1,$2,null,'2026-10-13','2026-10-13T12:00:00Z',$3,$4,$5,$6,$7,$8)", [id(number), employee, status, source, total, total + 1000, commission, total - commission]);
     await db.query("update public.incomes set registered_by=$1, fixed_period='2026-10', chair_rental_period='2026-10', chair_rental_paid_at=created_at where id=$2", [manager, id(number)]);
     if (source === "sale") {
       for (const type of kind === "combined" ? ["service", "product"] : [kind]) {
@@ -120,7 +133,34 @@ try {
   const before = await definition();
   await db.exec(migration046);
   assert.equal(await definition(), before);
-  console.log("PASS: PostgreSQL in-memory composition, pagination, roles, all filters, split payments, zero/voided rows, historical charged totals, subscriptions, combined sales and migration idempotence.");
+  const migration047 = await read("047_income_free_customer_name.sql");
+  await db.query("insert into public.customers(id,first_name,last_name) values ($1,'Raul','Gómez')", [id(99)]);
+  await db.exec(migration047);
+  const createFreeName = async (requestId, customerId, customerName) => (await db.query(
+    "select public.create_income_with_customer_name($1,$2,$3,$4,null,'[]'::jsonb,'[]'::jsonb,false,null,'{}'::jsonb,$5) as id",
+    [manager, employee, requestId, customerId, customerName],
+  )).rows[0].id;
+  assert.equal(await createFreeName(id(50), null, "  Raul  "), id(50));
+  assert.equal((await db.query("select customer_id,customer_name from public.incomes where id=$1", [id(50)])).rows[0].customer_id, null);
+  assert.equal((await db.query("select customer_name from public.incomes where id=$1", [id(50)])).rows[0].customer_name, "Raul");
+  assert.equal((await db.query("select count(*)::int as count from public.customers")).rows[0].count, 1);
+  assert.equal(await createFreeName(id(50), null, "Raul"), id(50));
+  await assert.rejects(createFreeName(id(50), null, "Otra persona"), /INCOME_REQUEST_CONFLICT/);
+  await assert.rejects(createFreeName(id(51), id(99), "Raul"), /CUSTOMER_IDENTITY_CONFLICT/);
+  assert.equal(await createFreeName(id(51), id(99), null), id(51));
+  assert.equal(await createFreeName(id(52), null, null), id(52));
+  await db.query("insert into public.income_items(income_id,item_type,name_snapshot,id,service_id,created_at,quantity,commission_amount) values ($1,'service','Corte',$1,$1,'2026-10-15T12:00:00Z',1,0)", [id(50)]);
+  const managerSearch = await list({ query: "Raul", page: 2 });
+  assert.equal(managerSearch.pagination.total, 2);
+  assert.equal(managerSearch.items[0].customerName, "Raul");
+  const employeeSearch = await list({ actor: employee, user: other, query: "Raul", page: 2 });
+  assert.equal(employeeSearch.pagination.total, 2);
+  assert.equal(employeeSearch.items[0].customerName, "Raul");
+  assert.equal("total" in employeeSearch.items[0], false);
+  const finalDefinition = await definition();
+  await db.exec(migration047);
+  assert.equal(await definition(), finalDefinition);
+  console.log("PASS: local PostgreSQL in-memory income composition and 047 free-name storage, mutual exclusion, retry identity, manager/employee projection, pre-pagination search, role scope and migration idempotence.");
 } finally {
   await db.close();
 }

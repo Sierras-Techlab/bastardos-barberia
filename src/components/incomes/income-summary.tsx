@@ -84,7 +84,7 @@ export const IncomeSummary = ({ values, data }: IncomeSummaryProps) => {
             <p className="mt-1 text-xs text-white/50">
               {customer
                 ? `${customer.firstName} ${customer.lastName}`
-                : "Sin cliente asociado"}
+                : values.customerName ? `${values.customerName} · Sin ficha de cliente` : "Sin cliente asociado"}
             </p>
           </div>
         </div>

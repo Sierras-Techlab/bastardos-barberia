@@ -54,6 +54,11 @@ it("labels an entry without a customer", () => {
   expect(screen.getByText("Sin cliente asociado")).toBeInTheDocument();
 });
 
+it("labels a selected free name as text with no customer record", () => {
+  render(<IncomeSummary values={{ ...values, customerId: null, customerName: "Raul" }} data={data} />);
+  expect(screen.getByText("Raul · Sin ficha de cliente")).toBeInTheDocument();
+});
+
 it("shows charged line prices when a manager overrides catalog values", () => {
   render(<IncomeSummary values={{
     ...values,

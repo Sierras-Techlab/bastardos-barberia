@@ -8,8 +8,8 @@ import {
 import { ArrowUpRight } from "lucide-react";
 import { useMemo } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IncomeTags } from "./income-tags";
 import { formatArs } from "@/lib/incomes/income-calculations";
 import {
   formatIncomeConcept,
@@ -43,20 +43,21 @@ export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: In
         }),
         columnHelper.display({
         id: "concept",
-        header: "Concepto",
+        header: "Concepto y tipo",
         cell: ({ row }) => (
           <div className="max-w-72">
             <p className="truncate font-medium">
               {formatIncomeConcept(row.original)}
             </p>
-            {row.original.status === "voided" && (
-              <Badge
-                variant="secondary"
-                className="mt-1 rounded-full bg-black/5 text-[10px] text-muted-foreground"
-              >
-                Anulado
-              </Badge>
-            )}
+            <IncomeTags income={row.original} className="mt-2" />
+            <p title={[
+              ...(showEmployeeColumn && "employee" in row.original && row.original.employee ? [`${row.original.employee.firstName} ${row.original.employee.lastName}`] : []),
+              ...(row.original.customer ? [`${row.original.customer.firstName} ${row.original.customer.lastName}`] : row.original.customerName ? [row.original.customerName] : []),
+              getIncomePaymentLabel(row.original),
+              `Comisión ${formatArs(getIncomeCommissionAmount(row.original))}`,
+            ].join(" · ")} className="mt-1 hidden truncate text-xs text-muted-foreground xl:hidden">
+              {[...(showEmployeeColumn && "employee" in row.original && row.original.employee ? [`${row.original.employee.firstName} ${row.original.employee.lastName}`] : []), ...(row.original.customer ? [`${row.original.customer.firstName} ${row.original.customer.lastName}`] : row.original.customerName ? [row.original.customerName] : []), getIncomePaymentLabel(row.original), `Comisión ${formatArs(getIncomeCommissionAmount(row.original))}`].join(" · ")}
+            </p>
           </div>
         ),
         }),
@@ -74,7 +75,7 @@ export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: In
         cell: ({ row }) =>
           row.original.customer
             ? `${row.original.customer.firstName} ${row.original.customer.lastName}`
-            : "Sin cliente",
+            : row.original.customerName ?? "Sin cliente",
         }),
         columnHelper.display({
         id: "payments",
@@ -135,15 +136,21 @@ export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: In
     columns,
   });
 
+  const responsiveClassName = (id: string) => {
+    if (id === "employee" || id === "customer" || id === "commission") return "hidden xl:table-cell";
+    if (id === "payments") return "hidden lg:table-cell";
+    return "";
+  };
+
   return (
     <div className="overflow-hidden rounded-[1.6rem] bg-card shadow-sm">
       <div className="overflow-x-auto">
-        <table aria-label="Historial de ingresos" className="w-full text-sm">
-          <thead className="border-b border-border bg-muted text-left text-xs text-muted-foreground">
+        <table aria-label="Historial de ingresos" className="w-full min-w-[34rem] text-sm xl:min-w-0">
+          <thead className="border-b border-border bg-accent/50 text-left text-xs tracking-wide text-muted-foreground uppercase dark:bg-accent/70">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-4 py-3 font-medium">
+                  <th key={header.id} className={`${responsiveClassName(header.column.id)} px-3 py-3 font-medium lg:px-4`}>
                     {header.isPlaceholder
                       ? null
                       : <table.FlexRender header={header} />}
@@ -157,10 +164,11 @@ export const IncomeTable = ({ incomes, onSelect, showEmployeeColumn = true }: In
               <tr
                 key={row.id}
                 aria-label={`Ingreso ${row.original.id}`}
-                className="border-b border-border transition-colors last:border-0 hover:bg-muted"
+                onClick={() => onSelect(row.original)}
+                className={`cursor-pointer border-b border-border transition-colors last:border-0 ${row.original.status === "voided" ? "bg-muted/40 text-muted-foreground opacity-60" : "hover:bg-accent/50"}`}
               >
                 {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-3.5 align-middle">
+                  <td key={cell.id} className={`${responsiveClassName(cell.column.id)} px-3 py-3.5 align-middle lg:px-4`}>
                     <table.FlexRender cell={cell} />
                   </td>
                 ))}
