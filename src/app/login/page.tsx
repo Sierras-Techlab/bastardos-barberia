@@ -60,7 +60,7 @@ const LoginPage = () => {
           </div>
         </div>
 
-        <div className="flex min-h-full flex-col bg-muted">
+        <div className="flex min-h-full flex-col bg-card">
           <div className="flex items-center justify-center border-b border-border px-6 py-6 lg:hidden">
             <div className="rounded-2xl bg-[#19191b] px-6 py-3">
               <Image
