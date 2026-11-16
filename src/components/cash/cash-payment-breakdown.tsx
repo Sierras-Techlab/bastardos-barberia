@@ -9,10 +9,10 @@ type CashPaymentBreakdownProps = { payments: CashPaymentTotal[] };
 export const CashPaymentBreakdown = ({
   payments,
 }: CashPaymentBreakdownProps) => (
-  <Card className="rounded-[1.6rem] bg-white shadow-sm">
-    <CardHeader className="border-b border-black/5 pb-4">
+  <Card className="rounded-[1.6rem] bg-card shadow-sm">
+    <CardHeader className="border-b border-border pb-4">
       <div className="flex items-center gap-3">
-        <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-brand-foreground">
           <WalletCards className="size-4" />
         </span>
         <div>
@@ -37,7 +37,7 @@ export const CashPaymentBreakdown = ({
               className="flex items-center justify-between gap-4 py-3.5"
             >
               <span className="flex min-w-0 items-center gap-3">
-                <CreditCard className="size-4 shrink-0 text-primary" />
+                <CreditCard className="size-4 shrink-0 text-brand-foreground" />
                 <span className="truncate font-medium">{payment.name}</span>
               </span>
               <span className="text-right">
@@ -48,7 +48,7 @@ export const CashPaymentBreakdown = ({
                   {formatArs(payment.salesAmount)}
                 </span>
                 {payment.adjustmentAmount !== 0 && (
-                  <span className="block text-xs font-medium text-red-600">
+                  <span className="block text-xs font-medium text-destructive">
                     Ajuste de anulación posterior {formatArs(payment.adjustmentAmount)}
                   </span>
                 )}

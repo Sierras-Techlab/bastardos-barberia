@@ -1,7 +1,12 @@
+import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { FixedCustomersCard } from "@/components/dashboard/fixed-customers-card";
 import { IncomeSummaryCard } from "@/components/dashboard/income-summary-card";
-import { QuickActionsCard } from "@/components/dashboard/quick-actions-card";
+import { BastardosWordmark } from "@/components/dashboard/bastardos-wordmark";
+import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
+import { SevenDayEvolution } from "@/components/dashboard/seven-day-evolution";
 import { requirePageUser } from "@/lib/auth/authorization";
 import { isCashClosedForDate } from "@/lib/cash/repository";
 import {
@@ -17,8 +22,9 @@ const dateFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "
 
 const Home = async () => {
   const { user } = await requirePageUser();
-  const range = getBuenosAiresSevenDayRange();
-  const fixedCustomerRange = getBuenosAiresRemainingWorkweekRange();
+  const referenceInstant = new Date();
+  const range = getBuenosAiresSevenDayRange(referenceInstant);
+  const fixedCustomerRange = getBuenosAiresRemainingWorkweekRange(referenceInstant);
   const incomeQuery = { dateFrom: range.dateFrom, dateTo: range.dateTo, status: "active", pageSize: 100 } as const;
   const fixedOccurrencesPromise = fixedCustomerRange
     ? listFixedOccurrences(user, fixedCustomerRange)
@@ -31,8 +37,37 @@ const Home = async () => {
   const remainingIncomePages = await Promise.all(Array.from({ length: Math.max(firstIncomePage.pagination.totalPages - 1, 0) }, (_, index) => listIncomes(user, { ...incomeQuery, page: index + 2 })));
   const incomeItems: IncomeListRow[] = [firstIncomePage, ...remainingIncomePages].flatMap((page) => page.items as IncomeListRow[]);
   const incomeSummary = buildIncomeSummaryForViewer(user.role.name, incomeItems, range.dateTo);
-  const currentDate = dateFormatter.format(new Date());
+  const currentDate = dateFormatter.format(referenceInstant);
 
-  return <><header className="mx-auto flex h-16 w-full max-w-[1600px] shrink-0 items-center px-5 md:px-7 xl:px-8"><div className="flex min-w-0 items-center gap-3"><SidebarTrigger className="-ml-1" /><div className="min-w-0"><p className="truncate font-semibold">Dashboard</p><p className="truncate text-xs text-muted-foreground capitalize">{currentDate}</p></div></div></header><main className="mx-auto w-full max-w-[1600px] flex-1 px-5 pb-5 md:px-7 xl:min-h-0 xl:px-8 xl:pb-7"><div className="mb-5"><p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Resumen del negocio</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">Todo lo importante, de un vistazo.</h1><p className="mt-1 text-sm text-muted-foreground">Ingresos, tareas frecuentes y clientes con horarios habituales.</p></div><div data-testid="dashboard-grid" className="grid gap-5 xl:grid-cols-12 xl:items-start"><div className="min-w-0 xl:col-span-8"><IncomeSummaryCard summary={incomeSummary} /></div><div className="grid min-w-0 gap-5 md:grid-cols-2 xl:col-span-4 xl:grid-cols-1"><QuickActionsCard canCreateIncome={!cashClosed} /><FixedCustomersCard occurrences={fixedOccurrences} /></div></div></main></>;
+  const employee = user.role.name === "employee";
+
+  return (
+    <div className="relative flex min-w-0 flex-1 flex-col bg-[#f6f5f2] dark:bg-[#0b0b0e]">
+      <div className="mx-auto w-full max-w-[1520px] px-4 pt-3 pb-20 min-[360px]:px-5 sm:px-7 lg:px-8 lg:py-7 xl:px-9">
+        <header className="mb-5 flex min-h-12 items-center justify-between gap-1.5 lg:mb-6 lg:min-h-0">
+          <div className="flex min-w-0 items-center gap-2 lg:gap-3">
+            <SidebarTrigger aria-label="Abrir navegación" className="-ml-1 size-11 shrink-0 rounded-full border border-border bg-muted lg:size-9 lg:border-0 lg:bg-transparent dark:bg-[#191920] lg:dark:bg-transparent" />
+            <div className="lg:hidden"><BastardosWordmark /></div>
+            <div className="min-w-0">
+              <p className="hidden text-xs font-medium text-muted-foreground lg:block">Dashboard · <span className="first-letter:uppercase">{currentDate}</span></p>
+              <h1 className="sr-only mt-0.5 text-2xl leading-tight font-black tracking-[-0.035em] lg:not-sr-only xl:text-[1.7rem]">Todo lo importante, de un vistazo.</h1>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold lg:hidden dark:bg-[#191920]">
+            {employee ? "Empleado" : "Gerencia"}
+          </span>
+          <Link href="/incomes" className="hidden min-h-10 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-semibold shadow-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring lg:inline-flex dark:bg-[#131318]">
+            Ver ingresos <ArrowUpRight aria-hidden="true" className="size-3.5 text-brand-foreground" />
+          </Link>
+        </header>
+        <IncomeSummaryCard summary={incomeSummary} canCreateIncome={!cashClosed} />
+        <div className="mt-5 grid min-w-0 gap-4 lg:mt-6 lg:grid-cols-2 lg:gap-6">
+          <SevenDayEvolution series={incomeSummary.series} employee={employee} />
+          <FixedCustomersCard occurrences={fixedOccurrences} referenceInstant={referenceInstant.toISOString()} employee={employee} />
+        </div>
+      </div>
+      <DashboardMobileNav />
+    </div>
+  );
 };
 export default Home;

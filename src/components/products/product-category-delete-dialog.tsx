@@ -55,7 +55,7 @@ export const ProductCategoryDeleteDialog = ({
     <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
       <DialogContent className="rounded-[1.6rem] p-5 sm:max-w-md">
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-destructive">
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
             <Trash2 className="size-5" />
           </span>
           <DialogTitle>Eliminar categoría</DialogTitle>
@@ -68,7 +68,7 @@ export const ProductCategoryDeleteDialog = ({
         {error && (
           <p
             role="alert"
-            className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700"
+            className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {error}
           </p>

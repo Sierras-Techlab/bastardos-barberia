@@ -45,6 +45,17 @@ it("searches, selects, and clears an optional customer", async () => {
   expect(onChange).toHaveBeenLastCalledWith(null);
 });
 
+it("offers explicitly keeping the searched name for this sale even when a matching customer exists", async () => {
+  const onFreeName = vi.fn();
+  const user = userEvent.setup();
+  render(<CustomerSelector customers={[{ id: "customer-raul", firstName: "Raul", lastName: "Gómez" }]} value={null} onChange={vi.fn()} onFreeNameChange={onFreeName} freeName={null} currentUserRole="employee" availableProfessionals={[]} />);
+  await user.type(screen.getByRole("combobox", { name: /cliente opcional/i }), "Raul");
+  const option = screen.getByRole("button", { name: /usar “raul” solo en esta venta/i });
+  expect(option.compareDocumentPosition(screen.getByRole("button", { name: /crear cliente/i })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await user.click(option);
+  expect(onFreeName).toHaveBeenCalledWith("Raul");
+});
+
 it("creates and immediately selects a missing customer", async () => {
   const user = userEvent.setup();
   const created = { id: "10000000-0000-4000-8000-000000000001", firstName: "Ana", lastName: "Pérez", phone: "3515550101", email: null, visits: 0, createdAt: "2026-08-11T12:00:00.000Z" };

@@ -33,13 +33,19 @@ const EmployeeSelectorHarness = ({ onChange }: { onChange: (payments: IncomePaym
   );
 };
 
-it("auto-fills the first active method with the complete total", () => {
+it("starts without a selected method and assigns the total to the method the user chooses", async () => {
+  const user = userEvent.setup();
   const onChange = vi.fn();
-  render(<PaymentMethodSelector methods={methods} payments={[]} total={49000} onChange={onChange} error="Seleccioná un medio de pago." />);
+  render(<PaymentMethodSelector methods={methods} payments={[]} total={49000} onChange={onChange} />);
 
-  expect(onChange).toHaveBeenCalledWith([{ paymentMethodId: methods[0].id, amount: 49000 }]);
+  expect(onChange).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Efectivo" })).toHaveAttribute("aria-pressed", "false");
+  expect(screen.getByRole("button", { name: "Transferencia" })).toHaveAttribute("aria-pressed", "false");
+  expect(screen.getByText("Elegí cómo se recibió el cobro.")).toBeVisible();
   expect(screen.queryByRole("button", { name: "Cheque" })).not.toBeInTheDocument();
-  expect(screen.getByText("Seleccioná un medio de pago.")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Transferencia" }));
+  expect(onChange).toHaveBeenCalledWith([{ paymentMethodId: methods[1].id, amount: 49000 }]);
 });
 
 it("renders active methods and combined as selectable cards", () => {

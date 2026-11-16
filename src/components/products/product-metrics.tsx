@@ -29,14 +29,14 @@ export const ProductMetrics = ({ metrics }: ProductMetricsProps) => {
       value: String(metrics.lowStockProducts),
       detail: `${metrics.outOfStockProducts} sin stock`,
       icon: TriangleAlert,
-      tone: "bg-white text-foreground",
+      tone: "bg-card text-foreground",
     },
     {
       label: "Precio promedio",
       value: formatArs(metrics.averagePrice),
       detail: "Precio actual de venta",
       icon: Tags,
-      tone: "bg-[#d9d7d2] text-foreground",
+      tone: "bg-muted text-foreground",
     },
   ];
 

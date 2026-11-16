@@ -32,7 +32,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
   <section aria-labelledby="cash-sales-title">
     <div className="mb-3 flex items-end justify-between gap-4 px-1">
       <div>
-        <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
+        <p className="text-xs font-semibold tracking-[0.16em] text-brand-foreground uppercase">
           Detalle del día
         </p>
         <h3 id="cash-sales-title" className="mt-1 text-lg font-semibold">
@@ -46,9 +46,9 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
 
     {sales.length > 0 ? (
       <>
-        <div className="hidden overflow-x-auto rounded-[1.5rem] bg-white shadow-sm ring-1 ring-black/5 xl:block">
+        <div className="hidden overflow-x-auto rounded-[1.5rem] bg-card shadow-sm ring-1 ring-black/5 xl:block">
           <table aria-label="Movimientos de la caja" className="w-full min-w-[44rem] text-left text-sm">
-            <thead className="border-b border-black/5 bg-[#f8f7f4] text-xs text-muted-foreground">
+            <thead className="border-b border-border bg-muted text-xs text-muted-foreground">
               <tr>
                 <th className="px-5 py-3 font-medium">Hora</th>
                 <th className="px-5 py-3 font-medium">Responsable</th>
@@ -65,7 +65,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                 return (
                   <tr
                     key={sale.id}
-                    className={`transition-colors hover:bg-[#faf9f6] ${sale.currentStatus === "voided" ? "bg-red-50/45" : ""}`}
+                    className={`transition-colors hover:bg-muted ${sale.currentStatus === "voided" ? "bg-destructive/10" : ""}`}
                   >
                     <td className="px-5 py-3.5 text-muted-foreground">
                       {formatTime(sale.createdAt)}
@@ -77,7 +77,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                       <span className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{kindLabels[sale.kind]}</Badge>
                         {sale.currentStatus === "voided" && (
-                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                          <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/10">
                             Anulada
                           </Badge>
                         )}
@@ -115,7 +115,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
             return (
               <li
                 key={sale.id}
-                className="rounded-[1.4rem] bg-white p-4 shadow-sm ring-1 ring-black/5"
+                className="rounded-[1.4rem] bg-card p-4 shadow-sm ring-1 ring-black/5"
               >
                 <button type="button" className="w-full text-left" onClick={() => onSelect(sale)}>
                   <span className="flex items-start justify-between gap-3">
@@ -126,7 +126,7 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                       <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
                         {formatTime(sale.createdAt)} · {kindLabels[sale.kind]}
                         {sale.currentStatus === "voided" && (
-                          <span className="font-medium text-red-600">· Anulada</span>
+                          <span className="font-medium text-destructive">· Anulada</span>
                         )}
                         {excluded && (
                           <span className="font-medium text-muted-foreground">· No suma al total</span>
@@ -137,9 +137,9 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
                       {formatArs(excluded ? 0 : sale.grossTotal)}
                     </span>
                   </span>
-                  <span className="mt-3 flex items-center justify-between border-t border-black/5 pt-3 text-xs text-muted-foreground">
+                  <span className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
                     <span>Para la barbería {formatArs(excluded ? 0 : sale.barbershopNet)}</span>
-                    <span className="flex items-center gap-1 text-primary">
+                    <span className="flex items-center gap-1 text-brand-foreground">
                       <Eye className="size-3.5" /> Ver detalle
                     </span>
                   </span>
@@ -150,8 +150,8 @@ export const CashSalesAudit = ({ sales, onSelect }: CashSalesAuditProps) => (
         </ul>
       </>
     ) : (
-      <div className="flex min-h-48 flex-col items-center justify-center rounded-[1.5rem] bg-white px-6 text-center shadow-sm ring-1 ring-black/5">
-        <ReceiptText className="size-5 text-primary" />
+      <div className="flex min-h-48 flex-col items-center justify-center rounded-[1.5rem] bg-card px-6 text-center shadow-sm ring-1 ring-black/5">
+        <ReceiptText className="size-5 text-brand-foreground" />
         <p className="mt-3 font-semibold">Todavía no hay cobros</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
           La caja se actualiza automáticamente cuando se registra un ingreso.

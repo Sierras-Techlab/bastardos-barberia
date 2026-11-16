@@ -98,6 +98,7 @@ const matchesQuery = (item: IncomeListRow, rawQuery: string) => {
     const searchableValues = [
       item.customer?.firstName ?? "",
       item.customer?.lastName ?? "",
+      item.customerName ?? "",
       ...item.concepts.map((concept) => concept.name),
     ];
     return normalize(searchableValues.join(" ")).includes(query);
@@ -108,6 +109,7 @@ const matchesQuery = (item: IncomeListRow, rawQuery: string) => {
     item.employee.lastName,
     item.customer?.firstName ?? "",
     item.customer?.lastName ?? "",
+    item.customerName ?? "",
     item.service?.name ?? "",
     ...item.products.map((product) => product.name),
   ];

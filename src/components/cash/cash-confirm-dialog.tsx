@@ -42,18 +42,18 @@ export const CashConfirmDialog = ({ expectedCash, onClose, onConfirm }: CashConf
     <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-md">
       <form noValidate onSubmit={submit} className="space-y-5">
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><ShieldCheck className="size-5" /></span>
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-success/10 text-success-foreground"><ShieldCheck className="size-5" /></span>
           <DialogTitle>Confirmar conteo pendiente</DialogTitle>
           <DialogDescription>Una vez confirmado, los totales financieros y el conteo físico quedan inmutables.</DialogDescription>
         </DialogHeader>
-        <div className="rounded-2xl border border-black/8 bg-[#f7f6f3] p-4">
+        <div className="rounded-2xl border border-border bg-muted p-4">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Efectivo esperado</p>
           <p className="mt-1 text-2xl font-semibold">{formatArs(expectedCash)}</p>
         </div>
         <label className="block text-sm font-medium">Conteo físico final (ARS entero)
-          <Input aria-label="Conteo físico final" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]" />
+          <Input aria-label="Conteo físico final" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(event) => setValue(event.target.value)} className="mt-2 h-11 rounded-xl border-border bg-muted" />
         </label>
-        <div className={`rounded-xl px-3 py-2 text-sm ${difference === 0 ? "bg-emerald-50 text-emerald-800" : difference > 0 ? "bg-blue-50 text-blue-800" : "bg-red-50 text-red-700"}`}>
+        <div className={`rounded-xl px-3 py-2 text-sm ${difference === 0 ? "bg-success/10 text-success-foreground" : difference > 0 ? "bg-info/10 text-info-foreground" : "bg-destructive/10 text-destructive"}`}>
           {difference === 0 ? "Sin diferencia" : difference > 0 ? `Sobran ${formatArs(difference)}` : `Faltan ${formatArs(Math.abs(difference))}`}
         </div>
         <DialogFooter className="-mx-5 -mb-5 flex flex-row items-center justify-end gap-2 p-5">

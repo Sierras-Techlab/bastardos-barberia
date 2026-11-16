@@ -21,7 +21,7 @@ const CashPage = async () => {
 
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl xl:rounded-t-[2rem]">
         <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-5 md:px-7 xl:px-8">
           <SidebarTrigger className="-ml-1" />
           <div className="min-w-0">
@@ -33,7 +33,7 @@ const CashPage = async () => {
 
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-5 pb-10 md:px-7 xl:px-8 xl:py-7">
         <div className="mb-6 max-w-3xl">
-          <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Economía del negocio</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-brand-foreground uppercase">Economía del negocio</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Controlá cada jornada de principio a fin</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Cargá el saldo inicial, seguí las ventas y confirmá el conteo físico

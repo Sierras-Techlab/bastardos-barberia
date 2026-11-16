@@ -199,8 +199,8 @@ export const ProductsView = ({
             </div>
           </>
         ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-[1.6rem] bg-white px-6 text-center shadow-sm">
-            <span className="flex size-12 items-center justify-center rounded-full bg-[#f6f5f2] text-primary">
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-[1.6rem] bg-card px-6 text-center shadow-sm">
+            <span className="flex size-12 items-center justify-center rounded-full bg-muted text-brand-foreground">
               <PackageSearch className="size-5" />
             </span>
             <h3 className="mt-4 font-semibold">No encontramos productos</h3>

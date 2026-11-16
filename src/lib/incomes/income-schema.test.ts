@@ -109,6 +109,15 @@ describe("priceOverrideSchema", () => {
 });
 
 describe("managerCreateIncomeSchema", () => {
+  it("accepts a trimmed free customer name and rejects a name paired with a customer id", () => {
+    expect(managerCreateIncomeSchema.safeParse({ ...publicInput, customerName: " Raul " }).data?.customerName).toBe("Raul");
+    expect(managerCreateIncomeSchema.safeParse({ ...publicInput, customerId: "00000000-0000-4000-8000-000000000099", customerName: "Raul" }).success).toBe(false);
+  });
+
+  it("rejects blank or overlong free customer names", () => {
+    expect(managerCreateIncomeSchema.safeParse({ ...publicInput, customerName: "   " }).success).toBe(false);
+    expect(managerCreateIncomeSchema.safeParse({ ...publicInput, customerName: "R".repeat(81) }).success).toBe(false);
+  });
   it("accepts an optional priceOverride on the service and each product", () => {
     const result = managerCreateIncomeSchema.safeParse({
       ...publicInput,
@@ -175,6 +184,11 @@ describe("employeeCreateIncomeSchema", () => {
 
   it("accepts integer amount allocations", () => {
     expect(employeeCreateIncomeSchema.safeParse(validEmployee).success).toBe(true);
+  });
+
+  it("accepts an explicitly selected free name while preserving no-customer sales", () => {
+    expect(employeeCreateIncomeSchema.safeParse({ ...validEmployee, customerName: "Raul" }).success).toBe(true);
+    expect(employeeCreateIncomeSchema.safeParse({ ...validEmployee, customerId: "00000000-0000-4000-8000-000000000099", customerName: "Raul" }).success).toBe(false);
   });
 
   it("rejects basis points on employee payments", () => {

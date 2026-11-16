@@ -32,6 +32,8 @@ const rpcFailure = (operation: string, error: { message?: string; code?: string 
     throw new AppError("INSUFFICIENT_STOCK", `No hay stock suficiente de ${message.slice("INSUFFICIENT_STOCK:".length)}.`, 409);
   }
   const mappings: Record<string, [string, string, number]> = {
+    INVALID_CUSTOMER_NAME: ["INVALID_CUSTOMER_NAME", "El nombre libre debe tener hasta 80 caracteres.", 400],
+    CUSTOMER_IDENTITY_CONFLICT: ["CUSTOMER_IDENTITY_CONFLICT", "Elegí una ficha o un nombre libre, no ambos.", 400],
     CUSTOMER_NOT_FOUND: ["CUSTOMER_NOT_FOUND", "No encontramos el cliente seleccionado.", 404],
     SERVICE_NOT_AVAILABLE: ["SERVICE_NOT_AVAILABLE", "El servicio seleccionado ya no está disponible.", 409],
     PRODUCT_NOT_FOUND: ["PRODUCT_NOT_FOUND", "No encontramos uno de los productos.", 404],
@@ -89,11 +91,12 @@ const listParams = (scope: IncomeScope, query: IncomeListQuery) => ({
 
 export const incomeRepository: IncomeRepository = {
   async create(actor, input) {
-    const { data, error } = await getSupabaseAdmin().rpc("create_income", {
+    const { data, error } = await getSupabaseAdmin().rpc("create_income_with_customer_name", {
       actor_user_id: actor.id,
       responsible_employee_id: input.employeeId,
       income_request_id: input.requestId,
       selected_customer_id: input.customerId,
+      selected_customer_name: input.customerName?.trim() || null,
       selected_service_id: input.serviceId,
       product_items: input.products,
       payment_items: input.payments,

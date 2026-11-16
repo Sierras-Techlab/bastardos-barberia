@@ -118,7 +118,7 @@ export const WorkSessionCorrectionDialog = ({
     <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-lg">
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary">
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground">
             <Clock3 className="size-5" />
           </span>
           <DialogTitle>Corregir jornada</DialogTitle>
@@ -138,7 +138,7 @@ export const WorkSessionCorrectionDialog = ({
                   setStartedAt(event.target.value);
                   setStartedAtDirty(true);
                 }}
-                className="h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white"
+                className="h-10 rounded-xl border-border bg-muted shadow-none focus:bg-card"
                 required
               />
             </label>
@@ -151,7 +151,7 @@ export const WorkSessionCorrectionDialog = ({
                   setEndedAt(event.target.value);
                   setEndedAtDirty(true);
                 }}
-                className="h-10 rounded-xl border-black/10 bg-[#f7f6f3] shadow-none focus:bg-white"
+                className="h-10 rounded-xl border-border bg-muted shadow-none focus:bg-card"
               />
             </label>
           </div>
@@ -160,13 +160,13 @@ export const WorkSessionCorrectionDialog = ({
             <textarea
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              className="min-h-24 w-full resize-y rounded-xl border border-black/10 bg-[#f7f6f3] px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-white focus:ring-3 focus:ring-ring/50"
+              className="min-h-24 w-full resize-y rounded-xl border border-border bg-muted px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-card focus:ring-3 focus:ring-ring/50"
               placeholder="Ej.: el empleado informó un olvido al marcar la entrada"
               required
             />
           </label>
           {error && (
-            <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           )}

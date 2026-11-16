@@ -1,40 +1,48 @@
-"use client";
-
-import { BadgeDollarSign, BookOpenText, PackageSearch, ReceiptText, UsersRound, type LucideIcon } from "lucide-react";
+import { DollarSign, Package, ReceiptText, Users } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
 
-type LinkAction = { label: string; href: "/incomes/new" | "/incomes" | "/customers" | "/products"; icon: LucideIcon; primary?: boolean };
-type FutureAction = { label: string; icon: LucideIcon };
+import { cn } from "@/lib/utils";
 
-const linkActions: LinkAction[] = [
-  { label: "Cargar ingreso", href: "/incomes/new", icon: BadgeDollarSign, primary: true },
-  { label: "Ver ingresos", href: "/incomes", icon: BookOpenText },
-  { label: "Gestionar clientes", href: "/customers", icon: UsersRound },
-  { label: "Ver productos", href: "/products", icon: PackageSearch },
-];
+const actions = [
+  { label: "Cargar ingreso", href: "/incomes/new", icon: DollarSign, primary: true },
+  { label: "Ver ingresos", href: "/incomes", icon: ReceiptText },
+  { label: "Gestionar clientes", href: "/customers", icon: Users },
+  { label: "Ver productos", href: "/products", icon: Package },
+] as const;
 
-const futureActions: FutureAction[] = [
-  { label: "Registrar gasto", icon: ReceiptText },
-];
-
-const actionClassName = "group flex min-h-24 flex-col items-start justify-between rounded-2xl border p-3 text-left text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70";
-const futureMessage = "Esta función estará disponible próximamente";
-
-export const QuickActionsCard = ({ canCreateIncome = true }: { canCreateIncome?: boolean }) => <section aria-labelledby="quick-actions-title" className="h-fit rounded-3xl border border-white/10 bg-[#202023] p-4 text-white shadow-[0_20px_55px_-38px_rgba(0,0,0,0.5)] sm:p-5">
-  <div>
-    <p className="text-xs font-semibold tracking-[0.16em] text-red-400 uppercase">Atajos</p>
-    <h2 id="quick-actions-title" className="mt-1 text-lg font-semibold">Acciones rápidas</h2>
-    <p className="mt-1 text-sm text-white/55">Las tareas que más usás</p>
-  </div>
-  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
-    {linkActions.filter((action) => canCreateIncome || action.href !== "/incomes/new").map((action) => <Link key={action.href} href={action.href} className={`${actionClassName} ${action.primary ? "border-white/15 bg-primary text-white hover:bg-primary/90" : "border-white/10 bg-white/10 text-white hover:bg-white/15"}`}>
-      <action.icon className="size-4 transition-transform group-hover:scale-110" />
-      <span>{action.label}</span>
-    </Link>)}
-    {futureActions.map((action) => <button key={action.label} type="button" onClick={() => toast.info(futureMessage)} className={`${actionClassName} border-white/10 bg-white/10 text-white hover:bg-white/15`}>
-      <action.icon className="size-4 transition-transform group-hover:scale-110" />
-      <span>{action.label}</span>
-    </button>)}
-  </div>
-</section>;
+export function QuickActionsCard({ canCreateIncome = true }: { canCreateIncome?: boolean }) {
+  return (
+    <nav aria-label="Accesos directos" className="mx-auto w-full max-w-sm lg:mr-0 lg:w-auto">
+      <div className="flex justify-center gap-1 sm:gap-3 lg:justify-end xl:gap-4">
+        {actions.filter((action) => canCreateIncome || action.href !== "/incomes/new").map((action) => {
+          const Icon = action.icon;
+          const primary = action.href === "/incomes/new";
+          return (
+            <Link
+              key={action.href}
+              href={action.href}
+              className="group flex min-h-19 w-[4.15rem] shrink-0 flex-col items-center gap-2 rounded-xl py-1 text-center text-[11px] leading-tight font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[4.5rem]"
+            >
+              <span
+                className={cn(
+                  "grid size-12 shrink-0 place-items-center rounded-full border transition-transform group-hover:-translate-y-0.5 motion-reduce:transform-none",
+                  primary
+                    ? "border-transparent bg-[#dc2626] text-white shadow-[0_4px_13px_#dc26265c] ring-2 ring-[#dc2626]/20"
+                    : "border-transparent bg-[#111113] text-white dark:border-white/10 dark:bg-[#1e1e26]",
+                )}
+              >
+                <Icon aria-hidden="true" className="size-5" />
+              </span>
+              <span>{action.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+      {!canCreateIncome && (
+        <p role="status" className="mt-2 rounded-xl bg-warning px-3 py-2 text-center text-xs font-medium text-warning-foreground lg:text-right">
+          La Caja de hoy está cerrada. No se pueden cargar nuevos ingresos.
+        </p>
+      )}
+    </nav>
+  );
+}

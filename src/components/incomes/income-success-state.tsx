@@ -25,12 +25,12 @@ export const IncomeSuccessState = ({
   const total = isEmployeeIncome(income) ? income.employeeCommission : income.total;
   const amountLabel = isEmployeeIncome(income) ? "Tu comisión" : "El movimiento por";
   return (
-    <Card className="mx-auto w-full max-w-xl rounded-[2rem] border-0 bg-white py-0 text-center shadow-[0_28px_80px_-45px_rgba(0,0,0,0.45)] ring-0">
+    <Card className="mx-auto w-full max-w-xl rounded-[2rem] border-0 bg-card py-0 text-center shadow-[0_28px_80px_-45px_rgba(0,0,0,0.45)] ring-0">
       <CardContent className="flex flex-col items-center px-6 py-12 sm:px-10">
-        <span className="flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <span className="flex size-16 items-center justify-center rounded-full bg-success/10 text-success-foreground">
           <Check className="size-8" />
         </span>
-        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-brand-foreground">
           Operación completada
         </p>
         <h2 className="mt-2 text-3xl font-semibold tracking-tight">

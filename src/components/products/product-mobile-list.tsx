@@ -28,7 +28,7 @@ export const ProductMobileList = ({
       return (
       <li
         key={product.id}
-        className="flex min-h-24 items-center justify-between gap-4 rounded-[1.35rem] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        className="flex min-h-24 items-center justify-between gap-4 rounded-[1.35rem] bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
       >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -54,10 +54,10 @@ export const ProductMobileList = ({
                 availabilityStatus === "unavailable"
                   ? "mt-2 rounded-full bg-black/5 text-muted-foreground hover:bg-black/5"
                   : availabilityStatus === "available"
-                  ? "mt-2 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                  ? "mt-2 rounded-full bg-success/10 text-success-foreground hover:bg-success/10"
                   : availabilityStatus === "low-stock"
-                    ? "mt-2 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50"
-                    : "mt-2 rounded-full bg-red-50 text-red-700 hover:bg-red-50"
+                    ? "mt-2 rounded-full bg-warning/10 text-warning-foreground hover:bg-warning/10"
+                    : "mt-2 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/10"
               }
             >
               {availabilityStatus === "unavailable"

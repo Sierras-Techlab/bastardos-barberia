@@ -27,6 +27,12 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -34,6 +40,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-brand-foreground: var(--brand-foreground);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
@@ -60,17 +67,24 @@
 
   --primary: #e5252a;
   --primary-foreground: #ffffff;
+  --brand-foreground: #b91c22;
 
   --secondary: #f1f1f2;
   --secondary-foreground: #27272a;
 
   --muted: #f0efec;
-  --muted-foreground: #71717a;
+  --muted-foreground: #626267;
 
   --accent: #f4e7e8;
   --accent-foreground: #b91c22;
 
   --destructive: #dc2626;
+  --success: #dcfce7;
+  --success-foreground: #166534;
+  --warning: #fef3c7;
+  --warning-foreground: #854d0e;
+  --info: #dbeafe;
+  --info-foreground: #1e40af;
 
   --border: #e4e4e7;
   --input: #e4e4e7;
@@ -95,6 +109,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #0a0a0a;
   --foreground: #fafafa;
 
@@ -104,8 +119,9 @@
   --popover: #171717;
   --popover-foreground: #fafafa;
 
-  --primary: #ef2525;
+  --primary: #c81920;
   --primary-foreground: #ffffff;
+  --brand-foreground: #ff7878;
 
   --secondary: #242424;
   --secondary-foreground: #fafafa;
@@ -117,6 +133,12 @@
   --accent-foreground: #ffb4b4;
 
   --destructive: #ef4444;
+  --success: #12372a;
+  --success-foreground: #bbf7d0;
+  --warning: #422d12;
+  --warning-foreground: #fde68a;
+  --info: #152c43;
+  --info-foreground: #bfdbfe;
 
   --border: rgb(255 255 255 / 10%);
   --input: rgb(255 255 255 / 15%);

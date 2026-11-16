@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 const IncomePageHeader = () => (
-  <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f1f0ed]/90 backdrop-blur-xl xl:rounded-t-[2rem]">
+  <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl xl:rounded-t-[2rem]">
     <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-2 px-5 md:px-7 xl:px-8">
       <SidebarTrigger className="-ml-1" />
       <Link
@@ -54,11 +54,11 @@ const NewIncomePage = async () => {
       <>
         <IncomePageHeader />
         <main className="mx-auto flex w-full max-w-[1600px] flex-1 items-start px-5 py-8 pb-32 md:px-7 xl:px-8 xl:py-12">
-          <section className="w-full max-w-2xl rounded-[1.8rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-red-50 text-primary">
+          <section className="w-full max-w-2xl rounded-[1.8rem] bg-card p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground">
               <Clock3 className="size-5" />
             </span>
-            <p className="mt-6 text-xs font-semibold tracking-[0.2em] text-primary uppercase">Jornada requerida</p>
+            <p className="mt-6 text-xs font-semibold tracking-[0.2em] text-brand-foreground uppercase">Jornada requerida</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
               Iniciá tu jornada para cargar ventas
             </h2>
@@ -161,7 +161,7 @@ const NewIncomePage = async () => {
       <IncomePageHeader />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-5 pb-10 md:px-7 xl:px-8 xl:py-7">
         <div className="mb-6 max-w-2xl">
-          <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">Nuevo movimiento</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-brand-foreground uppercase">Nuevo movimiento</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Registrá la venta en pocos pasos</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Combiná un servicio con productos, elegí cómo se pagó y revisá todo antes de confirmar.</p>
         </div>

@@ -47,6 +47,11 @@ it("reviews the exact draft before allowing confirmation", async () => {
   expect(onConfirm).toHaveBeenCalledOnce();
 });
 
+it("shows a free customer name in the confirmation review", () => {
+  render(<IncomeConfirmationDialog open values={{ ...values, customerName: "Raul" }} data={data} pending={false} onBack={vi.fn()} onConfirm={vi.fn()} />);
+  expect(screen.getByText("Raul · Sin ficha de cliente")).toBeVisible();
+});
+
 it("locks confirmation actions while the income is pending", () => {
   render(
     <IncomeConfirmationDialog

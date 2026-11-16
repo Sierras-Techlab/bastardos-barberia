@@ -41,7 +41,7 @@ export const ProductStatusDialog = ({ product, onClose, onConfirm }: ProductStat
     <Dialog open onOpenChange={(open) => !open && !isSaving && onClose()}>
       <DialogContent className="rounded-[1.6rem] p-5 sm:max-w-md">
         <DialogHeader>
-          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary"><Power className="size-5" /></span>
+          <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground"><Power className="size-5" /></span>
           <DialogTitle>{action} producto</DialogTitle>
           <DialogDescription>
             {product.isActive
@@ -49,7 +49,7 @@ export const ProductStatusDialog = ({ product, onClose, onConfirm }: ProductStat
               : `${product.name} volverá a estar disponible para empleados.`}
           </DialogDescription>
         </DialogHeader>
-        {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <DialogFooter className="-mx-5 -mb-5 mt-5 p-5">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} className="rounded-xl">Cancelar</Button>
           <Button type="button" onClick={confirm} disabled={isSaving} className="rounded-xl">{isSaving ? "Guardando..." : `${action} producto`}</Button>

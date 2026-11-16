@@ -26,7 +26,7 @@ export const ServiceCardGrid = ({
     {services.map((service, index) => (
       <li
         key={service.id}
-        className={`group min-h-44 rounded-[1.5rem] p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${!service.isActive ? "bg-[#d9d7d2] text-foreground" : index % 3 === 0 ? "bg-[#202023] text-white" : index % 3 === 1 ? "bg-primary text-white" : "bg-white"}`}
+        className={`group min-h-44 rounded-[1.5rem] p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${!service.isActive ? "bg-muted text-foreground" : index % 3 === 0 ? "bg-[#202023] text-white" : index % 3 === 1 ? "bg-primary text-white" : "bg-card"}`}
       >
         <div className="flex items-start justify-between gap-4">
           <span className="flex size-10 items-center justify-center rounded-2xl bg-current/10">
@@ -34,7 +34,7 @@ export const ServiceCardGrid = ({
           </span>
           <div className="flex items-center gap-1">
             <Badge
-              className={`rounded-full border-0 text-white ${service.isActive ? "bg-emerald-500" : "bg-orange-500"}`}
+              className={`rounded-full border-0 ${service.isActive ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"}`}
             >
               {service.isActive ? "Activo" : "Inactivo"}
             </Badge>

@@ -140,6 +140,7 @@ describe("020 application layer role safety", () => {
     await user.type(chargedPrice, "7000");
     await user.type(screen.getByRole("textbox", { name: "Motivo del cambio de precio de Corte" }), "Precio acordado");
     expect(screen.queryByRole("checkbox", { name: "Modificar precio de Cera × 1" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     await waitFor(() => expect(calls).toHaveLength(1));
@@ -199,6 +200,7 @@ describe("020 application layer role safety", () => {
       screen.queryByRole("spinbutton", { name: "Precio cobrado de Barba" }),
     ).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     await waitFor(() => expect(calls).toHaveLength(1));
@@ -214,6 +216,7 @@ describe("020 application layer role safety", () => {
     render(<IncomeForm data={managerFormData} incomeClient={client} />);
     await user.click(screen.getByRole("button", { name: /Corte/i }));
     await user.click(screen.getByRole("button", { name: /cera/i }));
+    await user.click(screen.getByRole("button", { name: /Efectivo/i }));
     await user.click(screen.getByRole("button", { name: /Transferencia/i }));
     const efectivoInput = screen.getByLabelText("Monto en Efectivo");
     const transferenciaInput = screen.getByLabelText("Monto en Transferencia");
@@ -236,6 +239,7 @@ describe("020 application layer role safety", () => {
     const client: Pick<IncomeClient, "create"> = { create: vi.fn() };
     render(<IncomeForm data={managerFormData} incomeClient={client} />);
     await user.click(screen.getByRole("button", { name: /Corte/i }));
+    await user.click(screen.getByRole("button", { name: /Efectivo/i }));
     await user.click(screen.getByRole("button", { name: /Transferencia/i }));
     const efectivoInput = screen.getByLabelText("Monto en Efectivo");
     await user.clear(efectivoInput);

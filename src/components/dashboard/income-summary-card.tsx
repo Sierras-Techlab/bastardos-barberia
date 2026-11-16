@@ -1,100 +1,117 @@
-import { ArrowUpRight, Banknote, CircleDollarSign, ReceiptText, WalletCards } from "lucide-react";
-import Link from "next/link";
+import { CreditCard, Scissors } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { QuickActionsCard } from "@/components/dashboard/quick-actions-card";
 import type { DashboardIncomeSummary, EmployeeDashboardIncomeSummary } from "@/lib/dashboard/income-summary";
 import { cn } from "@/lib/utils";
 
-type Props = { summary: DashboardIncomeSummary | EmployeeDashboardIncomeSummary };
+type Props = {
+  summary: DashboardIncomeSummary | EmployeeDashboardIncomeSummary;
+  canCreateIncome?: boolean;
+};
 
-const currencyFormatter = new Intl.NumberFormat("es-AR", {
+const currency = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
   maximumFractionDigits: 0,
 });
 
-const accessibleDateFormatter = new Intl.DateTimeFormat("es-AR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
+const compositionNote = "Incluye mensualidades; excluye alquileres de silla.";
+const collectionNote = "Pueden incluir mensualidades de clientes fijos y alquileres de silla.";
 
-const accessibleDayLabel = (date: string, count: number, total: number) => {
-  const readableDate = accessibleDateFormatter.format(new Date(`${date}T12:00:00.000Z`)).replace(",", "");
-  return `${readableDate}: ${count} ${count === 1 ? "ingreso" : "ingresos"}, ${currencyFormatter.format(total)}`;
-};
+function AmountUnderline() {
+  return (
+    <svg viewBox="0 0 220 16" fill="none" aria-hidden="true" className="mt-1.5 h-3 w-36 text-[#dc2626] lg:w-44">
+      <path d="M4 10.5C48 4.2 118 3.5 214 8.5C168 11.2 92 12.8 18 13.5" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="208" cy="13" r="2" fill="currentColor" />
+      <circle cx="14" cy="5" r="1.5" fill="currentColor" opacity=".65" />
+    </svg>
+  );
+}
 
-const isEmployeeSummary = (
-  summary: DashboardIncomeSummary | EmployeeDashboardIncomeSummary,
-): summary is EmployeeDashboardIncomeSummary =>
-  "viewer" in summary && summary.viewer === "employee";
+function ManagerBreakdown({ today }: { today: DashboardIncomeSummary["today"] }) {
+  const payments = today.paymentTotals.filter((payment) => payment.amount > 0);
+  const metrics = [
+    { label: "Cantidad de ingresos", value: today.count },
+    { label: "Promedio por ingreso", value: currency.format(today.average) },
+  ];
 
-export const IncomeSummaryCard = ({ summary }: Props) => {
-  const isEmployee = isEmployeeSummary(summary);
-  const todayAmount = isEmployee ? summary.today.employeeCommission : summary.today.total;
-  const todayLabel = isEmployee ? "Lo generado para vos" : "Total del día";
-  const todayCountLabel = isEmployee ? "Ingresos que registraste" : "Ingresos registrados";
-  const headingLabel = isEmployee ? "Tus ingresos de hoy" : "Ingresos de hoy";
-  const descriptionLabel = isEmployee ? "Tu actividad registrada durante el día" : "La actividad registrada por el equipo";
-  const seriesLabel = isEmployee ? "Comisión diaria registrada" : "Facturación diaria registrada";
-  const maxTotal = Math.max(...summary.series.map(({ total }) => total), 1);
-  const managerToday = !isEmployee ? (summary.today as { total: number; count: number; average: number; paymentTotals: Array<{ paymentMethodId: string; name: string; amount: number }> }) : null;
-
-  return <section aria-labelledby="income-summary-title" className="rounded-3xl border border-black/5 bg-white p-4 shadow-[0_20px_55px_-42px_rgba(0,0,0,0.4)] sm:p-5 lg:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Resumen diario</p>
-        <h2 id="income-summary-title" className="mt-1 text-xl font-semibold">{headingLabel}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{descriptionLabel}</p>
-      </div>
-      <Link href="/incomes" className={cn(buttonVariants({ variant: "outline" }), "rounded-xl bg-white")}>Ver ingresos <ArrowUpRight /></Link>
-    </div>
-
-    <div className={`mt-5 grid gap-3 sm:grid-cols-2 ${isEmployee ? "xl:grid-cols-2" : "xl:grid-cols-4"}`}>
-      <article className="rounded-2xl border border-white/10 bg-[#202023] p-4 text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-        <CircleDollarSign className="size-4 text-red-400" />
-        <p className="mt-5 text-2xl font-semibold">{currencyFormatter.format(todayAmount)}</p>
-        <p className="mt-1 text-xs text-white/55">{todayLabel}</p>
-      </article>
-      <article className="rounded-2xl border border-white/10 bg-primary p-4 text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-        <ReceiptText className="size-4 text-white/80" />
-        <p className="mt-5 text-2xl font-semibold">{summary.today.count} {summary.today.count === 1 ? "venta" : "ventas"}</p>
-        <p className="mt-1 text-xs text-white">{todayCountLabel}</p>
-      </article>
-      {!isEmployee && managerToday && (
-        <>
-          <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-            <Banknote className="size-4 text-primary" />
-            <p className="mt-5 text-xl font-semibold">{currencyFormatter.format(managerToday.average)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Promedio por venta</p>
-          </article>
-          <article className="rounded-2xl border border-black/5 bg-[#f7f6f3] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-            <WalletCards className="size-4 text-primary" />
-            <div className="mt-4 space-y-1.5">
-              {managerToday.paymentTotals.length > 0
-                ? managerToday.paymentTotals.map((payment) => <p key={payment.paymentMethodId} className="text-sm font-semibold">{payment.name} {currencyFormatter.format(payment.amount)}</p>)
-                : <p className="text-sm text-muted-foreground">Sin pagos registrados</p>}
-            </div>
-          </article>
-        </>
-      )}
-    </div>
-
-    <div className="mt-5">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div><h3 className="text-sm font-semibold">Últimos 7 días</h3><p className="text-xs text-muted-foreground">{seriesLabel}</p></div>
-        <span className="text-xs text-muted-foreground">{summary.series.reduce((total, day) => total + day.count, 0)} ingresos</span>
-      </div>
-      <div className="flex h-48 items-end gap-2 rounded-2xl border border-black/5 bg-[#f7f6f3] px-3 pt-5 pb-3 sm:gap-3 sm:px-5">
-        {summary.series.map((day) => <div key={day.date} role="img" aria-label={accessibleDayLabel(day.date, day.count, day.total)} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
-          <div className="relative flex h-full w-full items-end justify-center">
-            <span className="pointer-events-none absolute top-0 left-1/2 z-10 w-max -translate-x-1/2 rounded-lg bg-[#202023] px-2 py-1 text-[10px] text-white opacity-0 shadow-lg transition-all group-hover:opacity-100">{day.count} {day.count === 1 ? "ingreso" : "ingresos"} · {currencyFormatter.format(day.total)}</span>
-            <span className="w-full max-w-10 rounded-t-xl bg-primary transition-all duration-200 group-hover:bg-[#d91f24]" style={{ height: `${day.total === 0 ? 4 : Math.max((day.total / maxTotal) * 100, 8)}%` }} />
+  return (
+    <div className="grid min-w-0 gap-3 pt-1 lg:mt-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6 lg:border-t lg:border-border lg:pt-6">
+      <div className="min-w-0 rounded-3xl border border-border bg-card px-4 py-3 shadow-sm lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none dark:bg-[#131318] lg:dark:bg-transparent">
+        <dl className="grid min-w-0 grid-cols-2 divide-x divide-border lg:gap-3 lg:divide-x-0">
+        {metrics.map(({ label, value }) => (
+          <div key={label} className="min-w-0 px-2 first:pl-0 lg:rounded-2xl lg:border lg:border-border lg:bg-muted lg:p-3.5 lg:first:pl-3.5 lg:dark:bg-[#191920]">
+            <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+            <dd className="mt-1 text-xl font-black tracking-tight tabular-nums sm:text-2xl">{value}</dd>
+            <dd className="mt-2 hidden text-[11px] leading-snug text-muted-foreground lg:block">{compositionNote}</dd>
           </div>
-          <span className="text-[10px] text-muted-foreground capitalize">{day.label}</span>
-        </div>)}
+        ))}
+        </dl>
+        <p className="mt-2 border-t border-border pt-2 text-[11px] leading-snug text-muted-foreground lg:hidden">{compositionNote}</p>
       </div>
+      <section aria-labelledby="payment-totals-title" className="min-w-0 rounded-2xl border border-border bg-card p-3.5 shadow-sm lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none dark:bg-[#131318] lg:dark:bg-transparent">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+          <h3 id="payment-totals-title" className="text-xs font-bold">Totales por medio de pago</h3>
+          <CreditCard aria-hidden="true" className="size-3.5 text-brand-foreground lg:hidden" />
+          <p className="basis-full text-[11px] leading-snug text-muted-foreground xl:basis-auto">{collectionNote}</p>
+        </div>
+        {payments.length === 0 ? (
+          <p className="mt-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs text-muted-foreground dark:bg-[#191920]">
+            Sin pagos registrados
+          </p>
+        ) : (
+          <ul className="mt-2 grid grid-cols-2 gap-1.5 lg:flex lg:flex-wrap lg:gap-2">
+            {payments.map((payment) => (
+              <li key={payment.paymentMethodId} className="flex min-w-0 max-w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-2xl border border-border bg-muted px-2.5 py-1.5 text-[11px] lg:px-3 dark:bg-[#191920]">
+                <span className="min-w-0 break-words text-muted-foreground">{payment.name}</span>
+                <strong className="font-bold whitespace-nowrap tabular-nums">{currency.format(payment.amount)}</strong>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
-  </section>;
-};
+  );
+}
+
+export function IncomeSummaryCard({ summary, canCreateIncome = true }: Props) {
+  const employee = "viewer" in summary;
+  const amount = employee ? summary.today.employeeCommission : summary.today.total;
+
+  return (
+    <section
+      aria-labelledby="income-summary-title"
+      className="min-w-0 lg:rounded-3xl lg:border lg:border-border lg:bg-card lg:p-6 lg:shadow-sm lg:dark:bg-[#131318] xl:p-7"
+    >
+      <div className="grid min-w-0 items-center gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-6">
+        <div className={cn("min-w-0 text-center lg:text-left", employee && "lg:flex lg:flex-wrap lg:items-center lg:gap-5 xl:gap-7")}>
+          <div className="min-w-0">
+            <h2 id="income-summary-title" className="text-xs font-semibold text-muted-foreground">
+              {employee ? "Tu comisión generada hoy" : "Total de ingresos activos de hoy"}
+            </h2>
+            <p className="mt-1 text-[clamp(2rem,11vw,2.625rem)] leading-none font-black tracking-[-0.055em] break-words tabular-nums lg:text-5xl">
+              {currency.format(amount)}
+            </p>
+            <div className="flex justify-center lg:justify-start"><AmountUnderline /></div>
+            {!employee && (
+              <p className="mx-auto mt-2 max-w-[18rem] text-[11px] leading-snug text-muted-foreground lg:mx-0 lg:max-w-none lg:text-xs">
+                Puede incluir mensualidades de clientes fijos y alquileres de silla.
+              </p>
+            )}
+          </div>
+          {employee && (
+            <div className="mt-2 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs lg:mt-0 lg:block lg:rounded-2xl lg:bg-muted lg:px-4 lg:py-3 dark:bg-[#191920]">
+              <Scissors aria-hidden="true" className="size-3.5 text-brand-foreground lg:hidden" />
+              <span className="font-medium text-muted-foreground">Ingresos que te corresponden</span>
+              <p className="font-black tabular-nums lg:mt-1 lg:text-2xl">
+                {summary.today.count} <span className="hidden text-xs font-medium text-muted-foreground lg:inline">{summary.today.count === 1 ? "ingreso hoy" : "ingresos hoy"}</span>
+              </p>
+            </div>
+          )}
+        </div>
+        <QuickActionsCard canCreateIncome={canCreateIncome} />
+      </div>
+      {!employee && <ManagerBreakdown today={summary.today} />}
+    </section>
+  );
+}

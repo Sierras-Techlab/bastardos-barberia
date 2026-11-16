@@ -17,8 +17,8 @@ const features = [
 
 const LoginPage = () => {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-[#d8d7d3] p-3 sm:p-5 lg:p-7">
-      <section className="grid min-h-[calc(100svh-1.5rem)] w-full max-w-[1380px] overflow-hidden rounded-[2rem] bg-white shadow-[0_35px_100px_-45px_rgba(0,0,0,0.4)] sm:min-h-[calc(100svh-2.5rem)] lg:min-h-[760px] lg:grid-cols-[1.05fr_0.95fr]">
+    <main className="flex min-h-svh items-center justify-center bg-muted p-3 sm:p-5 lg:p-7">
+      <section className="grid min-h-[calc(100svh-1.5rem)] w-full max-w-[1380px] overflow-hidden rounded-[2rem] bg-card shadow-[0_35px_100px_-45px_rgba(0,0,0,0.4)] sm:min-h-[calc(100svh-2.5rem)] lg:min-h-[760px] lg:grid-cols-[1.05fr_0.95fr]">
         <div className="relative hidden overflow-hidden bg-[#19191b] p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-14">
           <div className="absolute -top-32 -right-24 size-96 rounded-full bg-primary/25 blur-3xl" />
           <div className="absolute -bottom-36 -left-24 size-[28rem] rounded-full bg-primary/15 blur-3xl" />
@@ -35,7 +35,7 @@ const LoginPage = () => {
           />
 
           <div className="relative max-w-lg">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-brand-foreground">
               Gestión interna
             </p>
             <h1 className="text-4xl font-semibold leading-[1.02] tracking-[-0.045em] xl:text-5xl">
@@ -53,15 +53,15 @@ const LoginPage = () => {
                 key={feature.label}
                 className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 backdrop-blur"
               >
-                <feature.icon className="size-3.5 text-primary" />
+                <feature.icon className="size-3.5 text-brand-foreground" />
                 {feature.label}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex min-h-full flex-col bg-[#f8f7f4]">
-          <div className="flex items-center justify-center border-b border-black/5 px-6 py-6 lg:hidden">
+        <div className="flex min-h-full flex-col bg-card">
+          <div className="flex items-center justify-center border-b border-border px-6 py-6 lg:hidden">
             <div className="rounded-2xl bg-[#19191b] px-6 py-3">
               <Image
                 src="/brand/bastardos-logo.png"
@@ -76,7 +76,7 @@ const LoginPage = () => {
 
           <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10 lg:px-14 xl:px-20">
             <div className="w-full max-w-md">
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-brand-foreground">
                 <span className="size-1.5 rounded-full bg-primary" />
                 Acceso interno
               </span>

@@ -41,10 +41,10 @@ export const ProductTable = ({
   onAdjustStock,
   onToggleStatus,
 }: ProductTableProps) => (
-  <div className="overflow-hidden rounded-[1.6rem] bg-white shadow-sm">
+  <div className="overflow-hidden rounded-[1.6rem] bg-card shadow-sm">
     <div className="overflow-x-auto">
       <table aria-label="Catálogo de productos" className="w-full text-sm">
-        <thead className="border-b border-black/5 bg-[#f8f7f4] text-left text-xs text-muted-foreground">
+        <thead className="border-b border-border bg-muted text-left text-xs text-muted-foreground">
           <tr>
             <th className="px-5 py-3.5 font-medium">Producto</th>
             <th className="px-5 py-3.5 font-medium">Categoría</th>
@@ -88,7 +88,7 @@ export const ProductTable = ({
             return (
             <tr
               key={product.id}
-              className="border-b border-black/5 transition-colors last:border-0 hover:bg-[#f6f5f2]"
+              className="border-b border-border transition-colors last:border-0 hover:bg-muted"
             >
               <td className="px-5 py-4 font-medium">
                 <div className="flex items-center gap-2">
@@ -113,10 +113,10 @@ export const ProductTable = ({
                       availabilityStatus === "unavailable"
                         ? "rounded-full bg-black/5 text-muted-foreground hover:bg-black/5"
                         : availabilityStatus === "available"
-                        ? "rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                        ? "rounded-full bg-success/10 text-success-foreground hover:bg-success/10"
                         : availabilityStatus === "low-stock"
-                          ? "rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50"
-                          : "rounded-full bg-red-50 text-red-700 hover:bg-red-50"
+                          ? "rounded-full bg-warning/10 text-warning-foreground hover:bg-warning/10"
+                          : "rounded-full bg-destructive/10 text-destructive hover:bg-destructive/10"
                     }
                   >
                     {availabilityStatus === "unavailable"

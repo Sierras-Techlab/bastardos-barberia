@@ -124,54 +124,54 @@ export const EmployeeAgreementDialog = ({ employeeName, agreement, open, editabl
   return <Dialog open={open} onOpenChange={(next) => !next && !pending && onClose()}>
     <DialogContent className="max-h-[calc(100svh-2rem)] min-w-0 scroll-py-6 overflow-x-hidden overflow-y-auto scroll-smooth rounded-[1.6rem] p-5 sm:max-w-lg">
       <form onSubmit={submit}>
-        <DialogHeader><span className="flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary"><SlidersHorizontal className="size-5" /></span><DialogTitle>Acuerdo comercial</DialogTitle><DialogDescription>{employeeName}. Las tasas se administran desde los datos del usuario.</DialogDescription></DialogHeader>
+        <DialogHeader><span className="flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground"><SlidersHorizontal className="size-5" /></span><DialogTitle>Acuerdo comercial</DialogTitle><DialogDescription>{employeeName}. Las tasas se administran desde los datos del usuario.</DialogDescription></DialogHeader>
         {agreementLoading || !agreement ? <div className="mt-5 grid gap-4">
-          {agreementLoading ? <p role="status" className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-4 text-sm text-zinc-600"><LoaderCircle className="size-4 animate-spin" />Cargando acuerdo…</p> : <p role="alert" className="rounded-xl bg-red-50 px-3 py-3 text-sm text-red-700">{error ?? "No pudimos cargar el acuerdo."}</p>}
+          {agreementLoading ? <p role="status" className="flex items-center gap-2 rounded-xl bg-muted px-3 py-4 text-sm text-foreground"><LoaderCircle className="size-4 animate-spin" />Cargando acuerdo…</p> : <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-3 text-sm text-destructive">{error ?? "No pudimos cargar el acuerdo."}</p>}
           <DialogFooter className="-mx-5 -mb-5 mt-1 p-5">
             <Button type="button" variant="outline" disabled={pending} onClick={onClose} className="rounded-xl">Cerrar</Button>
             {!agreementLoading && onRetry && <Button type="button" disabled={pending} onClick={onRetry} className="rounded-xl">Reintentar acuerdo</Button>}
           </DialogFooter>
         </div> : <>
         <div className="mt-5 grid gap-3">
-          <label className="flex items-center justify-between rounded-xl bg-[#f7f6f3] p-3 text-sm">Comisión de servicios<input aria-label="Comisión de servicios habilitada" type="checkbox" checked={value.serviceCommissionEnabled} disabled={!editable || pending} onChange={(e) => set("serviceCommissionEnabled", e.target.checked)} /></label>
-          <label className="flex items-center justify-between rounded-xl bg-[#f7f6f3] p-3 text-sm">Comisión de productos<input aria-label="Comisión de productos habilitada" type="checkbox" checked={value.productCommissionEnabled} disabled={!editable || pending} onChange={(e) => set("productCommissionEnabled", e.target.checked)} /></label>
-          <p className="px-1 text-xs leading-5 text-zinc-500">Al desactivar una comisión, la tasa configurada se conserva para una futura reactivación, pero no se aplica a ventas nuevas.</p>
-          <label className="flex items-center justify-between rounded-xl bg-[#f7f6f3] p-3 text-sm">Alquiler de silla<input aria-label="Alquiler de silla habilitado" type="checkbox" checked={value.chairRentalEnabled} disabled={!editable || pending} onChange={(e) => set("chairRentalEnabled", e.target.checked)} /></label>
-          {value.chairRentalEnabled && <div className="grid min-w-0 gap-3 rounded-2xl border border-black/5 p-4 sm:grid-cols-3">
-            <label className="space-y-1 text-sm sm:col-span-3">Importe mensual<input aria-label="Importe mensual" type="number" min="1" step="1" required disabled={!editable || pending} value={value.monthlyChairRentalAmount ?? ""} onChange={(e) => set("monthlyChairRentalAmount", e.target.value ? Number(e.target.value) : null)} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3" /></label>
+          <label className="flex items-center justify-between rounded-xl bg-muted p-3 text-sm">Comisión de servicios<input aria-label="Comisión de servicios habilitada" type="checkbox" checked={value.serviceCommissionEnabled} disabled={!editable || pending} onChange={(e) => set("serviceCommissionEnabled", e.target.checked)} /></label>
+          <label className="flex items-center justify-between rounded-xl bg-muted p-3 text-sm">Comisión de productos<input aria-label="Comisión de productos habilitada" type="checkbox" checked={value.productCommissionEnabled} disabled={!editable || pending} onChange={(e) => set("productCommissionEnabled", e.target.checked)} /></label>
+          <p className="px-1 text-xs leading-5 text-muted-foreground">Al desactivar una comisión, la tasa configurada se conserva para una futura reactivación, pero no se aplica a ventas nuevas.</p>
+          <label className="flex items-center justify-between rounded-xl bg-muted p-3 text-sm">Alquiler de silla<input aria-label="Alquiler de silla habilitado" type="checkbox" checked={value.chairRentalEnabled} disabled={!editable || pending} onChange={(e) => set("chairRentalEnabled", e.target.checked)} /></label>
+          {value.chairRentalEnabled && <div className="grid min-w-0 gap-3 rounded-2xl border border-border p-4 sm:grid-cols-3">
+            <label className="space-y-1 text-sm sm:col-span-3">Importe mensual<input aria-label="Importe mensual" type="number" min="1" step="1" required disabled={!editable || pending} value={value.monthlyChairRentalAmount ?? ""} onChange={(e) => set("monthlyChairRentalAmount", e.target.value ? Number(e.target.value) : null)} className="mt-1 h-11 w-full rounded-xl border border-border bg-muted px-3" /></label>
             <div className="min-w-0 space-y-1 text-sm sm:col-span-2">
               <span className="block">Mes de inicio</span>
               <div>
-                <Button ref={monthSelectorRef} type="button" variant="outline" disabled={!editable || pending} aria-haspopup="dialog" aria-expanded={monthPickerOpen} aria-label="Seleccionar mes de inicio" onClick={() => { setMonthPickerOpen((current) => !current); setDayPickerOpen(false); }} className="h-11 w-full justify-between rounded-xl border-black/10 bg-[#f7f6f3] px-3 font-normal">
-                  <span className="flex items-center gap-2"><CalendarDays className="size-4 text-primary" />{selectedPeriod ? formatChairRentalPeriod(selectedPeriod) : "Elegí un mes"}</span>
-                  <ChevronDown className="size-4 text-zinc-500" />
+                <Button ref={monthSelectorRef} type="button" variant="outline" disabled={!editable || pending} aria-haspopup="dialog" aria-expanded={monthPickerOpen} aria-label="Seleccionar mes de inicio" onClick={() => { setMonthPickerOpen((current) => !current); setDayPickerOpen(false); }} className="h-11 w-full justify-between rounded-xl border-border bg-muted px-3 font-normal">
+                  <span className="flex items-center gap-2"><CalendarDays className="size-4 text-brand-foreground" />{selectedPeriod ? formatChairRentalPeriod(selectedPeriod) : "Elegí un mes"}</span>
+                  <ChevronDown className="size-4 text-muted-foreground" />
                 </Button>
-                <FloatingCalendar open={monthPickerOpen} anchorRef={monthSelectorRef} ariaLabel="Seleccionar mes de inicio" className="max-h-[calc(100svh-1.5rem)] w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-black/10 bg-white p-3 shadow-2xl">
-                  <label className="block text-xs font-semibold text-zinc-500">Año<select aria-label="Año del mes de inicio" value={monthPickerYear} onChange={(e) => setMonthPickerYear(Number(e.target.value))} className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-[#f7f6f3] px-3 text-sm font-normal text-zinc-900">
+                <FloatingCalendar open={monthPickerOpen} anchorRef={monthSelectorRef} ariaLabel="Seleccionar mes de inicio" className="max-h-[calc(100svh-1.5rem)] w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-3 shadow-2xl">
+                  <label className="block text-xs font-semibold text-muted-foreground">Año<select aria-label="Año del mes de inicio" value={monthPickerYear} onChange={(e) => setMonthPickerYear(Number(e.target.value))} className="mt-1 h-10 w-full rounded-xl border border-border bg-muted px-3 text-sm font-normal text-foreground">
                     {Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index).map((year) => <option key={year} value={year}>{year}</option>)}
                   </select></label>
                   <div className="mt-3 grid grid-cols-3 gap-2">{monthNames.map((monthName, index) => { const month = index + 1; const monthValue = String(month).padStart(2, "0"); const active = selectedPeriod === `${monthPickerYear}-${monthValue}`; return <Button key={monthValue} type="button" variant={active ? "default" : "outline"} aria-pressed={active} onClick={() => chooseMonth(month)} className="h-10 rounded-xl px-2 text-xs capitalize">{monthName}</Button>; })}</div>
                 </FloatingCalendar>
               </div>
-              <span className="block text-xs leading-5 text-zinc-500">{selectedPeriod ? `Se generará desde ${formatChairRentalPeriod(selectedPeriod)}.` : "Elegí el mes desde el que empieza el acuerdo."}</span>
+              <span className="block text-xs leading-5 text-muted-foreground">{selectedPeriod ? `Se generará desde ${formatChairRentalPeriod(selectedPeriod)}.` : "Elegí el mes desde el que empieza el acuerdo."}</span>
             </div>
             <div className="min-w-0 space-y-1 text-sm">
               <span className="block">Vence el día</span>
               <div>
-                <Button ref={daySelectorRef} type="button" variant="outline" disabled={!editable || pending || !selectedPeriod} aria-haspopup="dialog" aria-expanded={dayPickerOpen} aria-label="Seleccionar día de vencimiento" onClick={() => { setDayPickerOpen((current) => !current); setMonthPickerOpen(false); }} className="h-11 w-full justify-between rounded-xl border-black/10 bg-[#f7f6f3] px-3 font-normal">
-                  <span>{value.chairRentalDueDay ? `Día ${value.chairRentalDueDay}` : "Elegí un día"}</span><ChevronDown className="size-4 text-zinc-500" />
+                <Button ref={daySelectorRef} type="button" variant="outline" disabled={!editable || pending || !selectedPeriod} aria-haspopup="dialog" aria-expanded={dayPickerOpen} aria-label="Seleccionar día de vencimiento" onClick={() => { setDayPickerOpen((current) => !current); setMonthPickerOpen(false); }} className="h-11 w-full justify-between rounded-xl border-border bg-muted px-3 font-normal">
+                  <span>{value.chairRentalDueDay ? `Día ${value.chairRentalDueDay}` : "Elegí un día"}</span><ChevronDown className="size-4 text-muted-foreground" />
                 </Button>
-                <FloatingCalendar open={dayPickerOpen && Boolean(selectedPeriod)} anchorRef={daySelectorRef} ariaLabel="Seleccionar día de vencimiento" className="max-h-[calc(100svh-1.5rem)] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-black/10 bg-white p-3 shadow-2xl">
-                  <p className="text-xs font-semibold text-zinc-500">Día de {selectedPeriod ? formatChairRentalPeriod(selectedPeriod) : ""}</p>
+                <FloatingCalendar open={dayPickerOpen && Boolean(selectedPeriod)} anchorRef={daySelectorRef} ariaLabel="Seleccionar día de vencimiento" className="max-h-[calc(100svh-1.5rem)] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-3 shadow-2xl">
+                  <p className="text-xs font-semibold text-muted-foreground">Día de {selectedPeriod ? formatChairRentalPeriod(selectedPeriod) : ""}</p>
                   <div className="mt-3 grid grid-cols-4 gap-2">{Array.from({ length: selectableDays }, (_, index) => index + 1).map((day) => <Button key={day} type="button" variant={value.chairRentalDueDay === day ? "default" : "outline"} aria-pressed={value.chairRentalDueDay === day} aria-label={`Día ${day}`} onClick={() => { set("chairRentalDueDay", day); setDayPickerOpen(false); }} className="h-9 rounded-lg px-0 text-xs">{day}</Button>)}</div>
                 </FloatingCalendar>
               </div>
             </div>
-            <p className="text-xs leading-5 text-zinc-500 sm:col-span-3">El vencimiento se aplica todos los meses. Elegí un día del 1 al 28 para que siempre exista.</p>
+            <p className="text-xs leading-5 text-muted-foreground sm:col-span-3">El vencimiento se aplica todos los meses. Elegí un día del 1 al 28 para que siempre exista.</p>
           </div>}
-          {existingRentalChanged && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">Los períodos y pagos ya registrados se conservan sin cambios. Esta configuración se aplica a las obligaciones nuevas.</p>}
+          {existingRentalChanged && <p className="rounded-xl bg-warning/10 px-3 py-2 text-xs leading-5 text-warning-foreground">Los períodos y pagos ya registrados se conservan sin cambios. Esta configuración se aplica a las obligaciones nuevas.</p>}
         </div>
-        {(localError || error) && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{localError ?? error}</p>}
+        {(localError || error) && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{localError ?? error}</p>}
         <DialogFooter className="-mx-5 -mb-5 mt-5 p-5"><Button type="button" variant="outline" disabled={pending} onClick={onClose} className="rounded-xl">Cerrar</Button>{editable && <Button type="submit" disabled={pending} className="rounded-xl">{pending && <LoaderCircle className="animate-spin" />}Guardar acuerdo</Button>}</DialogFooter>
         </>}
       </form>

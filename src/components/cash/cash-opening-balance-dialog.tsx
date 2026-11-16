@@ -61,7 +61,7 @@ export const CashOpeningBalanceDialog = ({
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-[1.6rem] p-5 sm:max-w-md">
         <form noValidate onSubmit={submit} className="space-y-5">
           <DialogHeader>
-            <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-red-50 text-primary">
+            <span className="mb-1 flex size-10 items-center justify-center rounded-2xl bg-destructive/10 text-brand-foreground">
               <Wallet className="size-5" />
             </span>
             <DialogTitle>Saldo inicial de hoy</DialogTitle>
@@ -80,10 +80,10 @@ export const CashOpeningBalanceDialog = ({
               step="1"
               value={value}
               onChange={(event) => setValue(event.target.value)}
-              className="mt-2 h-11 rounded-xl border-black/10 bg-[#f7f6f3]"
+              className="mt-2 h-11 rounded-xl border-border bg-muted"
             />
           </label>
-          <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <div className="rounded-2xl bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
             El efectivo esperado se actualiza al guardar este importe.
           </div>
           <DialogFooter className="-mx-5 -mb-5 flex flex-row items-center justify-end gap-2 p-5">

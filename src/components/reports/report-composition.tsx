@@ -32,8 +32,8 @@ export function ReportComposition({ income, payments, expenses, chairRentals }: 
   ];
   const effectiveDates = chairRentals?.byEffectiveDate ?? [];
   return <section className="grid gap-4 lg:grid-cols-3">
-    {groups.map((group) => <Card key={group.title} className="bg-white"><CardHeader><CardTitle className="text-base">{group.title}</CardTitle></CardHeader><CardContent><Bars entries={group.entries} /><p className="mt-4 text-xs leading-5 text-muted-foreground">{group.insight}</p></CardContent></Card>)}
-    {chairRentals && <Card className="bg-white lg:col-span-3">
+    {groups.map((group) => <Card key={group.title} className="bg-card"><CardHeader><CardTitle className="text-base">{group.title}</CardTitle></CardHeader><CardContent><Bars entries={group.entries} /><p className="mt-4 text-xs leading-5 text-muted-foreground">{group.insight}</p></CardContent></Card>)}
+    {chairRentals && <Card className="bg-card lg:col-span-3">
       <CardHeader><CardTitle className="text-base">Alquileres de silla</CardTitle><p className="text-sm text-muted-foreground">Cobros por fecha de cobro y obligaciones por período facturado.</p></CardHeader>
       <CardContent className="grid gap-5 lg:grid-cols-4">
         <div><p className="text-xs text-muted-foreground">Cobrado en el período</p><p className="mt-1 text-xl font-semibold">{money.format(chairRentals.total)}</p><p className="text-xs text-muted-foreground">{effectivePaymentCountLabel(chairRentals.count)}</p></div>

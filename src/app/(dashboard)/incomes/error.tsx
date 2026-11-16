@@ -10,8 +10,8 @@ type IncomesErrorProps = {
 };
 
 const IncomesError = ({ retry }: IncomesErrorProps) => (
-  <main className="flex min-h-svh items-center justify-center bg-[#f1f0ed] px-5">
-    <div className="flex max-w-md flex-col items-center rounded-[1.75rem] bg-white px-8 py-10 text-center shadow-sm">
+  <main className="flex min-h-svh items-center justify-center bg-background px-5">
+    <div className="flex max-w-md flex-col items-center rounded-[1.75rem] bg-card px-8 py-10 text-center shadow-sm">
       <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
         <AlertCircle className="size-5" />
       </span>

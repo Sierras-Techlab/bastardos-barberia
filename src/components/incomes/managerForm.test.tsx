@@ -55,7 +55,7 @@ const result = (input: CreateIncomeInput): Income => ({
   status: "active",
 });
 const client = (create = vi.fn(async (_role: string, input: CreateIncomeInput) => result(input))): Pick<IncomeClient, "create"> => ({ create });
-const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
+const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.click(screen.getByRole("button", { name: /barba/i })); await user.click(screen.getByRole("button", { name: "Efectivo" })); await user.click(screen.getByRole("button", { name: /revisar ingreso/i })); };
 
   it("lets a manager select the responsible employee", () => {
     render(<IncomeForm data={{ ...data, currentUser: { ...data.currentUser, role: "owner" } }} incomeClient={client()} />);
@@ -72,6 +72,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     render(<IncomeForm data={managerData} incomeClient={client()} />);
     await user.click(screen.getByRole("button", { name: /barba/i }));
     await user.click(screen.getByRole("checkbox", { name: /modificar precio de barba/i }));
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Indicá el motivo del cambio de precio.");
     expect(screen.queryByRole("dialog", { name: /confirmar ingreso/i })).not.toBeInTheDocument();
@@ -111,6 +112,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.selectOptions(screen.getByRole("combobox", { name: /empleado responsable/i }), targetEmployeeId);
     expect(screen.queryByRole("checkbox", { name: /regalar el 100% del valor/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /regalar el 100%/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -132,6 +134,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.click(screen.getByRole("button", { name: /agregar pomada/i }));
     await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
     await user.click(screen.getByRole("button", { name: nextServiceId === serviceId ? /barba/i : /corte/i }));
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -150,6 +153,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.clear(priceInput);
     await user.type(priceInput, "10000");
     await user.type(screen.getByLabelText("Motivo del cambio de precio de Barba"), "Promo cliente");
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -169,6 +173,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.clear(priceInput);
     await user.type(priceInput, "0");
     await user.type(screen.getByLabelText(/Motivo del cambio de precio de Pomada/i), "Cortesía");
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     await user.click(screen.getByRole("button", { name: /^confirmar ingreso$/i }));
     expect(create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -187,6 +192,7 @@ const review = async (user: ReturnType<typeof userEvent.setup>) => { await user.
     await user.click(screen.getByRole("checkbox", { name: /regalar el 100% de este servicio/i }));
     await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Pomada" }));
     await user.click(screen.getByRole("checkbox", { name: "Regalar el 100% del valor de 1 unidad de Shampoo" }));
+    await user.click(screen.getByRole("button", { name: "Efectivo" }));
     await user.click(screen.getByRole("button", { name: /revisar ingreso/i }));
     const dialog = screen.getByRole("dialog", { name: /confirmar ingreso/i });
     expect(dialog).toHaveTextContent("Barba · 100%");

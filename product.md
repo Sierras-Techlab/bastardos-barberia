@@ -1,6 +1,6 @@
 # Product: Bastardos Barberia Admin
 
-Last updated: 2026-11-01
+Last updated: 2026-11-14
 
 ## Vision
 
@@ -20,9 +20,9 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 | --- | --- | --- |
 | Authentication | Implemented | Local username/password login, lockout, opaque DB sessions, logout and current user. |
 | User administration API | Installed in test | Create, list, inspect, update, activate/deactivate, reset passwords and logically delete, including configurable owner commissions and the canonical profile RPC. |
-| Dashboard UI | Installed in test | Real role-scoped income summary, quick actions and persisted fixed-customer occurrences for the remaining current Monday-through-Saturday week. Employees receive and may resolve only occurrences currently assigned to them; managers retain the complete agenda. |
+| Dashboard UI | Redesign implemented locally | Inicio puts the primary daily amount and circular shortcuts above the seven-day chart and weekly agenda. On phones the panels stack and a bottom bar links to the operation modules. Managers see team collections and employees see their own income and assigned visits. |
 | Comisiones y pagos combinados | Implemented | Role-aware responsible employee, exact integer-ARS split payments for every role, automatic final-method remainder, independently rounded item snapshots, owner-safe previews, audited 100% service/product-line exceptions, service charged-price adjustments with reason for employees and managers, manager-only product price adjustments and employee-sanitized history projections. |
-| Historial de ingresos por rol | Installed in test | Responsible-employee scoping/filtering across all historical users, metrics, payments, commissions, registrant audit and full detail. |
+| Historial de ingresos por rol | Installed in test | Responsible-employee scoping/filtering across all historical users, metrics, payments, commissions, registrant audit and full detail. The responsive `/incomes` UI uses mobile movement cards, a condensed tablet table, manager-only employee filters and role-safe summaries. |
 | Income entry UI | Implemented | Real authenticated sale submission with active catalogs, integer-ARS payment entry for every role, automatic single-method and final-method allocation, server-authoritative totals, idempotency and inline customer creation. |
 | Income history UI | Implemented | Role-scoped server filtering, monthly pagination, filtered metrics, read-only detail and manager-only voiding. Initial and interactive loads have bounded deadlines; failed filters restore the last consistent result and expose an exact-query retry. |
 | User administration UI | Implemented | Manager-only responsive workspace for search, filters, pagination, visible service/product commission rates and the complete supported user lifecycle. |
@@ -38,7 +38,7 @@ Provide Bastardos Barberia with a simple, reliable internal system that lets own
 
 ## Current product objective
 
-The current frontend increment simplifies only Caja and Ingresos: explain collected totals, generated commissions and the barbershop share; show sales, monthly customer payments and commission-free chair rentals as parts of the same total; make applied filters and exclusions explicit; and distinguish physical cash from other payment methods. Other modules and sale-entry behavior are outside this increment. The local implementation on `codex/caja-ingresos-claridad` includes migration `046_income_composition.sql` for consistent manager-only read aggregation and monthly concepts. Remote installation of `046` remains pending explicit authorization; the application supports its absence without inventing a breakdown or exposing an unsupported monthly filter.
+The current increment extends the sale flow and Ingresos history: operators can explicitly save a one-part customer name on a sale without creating or matching a customer record, and all sale-entry roles can search that name in history. Registered customers and sales without a customer retain their existing behavior. Migration `047_income_free_customer_name.sql` depends on `046_income_composition.sql`; remote installation of `046` is not confirmed, and neither migration is applied as part of this local change.
 
 The `dev` baseline has Reports `039`, production hardening `040`, responsive hardening and the application work for `041` and `042` integrated. Migrations `041` through `043` are installed in the configured test database. The incremental `043` repair lets a balance-only Caja day close automatically on upgraded schemas. The rollback-only database acceptance, read-only audit and complete `001`-`043` disposable clean-install gate passed in test. Repeatable direct-PostgreSQL, authenticated-HTTP and multi-connection acceptance verify RLS/grants, canonical RPCs, authentication/session lifecycle, administrative catalogs, inventory, customers/schedules, presentismo, role-aware incomes, overrides, commissions, fixed monthly payments, live and closed Caja projections, expenses, reports and critical stock/session/idempotency races. The income ledger prevents stale metrics from being presented under a failed filter and provides bounded loading with retry. Production remains gated on its own schema preflight, backup or restore point and deployment window.
 
@@ -62,7 +62,9 @@ An owner may remain responsible for a sale. Future owner-attributed sales use th
 
 Income responses accept the explicit UTC offsets returned by PostgreSQL `timestamptz`, preventing a committed sale from being reported as failed during response validation.
 
-Dashboard home now loads live fixed-customer occurrences only from the current Buenos Aires date through Saturday. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates, immutable item prices/subtotals and active-sale totals without employee, registrant, payment, commission or authorization data.
+Dashboard home loads live fixed-customer occurrences from the current Buenos Aires date through Saturday. Strictly future unresolved visits appear under Próximas. When the scheduled time arrives, they move to Sin registrar so the team can still record the outcome. Resueltas displays Asistió or No asistió as read-only text. It does not expose next week's recurring appointments early: Sunday is empty and the agenda rotates when the next Monday begins. Fixed schedules use one ISO weekday plus local time; attended/missed resolution is audited, concurrency-safe and independent from sales. Customer visit detail exposes dates, immutable item prices/subtotals and active-sale totals without employee, registrant, payment, commission or authorization data.
+
+The entire app, including login, supports light and dark themes. The selector is next to the navigation profile and saves the choice in the browser. The first visit follows the system preference. Switching theme preserves the current page, entered values, data and permissions.
 
 ## Accepted authentication decisions
 

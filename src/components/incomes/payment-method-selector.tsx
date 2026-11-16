@@ -51,11 +51,7 @@ export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, 
       seen.add(payment.paymentMethodId);
       return true;
     });
-    const next = valid.length > 0
-      ? distributeRemainder(valid, total)
-      : activeMethods[0] && total > 0
-        ? [{ paymentMethodId: activeMethods[0].id, amount: total }]
-        : [];
+    const next = distributeRemainder(valid, total);
 
     if (JSON.stringify(next) !== JSON.stringify(payments)) onChange(next);
   }, [activeKey, activeIds, activeMethods, onChange, payments, total]);
@@ -126,6 +122,12 @@ export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, 
         )}
       </div>
 
+      {amountPayments.length === 0 && total > 0 && !error && (
+        <p className="rounded-xl bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
+          Elegí cómo se recibió el cobro.
+        </p>
+      )}
+
       {combined && amountPayments.length === 2 && (
         <Button type="button" variant="outline" size="sm" onClick={splitInHalf} className="rounded-xl">
           <Equal /> Mitad y mitad
@@ -139,7 +141,7 @@ export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, 
             if (!method) return null;
             const isRemainder = combined && index === amountPayments.length - 1;
             return (
-              <div key={method.id} className="flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2">
+              <div key={method.id} className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{method.name}</span>
                   {isRemainder && <span className="text-xs text-muted-foreground">Resto</span>}
@@ -156,20 +158,20 @@ export const PaymentMethodSelector = ({ methods, payments, total = 0, onChange, 
       )}
 
       {combined && amountPayments.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <div className="flex items-center justify-between rounded-xl bg-success/10 px-3 py-2 text-sm text-success-foreground">
           <span className="font-medium">Importe distribuido correctamente</span>
           <span className="text-xs">{amountPayments.length} medios</span>
         </div>
       )}
 
       {!combined && amountPayments.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <div className="flex items-center justify-between rounded-xl bg-success/10 px-3 py-2 text-sm text-success-foreground">
           <span className="font-medium">Asignado {formatArs(amountPayments[0].amount)}</span>
           <span className="text-xs text-muted-foreground">Método único</span>
         </div>
       )}
 
-      {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
     </div>
   );
 };

@@ -49,9 +49,9 @@ type UserListProps = {
 };
 
 const roleClasses = {
-  owner: "border-amber-200 bg-amber-50 text-amber-800",
-  admin: "border-sky-200 bg-sky-50 text-sky-800",
-  employee: "border-zinc-200 bg-zinc-100 text-zinc-700",
+  owner: "border-warning/30 bg-warning/10 text-warning-foreground",
+  admin: "border-info/30 bg-info/10 text-info-foreground",
+  employee: "border-border bg-muted text-foreground",
 } as const;
 
 const rentalStatusLabels = {
@@ -77,11 +77,11 @@ export const UserList = ({
   <div
     role="table"
     aria-label="Listado de usuarios"
-    className="overflow-visible rounded-[1.5rem] border border-black/5 bg-white shadow-[0_24px_60px_-48px_rgba(0,0,0,0.45)]"
+    className="overflow-visible rounded-[1.5rem] border border-border bg-card shadow-[0_24px_60px_-48px_rgba(0,0,0,0.45)]"
   >
     <div
       role="row"
-      className="hidden grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_11rem_9rem_3rem] gap-4 border-b border-black/5 px-5 py-3 text-[0.68rem] font-bold tracking-[0.14em] text-zinc-400 uppercase xl:grid"
+      className="hidden grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_11rem_9rem_3rem] gap-4 border-b border-border px-5 py-3 text-[0.68rem] font-bold tracking-[0.14em] text-muted-foreground uppercase xl:grid"
     >
       <span role="columnheader">Usuario</span>
       <span role="columnheader">Rol</span>
@@ -113,24 +113,24 @@ export const UserList = ({
           <div
             role="row"
             key={user.id}
-            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-[#faf9f7] xl:grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_11rem_9rem_3rem] xl:gap-4 xl:px-5"
+            className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-muted xl:grid-cols-[minmax(13rem,1.4fr)_8rem_7rem_9rem_9rem_11rem_9rem_3rem] xl:gap-4 xl:px-5"
           >
             <div role="cell" className="flex min-w-0 items-center gap-3">
-              <Avatar className="size-10 shrink-0 border border-black/5">
-                <AvatarFallback className="bg-[#f3f1ed] text-xs font-bold text-zinc-700">
+              <Avatar className="size-10 shrink-0 border border-border">
+                <AvatarFallback className="bg-muted text-xs font-bold text-foreground">
                   {getUserInitials(user)}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="truncate font-semibold text-zinc-900">{fullName}</p>
+                  <p className="truncate font-semibold text-foreground">{fullName}</p>
                   {isSelf && (
-                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[0.65rem] font-semibold text-zinc-500">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-semibold text-muted-foreground">
                       Vos
                     </span>
                   )}
                 </div>
-                <p className="truncate text-xs text-zinc-500">@{user.username}</p>
+                <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
                 <div className="mt-2 flex flex-wrap gap-2 xl:hidden">
                   <Badge variant="outline" className={roleClasses[user.role.name]}>
                     {ROLE_LABELS[user.role.name]}
@@ -138,16 +138,16 @@ export const UserList = ({
                   <Badge
                     variant="outline"
                     className={user.isActive
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-zinc-200 bg-zinc-100 text-zinc-500"}
+                      ? "border-success/30 bg-success/10 text-success-foreground"
+                      : "border-border bg-muted text-muted-foreground"}
                   >
                     {user.isActive ? "Activo" : "Inactivo"}
                   </Badge>
                 </div>
-                <p className="mt-2 text-[0.7rem] text-zinc-400 xl:hidden">
+                <p className="mt-2 text-[0.7rem] text-muted-foreground xl:hidden">
                   Último acceso: {formatLastLogin(user.lastLoginAt)}
                 </p>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-zinc-500 xl:hidden">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] text-muted-foreground xl:hidden">
                   <span
                     aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
                   >
@@ -159,7 +159,7 @@ export const UserList = ({
                     Productos {productCommission}
                   </span>
                 </div>
-                {user.role.name === "employee" && agreements[user.id]?.chairRentalEnabled && rentals[user.id] && <div className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 xl:hidden"><span className="font-semibold">Alquiler de {formatChairRentalPeriod(rentals[user.id]?.period ?? "")}:</span> {rentalStatusLabels[rentals[user.id]?.status ?? "pending"]} · {rentalMoney(rentals[user.id]?.amount ?? 0)} · vence el día {agreements[user.id]?.chairRentalDueDay}{canEditAgreement && rentals[user.id]?.status !== "paid" && <Button type="button" variant="link" className="h-auto p-0 pl-2 text-xs" onClick={() => onPayRental?.(user, rentals[user.id] as ChairRentalPayment)}>Registrar pago de {formatChairRentalPeriod(rentals[user.id]?.period ?? "")}</Button>}</div>}
+                {user.role.name === "employee" && agreements[user.id]?.chairRentalEnabled && rentals[user.id] && <div className="mt-2 rounded-xl bg-warning/10 px-3 py-2 text-xs text-warning-foreground xl:hidden"><span className="font-semibold">Alquiler de {formatChairRentalPeriod(rentals[user.id]?.period ?? "")}:</span> {rentalStatusLabels[rentals[user.id]?.status ?? "pending"]} · {rentalMoney(rentals[user.id]?.amount ?? 0)} · vence el día {agreements[user.id]?.chairRentalDueDay}{canEditAgreement && rentals[user.id]?.status !== "paid" && <Button type="button" variant="link" className="h-auto p-0 pl-2 text-xs" onClick={() => onPayRental?.(user, rentals[user.id] as ChairRentalPayment)}>Registrar pago de {formatChairRentalPeriod(rentals[user.id]?.period ?? "")}</Button>}</div>}
               </div>
             </div>
 
@@ -173,13 +173,13 @@ export const UserList = ({
               <Badge
                 variant="outline"
                 className={user.isActive
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-zinc-200 bg-zinc-100 text-zinc-500"}
+                  ? "border-success/30 bg-success/10 text-success-foreground"
+                  : "border-border bg-muted text-muted-foreground"}
               >
                 <span
                   aria-hidden="true"
                   className={user.isActive
-                    ? "size-1.5 rounded-full bg-emerald-500"
+                    ? "size-1.5 rounded-full bg-success-foreground"
                     : "size-1.5 rounded-full bg-zinc-400"}
                 />
                 {user.isActive ? "Activo" : "Inactivo"}
@@ -189,7 +189,7 @@ export const UserList = ({
             <div
               role="cell"
               aria-label={`Comisión servicios de ${fullName}: ${serviceCommission}`}
-              className="hidden text-sm font-semibold text-zinc-700 xl:block"
+              className="hidden text-sm font-semibold text-foreground xl:block"
             >
               {serviceCommission}
             </div>
@@ -197,16 +197,16 @@ export const UserList = ({
             <div
               role="cell"
               aria-label={`Comisión productos de ${fullName}: ${productCommission}`}
-              className="hidden text-sm font-semibold text-zinc-700 xl:block"
+              className="hidden text-sm font-semibold text-foreground xl:block"
             >
               {productCommission}
             </div>
 
             <div role="cell" className="hidden min-w-0 xl:block">
-              {user.role.name !== "employee" ? <span className="text-xs text-zinc-400">—</span> : !agreements[user.id] ? <span className="text-xs text-zinc-400">Sin acuerdo</span> : !agreements[user.id]?.chairRentalEnabled ? <span className="text-xs text-zinc-400">No configurado</span> : rentals[user.id] ? <div className="space-y-1 text-xs"><p className="font-semibold text-zinc-700"><span className="font-normal text-zinc-500">Período facturado: </span>{formatChairRentalPeriod(rentals[user.id]?.period ?? "")} · {rentalMoney(rentals[user.id]?.amount ?? 0)}</p><p className="text-zinc-500">{rentalStatusLabels[rentals[user.id]?.status ?? "pending"]} · vence el día {agreements[user.id]?.chairRentalDueDay}</p>{canEditAgreement && rentals[user.id]?.status !== "paid" && <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => onPayRental?.(user, rentals[user.id] as ChairRentalPayment)}>Registrar pago de {formatChairRentalPeriod(rentals[user.id]?.period ?? "")}</Button>}</div> : <span className="text-xs text-zinc-400">Sin obligación</span>}
+              {user.role.name !== "employee" ? <span className="text-xs text-muted-foreground">—</span> : !agreements[user.id] ? <span className="text-xs text-muted-foreground">Sin acuerdo</span> : !agreements[user.id]?.chairRentalEnabled ? <span className="text-xs text-muted-foreground">No configurado</span> : rentals[user.id] ? <div className="space-y-1 text-xs"><p className="font-semibold text-foreground"><span className="font-normal text-muted-foreground">Período facturado: </span>{formatChairRentalPeriod(rentals[user.id]?.period ?? "")} · {rentalMoney(rentals[user.id]?.amount ?? 0)}</p><p className="text-muted-foreground">{rentalStatusLabels[rentals[user.id]?.status ?? "pending"]} · vence el día {agreements[user.id]?.chairRentalDueDay}</p>{canEditAgreement && rentals[user.id]?.status !== "paid" && <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => onPayRental?.(user, rentals[user.id] as ChairRentalPayment)}>Registrar pago de {formatChairRentalPeriod(rentals[user.id]?.period ?? "")}</Button>}</div> : <span className="text-xs text-muted-foreground">Sin obligación</span>}
             </div>
 
-            <div role="cell" className="hidden text-xs text-zinc-500 xl:block">
+            <div role="cell" className="hidden text-xs text-muted-foreground xl:block">
               {formatLastLogin(user.lastLoginAt)}
             </div>
 
@@ -224,14 +224,14 @@ export const UserList = ({
                   className={buttonVariants({
                     variant: "ghost",
                     size: "icon",
-                    className: "rounded-xl text-zinc-500",
+                    className: "rounded-xl text-muted-foreground",
                   })}
                 >
                   <MoreHorizontal />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-56 rounded-xl border-black/8 p-1.5 shadow-xl"
+                  className="w-56 rounded-xl border-border p-1.5 shadow-xl"
                 >
                   <DropdownMenuItem
                     onClick={() => onAction("edit", user)}
@@ -281,7 +281,7 @@ export const UserList = ({
                   </DropdownMenuItem>
                   {isSelf && (
                     <p
-                      className="mx-2 mt-1 border-t border-zinc-100 pt-2 pb-1 text-xs leading-snug text-zinc-500"
+                      className="mx-2 mt-1 border-t border-border pt-2 pb-1 text-xs leading-snug text-muted-foreground"
                     >
                       Tu propia cuenta no se puede desactivar ni eliminar.
                     </p>

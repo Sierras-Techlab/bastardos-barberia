@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { IncomeMetrics } from "./income-metrics";
 import { CashSummaryCards } from "../cash/cash-summary-cards";
@@ -14,6 +14,7 @@ const metrics = { grossTotal: 135500, commissionTotal: 56750, barbershopNet: 787
 it("explains how rentals contribute to collected income without creating commissions", () => {
   render(<IncomeMetrics metrics={metrics} />);
   expect(screen.getByText("Total cobrado")).toBeVisible();
+  fireEvent.click(screen.getByText("De dónde viene lo cobrado"));
   const breakdown = screen.getByRole("region", { name: "De dónde viene lo cobrado" });
   const rentals = within(breakdown).getByText("Alquileres de silla").closest("li")!;
   expect(rentals).toHaveTextContent("16.000");

@@ -75,8 +75,8 @@ export const UserConfirmDialog = ({
       <DialogContent className="rounded-[1.6rem] p-5 sm:max-w-md">
         <DialogHeader>
           <span className={action === "delete"
-            ? "mb-1 flex size-11 items-center justify-center rounded-2xl bg-red-50 text-red-600"
-            : "mb-1 flex size-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"}
+            ? "mb-1 flex size-11 items-center justify-center rounded-2xl bg-destructive/10 text-destructive"
+            : "mb-1 flex size-11 items-center justify-center rounded-2xl bg-warning/10 text-warning-foreground"}
           >
             <Icon className="size-5" />
           </span>
@@ -87,13 +87,13 @@ export const UserConfirmDialog = ({
         </DialogHeader>
 
         {action === "delete" && (
-          <div className="rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-xs leading-relaxed text-red-700">
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-xs leading-relaxed text-destructive">
             Esta acción no se puede deshacer desde el panel.
           </div>
         )}
 
         {error && (
-          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}

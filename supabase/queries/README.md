@@ -50,8 +50,9 @@ In Supabase Dashboard, open **SQL Editor** and execute these files in order:
 44. `044_income_list_charged_totals.sql`
 45. `045_employee_commercial_agreements_and_chair_rentals.sql`
 46. `046_income_composition.sql`
+47. `047_income_free_customer_name.sql`
 
-Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `046` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward. Remote SQL execution requires explicit authorization.
+Run each entire file and stop if Supabase reports an error. Verify the complete `001` through `047` sequence against an empty disposable PostgreSQL database with `scripts/system-clean-install-acceptance.ts`; do not edit generated tables manually afterward. Remote SQL execution requires explicit authorization.
 
 ## Migration 046: income composition and monthly concepts
 
@@ -67,7 +68,7 @@ After authorized installation, verify:
 - Employee responses still contain only `count` and `employeeCommissionTotal`, ignore attempts to select another responsible user, and exclude chair rentals.
 - Run the read-only audit in the authorized target environment. Run acceptance/clean-install scenarios only in an explicitly authorized test environment, never production.
 
-The synthetic SQL regression runs entirely in memory, uses the real canonical reader/manager serializer plus the relevant `044`/`045` repairs and `046`, and never reads `.env` or connects to Supabase. PGlite is a temporary verification dependency, not an application dependency:
+The synthetic SQL regression runs entirely in memory, uses the real canonical reader/manager serializer plus the relevant `044`/`045` repairs, `046` and `047`, and never reads `.env` or connects to Supabase. It verifies free-name persistence, mutual exclusion, same-name retries, conflicting retries, registered/no-customer sales, duplicate names, role-scoped search before pagination and migration idempotence. PGlite is a temporary verification dependency, not an application dependency:
 
 ```powershell
 npm install --prefix tmp/caja-sql-verification --no-save --package-lock=false @electric-sql/pglite
@@ -75,6 +76,12 @@ node scripts/verify-income-composition.mjs tmp/caja-sql-verification/node_module
 ```
 
 This checks SQL behavior and idempotence on synthetic tables. It does not replace a full-schema clean-install or acceptance gate against an authorized test database.
+
+## Migration 047: free customer names on sales
+
+Migration `047_income_free_customer_name.sql` depends on `045` and `046`; because remote installation of `046` is not confirmed, apply/verify `046` first, then `047`, in that order. It adds a nullable `incomes.customer_name` text snapshot with an 80-character trimmed limit and a constraint preventing simultaneous `customer_id` and free name. The new `create_income_with_customer_name` wrapper serializes a request UUID, checks that retries use the same free name, then delegates the sale to the existing atomic/idempotent `create_income`. It does not create or match customer rows and passes `NULL` customer ID for free names, so customer visits are unaffected.
+
+The migration wraps the currently installed manager and employee projections so both can show/search the label; employee rows receive only `customerName` in addition to their existing restricted contract. Search is added to the canonical filtered CTE, before totals and pagination. The original writer and reader signatures remain available. Application code may be deployed after this migration; its new write RPC is required before the free-name flow can save. On a clean install, run migrations `001` through `047` in numeric order. This is a prepared local migration only; remote application remains outside this task. The synthetic SQL regression above exercises the real `046` and `047` files in-memory without connecting to Supabase.
 
 ## Production paths
 
