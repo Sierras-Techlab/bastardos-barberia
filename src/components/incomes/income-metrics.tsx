@@ -25,9 +25,11 @@ export const IncomeMetrics = ({ metrics, role = "owner" }: Props) => {
       <IncomeTotals {...manager} />
       <p className="text-xs leading-5 text-muted-foreground"><span className="font-semibold text-foreground">Ventas</span>: <span>{manager.count}</span> · Los alquileres no cuentan como ventas.</p>
       {manager.composition
-        ? <IncomeComposition composition={manager.composition} />
+        ? <IncomeComposition composition={manager.composition}>
+            <p>Total cobrado − comisiones = para la barbería. Que las comisiones estén generadas no significa que ya se hayan pagado.</p>
+            <p>Las comisiones se suman tal como se registraron en cada operación. Servicios y productos pueden tener porcentajes distintos; podés verlos en el detalle.</p>
+          </IncomeComposition>
         : <p className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">El desglose por concepto todavía no está disponible</p>}
-      <p className="text-xs leading-5 text-muted-foreground">Las comisiones se suman tal como se registraron en cada operación. Servicios y productos pueden tener porcentajes distintos; podés verlos en el detalle.</p>
     </section>
   );
 };
